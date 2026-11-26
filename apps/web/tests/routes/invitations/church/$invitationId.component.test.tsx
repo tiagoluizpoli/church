@@ -6,6 +6,7 @@ import type { ChildrenProps } from '@/tests/setup/children-props';
 import { renderRoute } from '@/tests/setup/render-route';
 
 const getSession = vi.fn();
+const useSession = vi.fn();
 const getVolunteerDashboard = vi.fn();
 const previewChurchInvitation = vi.fn();
 const requestChurchInvitationVerificationCode = vi.fn();
@@ -15,7 +16,7 @@ const declineChurchInvitation = vi.fn();
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
     getSession: (...args: unknown[]) => getSession(...args),
-    useSession: () => ({ isPending: false }),
+    useSession: () => useSession(),
     organization: {
       getActiveMember: vi.fn(),
     },
@@ -133,6 +134,7 @@ describe('the public Church Invitation join route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSession.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    useSession.mockReturnValue({ isPending: false });
     getVolunteerDashboard.mockResolvedValue(EMPTY_DASHBOARD);
   });
 
@@ -325,20 +327,58 @@ describe('the public Church Invitation join route', () => {
 
     expect(
       await screen.findByRole('link', { name: m.join_sign_in_to_review() }),
-    ).toHaveAttribute('href', '/invitations/ministry/ministry-invitation-1');
+    ).toHaveAttribute(
+      'href',
+      '/app/invitations/ministry/ministry-invitation-1',
+    );
   });
 
-  it('offers no signed-in review for a plain Church invitation', async () => {
+  it('offers a plain Church invitation the signed-in review up front, without revealing whether the email is registered', async () => {
     previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
 
     renderRoute({ initialPath: INITIAL_PATH, churchTimezone: 'UTC' });
 
     expect(
+      await screen.findByRole('link', { name: m.join_sign_in_to_accept() }),
+    ).toHaveAttribute('href', `/app${INITIAL_PATH}/review`);
+    expect(
+      screen.getByRole('button', { name: m.join_send_code() }),
+    ).toBeVisible();
+  });
+
+  it('sends a plain invitation to a signed-in User with the invited email straight to the review', async () => {
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
+    useSession.mockReturnValue({
+      isPending: false,
+      data: { user: { email: 'First-Admin@example.test' } },
+    });
+
+    const { router } = renderRoute({
+      initialPath: INITIAL_PATH,
+      churchTimezone: 'UTC',
+    });
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(`/app${INITIAL_PATH}/review`);
+    });
+  });
+
+  it('keeps a User signed in with another email on the public page', async () => {
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
+    useSession.mockReturnValue({
+      isPending: false,
+      data: { user: { email: 'someone-else@example.test' } },
+    });
+
+    const { router } = renderRoute({
+      initialPath: INITIAL_PATH,
+      churchTimezone: 'UTC',
+    });
+
+    expect(
       await screen.findByRole('button', { name: m.join_send_code() }),
     ).toBeVisible();
-    expect(
-      screen.queryByRole('link', { name: m.join_sign_in_to_review() }),
-    ).toBeNull();
+    expect(router.state.location.pathname).toBe(INITIAL_PATH);
   });
 
   it('shows every pending Ministry half of the offer', async () => {
@@ -463,12 +503,33 @@ describe('the public Church Invitation join route', () => {
 
     await fillAndJoin({ user });
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
     expect(redeemChurchInvitation).toHaveBeenCalledWith(
       'church-invitation-1',
       expect.objectContaining({ code: '123456', name: 'New Person' }),
     );
     expect(getSession).toHaveBeenCalled();
+  });
+
+  it('continues to Home, not the review redirect, once the invitee is signed in after a redeem', async () => {
+    previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
+    redeemChurchInvitation.mockResolvedValue({
+      kind: 'full-success',
+      volunteerId: null,
+    });
+    getSession.mockImplementation(async () => {
+      useSession.mockReturnValue({
+        isPending: false,
+        data: { user: { email: 'First-Admin@example.test' } },
+      });
+      return { data: { user: { id: 'u1' } } };
+    });
+    const { user, router } = await openStepTwo();
+
+    await fillAndJoin({ user });
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
+    expect(router.history.location.pathname).not.toContain('/review');
   });
 
   it('continues a Church-only join to Home carrying the Church and Ministry names', async () => {
@@ -485,7 +546,7 @@ describe('the public Church Invitation join route', () => {
 
     await fillAndJoin({ user });
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
     expect(router.state.location.search).toMatchObject({
       joinedChurch: 'St. Peter',
       invitedMinistry: 'Worship',
@@ -531,7 +592,7 @@ describe('the public Church Invitation join route', () => {
     ).toBeEnabled();
   });
 
-  it('tells a recipient whose email already has a login to ask their inviter, without a retry', async () => {
+  it('sends a plain recipient whose email already has a login to the signed-in review', async () => {
     previewChurchInvitation.mockResolvedValue(PLAIN_PREVIEW);
     redeemChurchInvitation.mockResolvedValue({
       kind: 'terminal-failure',
@@ -541,11 +602,13 @@ describe('the public Church Invitation join route', () => {
 
     await fillAndJoin({ user });
 
+    const notice = await screen.findByRole('alert');
     expect(
-      await screen.findByText(
-        'Este email já tem uma conta; fale com quem convidou você.',
-      ),
+      within(notice).getByText(m.redemption_failure_registered_description()),
     ).toBeVisible();
+    expect(
+      within(notice).getByRole('link', { name: m.join_sign_in_to_accept() }),
+    ).toHaveAttribute('href', `/app${INITIAL_PATH}/review`);
     expect(
       screen.getByRole('button', { name: m.join_submit() }),
     ).toBeDisabled();
@@ -569,7 +632,10 @@ describe('the public Church Invitation join route', () => {
     ).toBeVisible();
     expect(
       within(notice).getByRole('link', { name: m.join_sign_in_to_review() }),
-    ).toHaveAttribute('href', '/invitations/ministry/ministry-invitation-1');
+    ).toHaveAttribute(
+      'href',
+      '/app/invitations/ministry/ministry-invitation-1',
+    );
   });
 
   it('disables Join when the invitation became unavailable mid-join', async () => {

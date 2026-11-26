@@ -1,4 +1,3 @@
-import { NotFoundError } from '@church/core';
 import {
   addCalendarDays,
   addCalendarMonths,
@@ -29,7 +28,6 @@ import type {
   GetSendSummaryManagerInput,
   ICycleManager,
   ListCyclesManagerInput,
-  ReopenPlanningEventManagerInput,
   SendCycleManagerInput,
   UpdateCycleManagerInput,
 } from '../domain/contracts/application/cycle-manager';
@@ -103,6 +101,8 @@ const PERIOD_STATES: Record<CyclePeriod, CycleState[]> = {
 interface EnsureResolvedCycleInput {
   cycle: Cycle;
   churchTimeZone: string;
+  /** A write's open transaction, so its rollback undoes the Past flip. */
+  tx?: TransactionContext;
 }
 
 interface LoadSendableCycleInput {
@@ -426,6 +426,7 @@ export class DbCycleManager implements ICycleManager {
       const cycle = await this.ensureResolvedCycle({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
+        tx,
       });
 
       if (cycle.state !== 'draft') {
@@ -486,6 +487,7 @@ export class DbCycleManager implements ICycleManager {
       const cycle = await this.ensureResolvedCycle({
         cycle: await this.cycleRepository.getById({ ...input, tx }),
         churchTimeZone: church.timezone,
+        tx,
       });
 
       if (cycle.state !== 'draft') {
@@ -496,39 +498,6 @@ export class DbCycleManager implements ICycleManager {
       }
 
       await this.cycleRepository.delete({ ...input, tx });
-    });
-  }
-
-  async reopenEvent(input: ReopenPlanningEventManagerInput): Promise<void> {
-    const church = await this.churchRepository.getById({ id: input.churchId });
-
-    await this.unitOfWork.run(async (tx) => {
-      await this.cycleRepository.acquireChurchLock({
-        churchId: input.churchId,
-        tx,
-      });
-
-      const cycle = await this.ensureResolvedCycle({
-        cycle: await this.cycleRepository.getById({ ...input, tx }),
-        churchTimeZone: church.timezone,
-      });
-      const event = await this.eventRepository.getEvent({
-        churchId: input.churchId,
-        eventId: input.eventId,
-        tx,
-      });
-      // An Event under another Cycle is as missing as an unknown Event.
-      if (event.cycleId !== input.cycleId) {
-        throw new NotFoundError(`Event not found: ${input.eventId}`);
-      }
-
-      cycle.assertCanReopenEvent({ eventState: event.status });
-      await this.eventRepository.updateEvent({
-        churchId: input.churchId,
-        eventId: input.eventId,
-        status: 'draft',
-        tx,
-      });
     });
   }
 
@@ -545,6 +514,7 @@ export class DbCycleManager implements ICycleManager {
     const cycle = await this.ensureResolvedCycle({
       cycle: await this.cycleRepository.getById({ churchId, cycleId, tx }),
       churchTimeZone: timeZone,
+      tx,
     });
     if (cycle.state !== 'draft') {
       throw new IllegalStateTransitionError({ from: cycle.state, to: 'sent' });
@@ -617,6 +587,7 @@ export class DbCycleManager implements ICycleManager {
   private async ensureResolvedCycle({
     cycle,
     churchTimeZone,
+    tx,
   }: EnsureResolvedCycleInput): Promise<Cycle> {
     if (cycle.state === 'past') {
       return cycle;
@@ -633,6 +604,7 @@ export class DbCycleManager implements ICycleManager {
       churchId: cycle.churchId,
       cycleId: cycle.id,
       state: 'past',
+      tx,
     });
   }
 }

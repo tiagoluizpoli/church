@@ -5,8 +5,8 @@
 # Changing this command requires every developer to approve it again.
 pre-start = "mise trust --yes && mise install && mise exec -- bun run worktree:bootstrap"
 
-# Drops the removed worktree's three databases (runs in that worktree, which
-# holds their identity). The primary checkout's copy of the script runs, so
+# Drops the removed worktree's three databases and deletes its storage bucket
+# (runs in that worktree, which holds their identity). The primary checkout's copy of the script runs, so
 # worktrees branched before it existed are cleaned too. Never blocks removal:
 # the script only warns, and the fallback covers a primary that lacks it; in
 # both cases `bun run db:prune` recovers later.

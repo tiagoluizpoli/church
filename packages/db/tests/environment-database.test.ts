@@ -1,8 +1,8 @@
 import pg from 'pg';
 import { afterAll, describe, expect, it } from 'vitest';
-import { provisionEnvironmentDatabase } from '../src/environment-database';
-import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
-import { scratchDatabaseName } from '../src/scratch-database-name';
+import { provisionEnvironmentDatabase } from '@/environment-database';
+import { getIntegrationDatabaseUrl } from '@/integration-database-url';
+import { scratchDatabaseName } from '@/scratch-database-name';
 
 const STAGING = scratchDatabaseName({ purpose: 'env_staging', kind: 'int' });
 const PRODUCTION = scratchDatabaseName({

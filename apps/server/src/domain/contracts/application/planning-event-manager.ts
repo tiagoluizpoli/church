@@ -12,11 +12,13 @@ import type {
   CancellationImpact,
   CancellationScope,
 } from '../../services/event-cancellation';
+import type { EditProposal } from '../../services/event-edit';
 import type {
   MoveClash,
   MoveProposal,
   MoveScope,
 } from '../../services/event-move';
+import type { LosingEventTimeBlock } from '../../services/template-precedence-application';
 
 export interface GeneratePlanningTemplatesInput {
   churchId: ChurchId;
@@ -27,6 +29,8 @@ export interface GeneratePlanningTemplatesInput {
 export interface GeneratedPlanningCounts {
   generatedEventCount: number;
   generatedEventTimeBlockCount: number;
+  /** Existing blocks a Template Precedence now makes losers; Apply deletes none. */
+  leftoverEventTimeBlocks: LosingEventTimeBlock[];
 }
 
 /** One Time block of a complete Event create. */
@@ -34,6 +38,12 @@ export interface PlanningEventTimeBlockDraft {
   label: string;
   startTime: Date;
   endTime: Date;
+  /** Absent keeps a retained block's value; a new block starts private. */
+  isPublic?: boolean;
+  /** Empty clears; absent keeps a retained block's value. */
+  place?: string;
+  /** A Church Address as the place; sent with `place`, both set the place together. */
+  placeAddressId?: string | null;
 }
 
 /** A Draft Event with every one of its Time blocks, saved together. */
@@ -83,6 +93,13 @@ export interface UpdatePlanningEventDetailsManagerInput {
   eventId: EventId;
   title: string;
   location?: string;
+  /** Público and place of existing blocks; omitted blocks stay as they are. */
+  eventTimeBlocks?: {
+    id: EventTimeBlockId;
+    isPublic: boolean;
+    place?: string;
+    placeAddressId?: string | null;
+  }[];
 }
 
 export interface DeletePlanningEventManagerInput {
@@ -150,6 +167,36 @@ export interface PlanningMoveResult {
   withdrawn: MoveClash[];
 }
 
+/** One block of an edit; `id` keeps that active block, none adds one. */
+export interface PlanningEditTimeBlock {
+  id?: EventTimeBlockId;
+  label: string;
+  startTime: Date;
+  endTime: Date;
+}
+
+/** The complete proposed bounds and blocks of a scheduled Event of a Sent Cycle. */
+export interface PreviewPlanningEditManagerInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  eventId: EventId;
+  start: Date;
+  end: Date;
+  eventTimeBlocks: PlanningEditTimeBlock[];
+}
+
+export interface ConfirmPlanningEditManagerInput
+  extends PreviewPlanningEditManagerInput {
+  /** The ChurchAdmin who confirms; audits the withdrawals. */
+  actingUserId: UserId;
+}
+
+/** The proposed bounds and the Assignments a clash would withdraw; nothing is written. */
+export interface PlanningEditPreview {
+  proposal: EditProposal;
+  clashes: MoveClash[];
+}
+
 /** A cancellation request for one scope: the whole Event or one EventTimeBlock. */
 export interface PlanningCancellationManagerInput {
   churchId: ChurchId;
@@ -201,6 +248,21 @@ export interface IPlanningEventManager {
    */
   confirmMove(
     input: ConfirmPlanningMoveManagerInput,
+  ): Promise<PlanningMoveResult>;
+  /**
+   * Advisory and write-free: allowed until the Event ends, the proposal
+   * passes the final-graph rules and no staffed block is dropped.
+   */
+  previewEdit(
+    input: PreviewPlanningEditManagerInput,
+  ): Promise<PlanningEditPreview>;
+  /**
+   * Recalculates under the Church lock (never trusting a preview), withdraws
+   * only the actual clashes, retimes the Event, its kept blocks and their
+   * Shifts, adds the new blocks and cancels the dropped unstaffed ones.
+   */
+  confirmEdit(
+    input: ConfirmPlanningEditManagerInput,
   ): Promise<PlanningMoveResult>;
   /** Advisory and write-free: confirm recalculates and never trusts it. */
   previewCancellation(

@@ -328,7 +328,7 @@ describe('repository list ordering', () => {
         db,
         churchId: base.seed.churchAId,
         name: 'Sunday',
-        weekday: 0,
+        recurrence: { kind: 'weekly', weekdays: [0] },
         blocks: ['Closing', 'Opening'].map((label, index) => ({
           label,
           startTime: parseTimeOfDay({ value: '09:00' }),
@@ -499,7 +499,7 @@ describe('repository list ordering', () => {
           roleId: role.id,
           start: at(start),
           end: at('02T13:00'),
-          status: 'confirmed',
+          status: 'pending',
         });
       }
       const repo = new DrizzlePlanningEventRepository({ db });

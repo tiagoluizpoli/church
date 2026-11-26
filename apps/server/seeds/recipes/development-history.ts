@@ -1,10 +1,12 @@
-import { scheduleLastTold } from '@church/db';
+import { event, eventTimeBlock, scheduleLastTold } from '@church/db';
 import {
   addCalendarDays,
   addCalendarMonths,
+  addMinutes,
   type CalendarDay,
   compareInstants,
   enumerateCalendarDays,
+  fromDate,
   type Instant,
   parseInstant,
   parseTimeOfDay,
@@ -13,6 +15,8 @@ import {
   toInstant,
   weekdayIndex,
 } from '@church/time';
+import { and, asc, eq, inArray } from 'drizzle-orm';
+import { recurrenceNamesDay } from '../../src/domain/recurrence';
 import type {
   ChurchDirectoryBlueprint,
   MinistryBlueprint,
@@ -36,6 +40,7 @@ import {
   buildCycle,
   buildEvent,
   buildEventTimeBlock,
+  buildEventTimeBlockMove,
   buildMinistryParticipation,
   buildShift,
   buildShiftRequirement,
@@ -135,6 +140,9 @@ interface PlannedEventTimeBlock {
   gatheringKey: string;
   blockId?: string;
   label: string;
+  isPublic?: boolean;
+  place?: string;
+  placeAddressId?: string;
   start: Instant;
   end: Instant;
   servers: PlannedServer[];
@@ -197,7 +205,9 @@ function planEvents({
     seenByWeekday.set(weekday, week);
 
     for (const template of gatherings.templates) {
-      if (template.weekday !== weekday) continue;
+      if (!recurrenceNamesDay({ recurrence: template.recurrence, day })) {
+        continue;
+      }
       const eventTimeBlocks = template.blocks.map((block) => {
         const seededBlock = seededGatherings.blocks.find(
           (candidate) => candidate.key === block.key,
@@ -210,6 +220,9 @@ function planEvents({
           gatheringKey: gatheringKeyOf({ block: block.key, week }),
           blockId: seededBlock.id,
           label: block.label,
+          isPublic: block.isPublic,
+          place: block.place,
+          placeAddressId: seededBlock.placeAddressId,
           start: instantAt({ day, time: block.startTime, timeZone }),
           end: instantAt({ day, time: block.endTime, timeZone }),
           servers: gatherings.servingRules.flatMap((rule) => {
@@ -332,6 +345,9 @@ async function materializeEvent({
       start: eventTimeBlock.start,
       end: eventTimeBlock.end,
       label: eventTimeBlock.label,
+      isPublic: eventTimeBlock.isPublic,
+      place: eventTimeBlock.place,
+      placeAddressId: eventTimeBlock.placeAddressId,
       sourceTemplateTimeBlockId: eventTimeBlock.blockId,
     });
     eventTimeBlockIdByKey.set(eventTimeBlock.key, eventTimeBlockId);
@@ -501,12 +517,10 @@ interface PlacementTarget {
 }
 
 /**
- * What became of an Assignment: still serving, declined by its Volunteer, or
- * reassigned away (the product deletes that row, so it is never written).
+ * What became of an Assignment: still serving, or reassigned away (the
+ * product deletes that row, so it is never written).
  */
-type AssignmentOutcome =
-  | Extract<AssignmentStatus, 'confirmed' | 'declined'>
-  | 'reassigned';
+type AssignmentOutcome = Extract<AssignmentStatus, 'pending'> | 'reassigned';
 
 interface AssignmentWrite {
   target: PlacementTarget;
@@ -515,7 +529,7 @@ interface AssignmentWrite {
   assignedAt: Instant;
   /** The leader who made it; every Assignment here is its Ministry leader's. */
   assignedByEmail: string;
-  /** The row's reason: a decline's, or the override a reassignment carried. */
+  /** The row's reason: the override a reassignment carried. */
   reason?: string;
   /** The override reason, also written on its `created` audit. */
   createdReason?: string;
@@ -531,7 +545,7 @@ interface PlaceInput {
 interface WithdrawInput {
   target: PlacementTarget;
   email: string;
-  outcome: Exclude<AssignmentOutcome, 'confirmed'>;
+  outcome: Exclude<AssignmentOutcome, 'pending'>;
   assignedAt: Instant;
   reason?: string;
 }
@@ -543,7 +557,7 @@ interface StaffingLedgerInput {
 
 /**
  * Who serves where: refuses any placement the product would flag, so the
- * history never holds an unqualified, double-booked, unavailable, declined or
+ * history never holds an unqualified, double-booked, unavailable or
  * over-filled Assignment.
  */
 class StaffingLedger {
@@ -604,7 +618,7 @@ class StaffingLedger {
       return `is not qualified as ${requirement.roleName}`;
     }
     if (this.excludedByShift.get(shift.id)?.has(email)) {
-      return 'already declined or was withdrawn';
+      return 'was already withdrawn';
     }
     const range = { start: shift.start, end: shift.end };
     if (
@@ -644,7 +658,7 @@ class StaffingLedger {
     const write: AssignmentWrite = {
       target,
       email,
-      outcome: 'confirmed',
+      outcome: 'pending',
       assignedAt,
       assignedByEmail: this.leaderOf({ shift: target.shift }),
       reason: createdReason,
@@ -654,7 +668,7 @@ class StaffingLedger {
     return write;
   }
 
-  /** An Assignment its Volunteer declined or its leader reassigned away. */
+  /** An Assignment its leader reassigned away. */
   withdraw({
     target,
     email,
@@ -816,10 +830,6 @@ function scriptedServiceKeys({
       { email: incident.email, servicePost: incident.kept },
       { email: incident.replacementEmail, servicePost: incident.withdrawn },
     ]),
-    ...history.declines.map((incident) => ({
-      email: incident.replacementEmail,
-      servicePost: incident.post,
-    })),
   ];
   return new Set(
     served.map(
@@ -1003,8 +1013,7 @@ interface TrailRecords {
 
 /**
  * The blueprint's trail placed before rotation: cross-Ministry service, the
- * overlap a leader resolved by reassignment, and the decline with its
- * replacement, each as the product records it.
+ * overlap a leader resolved by reassignment, each as the product records it.
  */
 function applyHistoryTrail({
   ledger,
@@ -1053,24 +1062,6 @@ function applyHistoryTrail({
       action: 'updated',
       reason: incident.reason,
       occurredAt: reassignedAt,
-    });
-  }
-
-  // respondToAssignment only sets the status and reason; the leader then
-  // assigns a replacement like any other Assignment.
-  for (const incident of history.declines) {
-    const target = findTarget({ shifts, post: incident.post });
-    ledger.withdraw({
-      target,
-      email: incident.email,
-      outcome: 'declined',
-      assignedAt,
-      reason: incident.reason,
-    });
-    ledger.place({
-      target,
-      email: incident.replacementEmail,
-      assignedAt: replacedAt({ shift: target.shift }),
     });
   }
 
@@ -1138,7 +1129,7 @@ function staffByRotation({
  * The previous complete calendar month as a sent historical Cycle:
  * every gathering materialized, every Ministry's slice published, mostly
  * fully staffed by rotation, plus the blueprint's trail of unavailability,
- * declines, replacements and cross-Ministry service. Nothing reaches the
+ * replacements and cross-Ministry service. Nothing reaches the
  * anchor's month, so current and future planning stays empty.
  */
 export async function loadDevelopmentHistory({
@@ -1486,6 +1477,7 @@ export async function loadDevelopmentUpcomingCycle({
       })),
     );
   }
+  await markPublicEventChanges({ db, churchId, cycleId: cycle.id });
   await askAvailabilityRound({
     db,
     churchId,
@@ -1493,7 +1485,6 @@ export async function loadDevelopmentUpcomingCycle({
     directory,
     history: {
       unavailability: [],
-      declines: [],
       resolvedOverlaps: [],
       crossMinistryService: [],
       shortfalls: [],
@@ -1534,6 +1525,88 @@ export async function loadDevelopmentUpcomingCycle({
     }),
   });
   return cycle;
+}
+
+interface MarkPublicEventChangesInput {
+  db: SeedWriter;
+  churchId: string;
+  cycleId: string;
+}
+
+/**
+ * The sent Cycle's Public Events as visitors meet them after Send: the first
+ * Sunday's 10:30 block moved twice (as-sent, a day later, then back to its
+ * current time), the second Sunday's 08:00 block cancelled. Written directly, like
+ * the rest of the fixture graph (ADR 0006).
+ */
+async function markPublicEventChanges({
+  db,
+  churchId,
+  cycleId,
+}: MarkPublicEventChangesInput): Promise<void> {
+  const blocks = await db
+    .select({
+      id: eventTimeBlock.id,
+      eventId: eventTimeBlock.eventId,
+      start: eventTimeBlock.startTime,
+      end: eventTimeBlock.endTime,
+      label: eventTimeBlock.label,
+    })
+    .from(eventTimeBlock)
+    .innerJoin(event, eq(eventTimeBlock.eventId, event.id))
+    .where(
+      and(
+        eq(event.cycleId, cycleId),
+        eq(eventTimeBlock.isPublic, true),
+        inArray(eventTimeBlock.label, ['Culto 08:00', 'Culto 10:30']),
+      ),
+    )
+    .orderBy(asc(eventTimeBlock.startTime));
+  const moved = blocks.find((block) => block.label === 'Culto 10:30');
+  // 08:00 has no Kids, so cancelling it leaves the Kids proposal intact.
+  const cancelled = blocks.filter((block) => block.label === 'Culto 08:00')[1];
+  if (!moved || !cancelled) return;
+
+  const currentStart = fromDate({ date: moved.start });
+  const currentEnd = fromDate({ date: moved.end });
+  const shifted = (minutes: number) => ({
+    start: addMinutes({ instant: currentStart, minutes }),
+    end: addMinutes({ instant: currentEnd, minutes }),
+  });
+  const asSent = shifted(-120);
+  const hop = shifted(1440);
+  await buildEventTimeBlockMove({
+    db,
+    churchId,
+    id: deriveSeedId({
+      kind: 'event-time-block-move',
+      parentIds: [moved.id, 'first'],
+    }),
+    movedAt: shifted(-2880).start,
+    eventTimeBlockId: moved.id,
+    previousStart: asSent.start,
+    previousEnd: asSent.end,
+    newStart: hop.start,
+    newEnd: hop.end,
+  });
+  await buildEventTimeBlockMove({
+    db,
+    churchId,
+    id: deriveSeedId({
+      kind: 'event-time-block-move',
+      parentIds: [moved.id, 'second'],
+    }),
+    movedAt: shifted(-1440).start,
+    eventTimeBlockId: moved.id,
+    previousStart: hop.start,
+    previousEnd: hop.end,
+    newStart: currentStart,
+    newEnd: currentEnd,
+  });
+  await db
+    .update(eventTimeBlock)
+    .set({ status: 'cancelled' })
+    .where(eq(eventTimeBlock.id, cancelled.id));
 }
 
 interface LedMinistry {

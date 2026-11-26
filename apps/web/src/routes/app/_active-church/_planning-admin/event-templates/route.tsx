@@ -1,0 +1,30 @@
+import { m } from '@church/i18n/messages';
+import { createFileRoute, Link, Outlet } from '@tanstack/react-router';
+import { buttonVariants } from '@/components/ui/button';
+import { TemplateManagerCard } from '@/features/scheduling/components/planning-admin/template-manager-card';
+
+export const Route = createFileRoute(
+  '/app/_active-church/_planning-admin/event-templates',
+)({
+  component: TemplateLibraryRoute,
+});
+
+/** The list stays mounted under the create and edit dialogs (`new`, `$templateId`). */
+function TemplateLibraryRoute() {
+  return (
+    <>
+      <div className="flex justify-end">
+        <Link
+          to="/app/event-templates/new"
+          data-testid="new-template-button"
+          className={buttonVariants()}
+        >
+          {m.event_templates_new()}
+        </Link>
+      </div>
+
+      <TemplateManagerCard />
+      <Outlet />
+    </>
+  );
+}

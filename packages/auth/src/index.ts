@@ -4,6 +4,7 @@ import { env } from '@church/env/server';
 import { type BetterAuthOptions, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { organization } from 'better-auth/plugins/organization';
+import { allowedOrigins } from './allowed-origins';
 import { assertConfiguredRole } from './organization/assert-configured-role';
 import {
   organizationCreatorRole,
@@ -48,17 +49,23 @@ export function createAuth({
 
       schema: schema,
     }),
-    trustedOrigins: [env.CORS_ORIGIN],
+    trustedOrigins: [...allowedOrigins],
     emailAndPassword: {
       enabled: true,
       resetPasswordTokenExpiresIn,
       sendResetPassword,
       revokeSessionsOnPasswordReset,
     },
-    // Public registration and Church Access Level changes are deliberately
-    // unavailable. Redemption and app-managed access changes use trusted
-    // server APIs, which do not traverse these HTTP routes.
-    disabledPaths: ['/sign-up/email', '/organization/update-member-role'],
+    // Public registration, Church Access Level changes and Church identity
+    // updates are deliberately unavailable. Redemption, app-managed access
+    // changes and Church Settings use trusted server APIs, which do not
+    // traverse these HTTP routes.
+    disabledPaths: [
+      '/sign-up/email',
+      '/organization/update-member-role',
+      '/organization/update',
+      '/organization/check-slug',
+    ],
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {

@@ -163,6 +163,7 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/invitation-journey.spec.ts',
+      'tests/identity/redemption-church-only-sign-in.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
     ]);
@@ -172,11 +173,12 @@ describe('classifyChanges', () => {
   it('selects both redemption journeys and the transfer journey for a ministry-invitation route change', () => {
     const plan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/invitations/ministry/$invitationId.tsx',
+        'apps/web/src/routes/app/invitations/ministry/$invitationId.tsx',
       ],
     });
 
     expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/redemption-church-only-sign-in.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/volunteer-transfer-journey.spec.ts',
@@ -213,10 +215,10 @@ describe('classifyChanges', () => {
 
   it('selects the route-protection journey for the authenticated guard, sign-in route, and landing redirect', () => {
     for (const changedPath of [
-      'apps/web/src/routes/_authenticated.tsx',
+      'apps/web/src/routes/app.tsx',
       'apps/web/src/routes/login.tsx',
       'apps/web/src/shared/utils/return-target.ts',
-      'apps/web/src/routes/_authenticated/_active-church/index.tsx',
+      'apps/web/src/routes/app/_active-church/index.tsx',
     ]) {
       const plan = classifyChanges({ changedPaths: [changedPath] });
 
@@ -251,6 +253,7 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/invitation-journey.spec.ts',
+      'tests/identity/redemption-church-only-sign-in.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/volunteer-transfer-journey.spec.ts',
@@ -266,6 +269,7 @@ describe('classifyChanges', () => {
     expect(plan.e2eSpecPaths).toEqual([
       'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/invitation-journey.spec.ts',
+      'tests/identity/redemption-church-only-sign-in.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
     ]);
@@ -275,7 +279,7 @@ describe('classifyChanges', () => {
   it('selects the admin-plan journey for a cycles route change', () => {
     const plan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/_planning-admin/cycles/new.tsx',
+        'apps/web/src/routes/app/_active-church/_planning-admin/cycles/new.tsx',
       ],
     });
 
@@ -311,6 +315,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/planning-nav-restructure.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
       'tests/scheduling/single-create-event-ui.spec.ts',
+      'tests/scheduling/template-precedence.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
     ]);
     expect(plan.missingJourneyMappings).toEqual([]);
@@ -331,6 +336,7 @@ describe('classifyChanges', () => {
         'tests/scheduling/planning-nav-restructure.spec.ts',
         'tests/scheduling/planning-role-guard-matrix.spec.ts',
         'tests/scheduling/single-create-event-ui.spec.ts',
+        'tests/scheduling/template-precedence.spec.ts',
         'tests/scheduling/us1-admin-plan.spec.ts',
       ]);
       expect(plan.missingJourneyMappings).toEqual([]);
@@ -340,13 +346,14 @@ describe('classifyChanges', () => {
   it('selects J6, planning handoff and leader-prepare journeys for the N2 Prepare destination', () => {
     const plan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare.tsx',
+        'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/_prepare.tsx',
       ],
     });
 
     expect(plan.e2eSpecPaths).toEqual([
       'tests/scheduling/j6-leader-availability.spec.ts',
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
+      'tests/scheduling/prepare-panel.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
       'tests/scheduling/us2-leader-prepare.spec.ts',
     ]);
@@ -405,7 +412,7 @@ describe('classifyChanges', () => {
 
   it('selects the volunteer-dashboard journeys for the dashboard route and shell component', () => {
     for (const changedPath of [
-      'apps/web/src/routes/_authenticated/_active-church/dashboard.tsx',
+      'apps/web/src/routes/app/_active-church/dashboard.tsx',
     ]) {
       const plan = classifyChanges({ changedPaths: [changedPath] });
 
@@ -457,7 +464,7 @@ describe('classifyChanges', () => {
   it('selects only the notification-bell journey for the bell, inbox route, and inbox hook', () => {
     for (const changedPath of [
       'apps/web/src/features/volunteers/components/notification-bell.tsx',
-      'apps/web/src/routes/_authenticated/_active-church/notifications.tsx',
+      'apps/web/src/routes/app/_active-church/notifications.tsx',
       'apps/web/src/features/volunteers/components/notifications-inbox-section.tsx',
       'apps/web/src/features/volunteers/hooks/use-notification-inbox.ts',
       'apps/web/src/features/volunteers/lib/notification-navigation.ts',
@@ -516,7 +523,7 @@ describe('classifyChanges', () => {
   it('selects the Church-isolation and send-edge-case journeys for the cycles route', () => {
     const plan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/_planning-admin.tsx',
+        'apps/web/src/routes/app/_active-church/_planning-admin.tsx',
       ],
     });
 
@@ -537,9 +544,7 @@ describe('classifyChanges', () => {
 
   it('selects the guard-matrix journey for the prepare route, and only the capability-index journey for the scheduling index route', () => {
     const preparePlan = classifyChanges({
-      changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/schedules.tsx',
-      ],
+      changedPaths: ['apps/web/src/routes/app/_active-church/schedules.tsx'],
     });
     expect(preparePlan.e2eSpecPaths).toContain(
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
@@ -551,7 +556,7 @@ describe('classifyChanges', () => {
     // the removed broad `.../scheduling` prefix.
     const indexPlan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/scheduling/index.tsx',
+        'apps/web/src/routes/app/_active-church/scheduling/index.tsx',
       ],
     });
     expect(indexPlan.e2eSpecPaths).toEqual([
@@ -588,8 +593,8 @@ describe('classifyChanges', () => {
 
   it('selects J7 for the availability pages', () => {
     for (const changedPath of [
-      'apps/web/src/routes/_authenticated/_active-church/availability.tsx',
-      'apps/web/src/routes/_authenticated/_active-church/availability_.$checkId.tsx',
+      'apps/web/src/routes/app/_active-church/availability.tsx',
+      'apps/web/src/routes/app/_active-church/availability_.$checkId.tsx',
       'apps/web/src/features/volunteers/components/availability-list-page.tsx',
       'apps/web/src/features/volunteers/components/availability-detail-page.tsx',
     ]) {
@@ -663,16 +668,19 @@ describe('classifyChanges', () => {
       ],
     });
     expect(journeyRecipePlan.e2eSpecPaths).toEqual([
+      'tests/church-settings/church-settings-journey.spec.ts',
       'tests/identity/active-church-switching.spec.ts',
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
       'tests/identity/first-admin-onboarding.spec.ts',
       'tests/identity/invitation-journey.spec.ts',
+      'tests/identity/redemption-church-only-sign-in.spec.ts',
       'tests/identity/redemption-existing-member.spec.ts',
       'tests/identity/redemption-new-user.spec.ts',
       'tests/identity/route-protection.spec.ts',
       'tests/identity/volunteer-transfer-journey.spec.ts',
       'tests/ministries/ministries-directory.spec.ts',
       'tests/people/people-journey.spec.ts',
+      'tests/public-church/public-church-profile.spec.ts',
       'tests/scheduling/a11y-builder.spec.ts',
       'tests/scheduling/a11y-planning-nav.spec.ts',
       'tests/scheduling/builder-event-time-block-focus.spec.ts',
@@ -681,6 +689,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/cycles-table-view.spec.ts',
       'tests/scheduling/event-templates.spec.ts',
       'tests/scheduling/j10-admin-cancel.spec.ts',
+      'tests/scheduling/j11-admin-edit-event.spec.ts',
       'tests/scheduling/j6-leader-availability.spec.ts',
       'tests/scheduling/j9-swap-request.spec.ts',
       'tests/scheduling/planning-cross-tenant-isolation.spec.ts',
@@ -689,6 +698,7 @@ describe('classifyChanges', () => {
       'tests/scheduling/qualification.spec.ts',
       'tests/scheduling/single-create-event-ui.spec.ts',
       'tests/scheduling/smoke.spec.ts',
+      'tests/scheduling/template-precedence.spec.ts',
       'tests/scheduling/us1-admin-plan.spec.ts',
       'tests/scheduling/us2-leader-prepare.spec.ts',
       'tests/scheduling/us3-volunteer-availability.spec.ts',
@@ -855,7 +865,7 @@ describe('classifyChanges', () => {
   it('selects only the a11y-builder journey for an assign route change', () => {
     const plan = classifyChanges({
       changedPaths: [
-        'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign.tsx',
+        'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/assign.tsx',
       ],
     });
 

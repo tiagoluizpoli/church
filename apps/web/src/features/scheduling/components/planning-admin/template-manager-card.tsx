@@ -7,7 +7,9 @@ import type { TemplateLibraryTableRow } from './planning-admin.types';
 import { toTemplateLibraryTableRow } from './planning-admin.utils';
 import { RetryAlert } from './retry-alert';
 import { TemplateDeleteDialog } from './template-delete-dialog';
+import { TemplatePrecedencesDialog } from './template-precedences-dialog';
 import { TEMPLATE_LIST_QUERY_KEY } from './template-query-keys';
+import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
@@ -28,9 +30,14 @@ function templateTableColumns(): DataTableColumn[] {
   ];
 }
 
+function PublicBadge() {
+  return <Badge variant="secondary">{m.event_templates_block_public()}</Badge>;
+}
+
 interface TemplateRowActionsProps {
   templateId: string;
   templateName: string;
+  onPrecedences: () => void;
   onDelete: () => void;
   /** Only one copy (the mobile card) carries test ids; both are in the DOM. */
   withTestIds?: boolean;
@@ -54,6 +61,7 @@ function moveActionFocus(event: KeyboardEvent<HTMLDivElement>) {
 function TemplateRowActions({
   templateId,
   templateName,
+  onPrecedences,
   onDelete,
   withTestIds,
 }: TemplateRowActionsProps) {
@@ -63,7 +71,7 @@ function TemplateRowActions({
       onKeyDown={moveActionFocus}
     >
       <Link
-        to="/event-templates/$templateId"
+        to="/app/event-templates/$templateId"
         params={{ templateId }}
         aria-label={m.event_templates_edit_label({ name: templateName })}
         data-testid={withTestIds ? 'edit-template-button' : undefined}
@@ -75,6 +83,17 @@ function TemplateRowActions({
       >
         {m.event_templates_edit()}
       </Link>
+      <Button
+        type="button"
+        size="xs"
+        className="min-h-11 min-w-11 md:min-h-0 md:min-w-0"
+        variant="outline"
+        aria-label={m.event_templates_precedences_label({ name: templateName })}
+        data-testid={withTestIds ? 'template-precedences-button' : undefined}
+        onClick={onPrecedences}
+      >
+        {m.event_templates_precedences()}
+      </Button>
       <Button
         type="button"
         size="xs"
@@ -97,6 +116,13 @@ export function TemplateManagerCard() {
   });
   const templates = templatesQuery.data?.templates ?? [];
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const deleteTarget = templates.find(({ id }) => id === deleteTargetId);
+  const [precedencesTargetId, setPrecedencesTargetId] = useState<string | null>(
+    null,
+  );
+  const precedencesTarget = templates.find(
+    ({ id }) => id === precedencesTargetId,
+  );
 
   const rows: TemplateLibraryTableRow[] = templates.map((template) =>
     toTemplateLibraryTableRow({ template, locale: getLocale() }),
@@ -128,7 +154,7 @@ export function TemplateManagerCard() {
                   {m.event_templates_empty()}
                 </p>
                 <Link
-                  to="/event-templates/new"
+                  to="/app/event-templates/new"
                   data-testid="empty-new-template-button"
                   className={buttonVariants({ variant: 'default' })}
                 >
@@ -138,13 +164,19 @@ export function TemplateManagerCard() {
             }
             renderCell={({ item, column }) => (
               <>
-                {column.id === 'name' ? item.name : null}
+                {column.id === 'name' ? (
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    {item.name}
+                    {item.publicBlockCount > 0 ? <PublicBadge /> : null}
+                  </span>
+                ) : null}
                 {column.id === 'weekday' ? item.weekday : null}
                 {column.id === 'blocks' ? item.blockCount : null}
                 {column.id === 'actions' ? (
                   <TemplateRowActions
                     templateId={item.id}
                     templateName={item.name}
+                    onPrecedences={() => setPrecedencesTargetId(item.id)}
                     onDelete={() => setDeleteTargetId(item.id)}
                   />
                 ) : null}
@@ -156,7 +188,10 @@ export function TemplateManagerCard() {
                 data-testid="saved-template-row"
               >
                 <div className="min-w-0 flex-1 basis-40 space-y-1">
-                  <div className="break-words font-medium">{item.name}</div>
+                  <div className="flex flex-wrap items-center gap-2 break-words font-medium">
+                    {item.name}
+                    {item.publicBlockCount > 0 ? <PublicBadge /> : null}
+                  </div>
                   <div className="text-muted-foreground text-xs">
                     {item.description}
                   </div>
@@ -164,6 +199,7 @@ export function TemplateManagerCard() {
                 <TemplateRowActions
                   templateId={item.id}
                   templateName={item.name}
+                  onPrecedences={() => setPrecedencesTargetId(item.id)}
                   onDelete={() => setDeleteTargetId(item.id)}
                   withTestIds
                 />
@@ -171,11 +207,19 @@ export function TemplateManagerCard() {
             )}
           />
         )}
-        {deleteTargetId ? (
+        {deleteTarget ? (
           <TemplateDeleteDialog
-            templateId={deleteTargetId}
+            templateId={deleteTarget.id}
+            publicBlockCount={deleteTarget.publicBlockCount}
             onClose={() => setDeleteTargetId(null)}
             onDeleted={() => setDeleteTargetId(null)}
+          />
+        ) : null}
+        {precedencesTarget ? (
+          <TemplatePrecedencesDialog
+            templateId={precedencesTarget.id}
+            templateName={precedencesTarget.name}
+            onClose={() => setPrecedencesTargetId(null)}
           />
         ) : null}
       </CardContent>

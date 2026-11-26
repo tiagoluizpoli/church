@@ -118,7 +118,7 @@ afterEach(() => overwriteGetLocale(() => 'pt-BR'));
 
 const open = () =>
   renderRoute({
-    initialPath: '/people/mem-1',
+    initialPath: '/app/people/mem-1',
     churchTimezone: 'America/Sao_Paulo',
   });
 
@@ -354,7 +354,10 @@ describe('Edit Roles', () => {
     const link = within(alert).getByRole('link', {
       name: new RegExp(m.people_roles_blocker_link()),
     });
-    expect(link).toHaveAttribute('href', '/schedules/m-worship/c-11/assign');
+    expect(link).toHaveAttribute(
+      'href',
+      '/app/schedules/m-worship/c-11/assign',
+    );
     expect(link).toHaveAttribute('target', '_blank');
     expect(link.getAttribute('rel')).toContain('noopener');
     expect(box(dialog, 'Singer')).not.toBeChecked();

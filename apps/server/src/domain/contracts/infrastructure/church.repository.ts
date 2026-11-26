@@ -1,5 +1,17 @@
 import type { ChurchId, UserId } from '../../branded-ids';
+import type {
+  ChurchAddressUsage,
+  PublicChurchAddresses,
+} from '../../church-address';
+import type { ChurchContact } from '../../church-contact';
+import type { ChurchLegalProfile } from '../../church-legal-profile';
+import type {
+  ChurchSettings,
+  ChurchSettingsChanges,
+  ChurchSlugAvailability,
+} from '../../church-settings';
 import type { Church, ChurchSlug } from '../../entities/church';
+import type { ChurchSocialLink } from '../../social-link';
 import type { TransactionContext } from './transaction-context';
 
 export interface ChurchRepository {
@@ -21,6 +33,100 @@ export interface ChurchRepository {
    * `null` when the User is missing or the name is blank.
    */
   findUserName(input: FindUserNameInput): Promise<string | null>;
+  /** The Church's editable identity (Church Settings). */
+  getSettings(input: GetChurchSettingsInput): Promise<ChurchSettings>;
+  /**
+   * Overwrites the Church's editable identity and its addresses. A changed slug
+   * is written with the old one recorded in the slug history; a slug someone
+   * else holds, live or in their history, throws `ChurchSlugTakenError`.
+   * Throws `ChurchAddressesRefused` when the stored addresses make the save invalid.
+   */
+  saveSettings(input: SaveChurchSettingsInput): Promise<void>;
+  /** What templates and not-yet-started EventTimeBlocks still use this address; `null` when it is not an address of this Church. */
+  getAddressUsage(
+    input: GetChurchAddressUsageInput,
+  ): Promise<ChurchAddressUsage | null>;
+  /** Whether `slug` is free for this Church; the Church's own current slug counts as free. Never names the holder. */
+  slugAvailability(
+    input: SlugAvailabilityInput,
+  ): Promise<Exclude<ChurchSlugAvailability, 'reserved' | 'invalid'>>;
+  /** Points the Church at a logo key, or at none; objects are never touched. */
+  saveLogoKey(input: SaveChurchLogoKeyInput): Promise<void>;
+  /**
+   * The public identity of the Church whose live slug, or one of whose old
+   * slugs, is `slug`; always carries the current slug. `null` when no Church
+   * ever held it.
+   */
+  findPublicIdentityBySlug(
+    input: FindPublicIdentityBySlugInput,
+  ): Promise<PublicChurchIdentity | null>;
+  /**
+   * What a visitor may see of the Church's addresses: the public ones, Main
+   * first, then display order; and the Main Address's bairro and city/UF even
+   * when it is private. Nothing else of a private address leaves.
+   */
+  findPublicAddresses(
+    input: FindPublicAddressesInput,
+  ): Promise<PublicChurchAddresses>;
+
+  /** The public contact facts of the Church; privacy is enforced in the queries. */
+  getPublicContactDetails(
+    input: GetPublicContactDetailsInput,
+  ): Promise<PublicContactDetails>;
+}
+
+export interface GetPublicContactDetailsInput {
+  churchId: ChurchId;
+}
+
+export interface PublicContactDetails {
+  /** Public Church Contacts only, in the admin's order. */
+  contacts: ChurchContact[];
+  socialLinks: ChurchSocialLink[];
+  /** Contact Group names in the admin's order. */
+  groupNames: string[];
+  /** Only when the Church made it public. */
+  legalProfile: ChurchLegalProfile | null;
+}
+
+export interface FindPublicAddressesInput {
+  churchId: ChurchId;
+}
+
+export interface FindPublicIdentityBySlugInput {
+  slug: string;
+}
+
+/** The allow-listed identity fields a visitor may see. */
+export interface PublicChurchIdentity {
+  churchId: ChurchId;
+  timezone: string;
+  slug: string;
+  name: string;
+  accentColor: string | null;
+  logoKey: string | null;
+}
+
+export interface SlugAvailabilityInput {
+  id: ChurchId;
+  slug: string;
+}
+
+export interface SaveChurchLogoKeyInput {
+  id: ChurchId;
+  logoKey: string | null;
+}
+
+export interface GetChurchAddressUsageInput {
+  id: ChurchId;
+  addressId: string;
+  tx?: TransactionContext;
+}
+
+export interface SaveChurchSettingsInput {
+  id: ChurchId;
+  changes: ChurchSettingsChanges;
+  tx?: TransactionContext;
 }
 
 export interface ChurchMemberContact {
@@ -28,8 +134,15 @@ export interface ChurchMemberContact {
   name: string;
 }
 
+export interface GetChurchSettingsInput extends GetChurchByIdInput {
+  /** Reads inside the caller's transaction, so it never needs a second connection. */
+  tx?: TransactionContext;
+}
+
 export interface GetChurchByIdInput {
   id: ChurchId;
+  /** Reads inside the caller's transaction, so it never needs a second connection. */
+  tx?: TransactionContext;
 }
 
 export interface GetChurchBySlugInput {
@@ -43,6 +156,8 @@ export interface ListChurchAdminUserIdsInput {
 
 export interface FindUserNameInput {
   userId: UserId;
+  /** Reads inside the caller's transaction, so it never needs a second connection. */
+  tx?: TransactionContext;
 }
 
 export interface FindChurchMemberEmailInput {

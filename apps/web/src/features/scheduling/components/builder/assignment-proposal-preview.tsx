@@ -17,6 +17,7 @@ import {
   scheduleOrdinals,
 } from '../../utils/builder/assignment-proposal.utils';
 import { churchDayOf } from '../../utils/builder/cycle-builder-date.utils';
+import { isStaffedEventTimeBlock } from '../../utils/builder/cycle-builder-staffing.utils';
 import {
   type AttentionPerson,
   ProposalAttention,
@@ -54,7 +55,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useMediaQuery } from '@/hooks/use-media-query';
+import { useMediaQuery, XL_MEDIA_QUERY } from '@/hooks/use-media-query';
 import type {
   GetAssignmentProposal200,
   GetAssignmentProposal200AdditionsItem,
@@ -212,7 +213,7 @@ export function AssignmentProposalPreview({
   // Same breakpoint as ResponsiveFormSurface's Dialog/Drawer swap.
   const isDesktop = useMediaQuery('(min-width: 768px)');
   // From here the day strip lives in the rail, beside the list.
-  const isWide = useMediaQuery('(min-width: 1280px)');
+  const isWide = useMediaQuery(XL_MEDIA_QUERY);
   const [excluded, setExcluded] = useState(() => exclusions.current);
   useEffect(() => {
     exclusions.current = excluded;
@@ -344,7 +345,7 @@ export function AssignmentProposalPreview({
         servedByDay.set(
           day,
           (servedByDay.get(day) ?? false) ||
-            (block.included && block.shifts.length > 0),
+            (isStaffedEventTimeBlock(block) && block.shifts.length > 0),
         );
       }
     return [...servedByDay].map(([day, served]) => ({

@@ -7,6 +7,7 @@ import { isAxiosError } from 'axios';
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { CancelledBadge } from '../cancelled-badge';
 import { blockTitle } from '../participation-prepare.utils';
 import {
   initialPreparationDraft,
@@ -61,6 +62,7 @@ import { ShiftSplitEditor } from '@/features/scheduling/components/shift-split-e
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import type {
+  GetCycleParticipation200EventsItem,
   GetCycleParticipation200EventsItemEventTimeBlocksItem,
   SaveEventTimeBlockPreparationBody,
 } from '@/infrastructure/api/churchAPI.schemas';
@@ -103,13 +105,20 @@ export function PreparationBlockEditor({
   const list = useQuery(
     prepareParticipationQuery({ ministryId, cycleId, search }),
   );
-  const listItems = list.data?.events.flatMap((event) => event.eventTimeBlocks);
+  // A cancelled block has no Abrir in the list, so prev/next step over it too.
+  const navigable = (events?: GetCycleParticipation200EventsItem[]) =>
+    events?.flatMap((candidate) =>
+      candidate.eventTimeBlocks.filter(
+        (item) =>
+          item.eventTimeBlock.id === eventTimeBlockId || !item.cancelled,
+      ),
+    );
+  const listItems = navigable(list.data?.events);
   const items = listItems?.some(
     (item) => item.eventTimeBlock.id === eventTimeBlockId,
   )
     ? listItems
-    : (participation.data?.events.flatMap((event) => event.eventTimeBlocks) ??
-      []);
+    : (navigable(participation.data?.events) ?? []);
   const blocks = items.map((item) => item.eventTimeBlock);
   const blockIndex = blocks.findIndex(
     (candidate) => candidate.id === eventTimeBlockId,
@@ -172,6 +181,7 @@ export function PreparationBlockEditor({
         previousServed={items[blockIndex - 1]?.included ?? true}
         nextServed={items[blockIndex + 1]?.included ?? true}
         sourceVersion={participation.dataUpdatedAt}
+        cancelled={block.cancelled}
         readOnly={schedule.cycle.state === 'past'}
         participationId={event.participation.id}
         eventTitle={event.event.title}
@@ -274,6 +284,8 @@ interface PreparationBlockFormProps {
   nextServed: boolean;
   sourceVersion: number;
   participationId: string;
+  /** Its Event or EventTimeBlock was cancelled: shown read-only, never saved. */
+  cancelled: boolean;
   readOnly: boolean;
   ministryId: string;
   cycleId: string;
@@ -292,7 +304,8 @@ function PreparationBlockForm({
   nextBlock,
   sourceVersion,
   participationId,
-  readOnly,
+  cancelled,
+  readOnly: cycleReadOnly,
   ministryId,
   cycleId,
   block,
@@ -301,6 +314,7 @@ function PreparationBlockForm({
   sectors,
   roles,
 }: PreparationBlockFormProps) {
+  const readOnly = cycleReadOnly || cancelled;
   const { eventTimeBlock, shifts: savedShifts, included } = block;
   const { id: eventTimeBlockId, label: blockLabel } = eventTimeBlock;
   const previousBlockId = previousBlock?.id;
@@ -412,9 +426,11 @@ function PreparationBlockForm({
   const [baseline] = useState(() => JSON.stringify({ serves, draft, values }));
   const dirty = baseline !== JSON.stringify({ serves, draft, values });
   const isMobile = useMediaQuery('(max-width: 767px)');
+  // Below xl the page's own h1 is hidden behind the editor, so the editor is the page.
+  const Title = useMediaQuery('(max-width: 1279px)') ? 'h1' : 'h2';
   const backToSchedule = () =>
     navigate({
-      to: '/schedules/$ministryId/$cycleId',
+      to: '/app/schedules/$ministryId/$cycleId',
       params: { ministryId, cycleId },
       search: (previous) => previous,
       hash: `event-time-block-${eventTimeBlockId}`,
@@ -560,7 +576,7 @@ function PreparationBlockForm({
   });
   function openBlock(id: string) {
     void navigate({
-      to: '/schedules/$ministryId/$cycleId/slots/$timeSlotId',
+      to: '/app/schedules/$ministryId/$cycleId/slots/$timeSlotId',
       params: { ministryId, cycleId, timeSlotId: id },
       search: (previous) => previous,
     });
@@ -585,21 +601,27 @@ function PreparationBlockForm({
               </p>
               {/* Title on its own line, the when under it in muted text, as the page intro. */}
               <div>
-                <h2
-                  ref={heading}
-                  tabIndex={-1}
-                  aria-describedby="preparation-block-when"
-                  className="font-semibold text-lg outline-none"
-                >
-                  {blockTitle({
-                    eventTitle,
-                    label: blockLabel,
-                    startTime: formatTimeOf({
-                      value: eventTimeBlock.startTime,
-                      timeZone: churchTimezone,
-                    }),
-                  })}
-                </h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Title
+                    ref={heading}
+                    tabIndex={-1}
+                    aria-describedby="preparation-block-when"
+                    className={cn(
+                      'font-semibold text-lg outline-none',
+                      cancelled && 'text-muted-foreground line-through',
+                    )}
+                  >
+                    {blockTitle({
+                      eventTitle,
+                      label: blockLabel,
+                      startTime: formatTimeOf({
+                        value: eventTimeBlock.startTime,
+                        timeZone: churchTimezone,
+                      }),
+                    })}
+                  </Title>
+                  {cancelled ? <CancelledBadge /> : null}
+                </div>
                 <p
                   id="preparation-block-when"
                   data-testid="preparation-block-when"
@@ -629,6 +651,7 @@ function PreparationBlockForm({
               // Dense beside the list for a mouse; a finger keeps 44px.
               className="md:pointer-fine:size-8"
               aria-label={m.prepare_close_block()}
+              disabled={save.isPending}
               onClick={() => backToSchedule()}
             >
               <XIcon />
@@ -671,7 +694,11 @@ function PreparationBlockForm({
         <div className="flex min-w-0 flex-col gap-6 [&_*]:scroll-mb-24">
           {readOnly && (
             <Alert role="status">
-              <AlertDescription>{m.prepare_block_read_only()}</AlertDescription>
+              <AlertDescription>
+                {cancelled
+                  ? m.prepare_block_cancelled()
+                  : m.prepare_block_read_only()}
+              </AlertDescription>
             </Alert>
           )}
           <label

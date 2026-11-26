@@ -28,6 +28,7 @@ import {
   weekdayIndex,
 } from '@church/time';
 import { sql } from 'drizzle-orm';
+import { recurrenceNamesDay } from '../../src/domain/recurrence';
 import type { DevelopmentBlueprint } from '../blueprints/development';
 import type { ChurchDirectoryBlueprint } from '../blueprints/directory/types';
 import type { StaffingNeed } from '../blueprints/gatherings';
@@ -131,7 +132,9 @@ function expectedGatherings({
   for (const day of enumerateCalendarDays({ start: startDate, end: endDate })) {
     const weekday = weekdayIndex({ day });
     const week = Math.floor((Number(day.slice(8, 10)) - 1) / 7) + 1;
-    for (const template of templates.filter((t) => t.weekday === weekday)) {
+    for (const template of templates.filter((t) =>
+      recurrenceNamesDay({ recurrence: t.recurrence, day }),
+    )) {
       gatherings.push({
         title: template.name,
         day,
@@ -183,18 +186,27 @@ async function standingRuleProblems({
   blueprint,
 }: ChurchScopedInput): Promise<string[]> {
   const { templates, servingRules } = blueprint.gatherings;
+  // Postgres normalizes jsonb text, so the expected Recurrence goes through the same cast.
+  const recurrenceKeys = new Map<string, string | undefined>();
+  for (const template of templates) {
+    const [key] = await keysOf({
+      db,
+      query: sql`select ${JSON.stringify(template.recurrence)}::jsonb::text as key`,
+    });
+    recurrenceKeys.set(template.name, key);
+  }
   const problems = difference({
     label: 'EventTemplate TemplateTimeBlocks',
     actual: await keysOf({
       db,
-      query: sql`select t.church_id || '|' || t.name || '|' || t.weekday || '|'
+      query: sql`select t.church_id || '|' || t.name || '|' || t.recurrence::text || '|'
           || to_char(b.start_time, 'HH24:MI') || '-' || to_char(b.end_time, 'HH24:MI') as key
         from ${templateTimeBlock} b join ${eventTemplate} t on t.id = b.template_id`,
     }),
     expected: templates.flatMap((template) =>
       template.blocks.map(
         (block) =>
-          `${churchId}|${template.name}|${template.weekday}|${block.startTime}-${block.endTime}`,
+          `${churchId}|${template.name}|${recurrenceKeys.get(template.name)}|${block.startTime}-${block.endTime}`,
       ),
     ),
   });
@@ -204,7 +216,7 @@ async function standingRuleProblems({
       label: 'UsualSetups',
       actual: await keysOf({
         db,
-        query: sql`select m.name || '|' || to_char(b.start_time, 'HH24:MI') || '|' || t.weekday
+        query: sql`select m.name || '|' || to_char(b.start_time, 'HH24:MI') || '|' || t.recurrence::text
             || '|' || p.serves || '|' || (p.shift_split ->> 'kind') || (p.shift_split ->> 'count')
             || '|' || coalesce((select string_agg(r.name || '/' || sc.name || '/' || (h ->> 'peopleNeeded'), ',' order by r.name, sc.name)
               from jsonb_array_elements(p.headcounts) h
@@ -228,7 +240,7 @@ async function standingRuleProblems({
               )
               .map((need) => `${need.role}/${need.sector}/${need.peopleNeeded}`)
               .join(',');
-            return `${rule.ministry.name}|${block.startTime}|${template.weekday}|${needs !== null}|equal1|${headcounts}`;
+            return `${rule.ministry.name}|${block.startTime}|${recurrenceKeys.get(template.name)}|${needs !== null}|equal1|${headcounts}`;
           }),
         ),
       ),
@@ -343,10 +355,14 @@ async function cycleProblems({
   // Each Assignment fills its bound requirement; another Sector cannot cover its places.
   const blockKeyOf = new Map(
     blueprint.gatherings.templates.flatMap((template) =>
-      template.blocks.map((block) => [
-        `${template.weekday}|${block.startTime}`,
-        block.key,
-      ]),
+      template.recurrence.kind === 'weekly'
+        ? template.recurrence.weekdays.flatMap((weekday) =>
+            template.blocks.map((block) => [
+              `${weekday}|${block.startTime}`,
+              block.key,
+            ]),
+          )
+        : [],
     ),
   );
   const staffing = await db.execute<StaffingRow>(sql`
@@ -357,7 +373,7 @@ async function cycleProblems({
       sum(sr.people_needed)::int as required,
       (select count(*) from ${assignment} a
         where a.shift_requirement_id = sr.id
-          and a.status in ('draft', 'pending', 'confirmed'))::int as assigned
+          and a.status in ('draft', 'pending'))::int as assigned
     from ${shiftRequirement} sr
     join ${shift} sh on sh.id = sr.shift_id
     join ${ministryParticipation} p on p.id = sr.participation_id
@@ -416,7 +432,7 @@ async function assignmentProblems({
   directory,
 }: AssignmentProblemsInput): Promise<string[]> {
   const problems: string[] = [];
-  const active = sql.raw(`('draft', 'pending', 'confirmed')`);
+  const active = sql.raw(`('draft', 'pending')`);
 
   const unqualified = await countOf({
     db,
@@ -529,25 +545,11 @@ async function assignmentProblems({
         }),
         expected: 0,
       },
-    'declined Assignments': {
-      actual: await countOf({
-        db,
-        query: sql`select count(*) as value from ${assignment} where status = 'declined'`,
-      }),
-      expected: history.declines.length,
-    },
-    'cancelled Assignments (a reassignment deletes the old one)': {
-      actual: await countOf({
-        db,
-        query: sql`select count(*) as value from ${assignment} where status = 'cancelled'`,
-      }),
-      expected: 0,
-    },
     'Assignments carrying a reassignment reason': {
       actual: await countOf({
         db,
         query: sql`select count(*) as value from ${assignment}
-          where status = 'confirmed' and reason is not null`,
+          where status = 'pending' and reason is not null`,
       }),
       expected: history.resolvedOverlaps.length,
     },

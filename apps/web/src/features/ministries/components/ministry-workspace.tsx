@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
-import { Link, Outlet } from '@tanstack/react-router';
+import { Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { useEffect, useRef } from 'react';
 import {
   MinistrySetupGuide,
   useMinistrySetupGuide,
@@ -10,14 +11,18 @@ import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspacePage } from '@/components/workspace-page';
 import { classifyMinistryReadError } from '@/features/ministries/ministry-name';
-import { useMinistry } from '@/features/ministries/ministry-queries';
+import {
+  useMinistry,
+  useSectorList,
+} from '@/features/ministries/ministry-queries';
+import { useMinistryRoles } from '@/features/ministries/role-queries';
 import { cn } from '@/lib/utils';
 import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 
 type MinistryTabPath =
-  | '/ministries/$ministryId/operational'
-  | '/ministries/$ministryId/usual-setup'
-  | '/ministries/$ministryId/settings';
+  | '/app/ministries/$ministryId/operational'
+  | '/app/ministries/$ministryId/usual-setup'
+  | '/app/ministries/$ministryId/settings';
 
 interface MinistryTab {
   to: MinistryTabPath;
@@ -28,15 +33,15 @@ interface MinistryTab {
 /** Routed tabs, in the order #385 fixes; Settings is ChurchAdmin-only. */
 const MINISTRY_TABS: MinistryTab[] = [
   {
-    to: '/ministries/$ministryId/operational',
+    to: '/app/ministries/$ministryId/operational',
     label: m.ministry_tab_structure,
   },
   {
-    to: '/ministries/$ministryId/usual-setup',
+    to: '/app/ministries/$ministryId/usual-setup',
     label: m.ministry_tab_usual_setup,
   },
   {
-    to: '/ministries/$ministryId/settings',
+    to: '/app/ministries/$ministryId/settings',
     label: m.ministry_tab_settings,
     adminOnly: true,
   },
@@ -50,7 +55,26 @@ interface MinistryWorkspaceProps {
 export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
   const { isChurchAdmin } = useCallerCapabilities();
   const ministryQuery = useMinistry({ ministryId });
-  const [guideOpen, setGuideOpen, dismissGuide] = useMinistrySetupGuide();
+  const [dismissedOpen, setGuideOpen, dismissGuide] = useMinistrySetupGuide();
+  const sectors = useSectorList({ ministryId });
+  const roles = useMinistryRoles({ ministryId });
+  // A Ministry with a Sector and a Role is already set up: nothing to guide.
+  const isConfigured =
+    (sectors.data?.sectors.length ?? 0) > 0 &&
+    (roles.data?.roles.length ?? 0) > 0;
+  // Until both reads settle we cannot tell; a failed read falls back to dismissal alone.
+  const isUndecided = sectors.isPending || roles.isPending;
+  const canGuide = !isConfigured && !isUndecided;
+  const guideOpen = dismissedOpen && canGuide;
+  const tabList = useRef<HTMLUListElement>(null);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Keeps the active tab on screen in a narrow, scrolling bar. Instant, never smooth.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run on navigation
+  useEffect(() => {
+    tabList.current
+      ?.querySelector('[data-status="active"]')
+      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [pathname, ministryQuery.isSuccess]);
 
   function reopenGuide() {
     try {
@@ -92,7 +116,10 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
         <p className="text-muted-foreground">
           {kind === 'forbidden' ? m.shell_no_access() : m.ministry_not_found()}
         </p>
-        <Link to="/ministries" className="text-sm underline underline-offset-2">
+        <Link
+          to="/app/ministries"
+          className="text-sm underline underline-offset-2"
+        >
           {m.ministry_back_to_list()}
         </Link>
       </div>
@@ -107,7 +134,7 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
         <h1 className="font-semibold text-2xl tracking-[-0.02em] md:text-3xl">
           {ministryQuery.data?.name}
         </h1>
-        {!guideOpen && (
+        {canGuide && !guideOpen && (
           <Button
             type="button"
             variant="ghost"
@@ -121,14 +148,19 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
       </div>
       <MinistrySetupGuide open={guideOpen} onDismiss={dismissGuide} />
       <nav aria-label={m.ministry_tabs_label()}>
-        <ul className="flex gap-1 border-border border-b">
+        <ul
+          ref={tabList}
+          className="flex gap-1 overflow-x-auto border-border border-b pb-px"
+        >
           {tabs.map((tab) => (
             <li key={tab.to}>
               <Link
                 to={tab.to}
                 params={{ ministryId }}
                 className={cn(
-                  '-mb-px inline-block border-transparent border-b-2 px-3 py-2 font-medium text-muted-foreground text-sm hover:text-foreground',
+                  '-mb-px inline-block whitespace-nowrap border-transparent border-b-2 px-3 py-2 font-medium text-muted-foreground text-sm hover:text-foreground',
+                  // Inset: the scroll container would clip an outer ring.
+                  'outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                   'data-[status=active]:border-primary data-[status=active]:text-foreground',
                 )}
               >

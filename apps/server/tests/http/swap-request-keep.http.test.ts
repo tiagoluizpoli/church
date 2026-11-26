@@ -1,11 +1,15 @@
 import { appConfig } from '@church/app-config';
+import * as schema from '@church/db';
 import {
   assignment,
   ministryParticipation,
   outboxMessage,
   swapRequest,
 } from '@church/db';
+import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import { and, eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
 import {
   afterAll,
   beforeAll,
@@ -55,6 +59,7 @@ import {
   resetSchedulingPhase3Db,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -65,34 +70,39 @@ const { auth } = await import('@/main/di/server-auth');
 const getSession = vi.mocked(auth.api.getSession);
 let app: FastifyTypedInstance;
 
-function makeManager() {
-  const eventRepo = new DrizzleEventRepository({ db });
-  const ministryRepo = new DrizzleMinistryRepository({ db });
+function makeManager(database: typeof db = db) {
+  const eventRepo = new DrizzleEventRepository({ db: database });
+  const ministryRepo = new DrizzleMinistryRepository({ db: database });
   return new DbSwapRequestManager({
-    swapRequestRepo: new DrizzleSwapRequestRepository({ db }),
-    assignmentRepo: new DrizzleAssignmentRepository({ db }),
-    participationRepo: new DrizzleMinistryParticipationRepository({ db }),
-    shiftRepo: new DrizzleShiftRepository({ db }),
+    swapRequestRepo: new DrizzleSwapRequestRepository({ db: database }),
+    assignmentRepo: new DrizzleAssignmentRepository({ db: database }),
+    participationRepo: new DrizzleMinistryParticipationRepository({
+      db: database,
+    }),
+    shiftRepo: new DrizzleShiftRepository({ db: database }),
     eventRepo,
     ministryRepo,
-    roleRepo: new DrizzleRoleRepository({ db }),
-    churchRepo: new DrizzleChurchRepository({ db }),
-    volunteerRepo: new DrizzleVolunteerRepository({ db }),
+    roleRepo: new DrizzleRoleRepository({ db: database }),
+    churchRepo: new DrizzleChurchRepository({ db: database }),
+    volunteerRepo: new DrizzleVolunteerRepository({ db: database }),
     recipients: new ChurchRecipients({
-      churchRepository: new DrizzleChurchRepository({ db }),
-      volunteerRepository: new DrizzleVolunteerRepository({ db }),
+      churchRepository: new DrizzleChurchRepository({ db: database }),
+      volunteerRepository: new DrizzleVolunteerRepository({ db: database }),
     }),
     notifications: new ChurchNotifications({
-      outboxRepository: new DrizzleOutboxRepository({ db }),
+      churchIdentity: nullChurchIdentity,
+      outboxRepository: new DrizzleOutboxRepository({ db: database }),
     }),
     authorityManager: new DbAuthorityManager({
-      actorRepository: new DrizzleAuthorityActorResolver({ db }),
-      scopeRepository: new DrizzleSchedulingScopeResolver({ db }),
+      actorRepository: new DrizzleAuthorityActorResolver({ db: database }),
+      scopeRepository: new DrizzleSchedulingScopeResolver({ db: database }),
       eventRepository: eventRepo,
-      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({
+        db: database,
+      }),
       ministryRepository: ministryRepo,
     }),
-    unitOfWork: new DrizzleUnitOfWork({ db }),
+    unitOfWork: new DrizzleUnitOfWork({ db: database }),
     config: appConfig,
   });
 }
@@ -228,7 +238,7 @@ async function seedGraph() {
       volunteerId,
       roleId: role.id,
       shiftRequirementId: requirement.id,
-      status: 'confirmed',
+      status: 'pending',
     });
     const [row] = await db
       .insert(swapRequest)
@@ -491,6 +501,31 @@ describe('Keep a swap request', () => {
       expect(final).toBe('covered');
       expect(await outbox()).toHaveLength(0);
     }
+  });
+
+  it("keeps inside one transaction's connection", async () => {
+    const { churchId, ministryId, maria, ana, requestOn } = await seedGraph();
+    const row = await requestOn({
+      volunteerId: maria.volunteer.id,
+      startOffsetHours: 24,
+    });
+    // One connection, held by the keep's transaction: any read outside it times out.
+    const pool = new pg.Pool({
+      connectionString: getIntegrationDatabaseUrl(),
+      max: 1,
+      connectionTimeoutMillis: 2_000,
+    });
+    try {
+      await makeManager(drizzle(pool, { schema })).keep({
+        churchId: churchId as never,
+        userId: ana.volunteer.userId as never,
+        ministryId: ministryId as never,
+        swapRequestId: row.id as never,
+      });
+    } finally {
+      await pool.end();
+    }
+    expect((await statusOf(row.id))?.status).toBe('kept');
   });
 
   it('rolls back the close when the N8 enqueue fails', async () => {

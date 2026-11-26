@@ -1,13 +1,11 @@
 import {
   addCalendarDays,
   type CalendarDay,
-  compareCalendarDays,
   compareInstants,
   type Instant,
   type TimeOfDay,
   timeOfDaySpan,
   toInstant,
-  weekdayIndex,
 } from '@church/time';
 import type {
   EventId,
@@ -16,6 +14,11 @@ import type {
 } from '../branded-ids';
 import type { Cycle } from '../entities/cycle';
 import type { EventTemplate } from '../entities/event-template';
+import { expandRecurrence } from '../recurrence';
+import {
+  losingBlockIds,
+  type PrecedencePair,
+} from './template-precedence-application';
 
 export interface ExistingGeneratedEventTimeBlockFingerprint {
   eventDate: CalendarDay;
@@ -36,11 +39,16 @@ export interface GenerateCycleEventsInput {
   existingEvents: ExistingGeneratedEvent[];
   existingFingerprints: ExistingGeneratedEventTimeBlockFingerprint[];
   timeZone: string;
+  /** Answers other than "both"; a loser skips its blocks that overlap its winner's. */
+  precedencePairs?: PrecedencePair[];
 }
 
 export interface GeneratedCycleEventTimeBlockPlan {
   sourceTemplateTimeBlockId: TemplateTimeBlockId;
   label: string;
+  isPublic: boolean;
+  place?: string;
+  placeAddressId?: string;
   startTime: Instant;
   endTime: Instant;
 }
@@ -76,11 +84,6 @@ interface EventTimeBlockBounds {
   endTime: Instant;
 }
 
-interface ListMatchingCycleDatesInput {
-  cycle: Cycle;
-  weekday: number;
-}
-
 export class CycleEventGenerator {
   generate({
     cycle,
@@ -88,6 +91,7 @@ export class CycleEventGenerator {
     existingEvents,
     existingFingerprints,
     timeZone,
+    precedencePairs = [],
   }: GenerateCycleEventsInput): GeneratedCycleEventPlan[] {
     const existingFingerprintSet = new Set(
       existingFingerprints.map(
@@ -106,20 +110,31 @@ export class CycleEventGenerator {
     const plans: GeneratedCycleEventPlan[] = [];
 
     for (const template of templates) {
-      const matchingDates = listMatchingCycleDates({
-        cycle,
-        weekday: template.weekday,
+      const matchingDates = expandRecurrence({
+        recurrence: template.recurrence,
+        start: cycle.startDate,
+        end: cycle.endDate,
       });
 
       for (const eventDate of matchingDates) {
+        const losing = losingBlockIds({
+          day: eventDate,
+          loser: template,
+          pairs: precedencePairs,
+        });
         const eventTimeBlocks = template.blocks
           .filter((block) => {
             const fingerprint = `${eventDate}::${block.id as TemplateTimeBlockId}`;
-            return !existingFingerprintSet.has(fingerprint);
+            return (
+              !existingFingerprintSet.has(fingerprint) && !losing.has(block.id)
+            );
           })
           .map((block) => ({
             sourceTemplateTimeBlockId: block.id as TemplateTimeBlockId,
             label: block.label,
+            isPublic: block.isPublic,
+            place: block.place,
+            placeAddressId: block.placeAddressId,
             ...buildEventTimeBlockBounds({
               date: eventDate,
               startTime: block.startTime,
@@ -190,24 +205,6 @@ export function eventTimeBlockEnvelope({
     }
   }
   return { start, end };
-}
-
-function listMatchingCycleDates({
-  cycle,
-  weekday,
-}: ListMatchingCycleDatesInput): CalendarDay[] {
-  const dates: CalendarDay[] = [];
-  let cursor = cycle.startDate;
-
-  while (compareCalendarDays({ left: cursor, right: cycle.endDate }) <= 0) {
-    if (weekdayIndex({ day: cursor }) === weekday) {
-      dates.push(cursor);
-    }
-
-    cursor = addCalendarDays({ day: cursor, days: 1 });
-  }
-
-  return dates;
 }
 
 /**

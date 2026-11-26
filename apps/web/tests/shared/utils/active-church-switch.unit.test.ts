@@ -1,13 +1,12 @@
 import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
+import type { ActiveChurchSwitchedMessage } from '@/shared/utils/active-church-broadcast';
 import {
-  type ActiveChurchSwitchedMessage,
-  subscribeToActiveChurchSwitch,
-} from '@/shared/utils/active-church-broadcast';
-import {
+  clearActiveChurchScopedCache,
   getActiveChurchDestination,
   switchActiveChurch,
 } from '@/shared/utils/active-church-switch';
+import { listenAsAnotherTab } from '@/tests/setup/active-church-broadcast';
 
 interface SelectActiveChurchInput {
   churchId: string;
@@ -39,20 +38,20 @@ function createSwitchTestDependencies(): SwitchTestDependencies {
 describe('active Church route policy', () => {
   it.each([
     [
-      '/dashboard?section=availability#today',
-      '/dashboard?section=availability#today',
+      '/app/dashboard?section=availability#today',
+      '/app/dashboard?section=availability#today',
     ],
-    ['/notifications', '/'],
-    ['/cycles', '/cycles'],
-    ['/cycles/', '/cycles/'],
-    ['/schedules/', '/schedules/'],
-    ['/event-templates', '/event-templates'],
-    ['/schedules/ministry-1/cycle-1/assign', '/'],
-    ['/cycles/cycle-1', '/'],
-    ['/scheduling/', '/'],
-    ['/schedules/ministry-1', '/'],
-    ['/unrecognized-route', '/'],
-    ['https://untrusted.example/dashboard', '/'],
+    ['/app/notifications', '/app'],
+    ['/app/cycles', '/app/cycles'],
+    ['/app/cycles/', '/app/cycles/'],
+    ['/app/schedules/', '/app/schedules/'],
+    ['/app/event-templates', '/app/event-templates'],
+    ['/app/schedules/ministry-1/cycle-1/assign', '/app'],
+    ['/app/cycles/cycle-1', '/app'],
+    ['/scheduling/', '/app'],
+    ['/app/schedules/ministry-1', '/app'],
+    ['/unrecognized-route', '/app'],
+    ['https://untrusted.example/dashboard', '/app'],
   ])('resolves %s to %s', (destination, expectedDestination) => {
     expect(
       getActiveChurchDestination({
@@ -66,45 +65,45 @@ describe('active Church route policy', () => {
     expect(
       getActiveChurchDestination({
         availableAreas: ['dashboard'],
-        destination: '/cycles?view=board#upcoming',
+        destination: '/app/cycles?view=board#upcoming',
       }),
-    ).toBe('/');
+    ).toBe('/app');
   });
 
   it('preserves /dashboard with its query and hash when the target has the dashboard area', () => {
     expect(
       getActiveChurchDestination({
         availableAreas: ['dashboard'],
-        destination: '/dashboard?section=availability#today',
+        destination: '/app/dashboard?section=availability#today',
       }),
-    ).toBe('/dashboard?section=availability#today');
+    ).toBe('/app/dashboard?section=availability#today');
   });
 
   it('falls back and drops query/hash when the target lacks the dashboard area', () => {
     expect(
       getActiveChurchDestination({
         availableAreas: ['scheduling'],
-        destination: '/dashboard?section=availability#today',
+        destination: '/app/dashboard?section=availability#today',
       }),
-    ).toBe('/');
+    ).toBe('/app');
   });
 
   it('preserves a scheduling collection route when the target has only the scheduling area', () => {
     expect(
       getActiveChurchDestination({
         availableAreas: ['scheduling'],
-        destination: '/cycles?view=board#upcoming',
+        destination: '/app/cycles?view=board#upcoming',
       }),
-    ).toBe('/cycles?view=board#upcoming');
+    ).toBe('/app/cycles?view=board#upcoming');
   });
 
   it('falls back to the dashboard when the target has neither area', () => {
     expect(
       getActiveChurchDestination({
         availableAreas: [],
-        destination: '/schedules/',
+        destination: '/app/schedules/',
       }),
-    ).toBe('/');
+    ).toBe('/app');
   });
 });
 
@@ -134,7 +133,7 @@ describe('switchActiveChurch', () => {
       availableAreas: ['dashboard'],
       churchId: 'church-b',
       churchName: 'Igreja Central',
-      destination: '/dashboard?section=availability',
+      destination: '/app/dashboard?section=availability',
       navigate,
       queryClient,
       selectActiveChurch,
@@ -144,7 +143,7 @@ describe('switchActiveChurch', () => {
     expect(removeQueries).toHaveBeenCalledOnce();
     expect(selectActiveChurch).toHaveBeenCalledWith({ churchId: 'church-b' });
     expect(navigate).toHaveBeenCalledWith({
-      destination: '/dashboard?section=availability',
+      destination: '/app/dashboard?section=availability',
     });
     expect(calls).toEqual(['cancel', 'remove', 'select', 'navigate']);
   });
@@ -157,13 +156,13 @@ describe('switchActiveChurch', () => {
       availableAreas: ['dashboard'],
       churchId: 'church-b',
       churchName: 'Igreja Central',
-      destination: '/schedules/ministry-1',
+      destination: '/app/schedules/ministry-1',
       navigate,
       queryClient,
       selectActiveChurch,
     });
 
-    expect(navigate).toHaveBeenCalledWith({ destination: '/' });
+    expect(navigate).toHaveBeenCalledWith({ destination: '/app' });
   });
 
   it('removes Church-scoped data without removing selector data', async () => {
@@ -179,7 +178,7 @@ describe('switchActiveChurch', () => {
       availableAreas: ['dashboard'],
       churchId: 'church-b',
       churchName: 'Igreja Central',
-      destination: '/dashboard',
+      destination: '/app/dashboard',
       navigate,
       queryClient,
       selectActiveChurch,
@@ -198,7 +197,7 @@ describe('switchActiveChurch', () => {
     const { queryClient, selectActiveChurch, navigate } =
       createSwitchTestDependencies();
     const received: ActiveChurchSwitchedMessage[] = [];
-    const unsubscribe = subscribeToActiveChurchSwitch({
+    const unsubscribe = listenAsAnotherTab({
       onMessage: (message) => received.push(message),
     });
 
@@ -207,7 +206,7 @@ describe('switchActiveChurch', () => {
         availableAreas: ['dashboard'],
         churchId: 'church-b',
         churchName: 'Igreja Central',
-        destination: '/dashboard',
+        destination: '/app/dashboard',
         navigate,
         queryClient,
         selectActiveChurch,
@@ -231,7 +230,7 @@ describe('switchActiveChurch', () => {
     selectActiveChurch.mockRejectedValue(selectionError);
     queryClient.setQueryData(['cycles'], { church: 'church-a' });
     const received: ActiveChurchSwitchedMessage[] = [];
-    const unsubscribe = subscribeToActiveChurchSwitch({
+    const unsubscribe = listenAsAnotherTab({
       onMessage: (message) => received.push(message),
     });
 
@@ -241,7 +240,7 @@ describe('switchActiveChurch', () => {
           availableAreas: ['dashboard'],
           churchId: 'church-b',
           churchName: 'Igreja Central',
-          destination: '/dashboard',
+          destination: '/app/dashboard',
           navigate,
           queryClient,
           selectActiveChurch,
@@ -258,5 +257,22 @@ describe('switchActiveChurch', () => {
     } finally {
       unsubscribe();
     }
+  });
+});
+
+describe('clearActiveChurchScopedCache', () => {
+  it('keeps the active-church and mounted redemption queries, removes the rest', async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(['active-church'], 1);
+    queryClient.setQueryData(['redemption', 'church-invitation', 'i1'], 2);
+    queryClient.setQueryData(['schedules'], 3);
+
+    await clearActiveChurchScopedCache({ queryClient });
+
+    expect(queryClient.getQueryData(['active-church'])).toBe(1);
+    expect(
+      queryClient.getQueryData(['redemption', 'church-invitation', 'i1']),
+    ).toBe(2);
+    expect(queryClient.getQueryData(['schedules'])).toBeUndefined();
   });
 });

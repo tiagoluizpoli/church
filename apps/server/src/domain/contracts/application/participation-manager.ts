@@ -66,7 +66,7 @@ export interface GetCycleParticipationInput {
 
 export interface ParticipationRequirementView {
   requirement: ShiftRequirement;
-  /** Active Assignments on this requirement; cancelled and declined are excluded. */
+  /** Active Assignments on this requirement; cancelled ones are excluded. */
   assignedCount: number;
 }
 
@@ -75,7 +75,7 @@ export interface ParticipationShiftView {
   shift: Shift;
   requirements: ParticipationRequirementView[];
   unavailableMarkCount: number;
-  /** Active Assignments on the Shift; cancelled and declined are excluded. */
+  /** Active Assignments on the Shift; cancelled ones are excluded. */
   assignmentCount: number;
   /** The Shift has no ShiftRequirement. */
   flagged: boolean;
@@ -84,6 +84,8 @@ export interface ParticipationShiftView {
 export interface ParticipationEventTimeBlockView {
   eventTimeBlock: EventTimeBlock;
   included: boolean;
+  /** The block or its Event was cancelled: it asks for nobody. */
+  cancelled: boolean;
   /**
    * Of the volunteers asked, those who confirmed and marked no Shift of this
    * block unavailable, against the block's busiest Shift headcount (null while
@@ -201,7 +203,8 @@ export interface SaveUsualSetupBlockInput {
 export interface UsualSetupBlockView {
   templateId: EventTemplateId;
   templateName: string;
-  weekday: number;
+  /** The weekday of a template weekly on exactly one weekday; otherwise null. */
+  weekday: number | null;
   sourceTemplateTimeBlockId: TemplateTimeBlockId;
   label: string;
   startTime: TimeOfDay;

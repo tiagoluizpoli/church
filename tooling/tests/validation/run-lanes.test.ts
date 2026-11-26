@@ -4,12 +4,14 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'bun:test';
 import {
   formatStepTable,
+  I18N_COMPILE_STEP,
   type LaneStep,
   type OutputSink,
   runLanes,
   runStages,
   type WriteTextInput,
 } from '../../validation/run-lanes';
+import { VALIDATE_SETUP_STEPS } from '../../validation/validate';
 
 interface CapturedOutput extends OutputSink {
   stderrLines: string[];
@@ -249,6 +251,52 @@ describe('runStages', () => {
       ['e2e', 'skipped'],
     ]);
     expect(existsSync(markerPath('stage-e2e'))).toBe(false);
+  });
+
+  it('skips the lanes and final steps when a first step failed', async () => {
+    const results = await runStages({
+      finalSteps: [passing({ label: 'e2e' })],
+      firstSteps: [failing({ label: 'lint' }), passing({ label: 'typecheck' })],
+      lanes: [[markerStep({ label: 'integration', marker: 'stage-first' })]],
+      output: captureOutput(),
+    });
+
+    expect(results.map(({ label, status }) => [label, status])).toEqual([
+      ['lint', 'failed'],
+      ['typecheck', 'skipped'],
+      ['integration', 'skipped'],
+      ['e2e', 'skipped'],
+    ]);
+    expect(existsSync(markerPath('stage-first'))).toBe(false);
+  });
+
+  it('runs the lanes after the first steps passed', async () => {
+    const results = await runStages({
+      finalSteps: [],
+      firstSteps: [passing({ label: 'lint' })],
+      lanes: [
+        [passing({ label: 'unit' })],
+        [passing({ label: 'integration' })],
+      ],
+      output: captureOutput(),
+    });
+
+    expect(results.map(({ label, status }) => [label, status])).toEqual([
+      ['lint', 'passed'],
+      ['unit', 'passed'],
+      ['integration', 'passed'],
+    ]);
+  });
+});
+
+describe('gate setup', () => {
+  it('compiles the i18n messages through turbo so no lane reads a stale compile', () => {
+    expect(I18N_COMPILE_STEP).toEqual({
+      args: ['turbo', 'compile', '--filter', '@church/i18n'],
+      command: 'bunx',
+      label: 'i18n:compile',
+    });
+    expect(VALIDATE_SETUP_STEPS).toEqual([I18N_COMPILE_STEP]);
   });
 });
 

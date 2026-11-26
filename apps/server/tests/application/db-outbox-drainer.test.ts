@@ -239,7 +239,7 @@ describe('DbOutboxDrainer.drainOnce', () => {
         id: 'outbox_1',
         attempts: 2,
         status: 'pending',
-        lastError: 'rate limited',
+        lastError: 'EMAIL_SEND_FAILED',
         scheduledFor: expect.any(Date),
       }),
     );
@@ -393,14 +393,86 @@ describe('DbOutboxDrainer.drainOnce', () => {
     expect(result).toEqual({ claimed: 2, sent: 1, failed: 1 });
   });
 
-  it('propagates an error that is not an EmailSendError', async () => {
-    const message = buildMessage();
-    outboxRepository.claimPending.mockResolvedValue([message]);
+  it('retries only the row whose delivery throws an unexpected error, keeping the batch going', async () => {
+    const broken = buildMessage({ id: 'outbox_broken' });
+    const healthy = buildMessage({ id: 'outbox_healthy' });
+    outboxRepository.claimPending.mockResolvedValue([broken, healthy]);
     invitationRepository.findById.mockResolvedValue(buildInvitation());
-    emailSender.deliver.mockRejectedValue(new Error('unexpected'));
+    emailSender.deliver
+      .mockRejectedValueOnce(new TypeError('boom for invitee@example.com'))
+      .mockResolvedValueOnce({ providerMessageId: 'provider-2' });
 
-    await expect(createDrainer().drainOnce({ limit: 10 })).rejects.toThrow(
-      'unexpected',
+    const result = await createDrainer().drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 2, sent: 1, failed: 1 });
+    expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'outbox_broken',
+        attempts: 1,
+        status: 'pending',
+        lastError: 'TypeError',
+        scheduledFor: expect.any(Date),
+      }),
+    );
+    expect(outboxRepository.markSent).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'outbox_healthy' }),
+    );
+  });
+
+  it('leaves a row retryable, sending nothing, when a read before the send fails', async () => {
+    outboxRepository.claimPending.mockResolvedValue([buildMessage()]);
+    invitationRepository.findById.mockRejectedValue(
+      new Error('connection terminated'),
+    );
+
+    const result = await createDrainer().drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
+    expect(emailSender.deliver).not.toHaveBeenCalled();
+    expect(outboxRepository.markFailed).toHaveBeenCalledTimes(1);
+    expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'outbox_1',
+        attempts: 1,
+        status: 'pending',
+        lastError: 'Error',
+        scheduledFor: expect.any(Date),
+      }),
+    );
+    expect(await reports.settle()).toEqual([]);
+  });
+
+  it('fails a row terminally once unexpected errors exhaust the attempt cap', async () => {
+    const { maxAttempts } = appConfig.outbox;
+    outboxRepository.claimPending.mockResolvedValue([
+      buildMessage({ attempts: maxAttempts - 1 }),
+    ]);
+    invitationRepository.findById.mockRejectedValue(
+      new Error('connection terminated'),
+    );
+
+    await createDrainer().drainOnce({ limit: 10 });
+
+    expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attempts: maxAttempts,
+        status: 'failed',
+        lastError: 'Error',
+      }),
+    );
+  });
+
+  it('fails a reclaimed row terminally once its lost attempts reach the cap', async () => {
+    outboxRepository.claimPending.mockResolvedValue([
+      buildMessage({ attempts: appConfig.outbox.maxAttempts }),
+    ]);
+
+    const result = await createDrainer().drainOnce({ limit: 10 });
+
+    expect(result).toEqual({ claimed: 1, sent: 0, failed: 1 });
+    expect(emailSender.deliver).not.toHaveBeenCalled();
+    expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'outbox_1', status: 'failed' }),
     );
   });
 });

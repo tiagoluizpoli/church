@@ -95,7 +95,7 @@ const ready = () =>
   HttpResponse.json({ status: 'ok', database: 'ok', revision: 'r1' });
 
 function renderMinistries() {
-  return renderRoute({ initialPath: '/ministries', churchTimezone: 'UTC' });
+  return renderRoute({ initialPath: '/app/ministries', churchTimezone: 'UTC' });
 }
 
 async function listed(name: string) {

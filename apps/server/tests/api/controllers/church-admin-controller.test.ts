@@ -37,7 +37,6 @@ const cycleManager = {
   listCycles: vi.fn(),
   getCycle: vi.fn(),
   sendCycle: vi.fn(),
-  reopenEvent: vi.fn(),
 };
 
 const templateManager = {
@@ -221,6 +220,7 @@ describe('Church admin planning routes', () => {
     planningEventManager.generateFromTemplates.mockResolvedValue({
       generatedEventCount: 5,
       generatedEventTimeBlockCount: 9,
+      leftoverEventTimeBlocks: [],
     });
 
     const success = await app.inject({
@@ -235,6 +235,7 @@ describe('Church admin planning routes', () => {
     expect(success.json()).toEqual({
       generatedEventCount: 5,
       generatedEventTimeBlockCount: 9,
+      leftoverEventTimeBlocks: [],
     });
 
     const invalid = await app.inject({
@@ -339,6 +340,7 @@ describe('Church admin planning routes', () => {
       eventId,
       startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
       endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+      isPublic: false,
       label: 'Worship',
       status: 'active',
       requirements: [],
@@ -382,6 +384,7 @@ describe('Church admin planning routes', () => {
       eventId,
       startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
       endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+      isPublic: false,
       label: 'Worship',
       status: 'active',
       requirements: [],

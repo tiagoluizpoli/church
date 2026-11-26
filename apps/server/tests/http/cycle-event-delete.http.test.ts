@@ -50,6 +50,7 @@ import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-o
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -68,6 +69,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -121,12 +123,14 @@ beforeAll(async () => {
       }),
       volunteerRepository: new DrizzleVolunteerRepository({ db }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
       eventRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       templateRepository,
       churchRepository,
       unitOfWork,
@@ -139,11 +143,13 @@ beforeAll(async () => {
         volunteerRepository: new DrizzleVolunteerRepository({ db }),
       }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       unitOfWork,
     }),
     activeChurchResolver: activeChurchResolver as never,
@@ -402,7 +408,7 @@ describe('DELETE /admin/cycles/:cycleId/events/:eventId', () => {
     expect(await counts()).toEqual(before);
   });
 
-  it('returns 409 for a Sent Cycle with a reopened draft Event and for a Past Cycle', async () => {
+  it('returns 409 for a Sent Cycle with a draft Event and for a Past Cycle', async () => {
     const seed = await signIn();
     for (const state of ['sent', 'past-from-sent'] as const) {
       const target = await seedCycle({

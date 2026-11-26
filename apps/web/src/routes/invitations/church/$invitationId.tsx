@@ -4,7 +4,12 @@ import { getLocale } from '@church/i18n/runtime';
 import { formatRelative, nowAsDate, parseInstant } from '@church/time';
 import { useForm } from '@tanstack/react-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import {
+  createFileRoute,
+  Link,
+  Navigate,
+  useNavigate,
+} from '@tanstack/react-router';
 import { isAxiosError } from 'axios';
 import { CalendarClock, CircleAlert, MailCheck } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -149,6 +154,7 @@ function describeRedemptionOutcome({
       description: m.redemption_failure_registered_description(),
       canRetry: false,
       clearCode: false,
+      offersSignedInReview: true,
     };
   }
   return {
@@ -182,6 +188,8 @@ function ChurchInvitationJoinRoute() {
     return () => clearInterval(interval);
   }, [codeSentAt]);
 
+  const session = authClient.useSession();
+
   const previewQuery = useQuery({
     queryKey: ['redemption', 'church-invitation', invitationId],
     queryFn: () => redemptionApi.previewChurchInvitation(invitationId),
@@ -201,7 +209,7 @@ function ChurchInvitationJoinRoute() {
     return finishRedemptionAtHome({
       queryClient,
       getSession: authClient.getSession,
-      navigateToHome: () => navigate({ to: '/', search }),
+      navigateToHome: () => navigate({ to: '/app', search }),
     });
   }
 
@@ -271,6 +279,33 @@ function ChurchInvitationJoinRoute() {
   const preview = previewQuery.data;
   if (!preview) return null;
 
+  const outcome = redeemMutation.data;
+  if (outcome?.kind === 'full-success' || outcome?.kind === 'church-only') {
+    return (
+      <RedemptionShell>
+        <p className="text-muted-foreground text-sm">{m.join_welcome()}</p>
+      </RedemptionShell>
+    );
+  }
+
+  // A paired offer is reviewed signed in through any of its Ministry halves.
+  const reviewInvitationId = preview.ministries[0]?.invitationId;
+
+  // The invited account is already signed in: skip the join form.
+  const sessionEmail = session.data?.user.email;
+  if (
+    reviewInvitationId === undefined &&
+    sessionEmail?.toLowerCase() === preview.email.toLowerCase()
+  ) {
+    return (
+      <Navigate
+        to="/app/invitations/church/$invitationId/review"
+        params={{ invitationId }}
+        replace
+      />
+    );
+  }
+
   if (declineMutation.isSuccess) {
     return (
       <RedemptionShell>
@@ -297,17 +332,6 @@ function ChurchInvitationJoinRoute() {
     );
   }
 
-  const outcome = redeemMutation.data;
-  if (outcome?.kind === 'full-success' || outcome?.kind === 'church-only') {
-    return (
-      <RedemptionShell>
-        <p className="text-muted-foreground text-sm">{m.join_welcome()}</p>
-      </RedemptionShell>
-    );
-  }
-
-  // A paired offer is reviewed signed in through any of its Ministry halves.
-  const reviewInvitationId = preview.ministries[0]?.invitationId;
   const failure = outcome
     ? describeRedemptionOutcome({
         outcome,
@@ -364,9 +388,10 @@ function ChurchInvitationJoinRoute() {
           >
             {m.join_decline()}
           </Button>
-          {reviewInvitationId ? (
-            <SignedInReviewPrompt invitationId={reviewInvitationId} />
-          ) : null}
+          <SignedInReviewPrompt
+            churchInvitationId={invitationId}
+            ministryInvitationId={reviewInvitationId}
+          />
           <AlertDialog
             open={confirmingDecline}
             onOpenChange={setConfirmingDecline}
@@ -411,8 +436,11 @@ function ChurchInvitationJoinRoute() {
 
           {failure ? (
             <Notice title={failure.title} description={failure.description}>
-              {failure.offersSignedInReview && reviewInvitationId ? (
-                <SignedInReviewLink invitationId={reviewInvitationId} />
+              {failure.offersSignedInReview ? (
+                <SignedInReviewLink
+                  churchInvitationId={invitationId}
+                  ministryInvitationId={reviewInvitationId}
+                />
               ) : null}
             </Notice>
           ) : null}
@@ -517,26 +545,45 @@ function ChurchInvitationJoinRoute() {
 }
 
 interface SignedInReviewLinkProps {
-  invitationId: string;
+  churchInvitationId: string;
+  /** Set for a paired offer, which is reviewed through its Ministry half. */
+  ministryInvitationId: string | undefined;
 }
 
+const REVIEW_LINK_CLASS =
+  'inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline';
+
 /** The authenticated review of the whole offer; signing in returns to it. */
-function SignedInReviewLink({ invitationId }: SignedInReviewLinkProps) {
+function SignedInReviewLink({
+  churchInvitationId,
+  ministryInvitationId,
+}: SignedInReviewLinkProps) {
+  if (ministryInvitationId === undefined) {
+    return (
+      <Link
+        to="/app/invitations/church/$invitationId/review"
+        params={{ invitationId: churchInvitationId }}
+        className={REVIEW_LINK_CLASS}
+      >
+        {m.join_sign_in_to_accept()}
+      </Link>
+    );
+  }
   return (
     <Link
-      to="/invitations/ministry/$invitationId"
-      params={{ invitationId }}
-      className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+      to="/app/invitations/ministry/$invitationId"
+      params={{ invitationId: ministryInvitationId }}
+      className={REVIEW_LINK_CLASS}
     >
       {m.join_sign_in_to_review()}
     </Link>
   );
 }
 
-function SignedInReviewPrompt({ invitationId }: SignedInReviewLinkProps) {
+function SignedInReviewPrompt(props: SignedInReviewLinkProps) {
   return (
     <p className="text-center text-muted-foreground text-sm">
-      {m.join_has_account()} <SignedInReviewLink invitationId={invitationId} />
+      {m.join_has_account()} <SignedInReviewLink {...props} />
     </p>
   );
 }

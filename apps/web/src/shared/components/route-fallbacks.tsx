@@ -15,9 +15,19 @@ import {
   isChunkLoadError,
   reloadPage,
 } from '@/shared/utils/chunk-reload';
+import { resetEntryGate } from '@/shared/utils/entry-gate-cache';
 import { reportCrash } from '@/shared/utils/error-reporting';
 import { isOutageError } from '@/shared/utils/outage';
 import { watchReadiness } from '@/shared/utils/readiness';
+
+interface RetryRouteInput {
+  router: ReturnType<typeof useRouter>;
+}
+
+function retryRoute({ router }: RetryRouteInput): Promise<void> {
+  resetEntryGate({ queryClient: router.options.context.queryClient });
+  return router.invalidate();
+}
 
 interface ErrorFallbackProps {
   error: Error;
@@ -59,11 +69,11 @@ function ErrorFallback({ error, fullScreen }: ErrorFallbackProps) {
       ) : null}
       <div className="flex flex-wrap justify-center gap-3">
         {/* Re-runs the route's loaders and guards; the new load resets the boundary. */}
-        <Button className="min-h-11" onClick={() => router.invalidate()}>
+        <Button className="min-h-11" onClick={() => retryRoute({ router })}>
           {m.shell_error_try_again()}
         </Button>
         <Link
-          to="/"
+          to="/app"
           className={buttonVariants({
             variant: 'outline',
             className: 'min-h-11',
@@ -97,7 +107,10 @@ function ReconnectingFallback({ error }: ReconnectingFallbackProps) {
 
   // A new error (the guard failing again after a retry) restarts the watch.
   // biome-ignore lint/correctness/useExhaustiveDependencies: error is the restart trigger
-  useEffect(() => watchReadiness(() => router.invalidate()), [router, error]);
+  useEffect(
+    () => watchReadiness(() => retryRoute({ router })),
+    [router, error],
+  );
 
   return (
     <FullScreenFallback
@@ -128,7 +141,7 @@ export function NotFoundScreen() {
       title={m.shell_not_found_title()}
       description={m.shell_not_found_description()}
     >
-      <Link to="/" className={buttonVariants({ className: 'min-h-11' })}>
+      <Link to="/app" className={buttonVariants({ className: 'min-h-11' })}>
         {m.shell_error_go_home()}
       </Link>
     </FallbackPanel>

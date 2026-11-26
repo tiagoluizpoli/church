@@ -10,10 +10,10 @@ const positiveInt = z.number().int().positive();
 export const appConfigSchema = z.object({
   /** Product name on app-branded (church-less) email. Placeholder until branding is decided. */
   appName: z.string().trim().min(1),
+  /** Platform site the email credit links to; the credit is plain text while unset. */
+  platformSiteUrl: z.url().optional(),
   /** Parked features: false = UI hidden and server route not registered. */
   parked: z.object({
-    assignmentResponse: z.boolean(),
-    volunteerCancel: z.boolean(),
     auditPanel: z.boolean(),
     commandPalette: z.boolean(),
   }),
@@ -36,6 +36,11 @@ export const appConfigSchema = z.object({
     windowMs: positiveInt,
     maxRequests: positiveInt,
   }),
+  /** Sign-in-free Public Church Profile reads, per client IP. */
+  publicProfileRateLimit: z.object({
+    windowMs: positiveInt,
+    maxRequests: positiveInt,
+  }),
   /** Browser crash reports relayed to the error tracker (ADR 0014). */
   errorReportTunnel: z.object({
     /** The API route the web and desktop SDKs send crash reports to. */
@@ -48,6 +53,8 @@ export const appConfigSchema = z.object({
   outbox: z.object({
     maxAttempts: positiveInt,
     backoffCapMinutes: positiveInt,
+    /** A row left `processing` this long is considered stranded and retried. */
+    processingLeaseMs: positiveInt,
     /**
      * How long the email provider remembers an idempotency key (Resend: 24
      * hours). An email attempt at or past this age since its first attempt
@@ -55,7 +62,6 @@ export const appConfigSchema = z.object({
      */
     emailIdempotencyRetentionMs: positiveInt,
   }),
-  assignment: z.object({ cancelLeadTimeDays: positiveInt }),
   swapRequest: z.object({ noteMaxLength: positiveInt }),
   availability: z.object({
     /** How long a Schedule must wait between reminders. */
@@ -109,8 +115,6 @@ export type AppConfig = z.infer<typeof appConfigSchema>;
 export const appConfig = appConfigSchema.parse({
   appName: 'Church',
   parked: {
-    assignmentResponse: false,
-    volunteerCancel: false,
     auditPanel: false,
     commandPalette: false,
   },
@@ -126,6 +130,7 @@ export const appConfig = appConfigSchema.parse({
   },
   passwordReset: { ttlMs: HOUR_MS },
   redemptionRateLimit: { windowMs: MINUTE_MS, maxRequests: 30 },
+  publicProfileRateLimit: { windowMs: MINUTE_MS, maxRequests: 60 },
   errorReportTunnel: {
     path: '/api/error-reports',
     windowMs: MINUTE_MS,
@@ -135,9 +140,9 @@ export const appConfig = appConfigSchema.parse({
   outbox: {
     maxAttempts: 5,
     backoffCapMinutes: 60,
+    processingLeaseMs: 10 * MINUTE_MS,
     emailIdempotencyRetentionMs: DAY_MS,
   },
-  assignment: { cancelLeadTimeDays: 3 },
   swapRequest: { noteMaxLength: 500 },
   availability: { reminderCooldownMs: DAY_MS },
   notifications: {

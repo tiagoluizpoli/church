@@ -20,12 +20,15 @@ import {
   activeWorktreeIdentities,
   readGeneratedWorktreeIdentity,
 } from './local-env';
+import { deleteBucket, localStorageClient } from './storage-buckets';
+import { worktreeBucketName } from './storage-targets';
 import { PRIMARY_WORKTREE_IDENTITY } from './worktree-identity';
 
 /**
  * The Worktrunk `pre-remove` hook (ADR-0005), run in the worktree being
  * removed. Drops exactly its three databases, named by the identity in its
- * generated `.env.local`, after terminating their active connections. It
+ * generated `.env.local`, after terminating their active connections, and
+ * then deletes its `church-<worktree>` storage bucket. It
  * never blocks the removal: when PostgreSQL is unavailable, another active
  * worktree holds the same identity, or the drop fails, it warns, keeps the
  * databases, points to `db:prune`, and leaves a diagnostic bundle in the
@@ -33,7 +36,7 @@ import { PRIMARY_WORKTREE_IDENTITY } from './worktree-identity';
  */
 
 const PRUNE_HINT =
-  'Once the cause is fixed, `bun run db:prune -- --apply` from any worktree drops them.';
+  'Once the cause is fixed, `bun run db:prune -- --apply` from any worktree removes them.';
 
 export type RemovalOutcome =
   | { kind: 'dropped'; databases: DroppedDatabase[] }
@@ -192,16 +195,43 @@ export function reportRemoval(input: ReportRemovalInput): void {
   });
 }
 
+/** Deletes the worktree's bucket once its databases were dropped (the same
+ * identity checks apply); warns, never throws, so removal proceeds. */
+interface RemoveWorktreeBucketInput {
+  cwd: string;
+}
+
+async function removeWorktreeBucket(
+  input: RemoveWorktreeBucketInput,
+): Promise<void> {
+  const worktree = readGeneratedWorktreeIdentity({ cwd: input.cwd });
+  if (worktree === undefined) return;
+  const bucket = worktreeBucketName({ worktree });
+  try {
+    const existed = await deleteBucket({
+      client: localStorageClient(),
+      bucket,
+    });
+    console.log(
+      `worktree removal ${bucket}: ${existed ? 'deleted' : 'already absent'}`,
+    );
+  } catch (error) {
+    console.warn(
+      `⚠ worktree removal: bucket ${bucket} was kept (${errorMessage({ error })}). ${PRUNE_HINT}`,
+    );
+  }
+}
+
 async function main(): Promise<void> {
   const startedAt = now();
-  reportRemoval({
+  const outcome = await removeWorktreeDatabases({
     cwd: process.cwd(),
-    outcome: await removeWorktreeDatabases({
-      cwd: process.cwd(),
-      serverUrl: LOCAL_DATABASE_SERVER_URL,
-    }),
-    startedAt,
+    serverUrl: LOCAL_DATABASE_SERVER_URL,
   });
+  reportRemoval({ cwd: process.cwd(), outcome, startedAt });
+  if (outcome.kind === 'dropped') {
+    await removeWorktreeBucket({ cwd: process.cwd() });
+  }
 }
 
 if (import.meta.main) {

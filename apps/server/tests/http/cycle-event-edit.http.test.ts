@@ -1,4 +1,10 @@
-import { event, eventTimeBlock, outboxMessage } from '@church/db';
+import {
+  cycle,
+  event,
+  eventTimeBlock,
+  eventTimeBlockMove,
+  outboxMessage,
+} from '@church/db';
 import {
   parseCalendarDay,
   parseInstant,
@@ -45,6 +51,7 @@ import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-o
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -62,6 +69,8 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { insertChurchAddress } from '@/tests/test-support/church-address';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -115,12 +124,14 @@ beforeAll(async () => {
       }),
       volunteerRepository: new DrizzleVolunteerRepository({ db }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
       eventRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       templateRepository,
       churchRepository,
       unitOfWork,
@@ -133,11 +144,13 @@ beforeAll(async () => {
         volunteerRepository: new DrizzleVolunteerRepository({ db }),
       }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       unitOfWork,
     }),
     activeChurchResolver: activeChurchResolver as never,
@@ -286,7 +299,7 @@ async function seedGeneratedEvent({
     db,
     churchId,
     name: 'Sunday',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [
       {
         label: 'Welcome',
@@ -498,6 +511,28 @@ describe('PATCH /admin/cycles/:cycleId/events/:eventId', () => {
       ['2026-10-18T12:00:00.000Z', '2026-10-18T13:00:00.000Z'],
       ['2026-10-18T13:00:00.000Z', '2026-10-18T15:00:00.000Z'],
     ]);
+  });
+
+  it('records no move when a block is rescheduled in a draft Cycle', async () => {
+    const { cycleId, fixture } = await setUp();
+    const graph = currentGraph(fixture);
+    const [welcome, service] = graph.eventTimeBlocks;
+
+    const response = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        ...graph,
+        start: at('08:00'),
+        eventTimeBlocks: [
+          { ...welcome, startTime: at('08:00'), endTime: at('09:00') },
+          service,
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(await db.select().from(eventTimeBlockMove)).toEqual([]);
   });
 
   it('refuses a shrink that leaves a retained block outside and keeps the original graph', async () => {
@@ -744,6 +779,535 @@ describe('PATCH /admin/cycles/:cycleId/events/:eventId', () => {
 
     expect(last.statusCode).toBe(409);
     expect(last.json().error).toBe('LAST_REMAINING_EVENT_TIME_BLOCK');
+  });
+});
+
+describe('Público and place on an edited Event', () => {
+  function withPublic({
+    fixture,
+    isPublic,
+    place,
+  }: {
+    fixture: Fixture;
+    isPublic: boolean;
+    place?: string;
+  }) {
+    const graph = currentGraph(fixture);
+    const [welcome, service] = graph.eventTimeBlocks;
+    return {
+      ...graph,
+      eventTimeBlocks: [{ ...welcome, isPublic, place }, service],
+    };
+  }
+
+  async function storedPublic(id: string) {
+    const [row] = await db
+      .select()
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.id, id));
+    return { isPublic: row?.isPublic, place: row?.place };
+  }
+
+  async function storedPlace(id: string) {
+    const [row] = await db
+      .select()
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.id, id));
+    return { place: row?.place, placeAddressId: row?.placeAddressId };
+  }
+
+  it('sets, keeps and clears Público and place in a draft Cycle', async () => {
+    const { cycleId, fixture } = await setUp();
+
+    const set = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPublic({ fixture, isPublic: true, place: 'Annex' }),
+    });
+    expect(set.statusCode).toBe(200);
+    expect(await storedPublic(fixture.welcome.id)).toEqual({
+      isPublic: true,
+      place: 'Annex',
+    });
+
+    // Fields absent from the request keep the stored values.
+    const kept = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: currentGraph(fixture),
+    });
+    expect(kept.statusCode).toBe(200);
+    expect(await storedPublic(fixture.welcome.id)).toEqual({
+      isPublic: true,
+      place: 'Annex',
+    });
+
+    const cleared = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPublic({ fixture, isPublic: false, place: '' }),
+    });
+    expect(cleared.statusCode).toBe(200);
+    expect(await storedPublic(fixture.welcome.id)).toEqual({
+      isPublic: false,
+      place: null,
+    });
+  });
+
+  it("switches the place between a Church Address and free text, refusing another Church's address", async () => {
+    const { seed, cycleId, fixture } = await setUp();
+    const addressId = await insertChurchAddress({
+      db,
+      churchId: seed.churchAId,
+    });
+    const foreign = await insertChurchAddress({
+      db,
+      churchId: seed.churchBId,
+    });
+    const graph = currentGraph(fixture);
+    const [welcome, service] = graph.eventTimeBlocks;
+    const withPlace = (place: object) => ({
+      ...graph,
+      eventTimeBlocks: [{ ...welcome, ...place }, service],
+    });
+
+    const toAddress = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPlace({ placeAddressId: addressId }),
+    });
+    expect(toAddress.statusCode).toBe(200);
+    expect(await storedPlace(fixture.welcome.id)).toEqual({
+      place: null,
+      placeAddressId: addressId,
+    });
+
+    // Absent place fields keep the stored address.
+    await patchEvent({ cycleId, eventId: fixture.eventId, payload: graph });
+    expect(await storedPlace(fixture.welcome.id)).toEqual({
+      place: null,
+      placeAddressId: addressId,
+    });
+
+    const refused = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPlace({ placeAddressId: foreign }),
+    });
+    expect(refused.statusCode).toBe(422);
+    expect(refused.json().reason).toBe('PLACE_ADDRESS_NOT_FOUND');
+
+    const toText = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPlace({ place: 'Annex' }),
+    });
+    expect(toText.statusCode).toBe(200);
+    expect(await storedPlace(fixture.welcome.id)).toEqual({
+      place: 'Annex',
+      placeAddressId: null,
+    });
+  });
+
+  it('refuses changing Público of a block that has started with PUBLIC_INFO_LOCKED', async () => {
+    const { cycleId, fixture } = await setUp();
+    setTestClock({ instant: parseInstant({ value: at('09:30') }) });
+
+    const response = await patchEvent({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: withPublic({ fixture, isPublic: true }),
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('PUBLIC_INFO_LOCKED');
+    expect(await storedPublic(fixture.welcome.id)).toEqual({
+      isPublic: false,
+      place: null,
+    });
+  });
+
+  it('refuses a Ministry leader sending the fields', async () => {
+    const seed = await signIn({ persona: 'leader' });
+    const target = await seedCycle({ churchId: seed.churchAId });
+    const fixture = await seedGeneratedEvent({
+      churchId: seed.churchAId,
+      cycleId: target.id,
+    });
+
+    const response = await patchEvent({
+      cycleId: target.id,
+      eventId: fixture.eventId,
+      payload: withPublic({ fixture, isPublic: true }),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(await storedPublic(fixture.welcome.id)).toEqual({
+      isPublic: false,
+      place: null,
+    });
+  });
+});
+
+describe('Público and place on a Sent Event', () => {
+  async function seedSent() {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+    const fixture = await seedGeneratedEvent({
+      churchId: seed.churchAId,
+      cycleId: target.id,
+    });
+    await db
+      .update(event)
+      .set({ status: 'scheduled' })
+      .where(eq(event.id, fixture.eventId));
+    return { cycleId: target.id, fixture };
+  }
+
+  function patchDetails({ cycleId, eventId, payload }: PatchEventInput) {
+    return app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/details`,
+      payload: payload as never,
+    });
+  }
+
+  it('changes Público and place of a block that has not started, leaving the others', async () => {
+    const { cycleId, fixture } = await seedSent();
+
+    const response = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        location: 'Main hall',
+        eventTimeBlocks: [
+          { id: fixture.welcome.id, isPublic: true, place: 'Annex' },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const blocks = response.json().eventTimeBlocks;
+    expect(blocks).toContainEqual(
+      expect.objectContaining({
+        id: fixture.welcome.id,
+        isPublic: true,
+        place: 'Annex',
+      }),
+    );
+    expect(blocks).toContainEqual(
+      expect.objectContaining({
+        id: fixture.service.id,
+        isPublic: false,
+        place: null,
+      }),
+    );
+  });
+
+  it('sets a Church Address as the place of a block that has not started, and refuses it on a started one', async () => {
+    const { cycleId, fixture } = await seedSent();
+    const [row] = await db
+      .select({ churchId: eventTimeBlock.churchId })
+      .from(eventTimeBlock)
+      .where(eq(eventTimeBlock.id, fixture.welcome.id));
+    const addressId = await insertChurchAddress({
+      db,
+      churchId: row?.churchId ?? '',
+    });
+
+    const set = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        eventTimeBlocks: [
+          { id: fixture.welcome.id, isPublic: true, placeAddressId: addressId },
+        ],
+      },
+    });
+    expect(set.statusCode).toBe(200);
+    expect(set.json().eventTimeBlocks).toContainEqual(
+      expect.objectContaining({
+        id: fixture.welcome.id,
+        place: null,
+        placeAddressId: addressId,
+      }),
+    );
+
+    setTestClock({ instant: parseInstant({ value: at('09:30') }) });
+    const locked = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        eventTimeBlocks: [
+          { id: fixture.welcome.id, isPublic: true, place: 'Annex' },
+        ],
+      },
+    });
+    expect(locked.statusCode).toBe(409);
+    expect(locked.json().error).toBe('PUBLIC_INFO_LOCKED');
+  });
+
+  it('refuses a change to a started block but accepts it unchanged', async () => {
+    const { cycleId, fixture } = await seedSent();
+    setTestClock({ instant: parseInstant({ value: at('09:30') }) });
+
+    const changed = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        eventTimeBlocks: [
+          { id: fixture.welcome.id, isPublic: true, place: 'Annex' },
+        ],
+      },
+    });
+    expect(changed.statusCode).toBe(409);
+    expect(changed.json().error).toBe('PUBLIC_INFO_LOCKED');
+
+    const unchanged = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        eventTimeBlocks: [{ id: fixture.welcome.id, isPublic: false }],
+      },
+    });
+    expect(unchanged.statusCode).toBe(200);
+  });
+
+  it('404s a block of another Event', async () => {
+    const { cycleId, fixture } = await seedSent();
+
+    const response = await patchDetails({
+      cycleId,
+      eventId: fixture.eventId,
+      payload: {
+        title: 'Sunday',
+        eventTimeBlocks: [
+          { id: '00000000-0000-4000-8000-000000000000', isPublic: true },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+});
+
+describe('Single EventTimeBlock create and update', () => {
+  interface BlockBody {
+    label?: string;
+    startTime?: string;
+    endTime?: string;
+  }
+
+  interface PostBlockInput {
+    cycleId: string;
+    fixture: Fixture;
+    payload: BlockBody;
+  }
+
+  function postBlock({ cycleId, fixture, payload }: PostBlockInput) {
+    return app.inject({
+      method: 'POST',
+      url: `/api/v1/admin/cycles/${cycleId}/events/${fixture.eventId}/event-time-blocks`,
+      payload: payload as never,
+    });
+  }
+
+  interface PatchBlockInput extends PostBlockInput {
+    blockId: string;
+  }
+
+  function patchBlock({ cycleId, fixture, blockId, payload }: PatchBlockInput) {
+    return app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/cycles/${cycleId}/events/${fixture.eventId}/event-time-blocks/${blockId}`,
+      payload: payload as never,
+    });
+  }
+
+  // The seeded Event runs 09–12 with Welcome 09–10 and Service 10–12; a
+  // created block joins the final graph after them.
+  it.each([
+    {
+      name: 'outside the Event bounds',
+      payload: { label: 'Late', startTime: '11:00', endTime: '13:00' },
+      reason: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+      field: 'eventTimeBlocks.2',
+    },
+    {
+      name: 'with a blank label',
+      payload: { label: '  ', startTime: '10:00', endTime: '11:00' },
+      reason: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+      field: 'eventTimeBlocks.2.label',
+    },
+    {
+      name: 'without a label',
+      payload: { startTime: '10:00', endTime: '11:00' },
+      reason: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+      field: 'eventTimeBlocks.2.label',
+    },
+    {
+      name: 'with a label another block holds',
+      payload: { label: ' welcome ', startTime: '10:00', endTime: '11:00' },
+      reason: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+      field: 'eventTimeBlocks.2.label',
+    },
+    {
+      name: 'ending before it starts',
+      payload: { label: 'Late', startTime: '11:00', endTime: '10:00' },
+      reason: 'INVALID_EVENT_BOUNDS',
+      field: 'eventTimeBlocks.2.endTime',
+    },
+  ])('refuses creating a block $name with $reason and writes nothing', async ({
+    payload,
+    reason,
+    field,
+  }) => {
+    const { cycleId, fixture } = await setUp();
+    const before = await storedGraph();
+
+    const response = await postBlock({
+      cycleId,
+      fixture,
+      payload: {
+        ...payload,
+        startTime: at(payload.startTime),
+        endTime: at(payload.endTime),
+      },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      reason,
+      field,
+    });
+    expect(await storedGraph()).toEqual(before);
+  });
+
+  it('creates a contained, uniquely labelled block', async () => {
+    const { cycleId, fixture } = await setUp();
+
+    const response = await postBlock({
+      cycleId,
+      fixture,
+      payload: {
+        label: 'Closing',
+        startTime: at('11:00'),
+        endTime: at('12:00'),
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      eventId: fixture.eventId,
+      label: 'Closing',
+      startTime: at('11:00'),
+      endTime: at('12:00'),
+    });
+  });
+
+  it.each([
+    {
+      name: 'only a start past its stored end',
+      payload: { startTime: '10:30' },
+      reason: 'INVALID_EVENT_BOUNDS',
+      field: 'eventTimeBlocks.0.endTime',
+    },
+    {
+      name: 'an end outside the Event bounds',
+      payload: { endTime: '12:30' },
+      reason: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+      field: 'eventTimeBlocks.0',
+    },
+    {
+      name: 'a blank label',
+      payload: { label: '' },
+      reason: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+      field: 'eventTimeBlocks.0.label',
+    },
+    {
+      name: 'a label another block holds',
+      payload: { label: 'SERVICE' },
+      reason: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+      field: 'eventTimeBlocks.1.label',
+    },
+  ])('refuses an update with $name with $reason and writes nothing', async ({
+    payload,
+    reason,
+    field,
+  }) => {
+    const { cycleId, fixture } = await setUp();
+    const before = await storedGraph();
+    const { startTime, endTime, label } = payload as BlockBody;
+
+    const response = await patchBlock({
+      cycleId,
+      fixture,
+      blockId: fixture.welcome.id,
+      payload: {
+        label,
+        startTime: startTime && at(startTime),
+        endTime: endTime && at(endTime),
+      },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      reason,
+      field,
+    });
+    expect(await storedGraph()).toEqual(before);
+  });
+
+  it('updates a block that stays contained and uniquely labelled', async () => {
+    const { cycleId, fixture } = await setUp();
+
+    const response = await patchBlock({
+      cycleId,
+      fixture,
+      blockId: fixture.welcome.id,
+      payload: { label: 'Arrival', startTime: at('09:30') },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: fixture.welcome.id,
+      label: 'Arrival',
+      startTime: at('09:30'),
+      endTime: at('10:00'),
+    });
+  });
+
+  it('rolls the Past flip back with the refused write once the Cycle has ended', async () => {
+    const { cycleId, fixture } = await setUp();
+    // Noon of 2026-10-26 in São Paulo, the day after the Cycle's last day.
+    setTestClock({
+      instant: parseInstant({ value: '2026-10-26T15:00:00.000Z' }),
+    });
+
+    const response = await postBlock({
+      cycleId,
+      fixture,
+      payload: {
+        label: 'Closing',
+        startTime: at('11:00'),
+        endTime: at('12:00'),
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+    const [stored] = await db
+      .select({ state: cycle.state })
+      .from(cycle)
+      .where(eq(cycle.id, cycleId));
+    expect(stored).toEqual({ state: 'draft' });
   });
 });
 

@@ -20,6 +20,8 @@ import type { FastifyController } from '../contracts/fastify-controller';
 import {
   acceptExistingMemberBodySchema,
   authenticatedInvitationStatusResponseSchema,
+  churchInvitationAcceptOutcomeResponseSchema,
+  churchInvitationReviewStatusResponseSchema,
   confirmTransferBodySchema,
   confirmTransferOutcomeResponseSchema,
   debugInvitationLinkQuerystringSchema,
@@ -189,10 +191,13 @@ export class RedemptionController implements FastifyController {
           body: redeemNewUserBodySchema,
           response: {
             200: redemptionOutcomeResponseSchema,
+            429: rateLimitedResponseSchema,
           },
         },
       },
       async (request, reply) => {
+        if (this.isRateLimitedRequest({ key: request.ip }))
+          return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params as RedemptionParams;
         const body = request.body as RedeemNewUserBody;
         const outcome = await this.redemptionManager.redeemNewUser({
@@ -238,6 +243,74 @@ export class RedemptionController implements FastifyController {
         });
         if (outcome.kind === 'terminal-failure')
           return refuse({ reply, request, code: 'INVITATION_UNAVAILABLE' });
+        return reply.send(outcome);
+      },
+    );
+
+    app.get(
+      '/church/:invitationId/review',
+      {
+        schema: {
+          tags: ['redemption'],
+          operationId: 'getChurchInvitationReviewStatus',
+          summary: 'Get a Church Invitation signed-in review status',
+          description:
+            "Get an authenticated User's review of a plain Church Invitation addressed to their email, or the Ministry Invitation whose review covers a paired offer.",
+          params: redemptionParamsSchema,
+          response: {
+            200: churchInvitationReviewStatusResponseSchema,
+            401: unauthorizedResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const redeemer = await this.requireRedeemer({ request, reply });
+        if (!redeemer) return;
+        const params = request.params as RedemptionParams;
+        const status =
+          await this.redemptionManager.getChurchInvitationReviewStatus({
+            churchInvitationId: ChurchInvitationId.from(params.invitationId),
+            userId: redeemer.userId,
+          });
+        if (status.kind === 'redeemable') {
+          return reply.send({
+            ...status,
+            expiresAt: fromDate({ date: status.expiresAt }),
+          });
+        }
+        return reply.send(status);
+      },
+    );
+
+    app.post(
+      '/church/:invitationId/accept',
+      {
+        schema: {
+          tags: ['redemption'],
+          operationId: 'acceptChurchInvitation',
+          summary: 'Accept a Church Invitation as a signed-in User',
+          description:
+            'Accept the reviewed plain Church Invitation as the signed-in User it is addressed to, granting the Church Access Level and making that Church active.',
+          params: redemptionParamsSchema,
+          body: acceptExistingMemberBodySchema,
+          response: {
+            200: churchInvitationAcceptOutcomeResponseSchema,
+            401: unauthorizedResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const redeemer = await this.requireRedeemer({ request, reply });
+        if (!redeemer) return;
+        const params = request.params as RedemptionParams;
+        const body = request.body as AcceptExistingMemberBody;
+        const outcome = await this.redemptionManager.acceptChurchInvitation({
+          churchInvitationId: ChurchInvitationId.from(params.invitationId),
+          userId: redeemer.userId,
+          sessionCookie: redeemer.sessionCookie,
+          idempotencyKey: body.idempotencyKey,
+          reviewToken: body.reviewToken,
+        });
         return reply.send(outcome);
       },
     );

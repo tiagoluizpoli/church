@@ -1,6 +1,9 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
-import type { Assignment } from '../../domain/entities/assignment';
+import {
+  ASSIGNMENT_STATUS_OPTIONS,
+  type Assignment,
+} from '../../domain/entities/assignment';
 import type { AssignmentAudit } from '../../domain/entities/assignment-audit';
 
 export const assignmentResponseSchema = z.object({
@@ -12,7 +15,7 @@ export const assignmentResponseSchema = z.object({
   volunteerId: z.string(),
   roleId: z.string(),
   shiftRequirementId: z.string(),
-  status: z.enum(['draft', 'pending', 'confirmed', 'declined', 'cancelled']),
+  status: z.enum(ASSIGNMENT_STATUS_OPTIONS),
   reason: z.string().optional(),
   assignedAt: instantSchema,
   assignedBy: z.string().optional(),

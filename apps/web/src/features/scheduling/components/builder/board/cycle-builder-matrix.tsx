@@ -55,6 +55,7 @@ import {
   focusKey,
   requirementHasRoom,
 } from '../../../utils/builder/cycle-builder-shift-lookup.utils';
+import { isStaffedEventTimeBlock } from '../../../utils/builder/cycle-builder-staffing.utils';
 import { VolunteerCard } from '../volunteer-rail/volunteer-card';
 import { VolunteerPoolSidebar } from '../volunteer-rail/volunteer-pool-sidebar';
 import {
@@ -80,8 +81,9 @@ interface Props {
   data: CycleBuilderData;
   cycleStartDate?: string;
   cycleEndDate?: string;
-  selectedDate: string | null;
-  onSelectedDateChange: (date: string | null) => void;
+  /** The days picked on the date strip; empty shows every date. */
+  selectedDates: string[];
+  onSelectedDatesChange: (dates: string[]) => void;
   selectedVolunteerId?: string;
   onSelectVolunteer: (id: string | undefined) => void;
   onSelectAssignment: (input: CycleBuilderCellSelectInput) => void;
@@ -236,7 +238,19 @@ export function CycleBuilderMatrix(props: Props) {
     rangeStart,
     weekday,
   ]);
-  const columns = props.selectedDate ? [props.selectedDate] : dates;
+  // A selected day the filters hide stays selected (the strip notes it) but
+  // earns no column; with nothing selected every filtered date shows.
+  // The URL is untrusted: a stale or foreign day is dropped, and a selection
+  // that resolves to nothing falls back to every date.
+  const selectedDates = useMemo(() => {
+    const known = new Set<string>(eventsForDate.keys());
+    return [...new Set(props.selectedDates)]
+      .filter((date) => known.has(date))
+      .sort();
+  }, [eventsForDate, props.selectedDates]);
+  const columns = selectedDates.length
+    ? dates.filter((date) => selectedDates.includes(date))
+    : dates;
   const filtersAreDefault =
     dateMode === 'event_dates' &&
     dateSpanMode === 'starts' &&
@@ -300,7 +314,7 @@ export function CycleBuilderMatrix(props: Props) {
   const canManageAnyRequirement = props.data.events.some((event) =>
     event.eventTimeBlocks.some(
       (eventTimeBlock) =>
-        eventTimeBlock.included &&
+        isStaffedEventTimeBlock(eventTimeBlock) &&
         eventTimeBlock.shifts.some((shift) => shift.requirements.length > 0),
     ),
   );
@@ -334,6 +348,8 @@ export function CycleBuilderMatrix(props: Props) {
     : undefined;
   const focusedRequirementIsEditable = Boolean(
     focused &&
+      focusedShift &&
+      !focusedShift.cancelled &&
       focusedShiftStart &&
       compareInstants({ left: focusedShiftStart, right: currentInstant }) > 0,
   );
@@ -436,8 +452,8 @@ export function CycleBuilderMatrix(props: Props) {
           actions={props.actions}
         />
         <CycleBuilderDateStrip
-          selectedDate={props.selectedDate}
-          onSelectedDateChange={props.onSelectedDateChange}
+          selectedDates={selectedDates}
+          onSelectedDatesChange={props.onSelectedDatesChange}
           dates={dates}
           eventsForDate={eventsForDate}
           dragScroll={dateStripDragScroll}
@@ -539,7 +555,7 @@ export function CycleBuilderMatrix(props: Props) {
               columns each keep their own band instead of the roles line and
               the recency block fighting for the same width. */}
           <BoardDragIdentityContext.Provider value={dragIdentity}>
-            <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_23.75rem]">
+            <div className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_23.75rem]">
               <CycleBuilderBoardGrid
                 currentInstant={currentInstant}
                 data={props.data}

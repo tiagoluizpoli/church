@@ -118,8 +118,8 @@ export class SchedulingNotificationFacts {
         actionUrl: webLink({
           baseUrl: this.webBaseUrl,
           path: data.checkId
-            ? `/availability/${data.checkId}`
-            : '/availability',
+            ? `/app/availability/${data.checkId}`
+            : '/app/availability',
         }),
         shiftCount: shiftTotal?.shiftCount,
         ...deadline,
@@ -155,8 +155,8 @@ export class SchedulingNotificationFacts {
       const ministryIds = ministries.map((ministry) => ministry.id).join(',');
       const path =
         otherMinistries.length === 0
-          ? `/schedules/${onlyMinistry.id}/${cycle.id}`
-          : `/schedules?cycleId=${cycle.id}&ministryIds=${ministryIds}`;
+          ? `/app/schedules/${onlyMinistry.id}/${cycle.id}`
+          : `/app/schedules?cycleId=${cycle.id}&ministryIds=${ministryIds}`;
       return {
         cycleId: cycle.id,
         cycleName: cycle.name,

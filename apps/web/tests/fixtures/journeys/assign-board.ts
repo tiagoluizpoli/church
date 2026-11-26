@@ -16,7 +16,7 @@ const RECIPE_NAME = 'assign-board';
 const ASSIGNED_ASSIGNMENT_SCHEMA = z.object({
   id: z.string().min(1),
   volunteerId: z.string().min(1),
-  status: z.enum(['pending', 'confirmed', 'declined']),
+  status: z.enum(['pending', 'cancelled']),
 });
 
 export const ASSIGN_BOARD_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
@@ -33,7 +33,7 @@ export const ASSIGN_BOARD_JOURNEY_SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
     teamService: assignEventSchema({
       requirements: ['greeter', 'usher'],
     }),
-    /** Read-only: a pending, a confirmed and a declined Host. */
+    /** Read-only: two pending and a cancelled Host. */
     assignedService: assignEventSchema({ requirements: ['host'] }).extend({
       assignments: z.array(ASSIGNED_ASSIGNMENT_SCHEMA).length(3),
     }),

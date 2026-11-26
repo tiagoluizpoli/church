@@ -5,7 +5,8 @@ import {
   hashVerificationCode,
   InvitationVerificationCodeManager,
 } from '@/application/invitation-verification-code-manager';
-import { ChurchInvitationId } from '@/domain/branded-ids';
+import { type ChurchId, ChurchInvitationId } from '@/domain/branded-ids';
+import type { ChurchIdentitySnapshotter } from '@/domain/contracts/application/church-identity-snapshotter';
 import type {
   EmailSender,
   SendEmailInput,
@@ -13,6 +14,7 @@ import type {
 import type { InvitationVerificationCodeRepository } from '@/domain/contracts/infrastructure/invitation-verification-code.repository';
 import type { VerificationCodeState } from '@/domain/entities/invitation-verification-code';
 import { VerificationCodeError } from '@/domain/errors/verification-code-error';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 
 interface TestHarness {
   manager: InvitationVerificationCodeManager;
@@ -23,6 +25,7 @@ interface TestHarness {
 interface CreateHarnessInput {
   send?: () => Promise<void>;
   config?: AppConfig;
+  churchIdentity?: ChurchIdentitySnapshotter;
 }
 
 const ONE_SECOND_MS = 1_000;
@@ -30,6 +33,7 @@ const ONE_SECOND_MS = 1_000;
 function createHarness({
   send,
   config = appConfig,
+  churchIdentity = nullChurchIdentity,
 }: CreateHarnessInput = {}): TestHarness {
   const { resendCooldownMs, maxAttempts } = appConfig.verificationCode;
   let state: VerificationCodeState | null = null;
@@ -51,11 +55,15 @@ function createHarness({
         codeHash,
         expiresAt: fromDate({ date: expiresAt }),
         lastSentAt: sentAtInstant,
-        failedAttempts: 0,
+        failedAttempts: state?.failedAttempts ?? 0,
         consumedAt: null,
         redemptionIdempotencyKey: null,
       };
       return true;
+    },
+    async recordRedemptionOutcome() {},
+    async findRedemptionOutcome() {
+      return null;
     },
     async releaseDeliveryClaim({ codeHash, sentAt }) {
       if (
@@ -110,6 +118,7 @@ function createHarness({
   };
   return {
     manager: new InvitationVerificationCodeManager({
+      churchIdentity,
       repository,
       emailSender,
       generateCode: () => '123456',
@@ -122,6 +131,8 @@ function createHarness({
     },
   };
 }
+
+const churchId = 'church_1' as ChurchId;
 
 describe('InvitationVerificationCodeManager', () => {
   it('uses the secret-keyed digest rather than an unkeyed code digest', () => {
@@ -139,6 +150,7 @@ describe('InvitationVerificationCodeManager', () => {
     );
     const now = new Date('2026-01-01T00:00:00.000Z');
     await harness.manager.issue({
+      churchId,
       churchInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
       churchName: 'Church',
@@ -167,6 +179,7 @@ describe('InvitationVerificationCodeManager', () => {
     );
     const now = new Date('2026-01-01T00:00:00.000Z');
     await harness.manager.issue({
+      churchId,
       churchInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
       churchName: 'Church',
@@ -200,6 +213,7 @@ describe('InvitationVerificationCodeManager', () => {
     );
     const now = new Date('2026-01-01T00:00:00.000Z');
     await harness.manager.issue({
+      churchId,
       churchInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
       churchName: 'Church',
@@ -230,7 +244,7 @@ describe('InvitationVerificationCodeManager', () => {
     ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_CONSUMED' });
   });
 
-  it('replaces the code and resets its attempt budget only after the sixty-second cooldown', async () => {
+  it('replaces the code but keeps its spent attempts, only after the sixty-second cooldown', async () => {
     const harness = createHarness();
     const invitationId = ChurchInvitationId.from(
       '00000000-0000-4000-8000-000000000003',
@@ -242,6 +256,7 @@ describe('InvitationVerificationCodeManager', () => {
     );
     const whenCooldownEnds = new Date(now.getTime() + resendCooldownMs);
     await harness.manager.issue({
+      churchId,
       churchInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
       churchName: 'Church',
@@ -249,6 +264,7 @@ describe('InvitationVerificationCodeManager', () => {
     });
     await expect(
       harness.manager.issue({
+        churchId,
         churchInvitationId: invitationId,
         recipientEmail: 'invitee@example.test',
         churchName: 'Church',
@@ -257,14 +273,60 @@ describe('InvitationVerificationCodeManager', () => {
     ).rejects.toMatchObject({
       code: 'VERIFICATION_CODE_RESEND_COOLDOWN_ACTIVE',
     });
+    await expect(
+      harness.manager.verify({
+        churchInvitationId: invitationId,
+        code: '000000',
+        now,
+      }),
+    ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_INVALID' });
     await harness.manager.issue({
+      churchId,
       churchInvitationId: invitationId,
       recipientEmail: 'invitee@example.test',
       churchName: 'Church',
       now: whenCooldownEnds,
     });
-    expect(harness.state?.failedAttempts).toBe(0);
+    expect(harness.state?.failedAttempts).toBe(1);
     expect(harness.sent).toHaveLength(2);
+  });
+
+  it('accepts the same-key twin whose consume lost the race', async () => {
+    const harness = createHarness();
+    const invitationId = ChurchInvitationId.from(
+      '00000000-0000-4000-8000-000000000004',
+    );
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    await harness.manager.issue({
+      churchId,
+      churchInvitationId: invitationId,
+      recipientEmail: 'invitee@example.test',
+      churchName: 'Church',
+      now,
+    });
+    const key = '00000000-0000-4000-8000-0000000000aa';
+    await harness.manager.verify({
+      churchInvitationId: invitationId,
+      code: '123456',
+      idempotencyKey: key,
+      now,
+    });
+    await expect(
+      harness.manager.verify({
+        churchInvitationId: invitationId,
+        code: '123456',
+        idempotencyKey: key,
+        now,
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      harness.manager.verify({
+        churchInvitationId: invitationId,
+        code: '123456',
+        idempotencyKey: '00000000-0000-4000-8000-0000000000bb',
+        now,
+      }),
+    ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_CONSUMED' });
   });
 
   it('sends the code with the policy lifetime in the address recipient locale', async () => {
@@ -279,6 +341,7 @@ describe('InvitationVerificationCodeManager', () => {
     const harness = createHarness({ config });
 
     await harness.manager.issue({
+      churchId,
       churchInvitationId: ChurchInvitationId.from(
         '00000000-0000-4000-8000-000000000005',
       ),
@@ -293,12 +356,39 @@ describe('InvitationVerificationCodeManager', () => {
           kind: 'invitation.verification-code',
           to: 'invitee@example.test',
           churchName: 'Grace Church',
+          churchLogoUrl: null,
+          churchAccent: null,
           code: '123456',
           codeLifetime: { minutes: 15 },
         },
         locale: 'en',
       },
     ]);
+  });
+
+  it('stamps the Church logo URL and accent into the code email', async () => {
+    const harness = createHarness({
+      churchIdentity: {
+        snapshot: async () => ({
+          churchLogoUrl: 'https://storage.test/logo.png',
+          churchAccent: '#2255aa',
+        }),
+      },
+    });
+    await harness.manager.issue({
+      churchId,
+      churchInvitationId: ChurchInvitationId.from(
+        '00000000-0000-4000-8000-000000000009',
+      ),
+      recipientEmail: 'invitee@example.test',
+      churchName: 'Grace Church',
+      now: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    expect(harness.sent[0]?.payload).toMatchObject({
+      churchLogoUrl: 'https://storage.test/logo.png',
+      churchAccent: '#2255aa',
+    });
   });
 
   it('releases its delivery claim when synchronous dispatch fails so a retry is safe', async () => {
@@ -314,6 +404,7 @@ describe('InvitationVerificationCodeManager', () => {
 
     await expect(
       harness.manager.issue({
+        churchId,
         churchInvitationId: invitationId,
         recipientEmail: 'invitee@example.test',
         churchName: 'Church',

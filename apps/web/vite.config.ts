@@ -25,6 +25,9 @@ export default defineConfig({
         description: 'base-fullstack-template - PWA Application',
         // biome-ignore lint/style/useNamingConvention: PWA manifest spec requires snake_case
         theme_color: '#0c0c0c',
+        // biome-ignore lint/style/useNamingConvention: PWA manifest spec requires snake_case
+        start_url: '/app',
+        scope: '/',
       },
       pwaAssets: { disabled: false, config: true },
       devOptions: { enabled: true },

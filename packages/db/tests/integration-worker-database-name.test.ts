@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   integrationWorkerDatabaseName,
   isIntegrationWorkerDatabaseName,
-} from '../src/integration-worker-database-name';
+} from '@/integration-worker-database-name';
 
 const WORKTREE = 'ticket_607__79278ca2';
 

@@ -1,30 +1,22 @@
 import { m } from '@church/i18n/messages';
-import { getLocale } from '@church/i18n/runtime';
-import { formatWeekdayOfIndex } from '@church/time';
-import type { ReactNode } from 'react';
+import { PlusIcon } from 'lucide-react';
 import type { TemplateFormState } from './planning-admin.types';
 import { templateBlockErrors } from './planning-admin.utils';
+import {
+  type RecurrenceChangeInput,
+  RecurrenceEditor,
+} from './recurrence-editor';
 import {
   TemplateTimeBlockRow,
   type TemplateTimeBlockRowProps,
 } from './template-time-block-row';
 import { Button } from '@/components/ui/button';
+import { useFormControlSize } from '@/components/ui/form-control-size';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 export interface NameChangeInput {
   name: string;
-}
-
-export interface WeekdayChangeInput {
-  weekday: string;
 }
 
 /** Everything the editor renders and reports, independent of which page owns
@@ -39,17 +31,15 @@ export interface TemplateEditorFormProps {
   /** A save refusal that has no field of its own. */
   formError?: string;
   onNameChange: (input: NameChangeInput) => void;
-  onWeekdayChange: (input: WeekdayChangeInput) => void;
+  onRecurrenceChange: (input: RecurrenceChangeInput) => void;
   onBlockChange: TemplateTimeBlockRowProps['onBlockChange'];
   onRemoveBlock: TemplateTimeBlockRowProps['onRemoveBlock'];
   onAddBlock: () => void;
   onSave: () => void;
-  /** Rendered beside Save (e.g. Cancel). */
-  actions?: ReactNode;
 }
 
 /** What a create or edit hook hands the editor. */
-export type TemplateEditorState = Omit<TemplateEditorFormProps, 'actions'>;
+export type TemplateEditorState = TemplateEditorFormProps;
 
 /** The draft fields shared by both hooks, before mode and save are added. */
 export type TemplateEditorFields = Omit<
@@ -59,31 +49,19 @@ export type TemplateEditorFields = Omit<
 
 export function TemplateEditorForm({
   form: templateForm,
-  mode,
-  canSave,
-  pending,
   nameError,
   formError,
   onNameChange,
-  onWeekdayChange,
+  onRecurrenceChange,
   onBlockChange,
   onRemoveBlock,
   onAddBlock,
-  onSave,
-  actions,
 }: TemplateEditorFormProps) {
   const blockErrors = templateBlockErrors({ blocks: templateForm.blocks });
-  const selectedWeekdayIndex = Number.parseInt(templateForm.weekday, 10);
-  const selectedWeekdayLabel = Number.isNaN(selectedWeekdayIndex)
-    ? null
-    : formatWeekdayOfIndex({
-        index: selectedWeekdayIndex as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-        locale: getLocale(),
-      });
-
+  const touch = useFormControlSize() === 'touch';
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
+      <div className="max-w-md space-y-1">
         <Label htmlFor="template-name">{m.event_templates_name_label()}</Label>
         <Input
           id="template-name"
@@ -104,39 +82,10 @@ export function TemplateEditorForm({
           </p>
         ) : null}
       </div>
-      <div className="space-y-1">
-        <Label>{m.event_templates_weekday_label()}</Label>
-        <Select
-          value={templateForm.weekday}
-          onValueChange={(weekday) => {
-            if (weekday !== null) {
-              onWeekdayChange({ weekday });
-            }
-          }}
-        >
-          <SelectTrigger
-            id="template-weekday-select"
-            aria-label={m.event_templates_weekday_label()}
-            data-testid="template-weekday-select"
-            className="w-full"
-          >
-            <SelectValue placeholder={m.event_templates_weekday_placeholder()}>
-              {selectedWeekdayLabel}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {([0, 1, 2, 3, 4, 5, 6] as const).map((index) => (
-              <SelectItem
-                key={index}
-                value={String(index)}
-                data-testid={`template-weekday-option-${index}`}
-              >
-                {formatWeekdayOfIndex({ index, locale: getLocale() })}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <RecurrenceEditor
+        recurrence={templateForm.recurrence}
+        onChange={onRecurrenceChange}
+      />
 
       <div className="space-y-3">
         {templateForm.blocks.map((block, index) => (
@@ -159,6 +108,16 @@ export function TemplateEditorForm({
             onRemoveBlock={onRemoveBlock}
           />
         ))}
+        <Button
+          type="button"
+          variant="ghost"
+          size={touch ? 'touch' : 'sm'}
+          data-testid="add-template-time-block-button"
+          onClick={onAddBlock}
+        >
+          <PlusIcon aria-hidden />
+          {m.event_templates_block_add()}
+        </Button>
       </div>
 
       {formError ? (
@@ -170,33 +129,62 @@ export function TemplateEditorForm({
           {formError}
         </p>
       ) : null}
-
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          data-testid="add-template-time-block-button"
-          onClick={onAddBlock}
-        >
-          {m.event_templates_block_add()}
-        </Button>
-        <Button
-          type="button"
-          data-testid="create-template-button"
-          disabled={!canSave || pending}
-          onClick={onSave}
-        >
-          {pending
-            ? mode === 'edit'
-              ? m.event_templates_save_pending()
-              : m.event_templates_create_pending()
-            : mode === 'edit'
-              ? m.event_templates_save_submit()
-              : m.event_templates_create_submit()}
-        </Button>
-        {actions}
-      </div>
     </div>
+  );
+}
+
+interface TemplateEditorFooterProps
+  extends Pick<
+    TemplateEditorFormProps,
+    'mode' | 'canSave' | 'pending' | 'onSave'
+  > {
+  onCancel: () => void;
+}
+
+const SAVE_BLOCKED_HINT_ID = 'template-save-blocked-hint';
+
+/** Cancel then Save, for the surface footer; a blocked Save says why. */
+export function TemplateEditorFooter({
+  mode,
+  canSave,
+  pending,
+  onSave,
+  onCancel,
+}: TemplateEditorFooterProps) {
+  return (
+    <>
+      {canSave ? null : (
+        <p
+          id={SAVE_BLOCKED_HINT_ID}
+          className="self-center text-muted-foreground text-xs sm:mr-auto"
+          data-testid="template-save-blocked-hint"
+        >
+          {m.event_templates_save_blocked_hint()}
+        </p>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        data-testid="cancel-template-button"
+        onClick={onCancel}
+      >
+        {m.event_templates_cancel()}
+      </Button>
+      <Button
+        type="button"
+        data-testid="create-template-button"
+        disabled={!canSave || pending}
+        aria-describedby={canSave ? undefined : SAVE_BLOCKED_HINT_ID}
+        onClick={onSave}
+      >
+        {pending
+          ? mode === 'edit'
+            ? m.event_templates_save_pending()
+            : m.event_templates_create_pending()
+          : mode === 'edit'
+            ? m.event_templates_save_submit()
+            : m.event_templates_create_submit()}
+      </Button>
+    </>
   );
 }

@@ -59,4 +59,6 @@ export interface RedemptionIdentityGateway {
    * the credentials are valid.
    */
   verifyPassword(input: VerifyPasswordInput): Promise<boolean>;
+  /** Opens a fresh session for a committed User; null when the credentials are wrong. */
+  signIn(input: VerifyPasswordInput): Promise<string | null>;
 }

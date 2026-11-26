@@ -1,3 +1,4 @@
+import { allowedOrigins, DESKTOP_ORIGIN } from '@church/auth/allowed-origins';
 import { DomainError } from '@church/core';
 import { env } from '@church/env/server';
 import { m } from '@church/i18n/messages';
@@ -31,11 +32,13 @@ import {
   publishedShiftIds,
   remindAvailableAt,
   shiftResponses,
+  templateCollisions,
   upcomingAssignments,
   validationField,
   validationReason,
 } from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
+import { refuse } from '../../api/utils/refuse';
 import { requestLocale } from '../../api/utils/request-locale';
 import { HardConstraintError } from '../../domain/conflict/errors/hard-constraint-error';
 import type { ErrorReporter } from '../../domain/contracts/infrastructure/error-reporter';
@@ -68,8 +71,9 @@ interface CreateFastifyInput {
 
 const logSerializers = { req: serializeRequest, err: serializeError };
 
-/** The Electrobun desktop app serves the web bundle from this origin. */
-export const DESKTOP_ORIGIN = 'views://mainview';
+export { DESKTOP_ORIGIN };
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 /** Unexpected 500s only; expected outcomes and 503s are never reported. */
 function reportUnexpected({
@@ -103,7 +107,15 @@ interface LoggingOptionsInput {
 function loggingOptions({ logStream, isTest, isProd }: LoggingOptionsInput) {
   const loggerOptions = { level: env.LOG_LEVEL, serializers: logSerializers };
   if (logStream) return { loggerInstance: pino(loggerOptions, logStream) };
-  if (isTest) return { logger: false };
+  // Errors only, unredacted with their cause chain (test data is synthetic),
+  // so a test's unexpected 500 names its cause instead of a bare requestId.
+  if (isTest) {
+    const testOptions = {
+      level: 'error',
+      serializers: { ...logSerializers, err: pino.stdSerializers.errWithCause },
+    };
+    return { loggerInstance: pino(testOptions, process.stderr) };
+  }
   if (isProd) return { logger: loggerOptions };
   // Bun doesn't support pino worker-thread transports — use a synchronous
   // pino-pretty stream in dev instead of the transport API.
@@ -123,7 +135,11 @@ export async function createFastify({
   const isProd = env.NODE_ENV === 'production';
 
   const logging = loggingOptions({ logStream, isTest, isProd });
-  const app = createFastifyInstance({ genReqId: requestId, ...logging });
+  const app = createFastifyInstance({
+    genReqId: requestId,
+    trustProxy: env.TRUST_PROXY_HOPS,
+    ...logging,
+  });
 
   // First, so its onRequest hook runs right after genReqId (see request-id.ts).
   await app.register(fastifyOtel.plugin());
@@ -131,7 +147,7 @@ export async function createFastify({
   registerE2eTargetHeader({ app, enabled: debugEndpointsEnabled() });
 
   await app.register(fastifyCors, {
-    origin: [env.CORS_ORIGIN, DESKTOP_ORIGIN],
+    origin: [...allowedOrigins],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
@@ -157,6 +173,18 @@ export async function createFastify({
       cookieHeader: request.headers.cookie,
       ...localeSettings,
     });
+  });
+
+  // Non-browser clients send neither header and pass. A browser sends Origin
+  // on every non-GET; an allowed one may be cross-site (CORS), any other
+  // Origin, or a cross-site request without one, is refused. After the
+  // locale hook, so the refusal reads in the request locale.
+  app.addHook('onRequest', async (request, reply) => {
+    if (SAFE_METHODS.has(request.method)) return;
+    const { origin, 'sec-fetch-site': fetchSite } = request.headers;
+    const allowed = origin !== undefined && allowedOrigins.includes(origin);
+    if (allowed || (origin === undefined && fetchSite !== 'cross-site')) return;
+    return refuse({ reply, request, code: 'FORBIDDEN' });
   });
 
   await app.register(swagger, {
@@ -251,6 +279,7 @@ export async function createFastify({
       const cycles = conflictingCycles(error);
       const outside = outsideEvents(error);
       const invalid = invalidEvents(error);
+      const collisions = templateCollisions(error);
       const floors = headcountFloors(error);
       const responses = shiftResponses(error);
       const flagged = flaggedBlocks(error);
@@ -267,6 +296,7 @@ export async function createFastify({
         ...(cycles && { conflictingCycles: cycles }),
         ...(outside && { outsideEvents: outside }),
         ...(invalid && { invalidEvents: invalid }),
+        ...(collisions && { collisions }),
         ...(floors && { headcountFloors: floors }),
         ...(responses && { shiftResponses: responses }),
         ...(flagged && { flaggedBlocks: flagged }),

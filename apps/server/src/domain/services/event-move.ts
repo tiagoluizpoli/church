@@ -62,7 +62,7 @@ export interface ProposeMoveInput {
   timeZone: string;
 }
 
-interface InstantPair {
+export interface InstantPair {
   left: Instant;
   right: Instant;
 }
@@ -71,7 +71,7 @@ interface ShiftInput {
   instant: Instant;
 }
 
-interface BoundsPair {
+export interface BoundsPair {
   left: InstantBounds;
   right: InstantBounds;
 }
@@ -216,7 +216,7 @@ export interface FindMoveClashesInput {
 }
 
 /** Strict interval intersection: touching ends do not overlap. */
-function overlaps({ left, right }: BoundsPair) {
+export function overlaps({ left, right }: BoundsPair) {
   return (
     isEarlier({ left: left.start, right: right.end }) &&
     isEarlier({ left: right.start, right: left.end })

@@ -50,6 +50,7 @@ import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/dr
 import { DrizzleSetupProgressRepository } from '@/infrastructure/repositories/drizzle-setup-progress.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -74,6 +75,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -129,12 +131,14 @@ beforeAll(async () => {
       }),
       volunteerRepository: new DrizzleVolunteerRepository({ db }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
       eventRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       templateRepository,
       churchRepository,
       unitOfWork,
@@ -147,11 +151,13 @@ beforeAll(async () => {
         volunteerRepository: new DrizzleVolunteerRepository({ db }),
       }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       unitOfWork,
     }),
     activeChurchResolver: activeChurchResolver as never,
@@ -316,7 +322,7 @@ async function applySunday({ churchId, cycleId }: ApplySundayInput) {
     db,
     churchId,
     name: 'Sunday',
-    weekday: SUNDAY,
+    recurrence: { kind: 'weekly', weekdays: [SUNDAY] },
     blocks: [
       {
         label: 'Service',
@@ -764,6 +770,8 @@ describe('POST /admin/cycles/:cycleId/send', () => {
     const data = (ministryIds: string[]) => ({
       cycleId: target.id,
       ministryIds: [...ministryIds].sort(),
+      churchLogoUrl: null,
+      churchAccent: null,
     });
     expect(await queuedNotifications()).toEqual([
       {

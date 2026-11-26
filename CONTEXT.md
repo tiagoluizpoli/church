@@ -18,6 +18,42 @@ _Avoid_: Account, Person (for the login), member
 The root tenant representing a distinct congregation or local church body.
 _Avoid_: Organization, tenant, customer
 
+**Church Settings** (pt-BR: Configurações da igreja):
+The information a ChurchAdmin keeps about their Church, chiefly the identity it presents wherever it appears, in the app and in every communication: its name, Church Slug, logo, website, accent colour, Church Contacts, Social Links and Church Legal Profile. Only a ChurchAdmin may view or change it. The Church Timezone is not part of it.
+_Avoid_: Church profile, organization settings, church config
+
+**Church Slug** (pt-BR: Link da igreja):
+The Church's short, unique handle used only in its web addresses. It is first derived from the name, and a ChurchAdmin may change it afterwards; renaming the Church never changes it. A slug a Church has given up stays reserved to that Church for good, so an old link can never lead to another Church. Words the platform keeps for its own pages (such as `app`, `login` or `invitations`) can never be a Church Slug. Lasting references such as printed codes use the Church itself, never its slug.
+_Avoid_: Church URL, handle, subdomain
+
+**Church Contact** (pt-BR: Contato):
+One email address or phone number through which a Church can be reached, optionally labelled (such as the office or the pastor). A phone is either a mobile or a landline (pt-BR: celular or fixo) and may be marked as reachable on WhatsApp. A Church has any number of them, in the order the ChurchAdmin chooses, and each is private until the ChurchAdmin deliberately makes it public.
+_Avoid_: Contact info, phone, email (for the concept)
+
+**Social Link** (pt-BR: Rede social):
+A link to one of the Church's presences on a supported social network, with an optional label. A Church may have several on the same network (the church's channel, the pastor's channel). Social Links are always public. A network that is not supported cannot be added.
+_Avoid_: Social media, external link
+
+**Contact Group** (pt-BR: Grupo de contatos; the field reads "Pessoa ou ministério"):
+A named, ordered set of a Church's Church Contacts and Social Links that belong to one person or ministry, such as those of the pastor or of the worship ministry. A ChurchAdmin creates one by naming it on a Contact or Social Link, and it ceases to exist once nothing is in it. Whatever is in no Contact Group belongs to the Church itself and is shown first.
+_Avoid_: Link Group, category, section
+
+**Church Address** (pt-BR: Endereço):
+One place where a Church is found, such as its main temple, an annex or an events hall, optionally labelled. A Church has any number of them, in the order the ChurchAdmin chooses, and each is public unless the ChurchAdmin makes it private. A TemplateTimeBlock or EventTimeBlock may name one as its place.
+_Avoid_: Location, site, campus
+
+**Main Address** (pt-BR: Endereço principal):
+The one Church Address, among those a Church has, that stands for the Church as a whole: it is shown first and, with the Church's name, tells same-named Churches apart. Its neighbourhood and city stay visible even when it is private. A campus with its own leadership is a separate Church, not another Church Address.
+_Avoid_: Headquarters, registered address, primary location
+
+**Church Legal Profile** (pt-BR: Dados jurídicos):
+The Church's legal identity: its legal name (razão social), as opposed to the name it is known by, and its registration document (in Brazil, the CNPJ). A registration document belongs to at most one Church. It is private unless the ChurchAdmin makes it public.
+_Avoid_: Company data, fiscal data, tax info
+
+**Public Church Profile** (pt-BR: Perfil público da igreja):
+The sign-in-free, publicly reachable page of a Church that any visitor can read without signing in. It shows the Church's public identity (name, logo), public Church Contacts, public Church Legal Profile, Social Links, public Church Addresses, Church Programme, and upcoming Public Events; each section is hidden entirely when it has nothing public to show. Its URL is built from the Church Slug, and old slugs redirect to the current one forever. Only a ChurchAdmin can reach it from within the app; every visitor reaches it at `/{slug}` on the platform domain.
+_Avoid_: Church landing page, church website, public page
+
 **Platform Operator**:
 The trusted actor that provisions Churches. It is a single User per environment, identified by configuration, that never holds Church Membership in any Church and exists only to create a Church and invite its first ChurchAdmin.
 _Avoid_: Superadmin, root user, system user
@@ -99,7 +135,7 @@ The self-directed move of a Person's Volunteer participation from one Church to 
 _Avoid_: Volunteer reassignment, Church-approved transfer
 
 **Event** (pt-BR: Evento):
-A scheduled gathering owned by the Church (e.g., "Sunday Service" or a multi-day retreat). An Event belongs to exactly one Cycle and may span one day or several. Its start and end are always Instants, given to it rather than implied by any kind of Event, and it holds at least one EventTimeBlock, every one within its bounds; a manually added Event starts with one EventTimeBlock covering the whole Event, which may be kept or replaced by finer ones (a retreat may be one block or one per session). It belongs to the CalendarDay its start falls on, so a gathering running from 22:00 Friday to 01:00 Saturday is a Friday Event. Many Ministries participate in a single Event; the Event itself is not owned by any one Ministry. Its lifecycle is `draft → scheduled` (its Cycle sent) `→ cancelled` (pt-BR: Cancelado) / `→ past`. Once its Cycle is sent, a ChurchAdmin may still **move** it (a new start, same duration, its EventTimeBlocks and Shifts moving with it) or **cancel** it, until it starts; a cancellation is final (no reopening), and the Event stays visible as cancelled. An Event is never "published" — publishing is per Schedule, not per Event.
+A scheduled gathering owned by the Church (e.g., "Sunday Service" or a multi-day retreat). An Event belongs to exactly one Cycle and may span one day or several. Its start and end are always Instants, given to it rather than implied by any kind of Event, and it holds at least one EventTimeBlock, every one within its bounds; a manually added Event starts with one EventTimeBlock covering the whole Event, which may be kept or replaced by finer ones (a retreat may be one block or one per session). It belongs to the CalendarDay its start falls on, so a gathering running from 22:00 Friday to 01:00 Saturday is a Friday Event. Many Ministries participate in a single Event; the Event itself is not owned by any one Ministry. Its lifecycle is `draft → scheduled` (its Cycle sent) `→ cancelled` (pt-BR: Cancelado) / `→ past`. Once its Cycle is sent, a ChurchAdmin may still **move** it (a new start, same duration, its EventTimeBlocks and Shifts moving with it) or **cancel** it, until it starts; a cancellation is final (no reopening), and the Event stays visible as cancelled. A ChurchAdmin may also **edit** it until it ends, a running Event included: new bounds and a new set of EventTimeBlocks, where a kept block keeps its Shifts, Assignments, Unavailable Shifts and open Swap requests, a new one is added and an unstaffed one left out is cancelled (a staffed one is cancelled only through cancel). An edit never moves the past: an ended Shift keeps its times, a running one keeps its start while its end follows its block, and a Shift still to come keeps its share of the block's part still to come. Any Assignment the new times would double-book is withdrawn, as in a move. An Event is never "published" — publishing is per Schedule, not per Event.
 _Avoid_: Gathering, service
 
 ## Time
@@ -129,12 +165,28 @@ A church-scoped planning window over an arbitrary **CalendarDay** range (a week,
 _Avoid_: PlanningCycle, lock, Month, MonthlyPlan, schedule
 
 **EventTemplate** (UI: Event template · pt-BR: Modelo de evento):
-A church-owned, ChurchAdmin-configured blueprint for recurring single-day gatherings on a given weekday (services or any weekly non-service gathering). Holds ordered TemplateTimeBlocks. Applying it to a Cycle creates one Event per matching CalendarDay in the Cycle, with one EventTimeBlock per TemplateTimeBlock — the point at which the template's TimeOfDay values become Instants. Multi-day and one-off dynamic Events are created manually, not from a template. Only a ChurchAdmin manages EventTemplates; a template's name is unique in its Church and it holds at least one TemplateTimeBlock. Several templates may share a weekday. Changing or deleting a template reaches only later applications; Events already generated from it are their own copies and stay as they are.
+A church-owned, ChurchAdmin-configured blueprint for recurring single-day gatherings (services or any regular non-service gathering), falling on the CalendarDays its Recurrence names. Holds ordered TemplateTimeBlocks. Applying it to a Cycle creates one Event per CalendarDay in the Cycle that its Recurrence names, with one EventTimeBlock per TemplateTimeBlock — the point at which the template's TimeOfDay values become Instants. Multi-day and one-off dynamic Events are created manually, not from a template. Only a ChurchAdmin manages EventTemplates; a template's name is unique in its Church and it holds at least one TemplateTimeBlock. Several templates may fall on the same CalendarDay. Changing or deleting a template reaches only later applications; Events already generated from it are their own copies and stay as they are.
 _Avoid_: ServiceTemplate, WeekdayTemplate, RecurringEvent
 
+**Recurrence** (pt-BR: Recorrência):
+The rule naming which CalendarDays an EventTemplate falls on. It is either **weekly**, on one or more weekdays, or **monthly**, on a list of entries that may mix kinds: an ordinal of a weekday (1st to 5th, or last, such as "1st Sunday" or "last Friday"), a day of the month (such as the 15th), or the last day of the month. Monthly entries count against the calendar month, never the Cycle, so a Cycle starting mid-month still gets the month's 1st Sunday only if it contains it. An entry naming a day a month lacks (a 5th Sunday, the 31st in April) names nothing that month; it never moves to another day. Several entries naming the same day still name it once. Every-other-week patterns and one-off exceptions to a Recurrence do not exist; a single unwanted Event is deleted or cancelled instead.
+_Avoid_: Frequency, Repeat, Schedule, Pattern
+
+**Template Precedence** (pt-BR: Prioridade):
+A ChurchAdmin's answer to two EventTemplates colliding: both fall on some CalendarDay and some of their TemplateTimeBlocks overlap in time there. It is asked when either template is saved into the collision, recorded once per pair, and says either that both are kept or which one wins. On a day the winner falls on, each of the loser's TemplateTimeBlocks that overlaps one of the winner's is not generated; its other blocks still are, and a loser left with no block makes no Event that day. Whether a winner falls on a day is judged by its Recurrence alone, so a template beaten by one that is itself beaten stays beaten. It only shapes later applications: Events already in a Cycle are never removed by it. Deleting either template removes it.
+_Avoid_: Priority, Override, Supersede rule, Conflict
+
 **TemplateTimeBlock** (UI: Time block · pt-BR: Horário):
-One labelled `{ label, startTime, endTime }` entry within an EventTemplate, carrying a stable identity. Its bounds are TimeOfDay values, so it names an hour and not a moment; an end earlier than its start means the block crosses midnight and resolves onto the following CalendarDay. Generating an Event copies each TemplateTimeBlock into an EventTimeBlock that records which TemplateTimeBlock it came from. That link is the hinge a UsualSetup matches on to auto-seed inclusions, so it survives edits: relabelling or retiming a TemplateTimeBlock, or moving its template to another weekday, keeps its identity. Removing a TemplateTimeBlock removes every UsualSetup entry for it. Labels are unique within a template.
+One labelled `{ label, startTime, endTime }` entry within an EventTemplate, carrying a stable identity. Its bounds are TimeOfDay values, so it names an hour and not a moment; an end earlier than its start means the block crosses midnight and resolves onto the following CalendarDay. Generating an Event copies each TemplateTimeBlock into an EventTimeBlock that records which TemplateTimeBlock it came from. That link is the hinge a UsualSetup matches on to auto-seed inclusions, so it survives edits: relabelling or retiming a TemplateTimeBlock, or moving its template to another weekday, keeps its identity. Removing a TemplateTimeBlock removes every UsualSetup entry for it. Labels are unique within a template. A ChurchAdmin may mark a TemplateTimeBlock public, which makes it a Regular Activity, and may give it a place, either one of the Church's Church Addresses or a free-text description; a block given no place has none. Events generated from it copy both, like its label and times.
 _Avoid_: TimeBlock (bare), period, shift, slot
+
+**Regular Activity** (pt-BR: Atividade regular):
+One thing a Church regularly does, as the public sees it: a weekday, a starting TimeOfDay, a label and, when one was given, a place. It is never written on its own; it is read live from a public TemplateTimeBlock, so changing or removing that block changes or removes it. Unlike an Event it has no date; it carries its template's Recurrence instead ("Todo domingo", "1º e 3º domingo do mês", "Dia 15 de cada mês").
+_Avoid_: Service time, schedule, recurring event
+
+**Church Programme** (pt-BR: Programação):
+All of a Church's Regular Activities together: first those falling on weekdays, ordered by weekday from Sunday, then by starting time, weekly before monthly; then those falling on days of the month, ordered by day, then by starting time. An activity whose Recurrence mixes entries sits by its first entry. It answers "when does this church meet?", while Public Events answer "what is coming next?".
+_Avoid_: Schedule, agenda, calendar
 
 **UsualSetup** (UI: Usual setup · pt-BR: Configuração padrão):
 A per-Ministry standing rule declaring which EventTemplate TemplateTimeBlocks that Ministry is always on (e.g. "Projection serves every Sunday block, Wednesday night"). Per TemplateTimeBlock it records: whether the Ministry serves it, how the Ministry splits it into Shifts, and the headcount per Shift (per Sector and Role). Applying EventTemplates only creates calendar copies. The definitive pre-fill happens when the Cycle goes Draft to Sent: inside the Send transaction, the latest setup and the Ministry's `defaultDirection` seed the Ministry's inclusions, Shifts, and ShiftRequirements in its MinistryParticipation, which the leader then confirms and tweaks. Send refuses a Cycle whose Draft Events already hold staffing, and Applying onto an already-Sent Cycle adds calendar copies the leader opts into while preparing. Bound to templates through the TemplateTimeBlock each EventTimeBlock came from. It is a pre-fill helper only. The Ministry's `defaultDirection` is a separate ministry-wide setting, not part of the setup; it only decides blocks the setup has no entry for. A TemplateTimeBlock the Ministry serves names at least one headcount; a (Sector, Role) pair it leaves out is not needed. A ChurchAdmin or the Ministry's leader maintains it, and a save made before Send takes effect at Send, while a later save never reseeds an already-Sent Cycle, which keeps what it was seeded with.
@@ -158,7 +210,7 @@ One Ministry's part of one sent Cycle: its MinistryParticipations in that Cycle 
 _Avoid_: Ministry-cycle, roster, rota
 
 **EventTimeBlock** (UI: Time block · pt-BR: Horário):
-A church-level block of time within an Event — a shared service block (e.g. the 10:30 service) or an overall span — that Ministries opt into or out of. Its bounds are Instants. It is the same for every Ministry; per-Ministry subdivision happens below it in Shifts. Once the Cycle is sent, a single EventTimeBlock may be moved (same duration, its Shifts moving with it, the Event's bounds stretching to hold it) or cancelled on its own, until it starts.
+A church-level block of time within an Event — a shared service block (e.g. the 10:30 service) or an overall span — that Ministries opt into or out of. Its bounds are Instants. It is the same for every Ministry; per-Ministry subdivision happens below it in Shifts. Once the Cycle is sent, a single EventTimeBlock may be moved (same duration, its Shifts moving with it, the Event's bounds stretching to hold it) or cancelled on its own, until it starts. An **edit** of its Event may still retime it until the Event ends. A ChurchAdmin may mark an EventTimeBlock public, until it starts; an Event is a **Public Event** while at least one of its EventTimeBlocks is. A Public Event is seen only once its Cycle is sent, stays seen as cancelled when it, or every public EventTimeBlock in it, is cancelled, and drops out of sight once past. Every move of a public EventTimeBlock after Send is kept, so the public can follow how it was rescheduled.
 _Avoid_: TimeSlot, slot, period
 
 **Shift** (pt-BR: Turno):
@@ -170,7 +222,7 @@ The staffing need for one Role at one Sector within a **Shift**, owned by one Mi
 _Avoid_: SlotRequirement, staffing need, requirement
 
 **Assignment** (pt-BR: Escala):
-The placement of a Volunteer into exactly one ShiftRequirement — a Role at a Sector within a **Shift** — scoped to a MinistryParticipation. In pt-BR it shares *escala* with Schedule, so it is always qualified by its day and time (*Escala de dom 12 out · 10:30*); the verb is *escalar*, a placed Volunteer is *escalado*, and *Minha escala* (UI: My schedule) gathers a Volunteer's Assignments. One Assignment per Volunteer per Shift, and never two Assignments for one Volunteer whose Shifts overlap, in any Ministry (no double-booking): the first Ministry to assign someone holds them for that time. When a ChurchAdmin moves an Event or EventTimeBlock so that someone would be double-booked, that person's Assignment on the moved one is withdrawn. Cancelling an Event or EventTimeBlock cancels its Assignments. A Volunteer sees their Assignments only once the Schedule is published, and does not confirm or decline them: a published Assignment means they serve. Assignments can be added, moved or removed, before or after publishing, until their Shift starts; from then on they are fixed.
+The placement of a Volunteer into exactly one ShiftRequirement — a Role at a Sector within a **Shift** — scoped to a MinistryParticipation. In pt-BR it shares *escala* with Schedule, so it is always qualified by its day and time (*Escala de dom 12 out · 10:30*); the verb is *escalar*, a placed Volunteer is *escalado*, and *Minha escala* (UI: My schedule) gathers a Volunteer's Assignments. One Assignment per Volunteer per Shift, and never two Assignments for one Volunteer whose Shifts overlap, in any Ministry (no double-booking): the first Ministry to assign someone holds them for that time. When a ChurchAdmin moves an Event or EventTimeBlock so that someone would be double-booked, that person's Assignment on the moved one is withdrawn. Cancelling an Event or EventTimeBlock cancels its Assignments. A Volunteer sees their Assignments only once the Schedule is published, and does not confirm or decline them: a published Assignment means they serve. Assignments can be added, moved or removed, before or after publishing, until their Shift starts; from then on they are fixed, except that an **edit** of a running Event may stretch a running Shift's end and so withdraw its Assignment when that end would double-book its Volunteer.
 _Avoid_: Booking, scheduling, escalação (pt-BR)
 
 **Swap request** (pt-BR: Pedido de troca):

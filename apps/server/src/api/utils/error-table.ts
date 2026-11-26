@@ -32,7 +32,7 @@ export type MappedDomainCode =
   | 'INVALID_TIME_RANGE'
   | 'INVALID_REQUIRED_COUNT'
   | 'INVALID_SHIFT_SPLIT'
-  | 'INVALID_WEEKDAY'
+  | 'INVALID_RECURRENCE'
   | 'MINISTRY_NOT_FOUND'
   | 'MINISTRY_NAME_IN_USE'
   | 'MINISTRY_IN_USE'
@@ -44,14 +44,19 @@ export type MappedDomainCode =
   | 'ASSIGNMENT_ACCESS_DENIED'
   | 'ASSIGN_ACTION_NOT_AVAILABLE'
   | 'INSUFFICIENT_INVITATION_AUTHORITY'
-  | 'CANCEL_WINDOW_CLOSED'
   | 'ISOLATION_BREACH'
   | 'CROSS_MINISTRY_SCOPE'
   | 'OVERLAPPING_CYCLE'
+  | 'UNANSWERED_TEMPLATE_COLLISIONS'
   | 'ILLEGAL_STATE_TRANSITION'
   | 'DRAFT_STAFFING_RECONCILIATION_REQUIRED'
   | 'EVENT_OUTSIDE_CYCLE'
+  | 'EVENT_CANCELLED'
+  | 'EVENT_TIME_BLOCK_CANCELLED'
   | 'MOVE_WINDOW_CLOSED'
+  | 'EDIT_WINDOW_CLOSED'
+  | 'STAFFED_EVENT_TIME_BLOCK_DROP'
+  | 'PUBLIC_INFO_LOCKED'
   | 'ADMIN_CANCELLATION_WINDOW_CLOSED'
   | 'EMPTY_CYCLE'
   | 'INVALID_CYCLE_EVENTS'
@@ -72,6 +77,7 @@ export type MappedDomainCode =
   | 'MINISTRY_MEMBERSHIP_INACTIVE'
   | 'UPCOMING_ASSIGNMENTS'
   | 'HEADCOUNT_BELOW_ASSIGNED'
+  | 'SHIFT_REQUIREMENT_FULL'
   | 'SCHEDULE_HAS_NO_ASSIGNMENTS'
   | 'SCHEDULE_ALREADY_PUBLISHED'
   | 'ASSIGNMENT_PROPOSAL_CHANGED'
@@ -88,6 +94,11 @@ export type MappedDomainCode =
   | 'SHIFT_HAS_RESPONSES'
   | 'ASK_BLOCKED_FLAGGED_SHIFTS'
   | 'REMIND_ON_COOLDOWN'
+  | 'LOGO_TOO_LARGE'
+  | 'LOGO_TOO_SMALL'
+  | 'LOGO_BAD_ASPECT_RATIO'
+  | 'LOGO_UNSUPPORTED_TYPE'
+  | 'LOGO_KEY_INVALID'
   | 'VALIDATION_ERROR';
 
 export type ErrorCode = RefusalCode | MappedDomainCode;
@@ -113,7 +124,7 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     message: m.error_invalid_required_count,
   },
   INVALID_SHIFT_SPLIT: { status: 400, message: m.error_invalid_shift_split },
-  INVALID_WEEKDAY: { status: 400, message: m.error_invalid_weekday },
+  INVALID_RECURRENCE: { status: 400, message: m.error_invalid_recurrence },
   MINISTRY_NOT_FOUND: { status: 404, message: m.error_ministry_not_found },
   MINISTRY_IN_USE: { status: 409, message: m.error_ministry_in_use },
   MINISTRY_NAME_IN_USE: {
@@ -137,10 +148,13 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     status: 403,
     message: m.error_insufficient_invitation_authority,
   },
-  CANCEL_WINDOW_CLOSED: { status: 409, message: m.error_cancel_window_closed },
   ISOLATION_BREACH: { status: 409, message: m.error_isolation_breach },
   CROSS_MINISTRY_SCOPE: { status: 409, message: m.error_cross_ministry_scope },
   OVERLAPPING_CYCLE: { status: 409, message: m.error_overlapping_cycle },
+  UNANSWERED_TEMPLATE_COLLISIONS: {
+    status: 409,
+    message: m.error_unanswered_template_collisions,
+  },
   ILLEGAL_STATE_TRANSITION: {
     status: 409,
     message: m.error_illegal_state_transition,
@@ -150,7 +164,18 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     message: m.error_draft_staffing_reconciliation_required,
   },
   EVENT_OUTSIDE_CYCLE: { status: 409, message: m.error_event_outside_cycle },
+  EVENT_CANCELLED: { status: 409, message: m.error_event_cancelled },
+  EVENT_TIME_BLOCK_CANCELLED: {
+    status: 409,
+    message: m.error_event_time_block_cancelled,
+  },
   MOVE_WINDOW_CLOSED: { status: 409, message: m.error_move_window_closed },
+  EDIT_WINDOW_CLOSED: { status: 409, message: m.error_edit_window_closed },
+  STAFFED_EVENT_TIME_BLOCK_DROP: {
+    status: 409,
+    message: m.error_staffed_event_time_block_drop,
+  },
+  PUBLIC_INFO_LOCKED: { status: 409, message: m.error_public_info_locked },
   ADMIN_CANCELLATION_WINDOW_CLOSED: {
     status: 409,
     message: m.error_admin_cancellation_window_closed,
@@ -220,6 +245,10 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     status: 409,
     message: m.error_headcount_below_assigned,
   },
+  SHIFT_REQUIREMENT_FULL: {
+    status: 409,
+    message: m.error_shift_requirement_full,
+  },
   SCHEDULE_HAS_NO_ASSIGNMENTS: {
     status: 409,
     message: m.error_schedule_has_no_assignments,
@@ -276,6 +305,17 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
     status: 409,
     message: m.error_remind_on_cooldown,
   },
+  LOGO_TOO_LARGE: { status: 413, message: m.error_logo_too_large },
+  LOGO_TOO_SMALL: { status: 422, message: m.error_logo_too_small },
+  LOGO_BAD_ASPECT_RATIO: {
+    status: 422,
+    message: m.error_logo_bad_aspect_ratio,
+  },
+  LOGO_UNSUPPORTED_TYPE: {
+    status: 415,
+    message: m.error_logo_unsupported_type,
+  },
+  LOGO_KEY_INVALID: { status: 422, message: m.error_logo_key_invalid },
   VALIDATION_ERROR: { status: 422, message: m.error_validation_error },
 };
 

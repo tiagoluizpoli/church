@@ -4,6 +4,7 @@ import type {
   GetCycle200EventsItem,
   ListCycles200CyclesItem,
   ListEventTemplates200TemplatesItem,
+  UpdateEventTemplateBodyRecurrence,
 } from '@/infrastructure/api/churchAPI.schemas';
 
 export interface CycleFormState {
@@ -20,11 +21,16 @@ export interface TemplateTimeBlockDraft {
   label: string;
   startTime: TimeOfDay | null;
   endTime: TimeOfDay | null;
+  isPublic: boolean;
+  place: string;
+  placeAddressId: string | null;
 }
+
+export type TemplateRecurrence = UpdateEventTemplateBodyRecurrence;
 
 export interface TemplateFormState {
   name: string;
-  weekday: string;
+  recurrence: TemplateRecurrence;
   blocks: TemplateTimeBlockDraft[];
 }
 
@@ -47,6 +53,7 @@ export interface TemplateLibraryTableRow {
   name: string;
   weekday: string;
   blockCount: number;
+  publicBlockCount: number;
   description: string;
 }
 

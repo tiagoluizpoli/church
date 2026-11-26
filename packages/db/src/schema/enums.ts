@@ -35,6 +35,12 @@ export const eventTimeBlockStatusEnum = pgEnum('event_time_block_status', [
 
 export const cycleStateEnum = pgEnum('cycle_state', ['draft', 'sent', 'past']);
 
+/** A Template Precedence answer for an unordered pair stored as (A, B). */
+export const templatePrecedenceOutcomeEnum = pgEnum(
+  'template_precedence_outcome',
+  ['both', 'a_wins', 'b_wins'],
+);
+
 export const participationStateEnum = pgEnum('participation_state', [
   'preparing',
   'availability_requested',
@@ -55,8 +61,6 @@ export const defaultDirectionEnum = pgEnum('default_direction', [
 export const assignmentStatusEnum = pgEnum('assignment_status', [
   'draft',
   'pending',
-  'confirmed',
-  'declined',
   'cancelled',
 ]);
 

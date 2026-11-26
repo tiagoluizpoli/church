@@ -38,6 +38,7 @@ import {
   assignmentResponseSchema,
   auditListResponseSchema,
 } from '../dtos/assignment.dto';
+import { cycleParamsSchema } from '../dtos/cycle.dto';
 import {
   cycleBuilderMapper,
   cycleBuilderResponseSchema,
@@ -47,29 +48,12 @@ import {
 } from '../dtos/cycle-builder.dto';
 import { refuse } from '../utils/refuse';
 
-interface ParticipationRouteParams {
-  participationId: string;
-}
+const shiftParamsSchema = z.object({ shiftId: z.guid() });
+const assignmentParamsSchema = z.object({ assignmentId: z.guid() });
+const participationParamsSchema = z.object({ participationId: z.guid() });
 
-interface CycleRouteParams {
-  cycleId: string;
-}
-
-interface CycleMinistryQuery {
-  ministryId: string;
-}
-
-const cycleMinistryQuerySchema = z.object({
-  ministryId: z.string(),
-});
-
-interface ShiftRouteParams {
-  shiftId: string;
-}
-
-interface AssignmentRouteParams {
-  assignmentId: string;
-}
+const cycleMinistryQuerySchema = z.object({ ministryId: z.guid() });
+type CycleMinistryQuery = z.infer<typeof cycleMinistryQuerySchema>;
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -177,6 +161,7 @@ export class AssignController implements FastifyController {
       '/cycles/:cycleId/builder',
       {
         schema: {
+          params: cycleParamsSchema,
           tags: ['assign'],
           operationId: 'getCycleBuilderData',
           summary: 'Get cycle builder data for a Ministry',
@@ -191,7 +176,7 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as CycleRouteParams;
+        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
         const { ministryId } = request.query as CycleMinistryQuery;
 
         const decision = await this.authorityGuard.decideManageMinistry({
@@ -223,6 +208,7 @@ export class AssignController implements FastifyController {
         '/cycles/:cycleId/audit',
         {
           schema: {
+            params: cycleParamsSchema,
             tags: ['assign'],
             operationId: 'getCycleAuditLog',
             summary: "Get a Ministry's Assignment audit log for a cycle",
@@ -237,7 +223,9 @@ export class AssignController implements FastifyController {
           },
         },
         async (request, reply) => {
-          const { cycleId } = request.params as CycleRouteParams;
+          const { cycleId } = request.params as z.infer<
+            typeof cycleParamsSchema
+          >;
           const { ministryId } = request.query as CycleMinistryQuery;
 
           const decision = await this.authorityGuard.decideManageMinistry({
@@ -268,6 +256,7 @@ export class AssignController implements FastifyController {
       '/cycles/:cycleId/assignment-proposal',
       {
         schema: {
+          params: cycleParamsSchema,
           tags: ['assign'],
           operationId: 'getAssignmentProposal',
           summary: "Propose Assignments for a Ministry's Schedule",
@@ -283,7 +272,7 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as CycleRouteParams;
+        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
         const { ministryId } = request.query as CycleMinistryQuery;
 
         const decision = await this.authorityGuard.decideManageMinistry({
@@ -313,6 +302,7 @@ export class AssignController implements FastifyController {
       '/cycles/:cycleId/assignment-proposal/apply',
       {
         schema: {
+          params: cycleParamsSchema,
           tags: ['assign'],
           operationId: 'applyAssignmentProposal',
           summary: 'Apply a reviewed Assignment proposal',
@@ -330,7 +320,7 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as CycleRouteParams;
+        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
         const { ministryId } = request.query as CycleMinistryQuery;
 
         // Checked again on every attempt, recovery included.
@@ -370,6 +360,7 @@ export class AssignController implements FastifyController {
       '/cycles/:cycleId/publish',
       {
         schema: {
+          params: cycleParamsSchema,
           tags: ['assign'],
           operationId: 'publishCycle',
           summary: "Publish a Ministry's schedule for a cycle",
@@ -386,7 +377,7 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as CycleRouteParams;
+        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
         const { ministryId } = request.query as CycleMinistryQuery;
 
         const decision = await this.authorityGuard.decideManageMinistry({
@@ -419,6 +410,7 @@ export class AssignController implements FastifyController {
       '/cycles/:cycleId/send-updates',
       {
         schema: {
+          params: cycleParamsSchema,
           tags: ['assign'],
           operationId: 'sendScheduleUpdates',
           summary: 'Send Schedule updates',
@@ -432,7 +424,7 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as CycleRouteParams;
+        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
         const { ministryId } = request.query as CycleMinistryQuery;
         const decision = await this.authorityGuard.decideManageMinistry({
           churchId: ChurchId.from(request.churchId),
@@ -461,6 +453,7 @@ export class AssignController implements FastifyController {
       '/shifts/:shiftId/eligible-volunteers',
       {
         schema: {
+          params: shiftParamsSchema,
           tags: ['assign'],
           operationId: 'listEligibleVolunteers',
           summary: 'List eligible Volunteers for a Shift',
@@ -474,7 +467,7 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { shiftId } = request.params as ShiftRouteParams;
+        const { shiftId } = request.params as z.infer<typeof shiftParamsSchema>;
         const denied = await this.denyShiftScope({ request, reply, shiftId });
         if (denied) return;
 
@@ -493,6 +486,7 @@ export class AssignController implements FastifyController {
       '/shifts/:shiftId/assignments',
       {
         schema: {
+          params: shiftParamsSchema,
           tags: ['assign'],
           operationId: 'createParticipationAssignment',
           summary: 'Assign a Volunteer to a ShiftRequirement',
@@ -507,7 +501,7 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { shiftId } = request.params as ShiftRouteParams;
+        const { shiftId } = request.params as z.infer<typeof shiftParamsSchema>;
         const body = request.body as CreateParticipationAssignmentBody;
         const scope = await this.resolveScheduleShift({
           request,
@@ -537,6 +531,7 @@ export class AssignController implements FastifyController {
       '/assignments/:assignmentId',
       {
         schema: {
+          params: assignmentParamsSchema,
           tags: ['assign'],
           operationId: 'deleteParticipationAssignment',
           summary: 'Delete an Assignment',
@@ -549,7 +544,9 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as AssignmentRouteParams;
+        const { assignmentId } = request.params as z.infer<
+          typeof assignmentParamsSchema
+        >;
         const resolved = await this.resolveScheduleAssignment({
           request,
           reply,
@@ -570,6 +567,7 @@ export class AssignController implements FastifyController {
       '/assignments/:assignmentId/move',
       {
         schema: {
+          params: assignmentParamsSchema,
           tags: ['assign'],
           operationId: 'moveParticipationAssignment',
           summary: 'Move an Assignment to another Sector',
@@ -582,7 +580,9 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as AssignmentRouteParams;
+        const { assignmentId } = request.params as z.infer<
+          typeof assignmentParamsSchema
+        >;
         const resolved = await this.resolveScheduleAssignment({
           request,
           reply,
@@ -606,6 +606,7 @@ export class AssignController implements FastifyController {
       '/assignments/:assignmentId/reassign',
       {
         schema: {
+          params: assignmentParamsSchema,
           tags: ['assign'],
           operationId: 'reassignParticipationAssignment',
           summary: 'Reassign an Assignment to another Volunteer',
@@ -620,7 +621,9 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as AssignmentRouteParams;
+        const { assignmentId } = request.params as z.infer<
+          typeof assignmentParamsSchema
+        >;
         const resolved = await this.resolveScheduleAssignment({
           request,
           reply,
@@ -644,6 +647,7 @@ export class AssignController implements FastifyController {
       '/participations/:participationId/completion',
       {
         schema: {
+          params: participationParamsSchema,
           tags: ['assign'],
           operationId: 'getParticipationCompletion',
           summary: "Get a MinistryParticipation's staffing completion",
@@ -657,7 +661,9 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { participationId } = request.params as ParticipationRouteParams;
+        const { participationId } = request.params as z.infer<
+          typeof participationParamsSchema
+        >;
         const denied = await this.denyParticipationScope({
           request,
           reply,

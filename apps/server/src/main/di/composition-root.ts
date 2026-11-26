@@ -38,7 +38,12 @@ export function createCompositionRoot(
     services,
     auth,
   });
-  const controllers = buildControllers({ config, managers, auth });
+  const controllers = buildControllers({
+    config,
+    managers,
+    services,
+    auth,
+  });
 
   return {
     controllers,

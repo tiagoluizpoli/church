@@ -97,6 +97,9 @@ describe('eventTimeBlockMapper', () => {
         startTime: startTime,
         endTime: endTime,
         label: 'Morning Event time block',
+        isPublic: false,
+        place: null,
+        placeAddressId: null,
         status: 'active',
         requirements: [
           {
@@ -136,6 +139,9 @@ describe('eventTimeBlockMapper', () => {
         startTime: startTime,
         endTime: endTime,
         label: undefined,
+        isPublic: false,
+        place: null,
+        placeAddressId: null,
         status: 'active',
         requirements: [],
       });
@@ -173,6 +179,9 @@ describe('eventTimeBlockMapper', () => {
         startTime: startTime,
         endTime: endTime,
         label: 'Event time block A',
+        isPublic: false,
+        place: null,
+        placeAddressId: null,
         status: 'active',
         requirements: [],
       });

@@ -11,7 +11,11 @@ export interface ChurchMembershipSummary {
 export interface ChurchMembershipComparison extends ChurchMembershipSummary {
   churchName: string;
   timezone: string;
+  logoKey: string | null;
+  accentColor: string | null;
   lastOpenedAt: Date | null;
+  /** The Church's Main Address, public or not; null without one. */
+  mainAddress: { bairro: string; city: string; uf: string } | null;
 }
 
 export interface ListChurchMembershipsByUserIdInput {

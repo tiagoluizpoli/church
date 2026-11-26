@@ -101,7 +101,6 @@ beforeAll(async () => {
       const volunteerController = new VolunteerController({
         volunteerManager: managers.volunteerManager,
         activeChurchResolver: activeChurchResolver as never,
-        config: appConfig,
       });
       instance.register(
         volunteerController.registerRoutes.bind(volunteerController),
@@ -256,7 +255,7 @@ async function seedCrossMinistryOverlap({
     volunteerId: doubleBooked.volunteer.id,
     roleId: otherRole.id,
     shiftRequirementId: otherRequirement.id,
-    status: 'confirmed',
+    status: 'pending',
   });
 
   const free = await seedVolunteerMembership({
@@ -773,7 +772,7 @@ describe('Assignment proposal preview', () => {
         .select()
         .from(assignment)
         .where(eq(assignment.id, seed.overlapId));
-      expect(overlap?.status).toBe('confirmed');
+      expect(overlap?.status).toBe('pending');
     });
 
     it('recovers the committed outcome on a replay and after a lost response, even once published', async () => {
@@ -1358,6 +1357,114 @@ describe('reassign without a reason input', () => {
   });
 });
 
+describe('over-assignment', () => {
+  async function seedFullRequirement() {
+    const seed = await seedCrossMinistryOverlap();
+    await schedulingTestDb
+      .update(shiftRequirement)
+      .set({ peopleNeeded: 1 })
+      .where(eq(shiftRequirement.id, seed.targetRequirementId));
+    await seedTargetAssignment({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: seed.freeVolunteerId,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: seed.targetRequirementId,
+    });
+    const extra = await seedVolunteerMembership({
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Extra Volunteer',
+      email: 'extra@test.com',
+    });
+    await seedRoleQualification({
+      churchId: seed.churchId,
+      membershipId: extra.membership.id,
+      roleId: seed.targetRoleId,
+    });
+    return { seed, extraId: extra.volunteer.id };
+  }
+
+  it('refuses a create above people needed, then accepts it once raised', async () => {
+    const { seed, extraId } = await seedFullRequirement();
+    const send = () =>
+      app.inject({
+        method: 'POST',
+        url: `/api/v1/assign/shifts/${seed.targetShiftId}/assignments`,
+        payload: {
+          volunteerId: extraId,
+          shiftRequirementId: seed.targetRequirementId,
+        },
+      });
+    const refused = await send();
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toMatchObject({
+      error: 'SHIFT_REQUIREMENT_FULL',
+      message: m.error_shift_requirement_full(),
+    });
+    await schedulingTestDb
+      .update(shiftRequirement)
+      .set({ peopleNeeded: 2 })
+      .where(eq(shiftRequirement.id, seed.targetRequirementId));
+    expect((await send()).statusCode).toBe(201);
+  });
+
+  it('refuses a move into a full requirement', async () => {
+    const { seed } = await seedFullRequirement();
+    const sector = await buildSector({
+      db: schedulingTestDb,
+      churchId: seed.churchId,
+      ministryId: seed.ministryId,
+      name: 'Side Door',
+    });
+    const side = await seedRequirement({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      roleId: seed.targetRoleId,
+      sectorId: sector.id,
+      peopleNeeded: 1,
+    });
+    const sideAssignment = await seedTargetAssignment({
+      churchId: seed.churchId,
+      participationId: seed.targetParticipationId,
+      shiftId: seed.targetShiftId,
+      volunteerId: (
+        await seedVolunteerMembership({
+          churchId: seed.churchId,
+          ministryId: seed.ministryId,
+          name: 'Side Volunteer',
+          email: 'side@test.com',
+        })
+      ).volunteer.id,
+      roleId: seed.targetRoleId,
+      shiftRequirementId: side.id,
+    });
+    const refused = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/assign/assignments/${sideAssignment.id}/move`,
+      payload: { shiftRequirementId: seed.targetRequirementId },
+    });
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toMatchObject({ error: 'SHIFT_REQUIREMENT_FULL' });
+  });
+
+  it('still reassigns a full requirement to another Volunteer', async () => {
+    const { seed, extraId } = await seedFullRequirement();
+    const [current] = await schedulingTestDb
+      .select()
+      .from(assignment)
+      .where(eq(assignment.shiftRequirementId, seed.targetRequirementId));
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/assign/assignments/${current?.id}/reassign`,
+      payload: { volunteerId: extraId },
+    });
+    expect(response.statusCode).toBe(200);
+  });
+});
+
 describe('move Assignment', () => {
   it('rebinds the same Assignment and records one updated audit', async () => {
     const seed = await seedCrossMinistryOverlap();
@@ -1479,7 +1586,7 @@ describe('move Assignment', () => {
       volunteerId: seed.freeVolunteerId,
       roleId: seed.targetRoleId,
       shiftRequirementId: seed.targetRequirementId,
-      status: 'declined',
+      status: 'cancelled',
     });
     await seedTargetAssignment({
       churchId: seed.churchId,
@@ -1730,8 +1837,8 @@ describe('requirement coverage and published placement HTTP contract', () => {
       email: 'coverage-extra@test.com',
     });
     for (const [volunteerId, requirementId, status] of [
-      [seed.freeVolunteerId, sideRequirement.id, 'declined'],
-      [seed.freeVolunteerId, seed.targetRequirementId, 'confirmed'],
+      [seed.freeVolunteerId, sideRequirement.id, 'cancelled'],
+      [seed.freeVolunteerId, seed.targetRequirementId, 'pending'],
       [extra.volunteer.id, seed.targetRequirementId, 'pending'],
       [extra.volunteer.id, sideRequirement.id, 'cancelled'],
     ] as const) {
@@ -1766,7 +1873,7 @@ describe('requirement coverage and published placement HTTP contract', () => {
     });
     expect(published.statusCode).toBe(200);
     const rows = published.json().events[0].rows;
-    // A declined place reads as Open; rows carry no confirmation state.
+    // A cancelled place reads as Open; rows carry no confirmation state.
     expect(rows).toHaveLength(3);
     for (const row of rows) expect(row).not.toHaveProperty('confirmationState');
     expect(

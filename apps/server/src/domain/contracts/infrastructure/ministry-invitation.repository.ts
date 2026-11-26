@@ -6,6 +6,7 @@ import type {
   RoleId,
   UserId,
 } from '../../branded-ids';
+import type { ChurchIdentitySnapshot } from '../../church-identity-snapshot';
 import type { MinistryInvitation } from '../../entities/ministry-invitation';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 import type { PublicRedemptionPreview } from '../../entities/public-redemption-preview';
@@ -254,10 +255,44 @@ export interface MinistryInvitationContext {
   roleNames: string[];
 }
 
-export interface FindRedemptionBundleInput {
-  /** Any half of the offer: a chained one resolves its whole Church offer. */
-  ministryInvitation: MinistryInvitation;
+/** The Church Invitation entry point of a redemption bundle lookup. */
+export interface ChurchInvitationBundleEntry {
+  churchId: ChurchId;
+  churchInvitationId: string;
+}
+
+export type FindRedemptionBundleInput = (
+  | {
+      /** Any half of the offer: a chained one resolves its whole Church offer. */
+      ministryInvitation: MinistryInvitation;
+    }
+  | {
+      /** The Church Invitation entry point: the Church half plus every pending, unexpired half. */
+      churchInvitation: ChurchInvitationBundleEntry;
+    }
+) & {
   now: Date;
+  tx?: TransactionContext;
+};
+
+export interface FindChurchInvitationContextInput {
+  churchInvitationId: ChurchInvitationId;
+  tx?: TransactionContext;
+}
+
+/** Any-status Church Invitation lookup backing the signed-in Church-only review. */
+export interface ChurchInvitationContext {
+  churchId: ChurchId;
+  churchName: string;
+  email: string;
+  status: ChurchInvitationStatus;
+  churchAccessLevel: ChurchInvitationAccessLevel;
+  expiresAt: Date;
+}
+
+export interface IsChurchInvitationAddressedToUserInput {
+  churchInvitationId: ChurchInvitationId;
+  userId: UserId;
   tx?: TransactionContext;
 }
 
@@ -267,14 +302,32 @@ export interface IsInvitationAddressedToUserInput {
   tx?: TransactionContext;
 }
 
-export interface EnqueueOutboxMessageInput {
+interface ChainedInvitationEnqueuePayload extends ChurchIdentitySnapshot {
+  ministryInvitationId: string;
+  churchInvitationId?: string;
+}
+
+interface ChurchBootstrapEnqueuePayload extends ChurchIdentitySnapshot {
+  churchInvitationId: string;
+}
+
+/** Every new invitation row carries the Church identity snapshot; only old rows lack it. */
+type InvitationEnqueue =
+  | { kind: 'invitation.chained'; payload: ChainedInvitationEnqueuePayload }
+  | {
+      kind: 'invitation.church-bootstrap';
+      payload: ChurchBootstrapEnqueuePayload;
+    };
+
+interface EnqueueOutboxMessageBase {
   churchId: ChurchId;
-  kind: 'invitation.chained' | 'invitation.church-bootstrap';
-  payload: Record<string, unknown>;
   correlationId: string;
   scheduledFor: Date;
   tx?: TransactionContext;
 }
+
+export type EnqueueOutboxMessageInput = EnqueueOutboxMessageBase &
+  InvitationEnqueue;
 
 export interface MinistryInvitationRepository {
   /**
@@ -403,6 +456,16 @@ export interface MinistryInvitationRepository {
   findRedemptionBundle(
     input: FindRedemptionBundleInput,
   ): Promise<RedemptionBundle>;
+
+  /** Any status; `null` only for a missing (or malformed) id. */
+  findChurchInvitationContext(
+    input: FindChurchInvitationContextInput,
+  ): Promise<ChurchInvitationContext | null>;
+
+  /** Whether `userId` holds the Church Invitation's email. */
+  isChurchInvitationAddressedToUser(
+    input: IsChurchInvitationAddressedToUserInput,
+  ): Promise<boolean>;
 
   isInvitationAddressedToUser(
     input: IsInvitationAddressedToUserInput,

@@ -1,5 +1,6 @@
 import type { AppConfig } from '@church/app-config';
 import {
+  addMilliseconds,
   fromDate,
   millisecondsBetween,
   now,
@@ -117,10 +118,17 @@ export class DbOutboxDrainer implements IOutboxDrainer {
 
   async drainOnce(input: DrainOnceInput): Promise<DrainOnceResult> {
     const { limit } = input;
+    const claimedAt = now();
     const claimed = await this.unitOfWork.run((tx) =>
       this.outboxRepository.claimPending({
         limit,
-        now: nowAsDate(),
+        now: toDate({ instant: claimedAt }),
+        staleBefore: toDate({
+          instant: addMilliseconds({
+            instant: claimedAt,
+            milliseconds: -this.outboxPolicy.processingLeaseMs,
+          }),
+        }),
         tx,
       }),
     );
@@ -131,13 +139,48 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       // One span per delivery, so its SQL nests under it in the trace.
       const outcome = await this.tracing.inSpan({
         name: 'outbox.delivery',
-        run: () => this.processOne({ message }),
+        run: () => this.processIsolated({ message }),
       });
       if (outcome === 'sent') sent += 1;
       else failed += 1;
     }
 
     return { claimed: claimed.length, sent, failed };
+  }
+
+  /**
+   * One message never aborts the batch. An unexpected error (a read before
+   * the send, bookkeeping after it) is retried like a retryable send: only a
+   * provider refusal or an exhausted attempt cap fails the row for good.
+   */
+  private async processIsolated({
+    message,
+  }: ProcessOneInput): Promise<'sent' | 'failed'> {
+    try {
+      // A reclaimed row that keeps stranding is a poison message.
+      if (
+        hasExhaustedRetries({
+          attempts: message.attempts,
+          policy: this.outboxPolicy,
+        })
+      ) {
+        await this.failTerminally({
+          message,
+          reason: 'Processing lease expired too many times',
+        });
+        return 'failed';
+      }
+      return await this.processOne({ message });
+    } catch (error) {
+      // Name only: a raw message can echo recipient data.
+      const reason = error instanceof Error ? error.name : 'UnknownError';
+      try {
+        await this.retryOrFail({ message, reason, retryable: true });
+      } catch {
+        // Bookkeeping is down too: the row stays processing and the lease reclaims it.
+      }
+      return 'failed';
+    }
   }
 
   private async processOne({
@@ -197,6 +240,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       kind: message.kind,
       to: offer.email,
       churchName: church.name,
+      churchLogoUrl: message.payload.churchLogoUrl,
+      churchAccent: message.payload.churchAccent,
+      churchLocality: message.payload.churchLocality,
       expiresAt: fromDate({ date: offer.expiresAt }),
       churchTimezone: church.timezone,
       redemptionUrl: webLink({
@@ -268,6 +314,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       kind: message.kind,
       to: email,
       churchName: church.name,
+      churchLogoUrl: message.payload.churchLogoUrl,
+      churchAccent: message.payload.churchAccent,
+      churchLocality: message.payload.churchLocality,
       ministryName: ministry.name,
       ministryAccessLevel: invitation.ministryAccessLevel,
       roleNames: roles.map((role) => role.name),
@@ -299,6 +348,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private async loadPendingInvitationFacts({
     churchId,
     ministryInvitationId,
+    churchLogoUrl,
+    churchAccent,
+    churchLocality,
   }: LoadPendingInvitationFactsInput): Promise<MinistryInvitationDeliveryFacts | null> {
     const invitation = await this.invitationRepository.findById({
       churchId,
@@ -322,6 +374,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       ministryId: invitation.ministryId,
       ministryName: ministry.name,
       churchName: church.name,
+      churchLogoUrl,
+      churchAccent,
+      churchLocality,
       churchTimezone: church.timezone,
       inviterName,
       ministryAccessLevel: invitation.ministryAccessLevel,
@@ -345,6 +400,9 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         return this.loadPendingInvitationFacts({
           churchId,
           ministryInvitationId: request.data.ministryInvitationId,
+          churchLogoUrl: request.data.churchLogoUrl,
+          churchAccent: request.data.churchAccent,
+          churchLocality: request.data.churchLocality,
         });
       case 'availability_opened':
       case 'availability_reminder':
@@ -365,7 +423,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           ...request.data,
           actionUrl: webLink({
             baseUrl: this.webBaseUrl,
-            path: '/my-schedule',
+            path: '/app/my-schedule',
           }),
         };
       case 'swap_request':
@@ -373,7 +431,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           ...request.data,
           actionUrl: webLink({
             baseUrl: this.webBaseUrl,
-            path: `/schedules/${request.data.ministryId}/${request.data.cycleId}/assign?swapRequest=${request.data.swapRequestId}`,
+            path: `/app/schedules/${request.data.ministryId}/${request.data.cycleId}/assign?swapRequest=${request.data.swapRequestId}`,
           }),
         };
       case 'event_changed': {
@@ -381,8 +439,8 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         const [only, ...others] = ministries;
         const path =
           only && others.length === 0
-            ? `/schedules/${only.id}/${cycleId}`
-            : `/schedules?cycleId=${cycleId}&ministryIds=${ministries.map(({ id }) => id).join(',')}`;
+            ? `/app/schedules/${only.id}/${cycleId}`
+            : `/app/schedules?cycleId=${cycleId}&ministryIds=${ministries.map(({ id }) => id).join(',')}`;
         return {
           ...request.data,
           actionUrl: webLink({ baseUrl: this.webBaseUrl, path }),
@@ -393,7 +451,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           ...request.data,
           actionUrl: webLink({
             baseUrl: this.webBaseUrl,
-            path: `/my-schedule/${request.data.assignmentId}`,
+            path: `/app/my-schedule/${request.data.assignmentId}`,
           }),
         };
       case 'transfer_ministry_digest':
@@ -429,7 +487,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
           endsAt: fromDate({ date: endsAt }),
         }),
       ),
-      actionUrl: webLink({ baseUrl: this.webBaseUrl, path: '/schedules' }),
+      actionUrl: webLink({ baseUrl: this.webBaseUrl, path: '/app/schedules' }),
     };
   }
 
@@ -443,7 +501,12 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     message,
   }: ProcessNotificationMessageInput): Promise<'sent' | 'failed'> {
     const { to, kind, data } = message.payload;
-    const request = notificationRequestDataSchemas[kind]?.safeParse(data);
+    // Rows queued before the Church identity existed render name-only.
+    const request = notificationRequestDataSchemas[kind]?.safeParse({
+      churchLogoUrl: null,
+      churchAccent: null,
+      ...(data as Partial<typeof data>),
+    });
     if (
       !request?.success &&
       (kind === 'schedule_published' || kind === 'schedule_updated')
@@ -505,12 +568,15 @@ export class DbOutboxDrainer implements IOutboxDrainer {
         });
         return 'sent';
       }
-      facts = resolved;
+      // The identity frozen at queue time, never the Church's current one.
+      const { churchLogoUrl, churchAccent } = request.data;
+      facts = { ...resolved, churchLogoUrl, churchAccent };
+      const frozenFacts = facts;
       // Every retry re-renders from these, never from live scheduling objects.
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.recordDeliveryFacts({
           id: message.id,
-          facts: resolved,
+          facts: frozenFacts,
           tx,
         }),
       );
@@ -681,7 +747,12 @@ export class DbOutboxDrainer implements IOutboxDrainer {
       return 'sent';
     } catch (error) {
       if (!(error instanceof EmailSendError)) throw error;
-      await this.handleSendFailure({ message, error });
+      // The code, not the message: provider text can echo the recipient.
+      await this.retryOrFail({
+        message,
+        reason: error.code,
+        retryable: error.retryable,
+      });
       return 'failed';
     }
   }
@@ -697,20 +768,21 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     );
   }
 
-  private async handleSendFailure({
+  private async retryOrFail({
     message,
-    error,
-  }: HandleSendFailureInput): Promise<void> {
+    reason,
+    retryable,
+  }: RetryOrFailInput): Promise<void> {
     const attempts = message.attempts + 1;
     if (
-      error.retryable &&
+      retryable &&
       !hasExhaustedRetries({ attempts, policy: this.outboxPolicy })
     ) {
       const retryAt = nextRetryAt({ attempts, policy: this.outboxPolicy });
       await this.unitOfWork.run((tx) =>
         this.outboxRepository.markFailed({
           id: message.id,
-          lastError: error.message,
+          lastError: reason,
           attempts,
           status: 'pending',
           scheduledFor: toDate({ instant: retryAt }),
@@ -721,7 +793,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
     }
     await this.failTerminally({
       message,
-      reason: error.message,
+      reason,
       attempts,
     });
   }
@@ -808,6 +880,9 @@ interface ProcessChurchOfferMessageInput {
 interface LoadPendingInvitationFactsInput {
   churchId: ChurchId;
   ministryInvitationId: string;
+  churchLogoUrl?: string | null;
+  churchAccent?: string | null;
+  churchLocality?: string;
 }
 
 interface LoadDeliveryFactsInput {
@@ -865,9 +940,10 @@ function firstNameOf(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
 }
 
-interface HandleSendFailureInput {
+interface RetryOrFailInput {
   message: OutboxMessage;
-  error: EmailSendError;
+  reason: string;
+  retryable: boolean;
 }
 
 interface FailTerminallyInput {

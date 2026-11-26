@@ -12,8 +12,10 @@ import {
   ministryMembershipTeam,
   outboxMessage,
   role,
+  scheduleLastTold,
   shift,
   shiftRequirement,
+  swapRequest,
   volunteer,
   volunteerTransfer,
 } from '@church/db';
@@ -57,7 +59,7 @@ interface ScheduleAssignmentIds {
   untouchedBefore: string;
   cancelledAfter: string;
   startedRunning: string;
-  alreadyDeclined: string;
+  alreadyCancelled: string;
 }
 
 let fixture: TwoChurchIdentityFixture;
@@ -65,6 +67,7 @@ let invitationId: string;
 let assignmentIds: ScheduleAssignmentIds;
 
 interface SeedScheduleResult {
+  cycleId: string;
   assignmentIds: ScheduleAssignmentIds;
   availabilityCheckId: string;
 }
@@ -109,7 +112,7 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
       key: 'startedRunning',
       start: new Date('2026-09-15T11:00:00Z'),
     },
-    { key: 'alreadyDeclined', start: new Date(COMMIT.getTime() + 3_600_000) },
+    { key: 'alreadyCancelled', start: new Date(COMMIT.getTime() + 3_600_000) },
   ] as const;
 
   const ids: Partial<ScheduleAssignmentIds> = {};
@@ -123,7 +126,7 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
       roleId: fixture.roleInMinistryInB,
       start: fromDate({ date: spec.start }),
       end: fromDate({ date: new Date(spec.start.getTime() + 3_600_000) }),
-      status: spec.key === 'alreadyDeclined' ? 'declined' : 'confirmed',
+      status: spec.key === 'alreadyCancelled' ? 'cancelled' : 'pending',
     });
     ids[spec.key] = booked.assignment.id;
   }
@@ -136,7 +139,7 @@ async function seedChurchBSchedule(): Promise<SeedScheduleResult> {
     ministryMembershipId: fixture.dualMemberABMembershipInB,
   });
 
-  return { assignmentIds, availabilityCheckId: check.id };
+  return { assignmentIds, availabilityCheckId: check.id, cycleId: cycle.id };
 }
 
 async function seedPendingInvitationInChurchA(): Promise<string> {
@@ -174,6 +177,7 @@ function runTransfer() {
 }
 
 let availabilityCheckId: string;
+let cycleId: string;
 
 beforeEach(async () => {
   await truncateAll();
@@ -181,6 +185,7 @@ beforeEach(async () => {
   const schedule = await seedChurchBSchedule();
   assignmentIds = schedule.assignmentIds;
   availabilityCheckId = schedule.availabilityCheckId;
+  cycleId = schedule.cycleId;
   invitationId = await seedPendingInvitationInChurchA();
 });
 
@@ -198,13 +203,13 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
     };
 
     expect((await statusOf(assignmentIds.untouchedBefore))?.status).toBe(
-      'confirmed',
+      'pending',
     );
     expect((await statusOf(assignmentIds.startedRunning))?.status).toBe(
-      'confirmed',
+      'pending',
     );
-    expect((await statusOf(assignmentIds.alreadyDeclined))?.status).toBe(
-      'declined',
+    expect((await statusOf(assignmentIds.alreadyCancelled))?.status).toBe(
+      'cancelled',
     );
     const cancelled = await statusOf(assignmentIds.cancelledAfter);
     expect(cancelled?.status).toBe('cancelled');
@@ -212,6 +217,48 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
 
     if (outcome.kind !== 'transferred') throw new Error('unreachable');
     expect(outcome.result.withdrawnAssignmentCount).toBe(1);
+  });
+
+  it('closes open Swap requests on withdrawn Assignments as covered and clears their last-told entries, idempotently', async () => {
+    const told = (assignmentId: string) => ({ assignmentId });
+    await testDb.insert(swapRequest).values([
+      {
+        churchId: fixture.churchB.id,
+        assignmentId: assignmentIds.cancelledAfter,
+        status: 'open',
+        raisedBy: fixture.dualMemberAB,
+      },
+      {
+        churchId: fixture.churchB.id,
+        assignmentId: assignmentIds.startedRunning,
+        status: 'open',
+        raisedBy: fixture.dualMemberAB,
+      },
+    ]);
+    await testDb.insert(scheduleLastTold).values({
+      churchId: fixture.churchB.id,
+      ministryId: fixture.ministryInB,
+      cycleId,
+      volunteerId: fixture.dualMemberABVolunteerInB,
+      assignments: [
+        told(assignmentIds.cancelledAfter),
+        told(assignmentIds.startedRunning),
+      ],
+    });
+
+    await runTransfer();
+    await runTransfer();
+
+    const requests = await testDb.select().from(swapRequest);
+    const statusOfRequest = (assignmentId: string) =>
+      requests.find((row) => row.assignmentId === assignmentId);
+    expect(statusOfRequest(assignmentIds.cancelledAfter)).toMatchObject({
+      status: 'covered',
+      closedBy: fixture.dualMemberAB,
+    });
+    expect(statusOfRequest(assignmentIds.startedRunning)?.status).toBe('open');
+    const [snapshot] = await testDb.select().from(scheduleLastTold);
+    expect(snapshot?.assignments).toEqual([told(assignmentIds.startedRunning)]);
   });
 
   it('writes one assignment_audit row per cancellation carrying the transfer correlation id', async () => {
@@ -385,6 +432,25 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer', () => {
       .from(volunteer)
       .where(eq(volunteer.userId, fixture.dualMemberAB));
     expect(profiles).toHaveLength(2);
+  });
+
+  it('refuses a second transfer row for the same User and Ministry Invitation', async () => {
+    expect((await runTransfer()).kind).toBe('transferred');
+    const [stored] = await testDb
+      .select()
+      .from(volunteerTransfer)
+      .where(eq(volunteerTransfer.userId, fixture.dualMemberAB));
+    if (!stored) throw new Error('unreachable');
+    const { id: _id, ...duplicate } = stored;
+
+    await expect(
+      testDb.insert(volunteerTransfer).values(duplicate),
+    ).rejects.toMatchObject({
+      cause: {
+        code: '23505',
+        constraint: 'volunteer_transfer_user_invitation_idx',
+      },
+    });
   });
 
   it('is a terminal failure that changes nothing when the invitation is no longer pending', async () => {
@@ -591,7 +657,7 @@ describe('DrizzleVolunteerTransferRepository.executeTransfer — digest recipien
         roleId: fixture.roleInMinistryInB,
         start: fromDate({ date: start }),
         end: fromDate({ date: new Date(start.getTime() + 3_600_000) }),
-        status: 'confirmed',
+        status: 'pending',
       });
     }
 

@@ -27,6 +27,8 @@ import { adminApi } from '@/utils/api-instances';
 export interface TemplateDeleteDialogProps {
   /** Mount only while a delete is being attempted, so each attempt reads fresh usage. */
   templateId: string;
+  /** Public blocks the deletion removes from the Church Programme. */
+  publicBlockCount: number;
   onClose: () => void;
   onDeleted: () => void;
 }
@@ -34,6 +36,7 @@ export interface TemplateDeleteDialogProps {
 /** Confirms deletion with the distinct-Ministry count; never deletes on an unread count. */
 export function TemplateDeleteDialog({
   templateId,
+  publicBlockCount,
   onClose,
   onDeleted,
 }: TemplateDeleteDialogProps) {
@@ -83,6 +86,18 @@ export function TemplateDeleteDialog({
             {m.event_templates_delete_description()}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {publicBlockCount > 0 ? (
+          <p className="text-sm" data-testid="template-delete-public-count">
+            {pluralMessage({
+              count: publicBlockCount,
+              one: m.event_templates_delete_public_count_one,
+              other: () =>
+                m.event_templates_delete_public_count_other({
+                  count: publicBlockCount,
+                }),
+            })}
+          </p>
+        ) : null}
         {usage.isError ? (
           <RetryAlert
             message={m.event_templates_delete_usage_failed()}

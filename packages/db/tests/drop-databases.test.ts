@@ -5,10 +5,10 @@ import {
   dropDatabases,
   isWorktreeDatabaseName,
   listWorktreeDatabases,
-} from '../src/drop-databases';
-import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
-import { integrationWorkerDatabaseName } from '../src/integration-worker-database-name';
-import { scratchDatabaseName } from '../src/scratch-database-name';
+} from '@/drop-databases';
+import { getIntegrationDatabaseUrl } from '@/integration-database-url';
+import { integrationWorkerDatabaseName } from '@/integration-worker-database-name';
+import { scratchDatabaseName } from '@/scratch-database-name';
 
 const SCRATCH_DATABASES = (['dev', 'int', 'e2e'] as const).map((kind) =>
   scratchDatabaseName({ purpose: 'drop', kind }),

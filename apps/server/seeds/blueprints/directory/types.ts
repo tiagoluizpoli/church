@@ -1,3 +1,4 @@
+import type { ChurchContact } from '../../../src/domain/church-contact';
 /** A fixed fake person. The email is the sign-in identity and must end in `.test`. */
 export interface Person {
   name: string;
@@ -56,10 +57,55 @@ export function joinMinistry<TRole extends string, TSector extends string>(
   return group;
 }
 
+/** A Church Address in display order; the first one is the Main Address. */
+export interface ChurchAddressBlueprint {
+  label?: string;
+  street: string;
+  number: string;
+  complement?: string;
+  bairro: string;
+  city: string;
+  uf: string;
+  cep?: string;
+  isPublic?: boolean;
+  pin?: {
+    latitude: number;
+    longitude: number;
+    source: 'google' | 'cep' | 'admin';
+  };
+}
+
+export interface ChurchSocialLinkBlueprint {
+  url: string;
+  description?: string;
+  /** *Pessoa ou ministério*; omitted is ungrouped ("Da igreja"). */
+  group?: string;
+}
+
 export interface ChurchIdentity {
   name: string;
   slug: string;
   timezone: string;
+  /** Church Settings; omitted means the Church leaves it empty. */
+  website?: string;
+  accentColor?: string;
+  /** Slugs the Church gave up; each redirects to `slug`. */
+  previousSlugs?: readonly string[];
+  /** Church Contacts in order; omitted means none. */
+  contacts?: ChurchContact[];
+  /** Contact Group names in display order, for the `group` of contacts and links. */
+  contactGroups?: readonly string[];
+  addresses?: readonly ChurchAddressBlueprint[];
+  /** In display order; the network is detected from each URL. */
+  socialLinks?: readonly ChurchSocialLinkBlueprint[];
+  /** The Church Legal Profile; the CNPJ is its 14 digits. */
+  legalProfile?: {
+    legalName: string;
+    cnpj: string;
+    isPublic: boolean;
+  };
+  /** The logo as SVG source, rasterised and uploaded like a ChurchAdmin's PNG. */
+  logoSvg?: string;
 }
 
 /** One Church's complete directory: its ChurchAdmin, Ministries and cross-Ministry service. */

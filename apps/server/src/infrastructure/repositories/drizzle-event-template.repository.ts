@@ -23,7 +23,12 @@ import type {
 import { DuplicateTemplateBlockLabelError } from '../../domain/errors/duplicate-template-block-label';
 import { DuplicateTemplateNameError } from '../../domain/errors/duplicate-template-name';
 import { mapEventTemplate } from '../mappers/event-template.mapper';
-import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import {
+  assertPlaceAddresses,
+  getClient,
+  isValidUuid,
+  withChurchIsolation,
+} from './helpers';
 import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
@@ -100,12 +105,17 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
     input: CreateEventTemplateInput,
   ): Promise<EventTemplate> {
     const db = getClient({ db: this.db, tx: input.tx });
+    await assertPlaceAddresses({
+      db,
+      churchId: input.churchId,
+      addressIds: input.blocks.map((block) => block.placeAddressId),
+    });
     const [templateRow] = await db
       .insert(eventTemplate)
       .values({
         churchId: input.churchId,
         name: input.name,
-        weekday: input.weekday,
+        recurrence: input.recurrence,
       })
       .returning();
 
@@ -122,6 +132,9 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
           startTime: block.startTime,
           endTime: block.endTime,
           order: block.order,
+          isPublic: block.isPublic,
+          place: block.place,
+          placeAddressId: block.placeAddressId,
         })),
       );
     }
@@ -165,6 +178,11 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       )
       .for('update');
     if (!locked) throw notFound();
+    await assertPlaceAddresses({
+      db,
+      churchId: input.churchId,
+      addressIds: input.blocks.map((block) => block.placeAddressId),
+    });
 
     const currentRows = await db
       .select({ id: templateTimeBlock.id })
@@ -181,7 +199,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       .update(eventTemplate)
       .set({
         name: input.name,
-        weekday: input.weekday,
+        recurrence: input.recurrence,
         updatedAt: nowAsDate(),
       })
       .where(eq(eventTemplate.id, input.templateId));
@@ -217,6 +235,9 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
           startTime: block.startTime,
           endTime: block.endTime,
           order: block.order,
+          isPublic: block.isPublic,
+          place: block.place,
+          placeAddressId: block.placeAddressId,
         })
         .where(eq(templateTimeBlock.id, block.id));
     }
@@ -231,6 +252,9 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
           startTime: block.startTime,
           endTime: block.endTime,
           order: block.order,
+          isPublic: block.isPublic,
+          place: block.place,
+          placeAddressId: block.placeAddressId,
         })),
       );
     }

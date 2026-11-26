@@ -5,6 +5,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ConfirmDeleteEventTimeBlockInput } from './calendar-row';
 import { EventCancelDialog } from './event-cancel-dialog';
+import { EventEditPreview } from './event-edit-preview';
 import { EventMovePreview } from './event-move-preview';
 import type { CycleCalendarTableRow } from './planning-admin.types';
 import {
@@ -37,6 +38,8 @@ export interface PlanningEventCardProps {
   isReadOnly: boolean;
   /** A scheduled Event of a Sent Cycle can be previewed for a move. */
   canPreviewMove?: boolean;
+  /** A scheduled Event of a Sent Cycle can be edited until it ends. */
+  canEdit?: boolean;
   /** A future scheduled Event of a Sent Cycle can be cancelled. */
   canCancel?: boolean;
   /** The Event's blocks can be cancelled (Sent Cycle, scheduled Event). */
@@ -60,6 +63,7 @@ export function PlanningEventCard({
   cycleId,
   isReadOnly,
   canPreviewMove = false,
+  canEdit = false,
   canCancel = false,
   canCancelBlocks = false,
   deleteEventTimeBlockPending,
@@ -129,14 +133,14 @@ export function PlanningEventCard({
         </Badge>
       </div>
 
-      {!isReadOnly || canPreviewMove || canCancel ? (
+      {!isReadOnly || canPreviewMove || canEdit || canCancel ? (
         <div
           data-testid="planning-event-actions"
           className="mt-3 flex flex-wrap items-center justify-end gap-2"
         >
           {!isReadOnly ? (
             <Link
-              to="/cycles/$cycleId/events/$eventId"
+              to="/app/cycles/$cycleId/events/$eventId"
               params={{ cycleId, eventId: row.eventId }}
               className={buttonVariants({ size: 'touch', variant: 'ghost' })}
               aria-label={m.cycle_review_edit_day({ title: row.title })}
@@ -150,6 +154,16 @@ export function PlanningEventCard({
               eventId={row.eventId}
               title={row.title}
               start={row.start as Instant}
+            />
+          ) : null}
+          {canEdit ? (
+            <EventEditPreview
+              cycleId={cycleId}
+              eventId={row.eventId}
+              title={row.title}
+              start={row.start as Instant}
+              end={row.end as Instant}
+              eventTimeBlocks={row.eventTimeBlocks}
             />
           ) : null}
           {canCancel ? (

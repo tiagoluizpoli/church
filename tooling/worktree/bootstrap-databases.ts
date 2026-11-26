@@ -8,12 +8,15 @@ import {
   worktreeDatabaseUrls,
 } from './database-targets';
 import { readGeneratedWorktreeIdentity } from './local-env';
+import { ensurePublicReadBucket, localStorageClient } from './storage-buckets';
+import { worktreeBucketName } from './storage-targets';
 
 /**
  * `bun run db:bootstrap`: creates and migrates the current worktree's
  * development, integration, and E2E databases (ADR-0005) from the identity
- * in its generated `.env.local`. Rerunnable: existing databases are reused,
- * pending migrations applied, nothing is seeded or dropped. A failure names
+ * in its generated `.env.local`, then its `church-<worktree>` storage bucket
+ * with anonymous read on `public/*`. Rerunnable: existing databases and the
+ * bucket are reused, pending migrations applied, nothing is seeded or dropped. A failure names
  * its step and keeps whatever already succeeded for diagnosis.
  */
 
@@ -50,6 +53,15 @@ async function bootstrapDatabases(): Promise<void> {
       `db:bootstrap ${database}: ${created ? 'created' : 'exists'}, migrated`,
     );
   }
+
+  const bucket = worktreeBucketName({ worktree });
+  const created = await ensurePublicReadBucket({
+    client: localStorageClient(),
+    bucket,
+  });
+  console.log(
+    `db:bootstrap bucket ${bucket}: ${created ? 'created' : 'exists'}, public/* readable`,
+  );
 }
 
 async function main(): Promise<void> {
@@ -60,7 +72,7 @@ async function main(): Promise<void> {
       `✖ db:bootstrap failed: ${error instanceof Error ? error.message : String(error)}`,
     );
     console.error(
-      'Completed databases are kept; fix the cause (`bun run db:start` if PostgreSQL is down), then rerun `bun run db:bootstrap`.',
+      'Completed databases are kept; fix the cause (`bun run db:start` if PostgreSQL or the storage service is down), then rerun `bun run db:bootstrap`.',
     );
     process.exit(1);
   }

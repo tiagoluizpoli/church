@@ -1,9 +1,11 @@
 import { appConfig } from '@church/app-config';
+import * as schema from '@church/db';
 import {
   invitation as churchInvitation,
   ministryInvitation,
   role,
 } from '@church/db';
+import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
 import {
   addMilliseconds,
   fromDate,
@@ -12,6 +14,8 @@ import {
   setTestClock,
 } from '@church/time';
 import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { testDb, truncateAll } from './repositories/setup';
 import { ChurchNotifications } from '@/application/church-notifications';
@@ -34,6 +38,7 @@ import {
   DrizzleUnitOfWork,
 } from '@/infrastructure/repositories';
 import { buildRole } from '@/seeds/builders/ministry';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
@@ -56,15 +61,52 @@ const unitOfWork = new DrizzleUnitOfWork({ db: testDb });
 const outboxRepository = new DrizzleOutboxRepository({ db: testDb });
 
 const manager = new DbMinistryInvitationManager({
+  churchIdentity: nullChurchIdentity,
   repo: ministryInvitationRepository,
   roleRepository,
   ministryRepository,
   authorityManager,
   unitOfWork,
   outboxRepository,
-  notifications: new ChurchNotifications({ outboxRepository }),
+  notifications: new ChurchNotifications({
+    outboxRepository,
+    churchIdentity: nullChurchIdentity,
+  }),
   config: appConfig,
 });
+
+/** The same composition on its own one-connection pool: any read outside a held transaction times out. */
+function createOneConnectionManager() {
+  const pool = new pg.Pool({
+    connectionString: getIntegrationDatabaseUrl(),
+    max: 1,
+    connectionTimeoutMillis: 2_000,
+  });
+  const db = drizzle(pool, { schema });
+  const ministries = new DrizzleMinistryRepository({ db });
+  const outbox = new DrizzleOutboxRepository({ db });
+  const oneConnectionManager = new DbMinistryInvitationManager({
+    churchIdentity: nullChurchIdentity,
+    repo: new DrizzleMinistryInvitationRepository({ db, config: appConfig }),
+    roleRepository: new DrizzleRoleRepository({ db }),
+    ministryRepository: ministries,
+    authorityManager: new DbAuthorityManager({
+      actorRepository: new DrizzleAuthorityActorResolver({ db }),
+      scopeRepository: new DrizzleSchedulingScopeResolver({ db }),
+      eventRepository: new DrizzleEventRepository({ db }),
+      eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
+      ministryRepository: ministries,
+    }),
+    unitOfWork: new DrizzleUnitOfWork({ db }),
+    outboxRepository: outbox,
+    notifications: new ChurchNotifications({
+      outboxRepository: outbox,
+      churchIdentity: nullChurchIdentity,
+    }),
+    config: appConfig,
+  });
+  return { manager: oneConnectionManager, end: () => pool.end() };
+}
 
 let fixture: TwoChurchIdentityFixture;
 
@@ -257,6 +299,7 @@ describe('DbMinistryInvitationManager.mint', () => {
 
   it('rolls back the offer and any Church offer when the delivery intent cannot be written', async () => {
     const failingManager = new DbMinistryInvitationManager({
+      churchIdentity: nullChurchIdentity,
       repo: ministryInvitationRepository,
       roleRepository,
       ministryRepository,
@@ -304,6 +347,35 @@ describe('DbMinistryInvitationManager.resend', () => {
     expect(resent.id).toBe(minted.id);
   });
 
+  it("resends and revokes inside one transaction's connection", async () => {
+    const minted = await manager.mint({
+      churchId: ChurchId.from(fixture.churchA.id),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      inviterId: UserId.from(fixture.adminA),
+      email: `${fixture.existingChurchMemberA}@fixture.test`,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+    });
+    const target = {
+      churchId: ChurchId.from(fixture.churchA.id),
+      ministryId: MinistryId.from(fixture.ministryOneA),
+      ministryInvitationId: minted.id,
+      callerId: UserId.from(fixture.adminA),
+    };
+    const oneConnection = createOneConnectionManager();
+    try {
+      expect((await oneConnection.manager.resend(target)).id).toBe(minted.id);
+      await oneConnection.manager.revoke(target);
+    } finally {
+      await oneConnection.end();
+    }
+    const [row] = await testDb
+      .select()
+      .from(ministryInvitation)
+      .where(eq(ministryInvitation.id, minted.id));
+    expect(row?.status).toBe('canceled');
+  });
+
   it('returns the same 404 as mint for an unauthorized caller', async () => {
     const minted = await manager.mint({
       churchId: ChurchId.from(fixture.churchA.id),
@@ -345,13 +417,17 @@ function createManagerWithChurchTtl({
     churchInvitation: { ttlMs: churchInvitationTtlMs },
   };
   return new DbMinistryInvitationManager({
+    churchIdentity: nullChurchIdentity,
     repo: new DrizzleMinistryInvitationRepository({ db: testDb, config }),
     roleRepository,
     ministryRepository,
     authorityManager,
     unitOfWork,
     outboxRepository,
-    notifications: new ChurchNotifications({ outboxRepository }),
+    notifications: new ChurchNotifications({
+      outboxRepository,
+      churchIdentity: nullChurchIdentity,
+    }),
     config,
   });
 }

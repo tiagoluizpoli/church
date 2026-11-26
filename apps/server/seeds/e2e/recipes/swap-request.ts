@@ -25,7 +25,7 @@ import { type AssignCycleSummary, buildAssignEvent } from './assign-event';
 
 /**
  * The starting graph of the swap-request journey (J9, #812): a sent Cycle
- * whose one Worship Event is already published, with the Volunteer confirmed
+ * whose one Worship Event is already published, with the Volunteer assigned
  * on its single Usher seat. A second qualified Volunteer is the replacement
  * the leader reassigns to. Assignment and publish setup are not retested.
  */
@@ -129,7 +129,7 @@ export function createSwapRequestRecipe({
       volunteerId: base.personas.volunteer.volunteerId,
       roleId: worship.roles.usher.id,
       id: idOf({ kind: 'assignment' }),
-      status: 'confirmed',
+      status: 'pending',
     });
     // Publish told the Volunteer; Send updates later diffs against this.
     await db.insert(scheduleLastTold).values({

@@ -23,7 +23,7 @@ import {
   parseTimeOfDay,
   setTestClock,
   type TimeOfDay,
-} from '../src';
+} from '@/index';
 
 function day(value: string): CalendarDay {
   return parseCalendarDay({ value });

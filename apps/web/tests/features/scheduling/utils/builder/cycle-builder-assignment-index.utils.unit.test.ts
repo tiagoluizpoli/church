@@ -41,7 +41,7 @@ function makeAssignment(
     shiftId: 'shift-1',
     roleId: 'role-1',
     shiftRequirementId: 'requirement-role-1',
-    status: 'confirmed',
+    status: 'pending',
     assignedAt: '2027-01-01T12:00:00.000Z',
     lateMark: false,
     ...overrides,
@@ -70,6 +70,7 @@ function makeShift(
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
+    cancelled: false,
     peopleNeeded: 1,
     assignedCount: 0,
     requirements: [
@@ -95,6 +96,7 @@ function makeEventTimeBlock(
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
+    cancelled: false,
     included: true,
     peopleNeeded: 1,
     assignedCount: 0,
@@ -164,7 +166,11 @@ describe('buildShiftAssignmentIndex', () => {
           shiftId: 'shift-2',
           status: 'cancelled',
         }),
-        makeAssignment({ id: 'a-4', volunteerId: 'bruno', status: 'declined' }),
+        makeAssignment({
+          id: 'a-4',
+          volunteerId: 'bruno',
+          status: 'cancelled',
+        }),
       ],
     });
 

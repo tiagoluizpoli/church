@@ -31,6 +31,7 @@ function shift({
     eventTimeBlockId: 'block',
     startTime,
     endTime: startTime,
+    cancelled: false,
     peopleNeeded: 3,
     assignedCount: volunteerIds.length,
     requirements: [
@@ -46,7 +47,7 @@ function shift({
       volunteerId,
       roleId: 'role',
       shiftRequirementId: `${shiftId}-a`,
-      status: 'confirmed',
+      status: 'pending',
       assignedAt: startTime,
       lateMark: false,
     })),

@@ -208,13 +208,7 @@ describe('GET /prepare/cycles/:cycleId/participation guard data', () => {
       if (!seeded) throw new Error(`Volunteer ${index} was not seeded`);
       return seeded;
     };
-    const statuses = [
-      'confirmed',
-      'pending',
-      'cancelled',
-      'declined',
-      'draft',
-    ] as const;
+    const statuses = ['pending', 'pending', 'cancelled', 'draft'] as const;
     for (const [index, status] of statuses.entries()) {
       await buildAssignment({
         db: schedulingTestDb,
@@ -277,7 +271,7 @@ describe('GET /prepare/cycles/:cycleId/participation guard data', () => {
     const { template } = await createSchedulingPhase3Template({
       churchId: base.seed.churchAId,
       name: 'Sunday Service',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [],
     });
     await seedEvent({

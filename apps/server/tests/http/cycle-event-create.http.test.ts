@@ -53,6 +53,7 @@ import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-o
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -73,6 +74,8 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { insertChurchAddress } from '@/tests/test-support/church-address';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -126,12 +129,14 @@ beforeAll(async () => {
       }),
       volunteerRepository: new DrizzleVolunteerRepository({ db }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
       eventRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       templateRepository,
       churchRepository,
       unitOfWork,
@@ -144,11 +149,13 @@ beforeAll(async () => {
         volunteerRepository: new DrizzleVolunteerRepository({ db }),
       }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       unitOfWork,
     }),
     activeChurchResolver: activeChurchResolver as never,
@@ -875,6 +882,122 @@ describe('POST /admin/cycles/:cycleId/events on a Sent Cycle', () => {
     await postEvent({ cycleId: target.id, payload: eveningEvent() });
 
     expect(await db.select().from(outboxMessage)).toHaveLength(0);
+  });
+});
+
+function publicEvent() {
+  const event = eveningEvent();
+  return {
+    ...event,
+    eventTimeBlocks: [
+      { ...event.eventTimeBlocks[0], isPublic: true, place: ' Salão anexo ' },
+    ],
+  };
+}
+
+describe('Público and place on a created Event', () => {
+  it.each([
+    'draft',
+    'sent',
+  ] as const)('saves Público and a trimmed place in a %s Cycle', async (state) => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state });
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: publicEvent(),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().eventTimeBlocks[0]).toMatchObject({
+      isPublic: true,
+      place: 'Salão anexo',
+    });
+  });
+
+  it.each([
+    'draft',
+    'sent',
+  ] as const)('saves a Church Address as the place in a %s Cycle', async (state) => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId, state });
+    const addressId = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+    });
+    const event = eveningEvent();
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: {
+        ...event,
+        eventTimeBlocks: [
+          { ...event.eventTimeBlocks[0], placeAddressId: addressId },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().eventTimeBlocks[0]).toMatchObject({
+      place: null,
+      placeAddressId: addressId,
+    });
+  });
+
+  it("refuses another Church's address and writes nothing", async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId });
+    const foreign = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchBId,
+    });
+    const event = eveningEvent();
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: {
+        ...event,
+        eventTimeBlocks: [
+          { ...event.eventTimeBlocks[0], placeAddressId: foreign },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      reason: 'PLACE_ADDRESS_NOT_FOUND',
+    });
+    expect(await graphCounts()).toEqual(EMPTY_GRAPH);
+  });
+
+  it('defaults a block to private with no place', async () => {
+    const seed = await signIn();
+    const target = await seedCycle({ churchId: seed.churchAId });
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: eveningEvent(),
+    });
+
+    expect(response.json().eventTimeBlocks[0]).toMatchObject({
+      isPublic: false,
+      place: null,
+      placeAddressId: null,
+    });
+  });
+
+  it('refuses a Ministry leader sending the fields and writes nothing', async () => {
+    const seed = await signIn({ persona: 'leader' });
+    const target = await seedCycle({ churchId: seed.churchAId });
+
+    const response = await postEvent({
+      cycleId: target.id,
+      payload: publicEvent(),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(await graphCounts()).toEqual(EMPTY_GRAPH);
   });
 });
 

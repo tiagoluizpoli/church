@@ -52,6 +52,7 @@ export const DELIBERATE_SMOKE_FALLBACK_PATHS: {
 const REDEMPTION_SPEC_PATHS = [
   'tests/identity/redemption-new-user.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
+  'tests/identity/redemption-church-only-sign-in.spec.ts',
 ];
 
 // The public Church Invitation join also serves the plain first-admin
@@ -64,11 +65,38 @@ const INVITATION_JOURNEY_SPEC_PATHS = [
 // the Church access change it consumes from People A.
 const PEOPLE_JOURNEY_SPEC_PATHS = ['tests/people/people-journey.spec.ts'];
 
+// #1017 (#996): Church Settings, the logo upload through object storage and
+// the settings save, reloaded; a Member is kept off the screen.
+const CHURCH_SETTINGS_JOURNEY_SPEC_PATHS = [
+  'tests/church-settings/church-settings-journey.spec.ts',
+];
+
+// #1045 (#1001): the Public Church Profile read signed out: Programme, a moved
+// and a cancelled Public Event, the old-slug redirect, a private contact absent.
+const PUBLIC_CHURCH_PROFILE_SPEC_PATHS = [
+  'tests/public-church/public-church-profile.spec.ts',
+];
+
+// #1027 (#1002): a monthly template winning over the weekly Sunday one, saved
+// through the collision prompt and applied to a Cycle.
+const TEMPLATE_PRECEDENCE_SPEC_PATHS = [
+  'tests/scheduling/template-precedence.spec.ts',
+];
+
 // #900: the Ministries page (search, status filter, counts) and a Ministry's
 // Usual setup.
 const MINISTRIES_JOURNEY_SPEC_PATHS = [
   'tests/ministries/ministries-directory.spec.ts',
 ];
+
+// #948: the Ministry tab bar at 320px.
+const MINISTRY_TABS_SPEC_PATHS = [
+  'tests/ministries/ministry-tabs-narrow.spec.ts',
+];
+
+// #949: the preparation side panel (close animation, X guard, narrow h1,
+// return scroll under the sticky mobile bar).
+const PREPARE_PANEL_SPEC_PATHS = ['tests/scheduling/prepare-panel.spec.ts'];
 
 // #905: an unreachable API, the reconnecting banner and recovery.
 const RECONNECTING_SPEC_PATHS = [
@@ -79,6 +107,18 @@ const CHURCH_INVITATION_SPEC_PATHS = [
   'tests/identity/first-admin-onboarding.spec.ts',
   ...INVITATION_JOURNEY_SPEC_PATHS,
   ...REDEMPTION_SPEC_PATHS,
+];
+
+const CHURCH_INVITATION_SOURCE_PREFIXES = [
+  'apps/web/src/features/invitations/components/invitation-review-parts.tsx',
+  'apps/server/src/api/dtos/redemption.dto.ts',
+  'apps/server/src/application/db-redemption-manager.ts',
+  'apps/server/src/domain/contracts/application/redemption-manager.ts',
+  'apps/server/src/domain/contracts/infrastructure/ministry-invitation.repository.ts',
+  'apps/server/src/domain/entities/redemption-bundle.ts',
+  'apps/server/src/domain/services/redemption-review-token.ts',
+  'apps/server/src/infrastructure/repositories/drizzle-ministry-invitation.repository.ts',
+  'apps/web/src/routeTree.gen.ts',
 ];
 
 const VOLUNTEER_TRANSFER_SPEC_PATHS = [
@@ -127,18 +167,25 @@ const SWAP_REQUEST_SPEC_PATHS = ['tests/scheduling/j9-swap-request.spec.ts'];
 // J10 (#826): a ChurchAdmin cancels a whole future Event after Send.
 const ADMIN_CANCEL_SPEC_PATHS = ['tests/scheduling/j10-admin-cancel.spec.ts'];
 
+// J11 (#1056): a ChurchAdmin edits a sent Event; the Assignment stays and
+// Send updates tells the Volunteer.
+const ADMIN_EDIT_SPEC_PATHS = ['tests/scheduling/j11-admin-edit-event.spec.ts'];
+
 const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/identity/active-church-switching.spec.ts',
   'tests/identity/cross-tenant-invitation-isolation.spec.ts',
   'tests/identity/first-admin-onboarding.spec.ts',
   'tests/identity/invitation-journey.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
+  'tests/identity/redemption-church-only-sign-in.spec.ts',
   'tests/identity/redemption-new-user.spec.ts',
   // Signs in as the shared personas global setup loads from a recipe.
   'tests/identity/route-protection.spec.ts',
   'tests/identity/volunteer-transfer-journey.spec.ts',
   ...PEOPLE_JOURNEY_SPEC_PATHS,
   ...MINISTRIES_JOURNEY_SPEC_PATHS,
+  ...CHURCH_SETTINGS_JOURNEY_SPEC_PATHS,
+  ...PUBLIC_CHURCH_PROFILE_SPEC_PATHS,
   'tests/scheduling/a11y-builder.spec.ts',
   'tests/scheduling/a11y-planning-nav.spec.ts',
   'tests/scheduling/builder-event-time-block-focus.spec.ts',
@@ -154,10 +201,12 @@ const JOURNEY_RECIPE_SPEC_PATHS = [
   'tests/scheduling/smoke.spec.ts',
   'tests/scheduling/us1-admin-plan.spec.ts',
   'tests/scheduling/us2-leader-prepare.spec.ts',
+  ...TEMPLATE_PRECEDENCE_SPEC_PATHS,
   ...LEADER_AVAILABILITY_SPEC_PATHS,
   ...VOLUNTEER_AVAILABILITY_SPEC_PATHS,
   ...SWAP_REQUEST_SPEC_PATHS,
   ...ADMIN_CANCEL_SPEC_PATHS,
+  ...ADMIN_EDIT_SPEC_PATHS,
   'tests/scheduling/us4-schedule-publish.spec.ts',
   'tests/scheduling/us5-leader-reassign.spec.ts',
   'tests/volunteer-dashboard/us-notification-bell.spec.ts',
@@ -185,6 +234,7 @@ const CYCLE_EDGE_SPEC_PATHS = [
 // that journey stays out.
 const PLANNING_ADMIN_SPEC_PATHS = [
   'tests/scheduling/event-templates.spec.ts',
+  ...TEMPLATE_PRECEDENCE_SPEC_PATHS,
   'tests/scheduling/cycles-table-view.spec.ts',
   'tests/scheduling/planning-nav-restructure.spec.ts',
   'tests/scheduling/planning-role-guard-matrix.spec.ts',
@@ -224,12 +274,12 @@ const PREPARE_ROUTE_FILES = [
   'schedules.tsx',
   'schedules/index.tsx',
   'schedules/$ministryId/$cycleId/_prepare',
-].map((f) => `apps/web/src/routes/_authenticated/_active-church/${f}`);
+].map((f) => `apps/web/src/routes/app/_active-church/${f}`);
 
 export const JOURNEY_MAP: JourneyMapping[] = [
   ...[
-    'apps/web/src/routes/_authenticated/_active-church/availability.tsx',
-    'apps/web/src/routes/_authenticated/_active-church/availability_.$checkId.tsx',
+    'apps/web/src/routes/app/_active-church/availability.tsx',
+    'apps/web/src/routes/app/_active-church/availability_.$checkId.tsx',
     'apps/web/src/features/volunteers/components/availability-list-page.tsx',
     'apps/web/src/features/volunteers/components/availability-detail-page.tsx',
     'apps/web/src/features/volunteers/components/availability-detail/',
@@ -243,8 +293,8 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: VOLUNTEER_AVAILABILITY_SPEC_PATHS,
   })),
   ...[
-    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare',
-    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare/slots/$timeSlotId.tsx',
+    'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/_prepare',
+    'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/_prepare/slots/$timeSlotId.tsx',
     'apps/web/src/features/scheduling/components/prepare/schedule-ask.tsx',
     'apps/web/src/features/scheduling/components/availability-status-section.tsx',
     'apps/web/src/infrastructure/api/prepare.ts',
@@ -258,7 +308,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   })),
   ...[
     'apps/web/src/features/people/',
-    'apps/web/src/routes/_authenticated/_active-church/people',
+    'apps/web/src/routes/app/_active-church/people',
     'apps/server/src/api/controllers/people-controller.ts',
     'apps/server/src/api/dtos/people-list.dto.ts',
     'apps/server/src/application/db-people-list-manager.ts',
@@ -272,12 +322,70 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix,
     specPaths: PEOPLE_JOURNEY_SPEC_PATHS,
   })),
+  ...[
+    'apps/web/src/features/church-settings/',
+    'apps/web/src/routes/app/_active-church/church-settings',
+    'apps/server/src/api/controllers/church-settings-controller.ts',
+    'apps/server/src/api/dtos/church-settings.dto.ts',
+    'apps/server/src/application/db-church-settings-manager.ts',
+    'apps/server/src/application/church-logo-pipeline.ts',
+    'apps/server/src/domain/church-settings.ts',
+    'apps/server/src/domain/church-logo.ts',
+    'apps/server/src/infrastructure/storage/',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: CHURCH_SETTINGS_JOURNEY_SPEC_PATHS,
+  })),
+  ...[
+    'apps/web/src/features/public-church/',
+    'apps/web/src/routes/$slug.tsx',
+    'apps/web/src/infrastructure/api/public-church-profile.ts',
+    'apps/server/src/api/controllers/public-church-profile-controller.ts',
+    'apps/server/src/api/dtos/public-church-profile.dto.ts',
+    'apps/server/src/api/dtos/public-event.dto.ts',
+    'apps/server/src/api/utils/church-page-head.ts',
+    'apps/server/src/application/db-church-programme-manager.ts',
+    'apps/server/src/application/db-public-church-profile-manager.ts',
+    'apps/server/src/application/db-public-event-manager.ts',
+    'apps/server/src/domain/public-event-cursor.ts',
+    'apps/server/src/domain/programme-order.ts',
+    'apps/server/src/domain/entities/public-event.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-church-programme.repository.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-public-event.repository.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: PUBLIC_CHURCH_PROFILE_SPEC_PATHS,
+  })),
+  // Address actions and directions serve both the Settings preview and the public page.
+  ...[
+    'apps/web/src/shared/components/address-actions.tsx',
+    'apps/web/src/shared/utils/directions.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: [
+      ...CHURCH_SETTINGS_JOURNEY_SPEC_PATHS,
+      ...PUBLIC_CHURCH_PROFILE_SPEC_PATHS,
+    ],
+  })),
+  {
+    sourcePathPrefix:
+      'apps/web/src/features/ministries/components/ministry-workspace.tsx',
+    specPaths: MINISTRY_TABS_SPEC_PATHS,
+  },
+  ...[
+    'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/_prepare.tsx',
+    'apps/web/src/features/scheduling/components/prepare/preparation-block-editor.tsx',
+    'apps/web/src/features/scheduling/components/prepare/prepare-event-time-block-list.tsx',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: PREPARE_PANEL_SPEC_PATHS,
+  })),
   // #900: the server-side list filtering, counts and paging of #899.
   ...[
     'apps/web/src/features/ministries/components/ministry-list-page.tsx',
     'apps/web/src/features/ministries/components/usual-setup/usual-setup-list.tsx',
     'apps/web/src/features/ministries/ministry-queries.ts',
-    'apps/web/src/routes/_authenticated/_active-church/ministries/index.tsx',
+    'apps/web/src/routes/app/_active-church/ministries/index.tsx',
     'apps/server/src/api/dtos/ministry.dto.ts',
     'apps/server/src/domain/ministry-list-cursor.ts',
   ].map((sourcePathPrefix) => ({
@@ -385,8 +493,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: INVITATION_JOURNEY_SPEC_PATHS,
   },
   {
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/invitations/',
+    sourcePathPrefix: 'apps/web/src/routes/app/_active-church/invitations/',
     specPaths: INVITATION_JOURNEY_SPEC_PATHS,
   },
   {
@@ -405,15 +512,20 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: CHURCH_INVITATION_SPEC_PATHS,
   },
   {
-    sourcePathPrefix: 'apps/web/src/routes/_authenticated/invitations/',
+    sourcePathPrefix: 'apps/web/src/routes/app/invitations/',
     specPaths: REDEMPTION_SPEC_PATHS,
   },
   {
     sourcePathPrefix: 'apps/web/src/infrastructure/api/redemption.ts',
     specPaths: CHURCH_INVITATION_SPEC_PATHS,
   },
+  // #945: signed-in acceptance of a Church Invitation (review, accept, route tree).
+  ...CHURCH_INVITATION_SOURCE_PREFIXES.map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: CHURCH_INVITATION_SPEC_PATHS,
+  })),
   {
-    sourcePathPrefix: 'apps/web/src/routes/_authenticated/_active-church.tsx',
+    sourcePathPrefix: 'apps/web/src/routes/app/_active-church.tsx',
     specPaths: [
       'tests/identity/active-church-switching.spec.ts',
       'tests/identity/cross-tenant-invitation-isolation.spec.ts',
@@ -431,7 +543,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     // index route file: capability-index.spec.ts is the only spec that
     // navigates to the bare `/scheduling` landing page it renders.
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/scheduling/index.tsx',
+      'apps/web/src/routes/app/_active-church/scheduling/index.tsx',
     specPaths: ['tests/scheduling/capability-index.spec.ts'],
   },
   {
@@ -490,8 +602,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     // specs, the only ones that exercise the cycles routes and
     // planning-admin feature components. The generic prefixes above only
     // select smoke/us4, which never touch this dialog-driven flow.
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/_planning-admin',
+    sourcePathPrefix: 'apps/web/src/routes/app/_active-church/_planning-admin',
     specPaths: [
       'tests/scheduling/event-templates.spec.ts',
       'tests/scheduling/cycles-table-view.spec.ts',
@@ -548,7 +659,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     ],
   })),
   ...[
-    'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare/slots/$timeSlotId.tsx',
+    'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/_prepare/slots/$timeSlotId.tsx',
     'apps/web/src/features/scheduling/hooks/use-preparation-block-breadcrumbs.ts',
     'apps/web/src/features/scheduling/components/headcount-grid/',
     'apps/web/src/features/scheduling/components/shift-split-editor/',
@@ -561,7 +672,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     // J5 reaches this one-Ministry Prepare route from the N2 bell action.
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/_prepare',
+      'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/_prepare',
     specPaths: CYCLE_HANDOFF_SPEC_PATHS,
   },
   {
@@ -622,7 +733,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // own unit test and is deliberately not re-proven at this layer, but this
   // file still drives the redirect target the spec asserts on.
   {
-    sourcePathPrefix: 'apps/web/src/routes/_authenticated.tsx',
+    sourcePathPrefix: 'apps/web/src/routes/app.tsx',
     specPaths: ['tests/identity/route-protection.spec.ts'],
   },
   // #219 — the breadcrumb component a11y-planning-nav.spec.ts scans and
@@ -658,8 +769,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: ['tests/identity/route-protection.spec.ts'],
   },
   {
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/index.tsx',
+    sourcePathPrefix: 'apps/web/src/routes/app/_active-church/index.tsx',
     specPaths: ['tests/identity/route-protection.spec.ts'],
   },
   // #214 — Volunteer Transfer (#65): the split screen and its three
@@ -668,8 +778,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // controller's transfer preview/confirm endpoints (which also serve plain
   // redemption, hence both spec sets) and the transfer manager.
   {
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/invitations/ministry/',
+    sourcePathPrefix: 'apps/web/src/routes/app/invitations/ministry/',
     specPaths: VOLUNTEER_TRANSFER_SPEC_PATHS,
   },
   {
@@ -694,8 +803,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // response, proven end to end by these two specs, the only ones that drive
   // the dashboard route's availability/assignments sections.
   {
-    sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/dashboard.tsx',
+    sourcePathPrefix: 'apps/web/src/routes/app/_active-church/dashboard.tsx',
     specPaths: VOLUNTEER_DASHBOARD_SPEC_PATHS,
   },
   {
@@ -767,7 +875,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   {
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/notifications.tsx',
+      'apps/web/src/routes/app/_active-church/notifications.tsx',
     specPaths: NOTIFICATION_BELL_SPEC_PATHS,
   },
   {
@@ -817,7 +925,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   // the Playwright layer instead of moving down like #219's other six specs.
   {
     sourcePathPrefix:
-      'apps/web/src/routes/_authenticated/_active-church/schedules/$ministryId/$cycleId/assign',
+      'apps/web/src/routes/app/_active-church/schedules/$ministryId/$cycleId/assign',
     specPaths: ['tests/scheduling/a11y-builder.spec.ts'],
   },
   {
@@ -866,6 +974,16 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   ].map((sourcePathPrefix) => ({
     sourcePathPrefix,
     specPaths: ADMIN_CANCEL_SPEC_PATHS,
+  })),
+  // J11 (#1056) — the sent-Event edit dialog and its entry points.
+  ...[
+    'apps/web/src/features/scheduling/components/planning-admin/event-edit-preview.tsx',
+    'apps/web/src/features/scheduling/components/planning-admin/calendar-row.tsx',
+    'apps/web/src/features/scheduling/components/planning-admin/planning-event-card.tsx',
+    'apps/web/src/features/scheduling/components/planning-admin/cycle-review-card.tsx',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: ADMIN_EDIT_SPEC_PATHS,
   })),
   // #217 — the church-admin-controller owns every cycle and event
   // endpoint these specs drive: list/detail isolation and the lock edge

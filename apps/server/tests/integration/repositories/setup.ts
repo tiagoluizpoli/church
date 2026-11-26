@@ -1,6 +1,7 @@
 import * as schema from '@church/db';
 import { clearPublicTables } from '@church/db/clear-public-tables';
 import { getIntegrationDatabaseUrl } from '@church/db/integration-database-url';
+import { INTEGRATION_POOL_LIMITS } from '@church/db/integration-pool-limits';
 import { parseCalendarDay, parseInstant } from '@church/time';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
@@ -28,7 +29,11 @@ import {
 
 const DATABASE_URL = getIntegrationDatabaseUrl();
 
-const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
+const pool = new pg.Pool({
+  connectionString: DATABASE_URL,
+  max: 2,
+  ...INTEGRATION_POOL_LIMITS,
+});
 export const testDb = drizzle(pool, { schema });
 
 export const volunteerDashboardSeed = {
@@ -328,7 +333,7 @@ export async function seed(): Promise<void> {
     peopleNeeded: 1,
   });
 
-  // Assignments (assignment-1 confirmed, assignment-2 declined for event-time-block-1)
+  // Assignments (assignment-1 pending, assignment-2 cancelled for event-time-block-1)
   await buildAssignment({
     db: testDb,
     churchId,
@@ -338,7 +343,7 @@ export async function seed(): Promise<void> {
     volunteerId: volunteerOneId,
     roleId: usherRoleId,
     id: confirmedAssignmentId,
-    status: 'confirmed',
+    status: 'pending',
     assignedAt: jun1At10,
     assignedBy: aliceId,
   });
@@ -351,7 +356,7 @@ export async function seed(): Promise<void> {
     volunteerId: volunteerTwoId,
     roleId: usherRoleId,
     id: '99999999-9999-9999-9999-999999999992',
-    status: 'declined',
+    status: 'cancelled',
     assignedAt: parseInstant({ value: '2024-06-01T10:05:00Z' }),
   });
   await buildAssignment({
@@ -363,7 +368,7 @@ export async function seed(): Promise<void> {
     volunteerId: volunteerOneId,
     roleId: usherRoleId,
     id: '99999999-9999-9999-9999-999999999993',
-    status: 'confirmed',
+    status: 'pending',
     assignedAt: parseInstant({ value: '2024-06-01T10:10:00Z' }),
     assignedBy: aliceId,
   });

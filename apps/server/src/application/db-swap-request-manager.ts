@@ -45,6 +45,7 @@ interface AssertOwnAssignmentInput {
   churchId: ChurchId;
   userId: UserId;
   ownerVolunteerId: VolunteerId;
+  tx?: TransactionContext;
 }
 
 interface AssertClosedInMinistryInput {
@@ -126,6 +127,7 @@ export class DbSwapRequestManager implements ISwapRequestManager {
     churchId,
     userId,
     ownerVolunteerId,
+    tx,
   }: AssertOwnAssignmentInput): Promise<void> {
     const decision = await this.authorityManager.decideAuthority({
       churchId,
@@ -133,6 +135,7 @@ export class DbSwapRequestManager implements ISwapRequestManager {
       action: 'participate',
       resource: { type: 'church', churchId, ownerVolunteerId },
       scope: 'object',
+      tx,
     });
     if (!decision.allowed) throw new AssignmentAccessDeniedError();
   }
@@ -164,23 +167,22 @@ export class DbSwapRequestManager implements ISwapRequestManager {
         churchId,
         userId,
         ownerVolunteerId: volunteerId,
+        tx,
       });
-      const published =
-        assignment.status === 'pending' ||
-        assignment.status === 'confirmed' ||
-        assignment.status === 'declined';
+      const published = assignment.status === 'pending';
       if (!published || !shiftId || !participationId) {
         throw new SwapRequestUnpublishedError();
       }
       const participation = await this.participationRepo.getById({
         churchId,
         participationId,
+        tx,
       });
       if (participation.state !== 'published') {
         throw new SwapRequestUnpublishedError();
       }
       // The Shift's own start, not the Event's (ADR-0003).
-      const shift = await this.shiftRepo.getById({ churchId, shiftId });
+      const shift = await this.shiftRepo.getById({ churchId, shiftId, tx });
       if (
         compareInstants({ left: shift.startTime, right: nowInstant() }) <= 0
       ) {
@@ -190,14 +192,15 @@ export class DbSwapRequestManager implements ISwapRequestManager {
       const { ministryId, eventId } = participation;
       const [event, ministry, church, people, roles, requirements] =
         await Promise.all([
-          this.eventRepo.getById({ churchId, eventId }),
-          this.ministryRepo.getById({ churchId, id: ministryId }),
-          this.churchRepo.getById({ id: churchId }),
-          this.volunteerRepo.listByIds({ churchId, ids: [volunteerId] }),
-          this.roleRepo.listByMinistry({ churchId, ministryId }),
+          this.eventRepo.getById({ churchId, eventId, tx }),
+          this.ministryRepo.getById({ churchId, id: ministryId, tx }),
+          this.churchRepo.getById({ id: churchId, tx }),
+          this.volunteerRepo.listByIds({ churchId, ids: [volunteerId], tx }),
+          this.roleRepo.listByMinistry({ churchId, ministryId, tx }),
           this.shiftRepo.listRequirementsByParticipation({
             churchId,
             participationId,
+            tx,
           }),
         ]);
       const open = await this.swapRequestRepo.findOpenByAssignment({
@@ -324,12 +327,13 @@ export class DbSwapRequestManager implements ISwapRequestManager {
       const participation = await this.participationRepo.getById({
         churchId,
         participationId,
+        tx,
       });
       // Concealed: another Ministry's request reads as missing.
       if (participation.ministryId !== ministryId) {
         throw new NotFoundError('Swap request not found');
       }
-      const shift = await this.shiftRepo.getById({ churchId, shiftId });
+      const shift = await this.shiftRepo.getById({ churchId, shiftId, tx });
       // Derived expiry: a request still `open` once its Shift has started is not answerable.
       const at = nowInstant();
       if (
@@ -355,14 +359,15 @@ export class DbSwapRequestManager implements ISwapRequestManager {
       const { eventId } = participation;
       const [event, ministry, church, leaderName, roles, requirements] =
         await Promise.all([
-          this.eventRepo.getById({ churchId, eventId }),
-          this.ministryRepo.getById({ churchId, id: ministryId }),
-          this.churchRepo.getById({ id: churchId }),
-          this.churchRepo.findUserName({ userId }),
-          this.roleRepo.listByMinistry({ churchId, ministryId }),
+          this.eventRepo.getById({ churchId, eventId, tx }),
+          this.ministryRepo.getById({ churchId, id: ministryId, tx }),
+          this.churchRepo.getById({ id: churchId, tx }),
+          this.churchRepo.findUserName({ userId, tx }),
+          this.roleRepo.listByMinistry({ churchId, ministryId, tx }),
           this.shiftRepo.listRequirementsByParticipation({
             churchId,
             participationId,
+            tx,
           }),
         ]);
       await this.notifications.enqueue({
@@ -419,6 +424,7 @@ export class DbSwapRequestManager implements ISwapRequestManager {
         const shift = await this.shiftRepo.getById({
           churchId,
           shiftId: assignment.shiftId,
+          tx,
         });
         if (
           isSwapRequestExpired({

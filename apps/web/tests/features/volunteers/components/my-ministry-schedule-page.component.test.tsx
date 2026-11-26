@@ -121,7 +121,7 @@ describe.each([
     ).toBeTruthy();
     expect(
       screen.getByRole('link', { name: m.nav_my_schedule() }),
-    ).toHaveAttribute('href', '/my-schedule');
+    ).toHaveAttribute('href', '/app/my-schedule');
   });
 
   it('shows the neutral message on the concealed-scope 404', async () => {
@@ -140,7 +140,7 @@ describe.each([
     ).toBeNull();
     expect(
       screen.getByRole('link', { name: m.nav_my_schedule() }),
-    ).toHaveAttribute('href', '/my-schedule');
+    ).toHaveAttribute('href', '/app/my-schedule');
   });
 
   it('offers a retry and the way back when the load fails', async () => {
@@ -152,7 +152,7 @@ describe.each([
     ).toBeTruthy();
     expect(
       screen.getByRole('link', { name: m.nav_my_schedule() }),
-    ).toHaveAttribute('href', '/my-schedule');
+    ).toHaveAttribute('href', '/app/my-schedule');
     fireEvent.click(screen.getByRole('button', { name: m.schedules_retry() }));
     expect(
       await screen.findByRole('heading', {
@@ -174,7 +174,7 @@ describe('MyMinistrySchedulePage layout', () => {
     expect(await screen.findByText('dom 11 out · 09:00–11:00')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Minha escala' })).toHaveAttribute(
       'href',
-      '/my-schedule',
+      '/app/my-schedule',
     );
   });
 });

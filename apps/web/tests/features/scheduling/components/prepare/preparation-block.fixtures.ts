@@ -60,10 +60,14 @@ export const BLOCK: PreparationBlock = {
     startTime: '2027-01-04T01:00:00.000Z',
     endTime: '2027-01-04T05:00:00.000Z',
     label: 'Night',
+    isPublic: false,
+    place: null,
+    placeAddressId: null,
     status: 'active',
     requirements: [],
   },
   included: true,
+  cancelled: false,
   shiftsChangedAfterAsk: false,
   answerCoverage: { available: 0, needed: null },
   shifts: [SHIFT],
@@ -91,4 +95,4 @@ export const EVENT: GetCycleParticipation200EventsItem = {
   generatedFromTemplate: false,
   eventTimeBlocks: [BLOCK],
 };
-export const EDITOR_PATH = `/schedules/${MINISTRY_ID}/${CYCLE_ID}/slots/${BLOCK_ID}`;
+export const EDITOR_PATH = `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}/slots/${BLOCK_ID}`;

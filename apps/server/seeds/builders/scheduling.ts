@@ -4,6 +4,7 @@ import {
   cycle,
   event,
   eventTimeBlock,
+  eventTimeBlockMove,
   ministryParticipation,
   participationEventTimeBlockInclusion,
   sector,
@@ -24,7 +25,7 @@ import { requireInsertedRow } from './require-inserted-row';
 
 /**
  * Direct-state builders for fixture graphs (ADR 0006): they write the rows a
- * journey starts from. A published Participation or a confirmed Assignment
+ * journey starts from. A published Participation or an Assignment
  * bypasses the planning and publishing workflows by purpose; the workflows
  * themselves are exercised by the journeys, not seeded through here.
  */
@@ -168,6 +169,10 @@ export interface BuildEventTimeBlockInput {
   start: Instant;
   end: Instant;
   label?: string;
+  isPublic?: boolean;
+  place?: string;
+  placeAddressId?: string;
+  status?: SeededEventTimeBlock['status'];
   /** The TemplateTimeBlock it was generated from; absent for a dynamic Event. */
   sourceTemplateTimeBlockId?: string;
 }
@@ -180,6 +185,10 @@ export async function buildEventTimeBlock({
   start,
   end,
   label,
+  isPublic,
+  place,
+  placeAddressId,
+  status,
   sourceTemplateTimeBlockId,
 }: BuildEventTimeBlockInput): Promise<SeededEventTimeBlock> {
   return requireInsertedRow({
@@ -192,10 +201,51 @@ export async function buildEventTimeBlock({
         startTime: toDate({ instant: start }),
         endTime: toDate({ instant: end }),
         label,
+        isPublic,
+        place,
+        placeAddressId,
+        status,
         sourceTemplateTimeBlockId,
       })
       .returning(),
     description: `Event Time Block ${id}`,
+  });
+}
+
+export interface BuildEventTimeBlockMoveInput {
+  db: SeedWriter;
+  churchId: string;
+  id?: string;
+  eventTimeBlockId: string;
+  previousStart: Instant;
+  previousEnd: Instant;
+  newStart: Instant;
+  newEnd: Instant;
+  /** Left to the database (now) when the order alone matters. */
+  movedAt?: Instant;
+}
+
+/** One recorded post-Send move; the first row's previous bounds are the as-sent time. */
+export async function buildEventTimeBlockMove({
+  db,
+  churchId,
+  id,
+  eventTimeBlockId,
+  previousStart,
+  previousEnd,
+  newStart,
+  newEnd,
+  movedAt,
+}: BuildEventTimeBlockMoveInput): Promise<void> {
+  await db.insert(eventTimeBlockMove).values({
+    id,
+    churchId,
+    eventTimeBlockId,
+    previousStart: toDate({ instant: previousStart }),
+    previousEnd: toDate({ instant: previousEnd }),
+    newStart: toDate({ instant: newStart }),
+    newEnd: toDate({ instant: newEnd }),
+    movedAt: movedAt ? toDate({ instant: movedAt }) : undefined,
   });
 }
 
@@ -356,7 +406,7 @@ export interface BuildAssignmentInput {
   shiftRequirementId: string;
   id?: string;
   status: AssignmentStatus;
-  /** Why it was declined or cancelled. */
+  /** Why it was cancelled. */
   reason?: string;
   /** Explicit, so a graph never depends on the wall clock at load time. */
   assignedAt?: Instant;

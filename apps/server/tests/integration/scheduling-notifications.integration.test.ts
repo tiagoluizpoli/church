@@ -63,6 +63,7 @@ import {
   DrizzleUnitOfWork,
   DrizzleVolunteerRepository,
 } from '@/infrastructure/repositories';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { CaptureEmailSender } from '@/infrastructure/services/capture-email-sender';
 import { OtelTracing } from '@/infrastructure/services/otel-tracing';
 import { buildChurchMembership } from '@/seeds/builders/church';
@@ -89,11 +90,15 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
 const harness = createMinistryInvitationTestHarness({ db: schedulingTestDb });
 const { outboxRepository, unitOfWork } = harness;
-const notifications = new ChurchNotifications({ outboxRepository });
+const notifications = new ChurchNotifications({
+  outboxRepository,
+  churchIdentity: nullChurchIdentity,
+});
 
 /** Inbox repository whose next `create` calls throw. */
 class FlakyInboxRepository extends DrizzleNotificationRepository {
@@ -289,6 +294,9 @@ function buildPlanningManager() {
     eventRepository: new DrizzlePlanningEventRepository({
       db: schedulingTestDb,
     }),
+    precedenceRepository: new DrizzleTemplatePrecedenceRepository({
+      db: schedulingTestDb,
+    }),
     templateRepository: new DrizzleEventTemplateRepository({
       db: schedulingTestDb,
     }),
@@ -339,7 +347,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
 
   it('freezes the facts at first resolution: a retry writes the inbox row after the Cycle is gone', async () => {
     await askOneMember();
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const inbox = new FlakyInboxRepository({ db: schedulingTestDb });
     inbox.failuresLeft = 100;
     const drainer = buildDrainer(emailSender, inbox);
@@ -365,7 +373,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
 
   it('carries the Church name and a single-word first name to the email', async () => {
     await askOneMember();
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -378,7 +386,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
   it('settles every sink as skipped, not failed, when the Cycle is gone before first resolution', async () => {
     await askOneMember();
     await dropCycle();
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -424,11 +432,17 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       expect.objectContaining({
         kind: 'availability_opened',
         to: { userId: first, churchId: ids.churchId },
-        data: { cycleId, ministryId: ids.ministryId, checkId: firstCheck?.id },
+        data: {
+          cycleId,
+          ministryId: ids.ministryId,
+          checkId: firstCheck?.id,
+          churchLogoUrl: null,
+          churchAccent: null,
+        },
       }),
     );
 
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const drainer = buildDrainer(emailSender);
     expect(await drainer.drainOnce({ limit: 10 })).toEqual({
       claimed: 2,
@@ -457,7 +471,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         (row) => row.ministryMembershipId === membership?.ministryMembershipId,
       );
       expect(email).toMatchObject({
-        actionUrl: `https://app.test/availability/${check?.id}`,
+        actionUrl: `https://app.test/app/availability/${check?.id}`,
       });
       const delivered = emailSender.delivered.find(
         (row) => row.payload.to === email.to,
@@ -529,13 +543,19 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       expect.arrayContaining(
         checks.map(({ id }) =>
           expect.objectContaining({
-            data: { cycleId, ministryId: ids.ministryId, checkId: id },
+            data: {
+              cycleId,
+              ministryId: ids.ministryId,
+              checkId: id,
+              churchLogoUrl: null,
+              churchAccent: null,
+            },
           }),
         ),
       ),
     );
 
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
     expect(emailSender.sent.map((email) => email.kind)).toEqual([
       'availability.reminder',
@@ -545,7 +565,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       expect.arrayContaining(
         checks.map(({ id }) =>
           expect.objectContaining({
-            actionUrl: `https://app.test/availability/${id}`,
+            actionUrl: `https://app.test/app/availability/${id}`,
           }),
         ),
       ),
@@ -587,16 +607,22 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       expect.objectContaining({
         kind: 'availability_opened',
         to: { userId, churchId: ids.churchId },
-        data: { cycleId, ministryId: ids.ministryId, checkId: check?.id },
+        data: {
+          cycleId,
+          ministryId: ids.ministryId,
+          checkId: check?.id,
+          churchLogoUrl: null,
+          churchAccent: null,
+        },
       }),
     );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
     expect(
       emailSender.sent.find((email) => email.to === 'late@test.com'),
     ).toMatchObject({
       kind: 'availability.opened',
-      actionUrl: `https://app.test/availability/${check?.id}`,
+      actionUrl: `https://app.test/app/availability/${check?.id}`,
     });
     const inbox = await schedulingTestDb
       .select()
@@ -1091,7 +1117,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     ).toBe(0);
 
     setTestClock({ instant: '2026-12-26T09:00:00.000Z' as Instant });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
     expect(emailSender.sent).toHaveLength(4);
     expect(
@@ -1103,7 +1129,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       kind: 'schedule.published',
       to: 'ana@test.com',
       churchTimezone: 'America/Sao_Paulo',
-      actionUrl: 'https://app.test/my-schedule',
+      actionUrl: 'https://app.test/app/my-schedule',
       shifts: [
         expect.objectContaining({ roleName: 'Host' }),
         expect.objectContaining({ roleName: 'Host' }),
@@ -1225,7 +1251,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     const sentBefore = new Set((await outboxRows()).map((row) => row.id));
     await schedulingTestDb
       .update(assignment)
-      .set({ status: 'confirmed' })
+      .set({ status: 'pending' })
       .where(eq(assignment.id, lateAssignment.id));
     await managers.participationManager.sendScheduleUpdates(publishInput);
     await schedulingTestDb
@@ -1291,7 +1317,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         shiftRequirementId: requirement.id,
         volunteerId,
         roleId: role.id,
-        status: 'confirmed',
+        status: 'pending',
       });
     };
     // A block move leaves this other block's Shift alone (same times).
@@ -1481,6 +1507,198 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
     );
   });
 
+  it('an edit of a running Event tells Volunteers through Send updates only: the kept upcoming Assignment as moved, the clash-withdrawn one as removed, and nothing for a started Shift', async () => {
+    const role = await seedRole({
+      churchId: ids.churchId,
+      ministryId: ids.ministryId,
+      name: 'Host',
+    });
+    interface SeedBookingInput {
+      participation: string;
+      eventTimeBlock: string;
+      volunteerId: string;
+      startTime: string;
+      endTime: string;
+    }
+    const seedBooking = async ({
+      participation,
+      eventTimeBlock,
+      volunteerId,
+      startTime,
+      endTime,
+    }: SeedBookingInput) => {
+      const booked = await seedShift({
+        churchId: ids.churchId,
+        participationId: participation,
+        eventTimeBlockId: eventTimeBlock,
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        label: 'Shift',
+      });
+      const requirement = await seedRequirement({
+        churchId: ids.churchId,
+        participationId: participation,
+        shiftId: booked.id,
+        roleId: role.id,
+        peopleNeeded: 1,
+      });
+      return buildAssignment({
+        db: schedulingTestDb,
+        churchId: ids.churchId,
+        participationId: participation,
+        shiftId: booked.id,
+        shiftRequirementId: requirement.id,
+        volunteerId,
+        roleId: role.id,
+        status: 'pending',
+      });
+    };
+    const started = await seedMember({ name: 'Ana', email: 'ana@test.com' });
+    const kept = await seedMember({ name: 'Bruno', email: 'bruno@test.com' });
+    const clashing = await seedMember({
+      name: 'Carla',
+      email: 'carla@test.com',
+    });
+    // The Vigil block 02:30–04:00 UTC; Ana's Shift starts before the edit.
+    for (const [volunteerId, startTime, endTime] of [
+      [
+        started.volunteer.id,
+        '2026-12-25T02:30:00.000Z',
+        '2026-12-25T03:15:00.000Z',
+      ],
+      [
+        kept.volunteer.id,
+        '2026-12-25T03:15:00.000Z',
+        '2026-12-25T04:00:00.000Z',
+      ],
+      [
+        clashing.volunteer.id,
+        '2026-12-25T03:15:00.000Z',
+        '2026-12-25T04:00:00.000Z',
+      ],
+    ] as const) {
+      await seedBooking({
+        participation: participationId,
+        eventTimeBlock: eventTimeBlockId,
+        volunteerId,
+        startTime,
+        endTime,
+      });
+    }
+    // Carla also serves the Dawn 04:30–05:30, which the stretched Vigil reaches.
+    const dawn = await createSchedulingPhase3EventGraph({
+      churchId: ids.churchId,
+      cycleId,
+      ministryId: ids.ministryId,
+      title: 'Dawn',
+      start: new Date('2026-12-25T04:30:00.000Z'),
+      end: new Date('2026-12-25T05:30:00.000Z'),
+      status: 'scheduled',
+    });
+    await seedBooking({
+      participation: dawn.participation.id,
+      eventTimeBlock: dawn.eventTimeBlock.id,
+      volunteerId: clashing.volunteer.id,
+      startTime: '2026-12-25T04:30:00.000Z',
+      endTime: '2026-12-25T05:30:00.000Z',
+    });
+    await schedulingTestDb
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.ministryId, ids.ministryId));
+    const managers = createSchedulingManagers({ notifications });
+    const publishInput = {
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      ministryId: MinistryId.from(ids.ministryId),
+      userId: UserId.from(ids.adminUserId),
+      confirmBelowFull: true,
+    };
+    await managers.participationManager.publishCycle(publishInput);
+    const rowsBefore = await outboxRows();
+    setTestClock({ instant: '2026-12-25T03:00:00.000Z' as Instant });
+
+    // 02:30–04:00 → 02:30–05:00 at 03:00: the rest of the block, 03:00–04:00,
+    // becomes 03:00–05:00, so each upcoming Shift keeps its share of it.
+    const edited = await buildPlanningManager().confirmEdit({
+      churchId: ChurchId.from(ids.churchId),
+      cycleId: CycleId.from(cycleId),
+      eventId: EventId.from(eventId),
+      start: new Date('2026-12-25T02:30:00.000Z'),
+      end: new Date('2026-12-25T05:00:00.000Z'),
+      eventTimeBlocks: [
+        {
+          id: EventTimeBlockId.from(eventTimeBlockId),
+          label: 'Vigil',
+          startTime: new Date('2026-12-25T02:30:00.000Z'),
+          endTime: new Date('2026-12-25T05:00:00.000Z'),
+        },
+      ],
+      actingUserId: UserId.from(ids.adminUserId),
+    });
+
+    expect(edited.withdrawn.map(({ volunteerId }) => volunteerId)).toEqual([
+      clashing.volunteer.id,
+    ]);
+    const beforeIds = new Set(rowsBefore.map(({ id }) => id));
+    const queuedByEdit = (await outboxRows()).filter(
+      ({ id }) => !beforeIds.has(id),
+    );
+    expect(queuedByEdit.map(({ payload }) => payload)).toEqual([
+      expect.objectContaining({
+        kind: 'event_changed',
+        to: expect.objectContaining({ userId: ids.adminUserId }),
+      }),
+    ]);
+
+    await managers.participationManager.sendScheduleUpdates(publishInput);
+    const updates = (await outboxRows())
+      .map((row) => row.payload)
+      .filter(
+        (payload) =>
+          typeof payload === 'object' &&
+          payload !== null &&
+          'kind' in payload &&
+          payload.kind === 'schedule_updated',
+      );
+    expect(updates).toHaveLength(2);
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        to: { userId: kept.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'moved',
+              before: expect.objectContaining({
+                startsAt: '2026-12-25T03:15:00.000Z',
+                endsAt: '2026-12-25T04:00:00.000Z',
+              }),
+              after: expect.objectContaining({
+                startsAt: '2026-12-25T03:30:00.000Z',
+                endsAt: '2026-12-25T05:00:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+    expect(updates).toContainEqual(
+      expect.objectContaining({
+        to: { userId: clashing.volunteer.userId, churchId: ids.churchId },
+        data: expect.objectContaining({
+          changes: [
+            expect.objectContaining({
+              kind: 'removed',
+              assignment: expect.objectContaining({
+                startsAt: '2026-12-25T03:15:00.000Z',
+              }),
+            }),
+          ],
+        }),
+      }),
+    );
+  });
+
   it('a published Schedule prepares and assigns an Event added to its Sent Cycle, and Send updates tells the new Volunteer', async () => {
     const role = await seedRole({
       churchId: ids.churchId,
@@ -1516,7 +1734,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       shiftRequirementId: vigilRequirement.id,
       volunteerId: told.volunteer.id,
       roleId: role.id,
-      status: 'confirmed',
+      status: 'pending',
     });
     await schedulingTestDb
       .update(ministryParticipation)
@@ -1645,7 +1863,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
       },
     });
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const sender = new CaptureEmailSender('Church');
+    const sender = new CaptureEmailSender({ appName: 'Church' });
     const result = await buildDrainer(sender).drainOnce({ limit: 10 });
     expect(result).toMatchObject({ sent: 1, failed: 0 });
     expect(sender.sent).toHaveLength(0);
@@ -1701,7 +1919,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         shiftRequirementId: requirement.id,
         volunteerId,
         roleId: role.id,
-        status: 'confirmed',
+        status: 'pending',
       });
     };
     const vigil = await book({
@@ -1835,7 +2053,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         shiftRequirementId: requirement.id,
         volunteerId,
         roleId: role.id,
-        status: 'confirmed',
+        status: 'pending',
       });
     };
     const cancelled = await book(eventTimeBlockId, ana.volunteer.id, 3);
@@ -1937,7 +2155,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
         shiftRequirementId: requirement.id,
         volunteerId,
         roleId: role.id,
-        status: 'confirmed',
+        status: 'pending',
       });
     };
     const removed = await book(eventTimeBlockId, ana.volunteer.id, 3);
@@ -2070,7 +2288,7 @@ describe('scheduling Notifications through enqueue and the drainer', () => {
 
     await buildAvailabilityManager().askSchedule(scheduleKey());
 
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
     expect(emailSender.sent.map((email) => email.to)).toEqual(['ana@test.com']);
@@ -2119,14 +2337,14 @@ describe('N8 swap_request_answered through the outbox', () => {
 
   it('renders the pt-BR email and bell row with the reply and the Assignment-page link, freezing the facts', async () => {
     await enqueueAnswered({ reply: 'Fica com a gente <b>domingo</b>' });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
     expect(result.failed).toBe(0);
     const [email] = emailSender.delivered;
     const text = email?.request.text ?? '';
-    const link = `https://app.test/my-schedule/${assignmentId}`;
+    const link = `https://app.test/app/my-schedule/${assignmentId}`;
     expect(email?.request.subject).toBe(
       m.notification_swap_request_answered_title({}, pt),
     );
@@ -2168,7 +2386,7 @@ describe('N8 swap_request_answered through the outbox', () => {
 
   it('omits the reply line when the leader left none', async () => {
     await enqueueAnswered({});
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2286,7 +2504,7 @@ describe('N10 event_changed (add) through the outbox', () => {
 
   it('renders the pt-BR email with an escaped title, Church-Timezone time and an absolute link, and stores the bell row', async () => {
     await enqueueAdded({ eventTitle: 'Vigília <b>especial</b>' });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2302,7 +2520,7 @@ describe('N10 event_changed (add) through the outbox', () => {
     expect(text).toContain('Ana adicionou em dom 13 dez · 19:00–21:00');
     expect(text).toContain(m.notification_event_changed_action({}, pt));
     expect(text).toContain(
-      `https://app.test/schedules/${ids.ministryId}/${cycleId}`,
+      `https://app.test/app/schedules/${ids.ministryId}/${cycleId}`,
     );
     expect(email?.request.html).not.toContain('<b>especial');
     const inbox = await schedulingTestDb.select().from(notification);
@@ -2366,7 +2584,7 @@ describe('N10 event_changed (add) through the outbox', () => {
         },
       }),
     );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2390,7 +2608,7 @@ describe('N10 event_changed (add) through the outbox', () => {
       `Louvor: 1 voluntário afetado · ${m.prepare_answers_coverage_note({}, pt)}`,
     );
     expect(text).toContain(
-      `https://app.test/schedules?cycleId=${cycleId}&ministryIds=${ids.ministryId},${sibling.id}`,
+      `https://app.test/app/schedules?cycleId=${cycleId}&ministryIds=${ids.ministryId},${sibling.id}`,
     );
     expect(email?.request.html).not.toContain('<b>especial');
     const inbox = await schedulingTestDb.select().from(notification);
@@ -2413,7 +2631,7 @@ describe('N10 event_changed (add) through the outbox', () => {
         })
         .where(eq(outboxMessage.id, row.id));
     }
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2466,7 +2684,7 @@ describe('N9 event_cancelled and the N10 cancel variant through the outbox', () 
         },
       }),
     );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2485,7 +2703,7 @@ describe('N9 event_cancelled and the N10 cancel variant through the outbox', () 
       'dom 13 dez · 13:00–14:00 · Vigília <b>especial</b> · Usher · Main Door',
     );
     expect(text).toContain(m.notification_event_cancelled_action({}, pt));
-    expect(text).toContain('https://app.test/my-schedule');
+    expect(text).toContain('https://app.test/app/my-schedule');
     expect(email?.request.html).not.toContain('<b>especial');
     const inbox = await schedulingTestDb.select().from(notification);
     expect(inbox).toHaveLength(1);
@@ -2539,7 +2757,7 @@ describe('N9 event_cancelled and the N10 cancel variant through the outbox', () 
         },
       }),
     );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2563,7 +2781,7 @@ describe('N9 event_cancelled and the N10 cancel variant through the outbox', () 
     );
     expect(text).toContain(m.notification_event_changed_action({}, pt));
     expect(text).toContain(
-      `https://app.test/schedules?cycleId=${cycleId}&ministryIds=${ids.ministryId},${sibling.id}`,
+      `https://app.test/app/schedules?cycleId=${cycleId}&ministryIds=${ids.ministryId},${sibling.id}`,
     );
     expect(email?.request.html).not.toContain('<i>Admin');
     const inbox = await schedulingTestDb.select().from(notification);
@@ -2609,7 +2827,7 @@ describe('N9 event_cancelled and the N10 cancel variant through the outbox', () 
         })
         .where(eq(outboxMessage.id, row.id));
     }
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2657,7 +2875,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
       userId: ids.adminUserId,
       ministryIds: [ids.ministryId, kids.id],
     });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2666,7 +2884,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
     const [email] = emailSender.delivered;
     const text = email?.request.text ?? '';
     const html = email?.request.html ?? '';
-    const pickerUrl = `https://app.test/schedules?cycleId=${cycleId}&ministryIds=${kids.id},${ids.ministryId}`;
+    const pickerUrl = `https://app.test/app/schedules?cycleId=${cycleId}&ministryIds=${kids.id},${ids.ministryId}`;
     expect(email?.request.to).toBe('sched-admin@test.com');
     expect(email?.request.subject).toBe(
       m.notification_cycle_ready_to_prepare_title(
@@ -2730,7 +2948,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
       userId: ids.adminUserId,
       ministryIds: [ids.ministryId],
     });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2742,7 +2960,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
       ),
     );
     expect(text).toContain(
-      `https://app.test/schedules/${ids.ministryId}/${cycleId}`,
+      `https://app.test/app/schedules/${ids.ministryId}/${cycleId}`,
     );
   });
 
@@ -2759,7 +2977,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
           eq(member.organizationId, ids.churchId),
         ),
       );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2787,7 +3005,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
         .set({ payload: { ...(row.payload as object), facts: oldFacts } })
         .where(eq(outboxMessage.id, row.id));
     }
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2807,7 +3025,7 @@ describe('N2 cycle_ready_to_prepare through the outbox', () => {
       userId: ids.adminUserId,
       ministryIds: [ids.ministryId],
     });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const inbox = new FlakyInboxRepository({ db: schedulingTestDb });
     inbox.failuresLeft = 1;
     const drainer = buildDrainer(emailSender, inbox);
@@ -2883,7 +3101,7 @@ describe('availability delivery facts resolved per recipient', () => {
     await seedAsk(null);
     await enqueue('availability_opened', guitarist);
     await enqueue('availability_opened', singer);
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -2914,7 +3132,7 @@ describe('availability delivery facts resolved per recipient', () => {
     const userId = await seedRoleHolder('ana', guitar.id);
     await seedAsk('2999-01-10');
     await enqueue('availability_opened', userId);
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const drainer = buildDrainer(emailSender);
     await drainer.drainOnce({ limit: 10 });
 
@@ -2950,7 +3168,7 @@ describe('availability delivery facts resolved per recipient', () => {
       ...scheduleKey(),
       answerBy: parseCalendarDay({ value: '2026-11-10' }),
     });
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const drainer = buildDrainer(emailSender);
     await drainer.drainOnce({ limit: 10 });
     await manager.setDeadline({
@@ -2996,7 +3214,7 @@ describe('availability delivery facts resolved per recipient', () => {
     await seedNeededShift([guitar.id]);
     const userId = await seedRoleHolder('ana', guitar.id);
     await seedAsk('2026-11-20');
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const drainer = buildDrainer(emailSender);
 
     // 02:30 UTC on the 21st is still 23:30 on the 20th in America/Sao_Paulo.
@@ -3025,7 +3243,7 @@ describe('availability delivery facts resolved per recipient', () => {
       ).id,
     );
     await enqueue('availability_opened', userId);
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
     const drainer = buildDrainer(emailSender);
     await drainer.drainOnce({ limit: 10 });
     await seedAsk(null);
@@ -3069,16 +3287,16 @@ describe('availability delivery facts resolved per recipient', () => {
         .set({ payload: { ...(row.payload as object), facts: oldFacts } })
         .where(eq(outboxMessage.id, row.id));
     }
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
     expect(result.failed).toBe(0);
     expect(emailSender.sent[0]).toMatchObject({
-      actionUrl: 'https://app.test/availability',
+      actionUrl: 'https://app.test/app/availability',
     });
     expect(emailSender.delivered[0]?.request.html).toContain(
-      'https://app.test/availability',
+      'https://app.test/app/availability',
     );
     expect(emailSender.delivered[0]?.request.text).toContain(
       m.notification_availability_span({
@@ -3127,7 +3345,7 @@ describe('N7 swap_request through the outbox', () => {
         },
       }),
     );
-    const emailSender = new CaptureEmailSender('Church');
+    const emailSender = new CaptureEmailSender({ appName: 'Church' });
 
     const result = await buildDrainer(emailSender).drainOnce({ limit: 10 });
 
@@ -3151,7 +3369,7 @@ describe('N7 swap_request through the outbox', () => {
       m.notification_swap_request_note({ note: 'João cobre' }, pt),
     );
     expect(text).toContain(
-      `https://app.test/schedules/${ids.ministryId}/${cycleId}/assign?swapRequest=${swapRequestId}`,
+      `https://app.test/app/schedules/${ids.ministryId}/${cycleId}/assign?swapRequest=${swapRequestId}`,
     );
     const inbox = await schedulingTestDb.select().from(notification);
     expect(inbox).toHaveLength(1);

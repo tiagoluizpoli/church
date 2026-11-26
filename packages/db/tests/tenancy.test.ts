@@ -1,13 +1,13 @@
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as schema from '../src/schema';
+import { clearDatabase, testDb } from './schema/setup';
+import * as schema from '@/schema';
 import {
   addChurchMember,
   ChurchIdentityConflictError,
   createChurch,
   ensureChurch,
-} from '../src/tenancy';
-import { clearDatabase, testDb } from './schema/setup';
+} from '@/tenancy';
 
 const FIRST_CHURCH_ID = 'd0000000-0000-4000-8000-000000000001';
 const SECOND_CHURCH_ID = 'd0000000-0000-4000-8000-000000000002';
@@ -16,6 +16,12 @@ const USER_ID = 'tenancy-user';
 describe('tenancy primitives', () => {
   beforeEach(async () => {
     await clearDatabase();
+  });
+
+  it('refuses a reserved Church Slug', async () => {
+    await expect(
+      createChurch({ db: testDb, name: 'Admin Church', slug: 'admin' }),
+    ).rejects.toThrow('is reserved by the platform');
   });
 
   it('rejects a pinned id when its slug resolves to a different Church', async () => {

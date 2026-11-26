@@ -56,13 +56,13 @@ interface DeclineWithNotificationInput {
   journey: VolunteerAssignmentsJourney;
 }
 
-/** What the journey does to its graph: the volunteer declines. */
+/** What the journey does to its graph: the volunteer is withdrawn (cancelled). */
 async function mutateLikeTheJourney({
   journey,
 }: DeclineWithNotificationInput): Promise<void> {
   await testDb
     .update(assignment)
-    .set({ status: 'declined' })
+    .set({ status: 'cancelled' })
     .where(eq(assignment.id, journey.assignment.id));
 }
 
@@ -143,7 +143,7 @@ describe('volunteer-assignments E2E journey recipe', () => {
     expect(rows).toMatchObject({
       churchId: journey.church.id,
       volunteerId: journey.volunteer.volunteerId,
-      status: 'confirmed',
+      status: 'pending',
     });
 
     const [eventRow] = await testDb
@@ -174,7 +174,7 @@ describe('volunteer-assignments E2E journey recipe', () => {
     await mutateLikeTheJourney({ journey });
     expect(
       await assignmentStatus({ assignmentId: journey.assignment.id }),
-    ).toBe('declined');
+    ).toBe('cancelled');
 
     const reloaded = await loadJourney({ journeyKey: 'alpha' });
 

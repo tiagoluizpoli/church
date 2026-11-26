@@ -18,7 +18,7 @@ async function seedTemplateTimeBlock(input: {
     db: schedulingTestDb,
     churchId: input.churchId,
     name: `Template for ${input.label}`,
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [
       {
         label: input.label,

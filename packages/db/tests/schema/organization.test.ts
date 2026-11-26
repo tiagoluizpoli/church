@@ -1,13 +1,9 @@
 import { eq, getTableColumns } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { session, user } from '../../src/schema/auth';
-import { church } from '../../src/schema/church';
-import {
-  invitation,
-  member,
-  organization,
-} from '../../src/schema/organization';
 import { clearDatabase, testDb } from './setup';
+import { session, user } from '@/schema/auth';
+import { church } from '@/schema/church';
+import { invitation, member, organization } from '@/schema/organization';
 
 interface SeededOrganization {
   userId: string;
@@ -79,9 +75,12 @@ describe('Organization Schema', () => {
 
   it('keeps the Church extension to its exact domain columns', () => {
     expect(Object.keys(getTableColumns(church)).sort()).toEqual([
+      'accentColor',
       'id',
+      'logoKey',
       'settings',
       'timezone',
+      'website',
     ]);
   });
 

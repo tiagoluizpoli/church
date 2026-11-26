@@ -2,7 +2,14 @@ import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import {
   CYCLE_BUILDER_QUERY_KEY,
@@ -43,6 +50,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { WorkspacePage } from '@/components/workspace-page';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import type { ApplyAssignmentProposalBodyExcludedAdditionsItem } from '@/infrastructure/api/churchAPI.schemas';
@@ -71,6 +83,9 @@ interface CycleBuilderProps {
   swapRequests?: LeaderSwapRequest[];
   selectedSwapRequestId?: string;
   onSelectSwapRequest?: (swapRequestId: string | undefined) => void;
+  /** The date strip's selected days, kept in the route's `?days=`. */
+  selectedDates: string[];
+  onSelectedDatesChange: (dates: string[]) => void;
 }
 
 const EMPTY_SWAP_REQUESTS: LeaderSwapRequest[] = [];
@@ -95,10 +110,11 @@ export function CycleBuilder({
   swapRequests = EMPTY_SWAP_REQUESTS,
   selectedSwapRequestId,
   onSelectSwapRequest,
+  selectedDates,
+  onSelectedDatesChange,
 }: CycleBuilderProps) {
   const { auditPanel } = appConfig.parked;
   const isMobile = useMediaQuery('(max-width: 767px)');
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedVolunteerId, setSelectedVolunteerId] = useState<
     string | undefined
   >();
@@ -112,6 +128,15 @@ export function CycleBuilder({
       event.status !== 'cancelled' &&
       (event.state === 'assigning' || event.state === 'availability_requested'),
   );
+  const proposalDisabledReasonId = useId();
+  let proposalDisabledReason: string | null = null;
+  if (publishableEvents.length === 0) {
+    proposalDisabledReason = data.events.some(
+      (event) => event.state === 'published',
+    )
+      ? m.builder_proposal_disabled_published()
+      : m.builder_proposal_disabled_no_availability();
+  }
   const publishStaffing = summarizeCycleStaffing({
     data: { ...data, events: publishableEvents },
   });
@@ -292,7 +317,31 @@ export function CycleBuilder({
           {m.builder_send_updates({ count: data.affectedVolunteerCount ?? 0 })}
         </Button>
       ) : null}
-      {publishableEvents.length > 0 ? (
+      {proposalDisabledReason ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              // aria-disabled (not disabled) keeps the button focusable and
+              // tappable, so the reason reaches keyboard and touch users too.
+              <Button
+                type="button"
+                size={isMobile ? 'touch' : 'sm'}
+                variant="outline"
+                aria-disabled="true"
+                aria-describedby={proposalDisabledReasonId}
+                className="aria-disabled:opacity-50"
+                onClick={() => toast.info(proposalDisabledReason)}
+              >
+                {m.builder_proposal_open()}
+              </Button>
+            }
+          />
+          <TooltipContent>{proposalDisabledReason}</TooltipContent>
+          <span className="sr-only" id={proposalDisabledReasonId}>
+            {proposalDisabledReason}
+          </span>
+        </Tooltip>
+      ) : (
         <Button
           type="button"
           size={isMobile ? 'touch' : 'sm'}
@@ -305,7 +354,7 @@ export function CycleBuilder({
             ? m.builder_proposal_loading()
             : m.builder_proposal_open()}
         </Button>
-      ) : null}
+      )}
       {publishableEvents.length > 0 ? (
         <Button
           type="button"
@@ -344,8 +393,8 @@ export function CycleBuilder({
             data={data}
             cycleStartDate={cycleStartDate}
             cycleEndDate={cycleEndDate}
-            selectedDate={selectedDate}
-            onSelectedDateChange={setSelectedDate}
+            selectedDates={selectedDates}
+            onSelectedDatesChange={onSelectedDatesChange}
             selectedVolunteerId={selectedVolunteerId}
             onSelectVolunteer={(volunteerId) =>
               setSelectedVolunteerId((current) =>

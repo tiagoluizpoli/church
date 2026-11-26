@@ -27,7 +27,7 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, params, 'aria-label': label }: MockLinkProps) => (
     <a
       aria-label={label}
-      href={`/cycles/${params?.cycleId}/events/${params?.eventId}`}
+      href={`/app/cycles/${params?.cycleId}/events/${params?.eventId}`}
     >
       {children}
     </a>
@@ -115,7 +115,7 @@ describe('PlanningEventCard affordances (US1)', () => {
 
     expect(
       screen.getByRole('link', { name: 'Editar dia Sunday Service' }),
-    ).toHaveAttribute('href', '/cycles/cycle-1/events/event-1');
+    ).toHaveAttribute('href', '/app/cycles/cycle-1/events/event-1');
     expect(
       screen.queryByRole('button', { name: /^Adicionar horário/ }),
     ).not.toBeInTheDocument();
@@ -428,6 +428,30 @@ describe('PlanningEventCard move preview', () => {
     expect(
       screen.queryAllByRole('button', {
         name: m.event_move_preview_action_label({ title: 'Sunday Service' }),
+      }),
+    ).toHaveLength(count);
+  });
+});
+
+describe('PlanningEventCard edit', () => {
+  it.each([
+    [true, 1],
+    [false, 0],
+  ])('with canEdit=%s renders %s edit button', (canEdit, count) => {
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="UTC">
+        <PlanningEventCard
+          row={rowWithTwoEventTimeBlocks()}
+          isReadOnly
+          canEdit={canEdit}
+          {...baseProps()}
+        />
+      </TimezoneProvider>,
+    );
+
+    expect(
+      screen.queryAllByRole('button', {
+        name: m.event_edit_preview_action_label({ title: 'Sunday Service' }),
       }),
     ).toHaveLength(count);
   });

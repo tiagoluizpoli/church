@@ -22,6 +22,13 @@ export function reviewTokenFor({ bundle }: ReviewTokenForInput): string {
       String(fromDate({ date: half.expiresAt })),
     ])
     .sort(([left], [right]) => String(left).localeCompare(String(right)));
-  const facts = JSON.stringify([bundle.churchAccessLevel, ministries]);
+  const churchExpiry = bundle.churchExpiresAt
+    ? String(fromDate({ date: bundle.churchExpiresAt }))
+    : null;
+  const facts = JSON.stringify([
+    bundle.churchAccessLevel,
+    churchExpiry,
+    ministries,
+  ]);
   return createHash('sha256').update(facts).digest('base64url');
 }

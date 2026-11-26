@@ -5,13 +5,14 @@ import {
   ministryMembership,
   ministryParticipation,
   shiftRequirement,
+  unavailableShift,
 } from '@church/db';
 import {
   addCalendarDays,
   type CalendarDay,
   parseCalendarDay,
 } from '@church/time';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { runE2eJourneyRecipe } from '@/seeds/e2e/journey-recipe';
 import {
@@ -40,7 +41,7 @@ describe('schedule-publish E2E journey recipe', () => {
     await truncateAll();
   });
 
-  it('starts both Ministries unpublished on one sent cycle, with nobody assigned', async () => {
+  it('starts every Participation unpublished on one sent cycle, with nobody assigned', async () => {
     const journey = await load({ anchor: ANCHOR });
 
     const [cycleRow] = await testDb
@@ -56,13 +57,13 @@ describe('schedule-publish E2E journey recipe', () => {
       })
       .from(ministryParticipation)
       .where(eq(ministryParticipation.churchId, journey.church.id));
-    expect(participations).toHaveLength(2);
     expect(participations.map(({ state }) => state)).toEqual([
+      'availability_requested',
       'availability_requested',
       'availability_requested',
     ]);
     expect(participations.map(({ id }) => id).sort()).toEqual(
-      [journey.worship.id, journey.care.id].sort(),
+      [journey.worship.id, journey.worshipSecond.id, journey.care.id].sort(),
     );
 
     expect(
@@ -93,7 +94,7 @@ describe('schedule-publish E2E journey recipe', () => {
     );
   });
 
-  it('confirms availability for the Volunteer persona only, so a proposal suggests exactly that persona', async () => {
+  it('seeds realistic availability: all, scarce, none, pending and unanswered', async () => {
     const journey = await load({ anchor: ANCHOR });
 
     const checks = await testDb
@@ -101,20 +102,51 @@ describe('schedule-publish E2E journey recipe', () => {
         state: availabilityCheck.state,
         cycleId: availabilityCheck.cycleId,
         volunteerId: ministryMembership.volunteerId,
+        unavailable: sql<string[]>`coalesce(
+          array_agg(${unavailableShift.shiftId} order by ${unavailableShift.shiftId})
+            filter (where ${unavailableShift.shiftId} is not null),
+          '{}')`,
       })
       .from(availabilityCheck)
       .innerJoin(
         ministryMembership,
         eq(availabilityCheck.ministryMembershipId, ministryMembership.id),
       )
-      .where(eq(availabilityCheck.churchId, journey.church.id));
-    expect(checks).toEqual([
-      {
-        state: 'confirmed',
-        cycleId: journey.cycle.id,
-        volunteerId: journey.personas.volunteer.volunteerId,
-      },
-    ]);
+      .leftJoin(
+        unavailableShift,
+        eq(unavailableShift.availabilityCheckId, availabilityCheck.id),
+      )
+      .where(eq(availabilityCheck.churchId, journey.church.id))
+      .groupBy(availabilityCheck.id, ministryMembership.volunteerId);
+    const byVolunteer = new Map(
+      checks.map(({ volunteerId, ...rest }) => [volunteerId, rest]),
+    );
+    const first = journey.worship.shiftId;
+    const second = journey.worshipSecond.shiftId;
+    const cycleId = journey.cycle.id;
+    expect(byVolunteer.get(journey.personas.volunteer.volunteerId)).toEqual({
+      cycleId,
+      state: 'confirmed',
+      unavailable: [],
+    });
+    expect(byVolunteer.get(journey.pool.elisa.volunteerId)).toEqual({
+      cycleId,
+      state: 'confirmed',
+      unavailable: [second],
+    });
+    expect(byVolunteer.get(journey.pool.davi.volunteerId)).toEqual({
+      cycleId,
+      state: 'confirmed',
+      unavailable: [first, second].sort(),
+    });
+    expect(byVolunteer.get(journey.pool.caio.volunteerId)).toEqual({
+      cycleId,
+      state: 'pending',
+      unavailable: [],
+    });
+    // Beatriz has no check at all.
+    expect(byVolunteer.has(journey.personas.other.volunteerId)).toBe(false);
+    expect(byVolunteer.size).toBe(4);
   });
 
   it('follows the anchor past the legacy seed dates', async () => {
@@ -154,6 +186,7 @@ describe('schedule-publish E2E journey recipe', () => {
       .from(ministryParticipation)
       .where(eq(ministryParticipation.churchId, journey.church.id));
     expect(states.map(({ state }) => state)).toEqual([
+      'availability_requested',
       'availability_requested',
       'availability_requested',
     ]);

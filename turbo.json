@@ -6,7 +6,13 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "passThroughEnv": ["VITE_SERVER_URL", "VITE_APP_REVISION"],
+      "passThroughEnv": [
+        "VITE_SERVER_URL",
+        "VITE_APP_REVISION",
+        "VITE_GOOGLE_MAPS_BROWSER_KEY",
+        "VITE_GOOGLE_MAPS_EMBED_KEY",
+        "VITE_GOOGLE_MAPS_MAP_ID"
+      ],
       "outputs": ["dist/**"]
     },
     "lint": {
@@ -34,6 +40,12 @@
         "ENABLE_DEBUG_ENDPOINTS",
         "VITE_SERVER_URL",
         "CHURCH_WORKTREE",
+        "S3_ENDPOINT",
+        "S3_REGION",
+        "S3_BUCKET",
+        "S3_ACCESS_KEY_ID",
+        "S3_SECRET_ACCESS_KEY",
+        "STORAGE_PUBLIC_URL",
         "CHURCH_FAILURE_BUNDLES_DIR"
       ],
       "cache": false
@@ -49,6 +61,12 @@
         "ENABLE_DEBUG_ENDPOINTS",
         "VITE_SERVER_URL",
         "CHURCH_WORKTREE",
+        "S3_ENDPOINT",
+        "S3_REGION",
+        "S3_BUCKET",
+        "S3_ACCESS_KEY_ID",
+        "S3_SECRET_ACCESS_KEY",
+        "STORAGE_PUBLIC_URL",
         "CHURCH_FAILURE_BUNDLES_DIR",
         "PLAYWRIGHT_BROWSERS_PATH"
       ],
@@ -65,6 +83,12 @@
         "ENABLE_DEBUG_ENDPOINTS",
         "VITE_SERVER_URL",
         "CHURCH_WORKTREE",
+        "S3_ENDPOINT",
+        "S3_REGION",
+        "S3_BUCKET",
+        "S3_ACCESS_KEY_ID",
+        "S3_SECRET_ACCESS_KEY",
+        "STORAGE_PUBLIC_URL",
         "CHURCH_FAILURE_BUNDLES_DIR",
         "PLAYWRIGHT_BROWSERS_PATH"
       ],

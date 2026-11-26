@@ -59,6 +59,7 @@ import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-o
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -77,6 +78,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -129,12 +131,14 @@ beforeAll(async () => {
       staffingSeeder,
       volunteerRepository: new DrizzleVolunteerRepository({ db }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
       eventRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       templateRepository,
       churchRepository,
       unitOfWork,
@@ -147,11 +151,13 @@ beforeAll(async () => {
         volunteerRepository: new DrizzleVolunteerRepository({ db }),
       }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       unitOfWork,
     }),
     activeChurchResolver: activeChurchResolver as never,
@@ -722,7 +728,7 @@ describe('Cycle last day', () => {
       db,
       churchId,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         { label: 'Service', startTime: time('19:00'), endTime: time('21:00') },
       ],
@@ -768,6 +774,7 @@ describe('Cycle last day', () => {
     expect(fortnightApply.json()).toEqual({
       generatedEventCount: 2,
       generatedEventTimeBlockCount: 2,
+      leftoverEventTimeBlocks: [],
     });
     expect(await eventStarts(fortnight.id)).toEqual([
       '2026-10-18T22:00:00.000Z',
@@ -1174,7 +1181,7 @@ describe('DELETE /admin/cycles/:cycleId', () => {
       db,
       churchId: seed.churchAId,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [],
     });
     const doomed = await seedCycle({
@@ -1715,7 +1722,7 @@ describe('PATCH /admin/cycles/:cycleId', () => {
     });
   });
 
-  it('refuses a Draft whose last day has elapsed, resolving it as Past', async () => {
+  it('refuses a Draft whose last day has elapsed, rolling its Past flip back with the refused write', async () => {
     const seed = await signIn();
     const elapsed = await seedCycle({
       churchId: seed.churchAId,
@@ -1739,7 +1746,7 @@ describe('PATCH /admin/cycles/:cycleId', () => {
       name: 'September',
       startDate: '2026-09-01',
       endDate: '2026-09-30',
-      state: 'past',
+      state: 'draft',
     });
   });
 

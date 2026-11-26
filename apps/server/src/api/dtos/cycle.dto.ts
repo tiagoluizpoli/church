@@ -14,6 +14,9 @@ import {
 /** Matches the `cycle.name` column length. */
 const CYCLE_NAME_MAX_LENGTH = 255;
 
+/** The `:cycleId` route param. */
+export const cycleParamsSchema = z.object({ cycleId: z.guid() });
+
 export const createCycleBodySchema = z.object({
   name: z.string().trim().min(1).max(CYCLE_NAME_MAX_LENGTH),
   startDate: z.string().date(),

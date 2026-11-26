@@ -8,6 +8,7 @@ import {
   createTemplateFormFromTemplate,
   toTemplateRequestBody,
 } from './planning-admin.utils';
+import type { TemplateCollisionDialogProps } from './template-collision-dialog';
 import type { TemplateEditorState } from './template-editor-form';
 import {
   TEMPLATE_LIST_QUERY_KEY,
@@ -15,7 +16,9 @@ import {
   templateUsageQueryKey,
   USUAL_SETUP_QUERY_KEY,
 } from './template-query-keys';
+import { useTemplateCollisions } from './use-template-collisions';
 import { toSaveRefusal, useTemplateForm } from './use-template-form';
+import { useTemplateLeaveGuard } from './use-template-leave-guard';
 import { adminApi } from '@/utils/api-instances';
 
 export interface RemovedBlockUsage {
@@ -35,6 +38,8 @@ export interface UseEditTemplateResult extends TemplateEditorState {
   confirmation: RemovedBlockUsage[] | null;
   onConfirmRemoval: () => void;
   onCancelRemoval: () => void;
+  collisionDialog: TemplateCollisionDialogProps;
+  leaveBlocker: ReturnType<typeof useTemplateLeaveGuard>['blocker'];
 }
 
 /**
@@ -49,12 +54,14 @@ export function useEditTemplate({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const templateId = template.id;
-  const { form, setRefusal, fields } = useTemplateForm({
+  const { form, dirty, setRefusal, fields } = useTemplateForm({
     initialForm: () => createTemplateFormFromTemplate({ template }),
   });
   const [confirmation, setConfirmation] = useState<RemovedBlockUsage[] | null>(
     null,
   );
+
+  const collisions = useTemplateCollisions();
 
   const removedBlocks = template.blocks.filter(
     (block) => !form.blocks.some((draft) => draft.persistedId === block.id),
@@ -62,7 +69,10 @@ export function useEditTemplate({
 
   const save = useMutation({
     mutationFn: () =>
-      adminApi.updateEventTemplate(templateId, toTemplateRequestBody({ form })),
+      adminApi.updateEventTemplate(
+        templateId,
+        toTemplateRequestBody({ form, precedences: collisions.precedences }),
+      ),
     onSuccess: async () => {
       setConfirmation(null);
       await Promise.all(
@@ -74,11 +84,14 @@ export function useEditTemplate({
         ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
       toast.success(m.event_templates_updated_toast());
-      await navigate({ to: '/event-templates' });
+      leaveGuard.markSaved();
+      await navigate({ to: '/app/event-templates', replace: true });
     },
     onError: (error) => {
       setConfirmation(null);
-      setRefusal(toSaveRefusal({ error }));
+      if (!collisions.handleError(error)) {
+        setRefusal(toSaveRefusal({ error }));
+      }
     },
   });
 
@@ -109,6 +122,7 @@ export function useEditTemplate({
   });
 
   const pending = save.isPending || usageCheck.isPending;
+  const leaveGuard = useTemplateLeaveGuard({ dirty, pending });
 
   function onSave() {
     if (pending) return;
@@ -123,11 +137,20 @@ export function useEditTemplate({
   return {
     ...fields,
     mode: 'edit',
+    leaveBlocker: leaveGuard.blocker,
     pending,
     onSave,
     usageFailed: usageCheck.isError,
     confirmation,
     onConfirmRemoval: () => save.mutate(),
     onCancelRemoval: () => setConfirmation(null),
+    collisionDialog: {
+      ...collisions.dialog,
+      pending: save.isPending,
+      onConfirm: () => {
+        collisions.dialog.onCancel();
+        save.mutate();
+      },
+    },
   };
 }

@@ -60,6 +60,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -105,6 +106,7 @@ beforeAll(async () => {
       ministryRepository: new DrizzleMinistryRepository({ db }),
       churchRepository: new DrizzleChurchRepository({ db }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
       unitOfWork: new DrizzleUnitOfWork({ db }),
@@ -393,7 +395,13 @@ describe('POST /prepare/cycles/:cycleId/remind-availability', () => {
         (row) => row.ministryMembershipId === volunteer.membershipId,
       );
       const notice = queued.find(({ to }) => to.userId === volunteer.userId);
-      expect(notice?.data).toEqual({ cycleId, ministryId, checkId: check?.id });
+      expect(notice?.data).toEqual({
+        cycleId,
+        ministryId,
+        checkId: check?.id,
+        churchLogoUrl: null,
+        churchAccent: null,
+      });
     }
     expect(newCheck?.state).toBe('pending');
     expect(await lastRemindedAt()).toEqual(new Date(REMINDED_AT));

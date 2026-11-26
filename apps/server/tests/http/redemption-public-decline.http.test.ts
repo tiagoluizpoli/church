@@ -31,6 +31,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { provisionChurch } from '@/scripts/provision-church';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
@@ -77,20 +78,24 @@ beforeEach(async () => {
   await truncateAll();
   fixture = await seedTwoChurchIdentityFixture({ db: testDb });
   userCount = (await testDb.select().from(user)).length;
+  const verificationCodeRepository =
+    new DrizzleInvitationVerificationCodeRepository({
+      db: testDb,
+      config: appConfig,
+    });
   const redemptionManager = new DbRedemptionManager({
     churchRepository,
     identityGateway: gateway,
     invitationRepository: ministryInvitationRepository,
     invitationVerificationCodeManager: new InvitationVerificationCodeManager({
-      repository: new DrizzleInvitationVerificationCodeRepository({
-        db: testDb,
-        config: appConfig,
-      }),
-      emailSender: new CaptureEmailSender('Church'),
+      churchIdentity: nullChurchIdentity,
+      repository: verificationCodeRepository,
+      emailSender: new CaptureEmailSender({ appName: 'Church' }),
       generateCode: () => '123456',
       verificationCodeSecret: 'test-secret',
       config: appConfig,
     }),
+    verificationCodeRepository,
     redemptionRepository: new DrizzleRedemptionRepository({
       db: testDb,
       volunteerRepository,
@@ -284,6 +289,34 @@ describe('public Church Invitation decline over HTTP', () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ error: 'INVITATION_UNAVAILABLE' });
+  });
+
+  it('throttles the redeem route with 429 RATE_LIMITED', async () => {
+    const url =
+      '/api/v1/redemption/church/00000000-0000-4000-8000-000000000000/redeem';
+    const payload = {
+      name: 'Invitee',
+      password: 'correct-horse-battery',
+      code: '123456',
+      idempotencyKey: '00000000-0000-4000-8000-0000000000cc',
+    };
+    let last = await app.inject({
+      method: 'POST',
+      url,
+      payload,
+      remoteAddress: '203.0.113.78',
+    });
+    for (let i = 0; i < appConfig.redemptionRateLimit.maxRequests; i++) {
+      last = await app.inject({
+        method: 'POST',
+        url,
+        payload,
+        remoteAddress: '203.0.113.78',
+      });
+    }
+
+    expect(last.statusCode).toBe(429);
+    expect(last.json()).toMatchObject({ error: 'RATE_LIMITED' });
   });
 
   it('is throttled with 429 RATE_LIMITED', async () => {

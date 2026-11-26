@@ -1,6 +1,7 @@
 import { calendarDaySchema, type Instant, instantSchema } from '@church/time';
 import { z } from 'zod';
 import { MinistryId, VolunteerId } from './branded-ids';
+import type { ChurchIdentitySnapshot } from './church-identity-snapshot';
 import {
   MINISTRY_ACCESS_LEVEL_OPTIONS,
   type MinistryAccessLevel,
@@ -14,6 +15,19 @@ const ministryInvitationOfferFactsSchema = z.object({
   ministryAccessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
   roleNames: z.array(z.string()),
   expiresAt: instantSchema,
+});
+
+/** The Church identity frozen when the notification is queued; absent on older rows. */
+const queuedChurchIdentitySchema = z.object({
+  churchLogoUrl: z.string().nullable().optional(),
+  churchAccent: z.string().nullable().optional(),
+  churchLocality: z.string().optional(),
+});
+
+/** The Church identity every queued Church-scoped request carries, each nullable but never absent. */
+const requiredChurchIdentitySchema = z.object({
+  churchLogoUrl: z.string().nullable(),
+  churchAccent: z.string().nullable(),
 });
 
 /**
@@ -31,6 +45,7 @@ export const ministryInvitationNotificationDataSchema = z.object({
   ministryId: z.uuid(),
   ministryName: z.string(),
   ...ministryInvitationOfferFactsSchema.partial().shape,
+  ...queuedChurchIdentitySchema.shape,
 });
 
 /** Availability opened (initial Ask) and the reminder share their facts. */
@@ -287,9 +302,11 @@ const availabilityRequestDataSchema = z.object({
   ministryId: z.uuid(),
 });
 
-export const notificationRequestDataSchemas = {
+const notificationEnqueueDataSchemas = {
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
-  ministry_invitation: z.object({ ministryInvitationId: z.uuid() }),
+  ministry_invitation: z.object({
+    ministryInvitationId: z.uuid(),
+  }),
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
   availability_opened: availabilityRequestDataSchema,
   // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
@@ -331,6 +348,80 @@ export const notificationRequestDataSchemas = {
 } as const satisfies Record<NotificationKind, z.ZodType> &
   Record<string, z.ZodType>;
 
+/** What Church code hands `enqueue` per kind; the identity is stamped at queue time. */
+export type NotificationEnqueueDataOf<K extends NotificationRequestKind> =
+  z.infer<(typeof notificationEnqueueDataSchemas)[K]>;
+
+/** Every enqueue kind, each persisted with the Church identity: a kind left out, or without it, fails type-checking. */
+export type ChurchScopedRequestSchemas = {
+  [K in NotificationEnqueueKind]: z.ZodType<ChurchIdentitySnapshot>;
+};
+
+type NotificationEnqueueKind = keyof typeof notificationEnqueueDataSchemas;
+
+/**
+ * What is persisted per kind: the enqueue data plus the required Church
+ * identity snapshot, so a new Church kind cannot be queued without it.
+ */
+export const notificationRequestDataSchemas = {
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  ministry_invitation:
+    notificationEnqueueDataSchemas.ministry_invitation.extend({
+      ...requiredChurchIdentitySchema.shape,
+      churchLocality: z.string().optional(),
+    }),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  availability_opened:
+    notificationEnqueueDataSchemas.availability_opened.extend(
+      requiredChurchIdentitySchema.shape,
+    ),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  availability_reminder:
+    notificationEnqueueDataSchemas.availability_reminder.extend(
+      requiredChurchIdentitySchema.shape,
+    ),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  schedule_published: notificationEnqueueDataSchemas.schedule_published.extend(
+    requiredChurchIdentitySchema.shape,
+  ),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  schedule_updated: notificationEnqueueDataSchemas.schedule_updated.extend(
+    requiredChurchIdentitySchema.shape,
+  ),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  cycle_ready_to_prepare:
+    notificationEnqueueDataSchemas.cycle_ready_to_prepare.extend(
+      requiredChurchIdentitySchema.shape,
+    ),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  swap_request: notificationEnqueueDataSchemas.swap_request.extend(
+    requiredChurchIdentitySchema.shape,
+  ),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  swap_request_answered:
+    notificationEnqueueDataSchemas.swap_request_answered.extend(
+      requiredChurchIdentitySchema.shape,
+    ),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  event_changed: notificationEnqueueDataSchemas.event_changed.extend(
+    requiredChurchIdentitySchema.shape,
+  ),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  event_cancelled: notificationEnqueueDataSchemas.event_cancelled.extend(
+    requiredChurchIdentitySchema.shape,
+  ),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  transfer_ministry_digest:
+    notificationEnqueueDataSchemas.transfer_ministry_digest.extend(
+      requiredChurchIdentitySchema.shape,
+    ),
+  // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
+  transfer_leaderless_ministry:
+    notificationEnqueueDataSchemas.transfer_leaderless_ministry.extend(
+      requiredChurchIdentitySchema.shape,
+    ),
+} as const satisfies ChurchScopedRequestSchemas;
+
 /** Every kind Church code can enqueue: the inbox kinds plus email-only kinds. */
 export type NotificationRequestKind =
   keyof typeof notificationRequestDataSchemas;
@@ -352,6 +443,9 @@ export interface MinistryInvitationDeliveryFacts {
   ministryId: string;
   ministryName: string;
   churchName: string;
+  churchLogoUrl?: string | null;
+  churchAccent?: string | null;
+  churchLocality?: string;
   churchTimezone: string;
   inviterName: string;
   ministryAccessLevel: MinistryAccessLevel;
@@ -364,27 +458,37 @@ export interface MinistryInvitationDeliveryFacts {
 export type AvailabilityDeliveryFacts =
   NotificationDataOf<'availability_opened'> & {
     churchName: string;
+    churchLogoUrl?: string | null;
+    churchAccent?: string | null;
     actionUrl: string;
   };
 export type SchedulePublishedDeliveryFacts =
   NotificationDataOf<'schedule_published'> & {
     churchName: string;
+    churchLogoUrl?: string | null;
+    churchAccent?: string | null;
     actionUrl: string;
   };
 export type ScheduleUpdatedDeliveryFacts =
   NotificationDataOf<'schedule_updated'> & {
     churchName: string;
+    churchLogoUrl?: string | null;
+    churchAccent?: string | null;
     actionUrl: string;
   };
 export type SwapRequestAnsweredDeliveryFacts =
   NotificationDataOf<'swap_request_answered'> & {
     churchName: string;
+    churchLogoUrl?: string | null;
+    churchAccent?: string | null;
     /** The Assignment page. */
     actionUrl: string;
   };
 export type CycleReadyToPrepareDeliveryFacts =
   NotificationDataOf<'cycle_ready_to_prepare'> & {
     churchName: string;
+    churchLogoUrl?: string | null;
+    churchAccent?: string | null;
     churchTimezone: string;
     /** The single Ministry's Schedule, or the Cycle-preserving picker. */
     actionUrl: string;
@@ -392,6 +496,8 @@ export type CycleReadyToPrepareDeliveryFacts =
 
 export type EventChangedDeliveryFacts = NotificationDataOf<'event_changed'> & {
   churchName: string;
+  churchLogoUrl?: string | null;
+  churchAccent?: string | null;
   /** The single Ministry's Schedule, or the Cycle-preserving picker. */
   actionUrl: string;
 };
@@ -399,12 +505,16 @@ export type EventChangedDeliveryFacts = NotificationDataOf<'event_changed'> & {
 export type EventCancelledDeliveryFacts =
   NotificationDataOf<'event_cancelled'> & {
     churchName: string;
+    churchLogoUrl?: string | null;
+    churchAccent?: string | null;
     /** My schedule. */
     actionUrl: string;
   };
 
 export type SwapRequestDeliveryFacts = NotificationDataOf<'swap_request'> & {
   churchName: string;
+  churchLogoUrl?: string | null;
+  churchAccent?: string | null;
   /** The board with this request open. */
   actionUrl: string;
 };
@@ -425,6 +535,10 @@ export interface WithdrawnAssignmentEmailLine {
  */
 export interface TransferDigestDeliveryFacts {
   churchName: string;
+  /** Absolute URL; absent on payloads queued before the Church identity. */
+  churchLogoUrl?: string | null;
+  /** `#rrggbb`; absent means the app's default brand colour. */
+  churchAccent?: string | null;
   churchTimezone: string;
   recipientFirstName: string;
   ministryName: string;
@@ -467,6 +581,7 @@ export type NotificationDeliveryData =
 
 const transferDigestDeliveryFactsSchema = z.object({
   churchName: z.string(),
+  ...queuedChurchIdentitySchema.shape,
   churchTimezone: z.string(),
   recipientFirstName: z.string(),
   ministryName: z.string(),
@@ -483,7 +598,10 @@ const transferDigestDeliveryFactsSchema = z.object({
   actionUrl: z.string(),
 });
 
-const emailFactsSchema = z.object({ churchName: z.string() });
+const emailFactsSchema = z.object({
+  churchName: z.string(),
+  ...queuedChurchIdentitySchema.shape,
+});
 
 /**
  * What a frozen `facts` row must hold to render its email. Rows frozen before

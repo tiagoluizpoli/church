@@ -10,7 +10,7 @@ import { expect, test } from '@playwright/test';
 import { fillDatePickerField } from './date-picker.helpers';
 import { addEventOnNestedPage } from './event-create.helpers';
 import { planningMonth } from './planning-month.helpers';
-import { createTemplateOnNestedPage } from './template-create.helpers';
+import { createTemplateInDialog } from './template-create.helpers';
 import {
   newPersonaContext,
   signInPersonaPage,
@@ -121,7 +121,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   const wednesdayTemplateName = `Wednesday Service ${month.cycleName}`;
   const sundayGatheringName = `Sunday Gathering ${month.cycleName}`;
 
-  await page.goto('/cycles');
+  await page.goto('/app/cycles');
 
   await page.getByTestId('open-create-cycle-dialog-button').click();
   const createCycleDialog = page.getByRole('dialog', {
@@ -148,11 +148,11 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   );
 
   const cycleReviewUrl = page.url();
-  await page.goto('/event-templates');
+  await page.goto('/app/event-templates');
 
   // The recipe owns Sunday's source-bound Usual setup; create a second
   // template through the UI and retain the library edit/apply outcomes.
-  await createTemplateOnNestedPage({
+  await createTemplateInDialog({
     page,
     name: wednesdayTemplateName,
     weekday: 3,
@@ -164,7 +164,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     .filter({ hasText: sundayTemplateName })
     .getByTestId('edit-template-button')
     .click();
-  await expect(page.getByTestId('template-edit-page')).toBeVisible();
+  await expect(page.getByTestId('template-edit-dialog')).toBeVisible();
   await page.getByTestId('template-name-input').fill(sundayGatheringName);
   await page.getByTestId('create-template-button').click();
 
@@ -292,7 +292,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   // desktop breakpoint per `specs/019-planning-cycles-table-view`), so this
   // spec — now run at a narrow viewport to keep exercising the card/list
   // presentation — navigates directly instead.
-  await page.goto('/cycles');
+  await page.goto('/app/cycles');
   await expect(page).toHaveURL(/\/cycles\/?$/);
   await page.getByTestId('open-create-cycle-dialog-button').click();
   const overlapDialog = page.getByRole('dialog', {
@@ -421,7 +421,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     })
     .click();
   await expect(leaderPage).toHaveURL(
-    `/schedules/${journey.ministries.worship.id}/${cycleId}`,
+    `/app/schedules/${journey.ministries.worship.id}/${cycleId}`,
   );
   const preparedWelcomeRows = leaderPage
     .locator('[data-testid^="prepare-event-time-block-row-"]')
@@ -446,7 +446,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
   await welcomeRow.click();
   await expect(leaderPage).toHaveURL(
     new RegExp(
-      `/schedules/${journey.ministries.worship.id}/${cycleId}/slots/[^/]+$`,
+      `/app/schedules/${journey.ministries.worship.id}/${cycleId}/slots/[^/]+$`,
     ),
   );
   await expect(
@@ -461,7 +461,7 @@ test('church admin can plan, review, and send a cycle while volunteers stay hidd
     persona: journey.personas.volunteer,
   });
   const volunteerPage = await volunteerContext.newPage();
-  await volunteerPage.goto('/cycles');
+  await volunteerPage.goto('/app/cycles');
   // Phase 8: a route-level `beforeLoad` guard now redirects non-ChurchAdmin
   // callers away before the page ever renders (FR-015), superseding the old
   // in-component "planning-access-denied" card for this route.

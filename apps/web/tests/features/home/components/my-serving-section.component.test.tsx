@@ -94,9 +94,8 @@ const assignment = (id: string, day: number, swapRequested = false) => ({
   sectorName: 'Room',
   roleId: 'r',
   roleName: 'Teacher',
-  status: 'confirmed' as const,
+  status: 'pending' as const,
   timingState: 'upcoming' as const,
-  canRespond: true,
   swapRequested,
 });
 
@@ -162,7 +161,10 @@ describe('Home serving widgets', () => {
 
     const next = await widget(m.home_next_assignment());
     await within(next).findByRole('link', { name: 'Sunday' });
-    expect(hrefs(next)).toEqual(['/my-schedule/a-1', '/my-schedule/a-1']);
+    expect(hrefs(next)).toEqual([
+      '/app/my-schedule/a-1',
+      '/app/my-schedule/a-1',
+    ]);
     expect(within(next).getByText(/^domingo, 11 de outubro · /)).toBeVisible();
     expect(within(next).getByText('Kids a-1 · Room · Teacher')).toBeVisible();
 
@@ -170,9 +172,9 @@ describe('Home serving widgets', () => {
     await within(checks).findByText('Ministry open · Cycle open');
     expect(within(checks).queryByText(/Ministry done/)).not.toBeInTheDocument();
     expect(hrefs(checks)).toEqual([
-      '/availability/open',
-      '/availability/soon',
-      '/availability/late',
+      '/app/availability/open',
+      '/app/availability/soon',
+      '/app/availability/late',
     ]);
     // Each check row is one link naming its Ministry, Cycle and the action.
     expect(
@@ -204,16 +206,16 @@ describe('Home serving widgets', () => {
     // The next assignment is not repeated in the upcoming list.
     const upcoming = await widget(m.home_upcoming_assignments());
     expect(hrefs(upcoming)).toEqual([
-      '/my-schedule',
-      '/my-schedule/a-2',
-      '/my-schedule/a-3',
+      '/app/my-schedule',
+      '/app/my-schedule/a-2',
+      '/app/my-schedule/a-3',
     ]);
     expect(
       within(upcoming).getByRole('link', { name: m.home_see_all() }),
-    ).toHaveAttribute('href', '/my-schedule');
+    ).toHaveAttribute('href', '/app/my-schedule');
   });
 
-  it('keeps the upcoming and pending-check slots with their empty states', async () => {
+  it('shows the next assignment as the hero and leaves out widgets with nothing to show', async () => {
     givenServing();
     const first = assignment('a-1', 11);
     volunteerApi.getVolunteerDashboard.mockResolvedValue({
@@ -232,11 +234,18 @@ describe('Home serving widgets', () => {
 
     expect(await screen.findByRole('link', { name: 'Sunday' })).toHaveAttribute(
       'href',
-      '/my-schedule/a-1',
+      '/app/my-schedule/a-1',
     );
-    expect(await screen.findByText(m.home_upcoming_none())).toBeVisible();
-    expect(screen.getByText(m.home_pending_checks_none())).toBeVisible();
     expect(screen.getByText(m.home_next_tomorrow())).toBeVisible();
+    expect(
+      screen.queryByRole('heading', { name: m.home_upcoming_assignments() }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: m.home_pending_checks() }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(m.home_serving_all_clear()),
+    ).not.toBeInTheDocument();
   });
 
   it('opens the next assignment, whatever its status, without asking for a response', async () => {
@@ -248,10 +257,10 @@ describe('Home serving widgets', () => {
     renderHomePage();
     expect(
       await screen.findByRole('link', { name: m.home_open_assignment() }),
-    ).toHaveAttribute('href', '/my-schedule/a-1');
+    ).toHaveAttribute('href', '/app/my-schedule/a-1');
   });
 
-  it('keeps the next-assignment slot and points it at an open check', async () => {
+  it('leads with the open check when there is no next assignment', async () => {
     givenServing();
     volunteerApi.listAvailabilityChecks.mockResolvedValue({
       checks: [check('open', 'pending')],
@@ -259,16 +268,30 @@ describe('Home serving widgets', () => {
     renderHomePage();
 
     expect(await screen.findByText('Ministry open · Cycle open')).toBeVisible();
-    const next = screen
-      .getByRole('heading', { name: m.home_next_assignment() })
-      .closest('section') as HTMLElement;
-    expect(within(next).getByText(m.home_next_assignment_none())).toBeVisible();
     expect(
-      within(next).getByText(m.home_next_assignment_none_checks()),
-    ).toBeVisible();
-    expect(
-      within(next).queryByText(m.home_next_assignment_none_hint()),
+      screen.queryByRole('heading', { name: m.home_next_assignment() }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(m.home_serving_all_clear()),
+    ).not.toBeInTheDocument();
+  });
+
+  it('says once, in one quiet line, that nothing waits', async () => {
+    givenServing();
+    renderHomePage();
+
+    expect(await screen.findByText(m.home_serving_all_clear())).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: m.nav_my_schedule() }),
+    ).toHaveAttribute('href', '/app/my-schedule');
+    for (const title of [
+      m.home_next_assignment(),
+      m.home_pending_checks(),
+      m.home_upcoming_assignments(),
+    ])
+      expect(
+        screen.queryByRole('heading', { name: title }),
+      ).not.toBeInTheDocument();
   });
 
   it('fails each read independently and retries it without masquerading as empty', async () => {
@@ -282,20 +305,17 @@ describe('Home serving widgets', () => {
     expect(await screen.findByText(m.my_schedule_load_error())).toBeVisible();
     expect(screen.getByText('Ministry open · Cycle open')).toBeVisible();
     expect(
-      screen.queryByText(m.home_next_assignment_none()),
+      screen.queryByText(m.home_serving_all_clear()),
     ).not.toBeInTheDocument();
 
     volunteerApi.getVolunteerDashboard.mockResolvedValue({
       nextAssignment: assignment('a-1', 11),
       upcomingAssignmentGroups: [],
     });
-    // The upcoming slot stays, saying the read failed, and leaves the retry to the others.
-    const upcoming = screen
-      .getByRole('heading', { name: m.home_upcoming_assignments() })
-      .closest('section') as HTMLElement;
+    // Nothing is known to be upcoming while the read has failed, so that widget is left out.
     expect(
-      within(upcoming).getByText(m.my_schedule_load_error()),
-    ).toBeVisible();
+      screen.queryByRole('heading', { name: m.home_upcoming_assignments() }),
+    ).not.toBeInTheDocument();
     // The next-assignment and serving-history widgets share the failed read; either retry refetches it.
     const retries = screen.getAllByRole('button', { name: m.home_retry() });
     expect(retries).toHaveLength(2);
@@ -311,16 +331,13 @@ describe('Home serving widgets', () => {
     renderHomePage();
 
     expect(await screen.findByText(m.availability_list_error())).toBeVisible();
+    // A failed read never reads as "nothing pending", and there is no next assignment to show.
     expect(
-      screen.queryByText(m.home_pending_checks_none()),
+      screen.queryByText(m.home_serving_all_clear()),
     ).not.toBeInTheDocument();
-    // The next-assignment slot only knows about assignments, so its own empty state stands.
-    const next = screen
-      .getByRole('heading', { name: m.home_next_assignment() })
-      .closest('section') as HTMLElement;
     expect(
-      await within(next).findByText(m.home_next_assignment_none_hint()),
-    ).toBeVisible();
+      screen.queryByRole('heading', { name: m.home_next_assignment() }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows loading states while the reads resolve', async () => {
@@ -337,6 +354,10 @@ describe('Home serving widgets', () => {
     expect(
       screen.getByRole('status', { name: m.my_schedule_loading() }),
     ).toBeVisible();
+    // Unknown is not empty: the quiet line waits for both reads.
+    expect(
+      screen.queryByText(m.home_serving_all_clear()),
+    ).not.toBeInTheDocument();
   });
 
   it('fills the loading regions with skeletons after the delay and keeps data on refetch', async () => {
@@ -377,7 +398,7 @@ describe('Home serving widgets', () => {
   it('serves a mixed persona and never reads for a non-serving caller', async () => {
     givenServing({ isChurchAdmin: true, hasVolunteerMembership: true });
     renderHomePage();
-    await screen.findByText(m.home_next_assignment_none());
+    await screen.findByText(m.home_serving_all_clear());
 
     volunteerApi.listAvailabilityChecks.mockClear();
     volunteerApi.getVolunteerDashboard.mockClear();
@@ -394,7 +415,7 @@ describe('Home serving widgets', () => {
       defaultOptions: { queries: { retry: false } },
     });
     renderHomePage({ queryClient });
-    await screen.findByText(m.home_next_assignment_none());
+    await screen.findByText(m.home_serving_all_clear());
 
     await waitFor(() =>
       expect(
@@ -410,7 +431,7 @@ describe('Home serving widgets', () => {
     );
   });
 
-  it('lists a declined upcoming assignment without a response label', async () => {
+  it('lists a pending upcoming assignment without a response label', async () => {
     givenServing();
     const next = assignment('a-1', 11);
     volunteerApi.getVolunteerDashboard.mockResolvedValue({
@@ -423,7 +444,7 @@ describe('Home serving widgets', () => {
           ministryName: 'Kids',
           assignments: [
             next,
-            { ...assignment('a-2', 12), status: 'declined' },
+            { ...assignment('a-2', 12), status: 'pending' as const },
             assignment('a-3', 13),
           ],
         },
@@ -436,13 +457,17 @@ describe('Home serving widgets', () => {
         name: m.home_upcoming_assignments(),
       })
     ).closest('section') as HTMLElement;
-    // Assignments are informational: a declined one is listed like any other, with no response label.
+    // Assignments are informational: a pending one is listed like any other, with no response label.
     await waitFor(() =>
       expect(
         within(upcoming)
           .getAllByRole('link')
           .map((link) => link.getAttribute('href')),
-      ).toEqual(['/my-schedule', '/my-schedule/a-2', '/my-schedule/a-3']),
+      ).toEqual([
+        '/app/my-schedule',
+        '/app/my-schedule/a-2',
+        '/app/my-schedule/a-3',
+      ]),
     );
     expect(within(upcoming).queryByText(/recusad/i)).not.toBeInTheDocument();
   });

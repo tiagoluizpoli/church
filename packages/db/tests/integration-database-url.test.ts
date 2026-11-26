@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getIntegrationDatabaseUrl } from '../src/integration-database-url';
-import { integrationWorkerDatabaseName } from '../src/integration-worker-database-name';
+import { getIntegrationDatabaseUrl } from '@/integration-database-url';
+import { integrationWorkerDatabaseName } from '@/integration-worker-database-name';
 
 const DATABASE_SERVER = 'postgresql://postgres:postgres@localhost:5444';
 const INTEGRATION_URL = `${DATABASE_SERVER}/church_develop_int`;

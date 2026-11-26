@@ -43,10 +43,13 @@ interface TemplateLabelProps {
 function TemplateLabel({ block }: TemplateLabelProps) {
   return (
     <span>
-      {block.templateName}{' '}
-      <span className="font-normal text-muted-foreground">
-        · {formatWeekday(block)}
-      </span>
+      {block.templateName}
+      {block.weekday === null ? null : (
+        <span className="font-normal text-muted-foreground">
+          {' '}
+          · {formatWeekday({ weekday: block.weekday })}
+        </span>
+      )}
     </span>
   );
 }
@@ -55,9 +58,16 @@ function TemplateLabel({ block }: TemplateLabelProps) {
 export function UsualSetupList({ ministryId }: UsualSetupListProps) {
   const { isChurchAdmin } = useCallerCapabilities();
   const setup = useUsualSetup({ ministryId });
-  // The server orders blocks by template name, then block.
+  // One group per template, in order of first appearance: groupLeaves starts a
+  // group wherever the key changes, so blocks that arrive apart are gathered first.
+  const byTemplate = new Map<string, UsualSetupBlock[]>();
+  for (const block of setup.data?.blocks ?? []) {
+    const group = byTemplate.get(block.templateId);
+    if (group) group.push(block);
+    else byTemplate.set(block.templateId, [block]);
+  }
   const rows = groupLeaves({
-    leaves: setup.data?.blocks ?? [],
+    leaves: [...byTemplate.values()].flat(),
     levels: [(block) => block.templateId],
     leafKey: (block) => block.sourceTemplateTimeBlockId,
   });
@@ -91,7 +101,7 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
           </p>
           {isChurchAdmin ? (
             <Link
-              to="/event-templates"
+              to="/app/event-templates"
               className="text-sm underline underline-offset-2"
             >
               {m.usual_setup_open_event_templates()}
@@ -170,7 +180,7 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
             const block = item.leaf;
             return (
               <Link
-                to="/ministries/$ministryId/usual-setup/$blockId"
+                to="/app/ministries/$ministryId/usual-setup/$blockId"
                 params={{
                   ministryId,
                   blockId: block.sourceTemplateTimeBlockId,
@@ -210,7 +220,7 @@ export function UsualSetupList({ ministryId }: UsualSetupListProps) {
             return (
               <div className="flex w-full justify-end gap-2 max-md:hidden">
                 <Link
-                  to="/ministries/$ministryId/usual-setup/$blockId"
+                  to="/app/ministries/$ministryId/usual-setup/$blockId"
                   params={{
                     ministryId,
                     blockId: item.leaf.sourceTemplateTimeBlockId,

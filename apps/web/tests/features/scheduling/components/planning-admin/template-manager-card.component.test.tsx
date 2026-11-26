@@ -4,6 +4,14 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+const toastSuccess = vi.fn();
+vi.mock('sonner', () => ({
+  toast: {
+    success: (...args: unknown[]) => toastSuccess(...args),
+    error: vi.fn(),
+  },
+}));
+
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
     children,
@@ -38,6 +46,9 @@ const listCycles = vi.fn().mockResolvedValue({ cycles: [] });
 const listEventTemplates = vi.fn();
 const getCycle = vi.fn();
 const deleteEventTemplate = vi.fn().mockResolvedValue(undefined);
+const listTemplatePrecedences = vi.fn();
+const changeTemplatePrecedence = vi.fn().mockResolvedValue({});
+const updateEventTemplate = vi.fn();
 const getEventTemplateUsage = vi.fn().mockResolvedValue({
   templateId: 'template-1',
   ministryCount: 0,
@@ -52,6 +63,11 @@ vi.mock('@/utils/api-instances', () => ({
     deleteEventTemplate: (...args: unknown[]) => deleteEventTemplate(...args),
     getEventTemplateUsage: (...args: unknown[]) =>
       getEventTemplateUsage(...args),
+    listTemplatePrecedences: (...args: unknown[]) =>
+      listTemplatePrecedences(...args),
+    changeTemplatePrecedence: (...args: unknown[]) =>
+      changeTemplatePrecedence(...args),
+    updateEventTemplate: (...args: unknown[]) => updateEventTemplate(...args),
   },
 }));
 
@@ -70,7 +86,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [
             {
               id: 'b1',
@@ -98,27 +114,67 @@ describe('TemplateManagerCard table view (US1)', () => {
       within(table).getByRole('columnheader', { name: 'Nome' }),
     ).toBeInTheDocument();
     expect(
-      within(table).getByRole('columnheader', { name: 'Dia da semana' }),
+      within(table).getByRole('columnheader', { name: 'Quando' }),
     ).toBeInTheDocument();
     expect(
       within(table).getByRole('columnheader', { name: 'Blocos' }),
     ).toBeInTheDocument();
 
     const row = within(table).getByRole('row', { name: /Sunday Service/ });
-    expect(row).toHaveTextContent('Domingo');
+    expect(row).toHaveTextContent('Todo domingo');
     expect(row).toHaveTextContent('2');
     expect(
       within(row).getByRole('link', { name: 'Editar Sunday Service' }),
-    ).toHaveAttribute('href', '/event-templates/template-1');
+    ).toHaveAttribute('href', '/app/event-templates/template-1');
     expect(
       within(row).getByRole('button', { name: 'Excluir Sunday Service' }),
     ).toBeInTheDocument();
   });
 
+  it('badges only the templates that have public blocks', async () => {
+    listEventTemplates.mockResolvedValue({
+      templates: [
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          publicBlockCount: 2,
+          blocks: [],
+        },
+        {
+          id: 'template-2',
+          name: 'Kitchen crew',
+          recurrence: { kind: 'weekly', weekdays: [1] },
+          publicBlockCount: 0,
+          blocks: [],
+        },
+      ],
+    });
+
+    render();
+
+    const table = await screen.findByRole('grid');
+    expect(
+      within(
+        within(table).getByRole('row', { name: /Sunday Service/ }),
+      ).getByText('Público'),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        within(table).getByRole('row', { name: /Kitchen crew/ }),
+      ).queryByText('Público'),
+    ).not.toBeInTheDocument();
+  });
+
   it('moves keyboard focus between the actions in a desktop row', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [
-        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          blocks: [],
+        },
       ],
     });
     const user = userEvent.setup();
@@ -128,6 +184,9 @@ describe('TemplateManagerCard table view (US1)', () => {
     const edit = within(row).getByRole('link', {
       name: 'Editar Sunday Service',
     });
+    const precedences = within(row).getByRole('button', {
+      name: 'Precedências de Sunday Service',
+    });
     const deleteButton = within(row).getByRole('button', {
       name: 'Excluir Sunday Service',
     });
@@ -135,7 +194,11 @@ describe('TemplateManagerCard table view (US1)', () => {
     await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
     expect(edit).toHaveFocus();
     await user.keyboard('{ArrowRight}');
+    expect(precedences).toHaveFocus();
+    await user.keyboard('{ArrowRight}');
     expect(deleteButton).toHaveFocus();
+    await user.keyboard('{ArrowLeft}');
+    expect(precedences).toHaveFocus();
     await user.keyboard('{ArrowLeft}');
     expect(edit).toHaveFocus();
   });
@@ -146,7 +209,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [],
         },
       ],
@@ -174,7 +237,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [],
         },
       ],
@@ -199,7 +262,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [
             {
               id: 'b1',
@@ -224,6 +287,9 @@ describe('TemplateManagerCard table view (US1)', () => {
       'min-h-11',
     );
     expect(
+      within(mobileRow).getByTestId('template-precedences-button'),
+    ).toHaveClass('min-h-11');
+    expect(
       within(mobileRow).getByTestId('edit-template-button'),
     ).toBeInTheDocument();
     expect(
@@ -237,7 +303,7 @@ describe('TemplateManagerCard table view (US1)', () => {
         {
           id: 'template-1',
           name: 'Sunday Service',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [],
         },
       ],
@@ -265,7 +331,7 @@ describe('TemplateManagerCard table view (US1)', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Novo modelo' })).toHaveAttribute(
       'href',
-      '/event-templates/new',
+      '/app/event-templates/new',
     );
     expect(screen.queryByRole('grid')).not.toBeInTheDocument();
   });
@@ -274,7 +340,12 @@ describe('TemplateManagerCard table view (US1)', () => {
     listEventTemplates.mockRejectedValueOnce(new Error('boom'));
     listEventTemplates.mockResolvedValueOnce({
       templates: [
-        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          blocks: [],
+        },
       ],
     });
     const user = userEvent.setup();
@@ -302,7 +373,12 @@ describe('TemplateManagerCard loading', () => {
   it('keeps the rows on screen while a refetch is in flight', async () => {
     listEventTemplates.mockResolvedValue({
       templates: [
-        { id: 'template-1', name: 'Sunday Service', weekday: 0, blocks: [] },
+        {
+          id: 'template-1',
+          name: 'Sunday Service',
+          recurrence: { kind: 'weekly', weekdays: [0] },
+          blocks: [],
+        },
       ],
     });
     const queryClient = new QueryClient();
@@ -321,5 +397,86 @@ describe('TemplateManagerCard loading', () => {
       screen.getByRole('row', { name: /Sunday Service/ }),
     ).toBeInTheDocument();
     expect(screen.queryByTestId('data-table-loading-state')).toBeNull();
+  });
+});
+
+describe('TemplateManagerCard precedences', () => {
+  const sunday = {
+    id: 'template-1',
+    name: 'Sunday Service',
+    recurrence: { kind: 'weekly', weekdays: [0] },
+    blocks: [],
+  };
+
+  async function openPrecedences() {
+    listEventTemplates.mockResolvedValue({ templates: [sunday] });
+    const user = userEvent.setup();
+    render();
+    const mobileRow = await screen.findByTestId('saved-template-row');
+    await user.click(
+      within(mobileRow).getByTestId('template-precedences-button'),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Precedências de Sunday Service',
+    });
+    return { user, dialog };
+  }
+
+  it('lists the precedences in a dialog off the row and changes one on its own without saving the template', async () => {
+    listTemplatePrecedences.mockResolvedValue({
+      precedences: [
+        {
+          otherTemplateId: 'other-1',
+          otherTemplateName: 'Culto',
+          answer: 'both',
+        },
+        {
+          otherTemplateId: 'other-2',
+          otherTemplateName: 'Jovens',
+          answer: 'otherWins',
+        },
+      ],
+    });
+    const { user, dialog } = await openPrecedences();
+
+    expect(listTemplatePrecedences).toHaveBeenCalledWith('template-1');
+    const rows = await within(dialog).findAllByTestId(
+      'template-precedence-row',
+    );
+    expect(rows).toHaveLength(2);
+    expect(
+      within(rows[0]).getByRole('radio', { name: 'Manter os dois' }),
+    ).toBeChecked();
+    expect(
+      within(rows[1]).getByRole('radio', { name: 'O outro vence' }),
+    ).toBeChecked();
+
+    await user.click(
+      within(rows[0]).getByRole('radio', { name: 'Este vence' }),
+    );
+
+    await vi.waitFor(() =>
+      expect(changeTemplatePrecedence).toHaveBeenCalledWith(
+        'template-1',
+        'other-1',
+        { answer: 'thisWins' },
+      ),
+    );
+    expect(updateEventTemplate).not.toHaveBeenCalled();
+    expect(toastSuccess).toHaveBeenCalledWith('Precedência atualizada');
+  });
+
+  it('shows an empty state when there are no precedences, and closes', async () => {
+    listTemplatePrecedences.mockResolvedValue({ precedences: [] });
+    const { user, dialog } = await openPrecedences();
+
+    expect(
+      await within(dialog).findByTestId('template-precedences-empty'),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Fechar' }));
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
   });
 });

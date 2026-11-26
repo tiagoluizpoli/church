@@ -40,8 +40,8 @@ describe('createPasswordResetMailer', () => {
   });
 
   it('sends a development/staging reset by the delivery mode read at request time', async () => {
-    const mailpit = new CaptureEmailSender('Church');
-    const resend = new CaptureEmailSender('Church');
+    const mailpit = new CaptureEmailSender({ appName: 'Church' });
+    const resend = new CaptureEmailSender({ appName: 'Church' });
     const findEmailDeliveryMode = vi.fn().mockResolvedValue('resend');
     const onSendError = vi.fn();
     const mail = createPasswordResetMailer({

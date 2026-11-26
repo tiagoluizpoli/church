@@ -1,4 +1,7 @@
-import { execFileSync } from 'node:child_process';
+import {
+  type ExecFileSyncOptionsWithStringEncoding,
+  execFileSync,
+} from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import {
@@ -11,12 +14,21 @@ import {
 } from './affected-plan';
 import { readE2eImportGraph } from './e2e-import-graph';
 import {
+  findReusablePass,
+  formatReusedPass,
+  readCleanTree,
+  readMergeBase,
+  recordPass,
+} from './gate-pass';
+import {
   hasFailure,
   type LaneStep,
+  type OutputSink,
   runStages,
   type StepResult,
 } from './run-lanes';
 import { readSeedImpactTrailers, SEED_IMPACT_TRAILER } from './seed-impact';
+import { VALIDATE_SETUP_STEPS } from './validate';
 import { formatLockWait, holdValidateLock } from './validate-lock';
 
 export { classifyChanges, isScriptsOnlyAddition } from './affected-plan';
@@ -127,24 +139,59 @@ const RELATED_UNIT_WORKSPACE_PATHS = new Map(
   ).map(({ name, path }) => [name, path]),
 );
 
+/** Per-branch git config naming the branch a ticket merges into. */
+const VALIDATE_BASE_CONFIG = 'validateBase';
+
 /**
  * A clean worktree with committed branch changes must not report nothing to
  * check — a working-tree-only diff sees no uncommitted changes and silently
- * skips them. With no explicit `--base`, fall back to the task branch's
- * likely target so committed work is still included, using its merge base
- * (not its tip) so unrelated changes landing on the target after the branch
- * forked don't inflate the local plan.
+ * skips them. With no explicit `--base`, use the branch's configured
+ * integration branch (`git config branch.<branch>.validateBase <ref>`), so a
+ * ticket that merged its spec branch diffs only its own commits; otherwise
+ * fall back to `develop`. The diff uses the merge base (not the tip), so
+ * changes landing on the target after the branch forked don't inflate the
+ * local plan.
  */
 function resolveDefaultBaseRef(): string | undefined {
-  for (const candidate of ['develop', 'origin/develop']) {
-    try {
-      execFileSync('git', ['rev-parse', '--verify', '--quiet', candidate], {
-        stdio: 'ignore',
-      });
-      return candidate;
-    } catch {}
+  const configured = readConfiguredBaseRef();
+  if (configured !== undefined) {
+    // A silent develop fallback would bring back the whole-spec diff.
+    if (!isRef({ ref: configured })) {
+      throw new Error(
+        `git config ${VALIDATE_BASE_CONFIG} names "${configured}", which does not resolve; fix it or pass --base.`,
+      );
+    }
+    return configured;
   }
-  return undefined;
+  return ['develop', 'origin/develop'].find((ref) => isRef({ ref }));
+}
+
+const QUIET_GIT: ExecFileSyncOptionsWithStringEncoding = {
+  encoding: 'utf8',
+  stdio: ['ignore', 'pipe', 'ignore'],
+};
+
+function readConfiguredBaseRef(): string | undefined {
+  try {
+    const branch = execFileSync(
+      'git',
+      ['symbolic-ref', '--short', 'HEAD'],
+      QUIET_GIT,
+    ).trim();
+    const key = `branch.${branch}.${VALIDATE_BASE_CONFIG}`;
+    return execFileSync('git', ['config', '--get', key], QUIET_GIT).trim();
+  } catch {
+    return undefined; // detached HEAD or no setting
+  }
+}
+
+function isRef({ ref }: { ref: string }): boolean {
+  try {
+    execFileSync('git', ['rev-parse', '--verify', '--quiet', ref], QUIET_GIT);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function collectChangedPaths({
@@ -211,6 +258,29 @@ function collectChangedPaths({
     packageJsonScriptsOnlyAddition,
     deletedPaths: changedPaths.filter((path) => !existsSync(path)),
   };
+}
+
+export interface IsWholeLocalRunInput {
+  argumentsResult: ParseArgumentsResult;
+  ci?: string;
+}
+
+/** Only a whole local run of its tier may reuse or record a gate pass; a narrowed or CI run stands for nothing. */
+export function isWholeLocalRun({
+  argumentsResult,
+  ci,
+}: IsWholeLocalRunInput): boolean {
+  const { baseRef, dailyGate, dryRun, e2eSpecPaths, onlyE2e, skipE2e } =
+    argumentsResult;
+  return (
+    !ci &&
+    !dryRun &&
+    !onlyE2e &&
+    !skipE2e &&
+    !dailyGate &&
+    !baseRef &&
+    e2eSpecPaths.length === 0
+  );
 }
 
 export function parseArguments({
@@ -321,17 +391,21 @@ function pushLayerTiming({
 }
 
 export interface ValidationSteps {
+  /** Lint, guards and typecheck: run first, and a failure stops the gate. */
   checkLane: LaneStep[];
   checkedLabels: string[];
   e2eLabel: string;
   e2eSteps: LaneStep[];
   integrationLane: LaneStep[];
+  unitLane: LaneStep[];
 }
 
 /**
- * Lint, typecheck and unit tests share one lane; integration tests run in
- * the other so the CPU-bound and DB-bound work overlap. Only the scheduling
- * differs from running each layer in turn — the commands are unchanged.
+ * Lint, guards and typecheck run first, so a cheap failure never pays for
+ * the test lanes. Then unit tests and integration tests run in two lanes so
+ * the CPU-bound and DB-bound work overlap, and E2E runs last. Only the
+ * scheduling differs from running each layer in turn — the commands are
+ * unchanged.
  */
 export function buildValidationSteps({
   onlyE2e,
@@ -344,6 +418,7 @@ export function buildValidationSteps({
   const skipE2e = skipE2eArgument || noDocker;
   const checkedLabels: string[] = [];
   const checkLane: LaneStep[] = [];
+  const unitLane: LaneStep[] = [];
   const integrationLane: LaneStep[] = [];
 
   if (!onlyE2e) {
@@ -413,7 +488,7 @@ export function buildValidationSteps({
               workspaceNames: plan.workspaceNames,
             });
       if (testLayer === 'test:integration') integrationLane.push(...layerSteps);
-      else checkLane.push(...layerSteps);
+      else unitLane.push(...layerSteps);
     }
     checkedLabels.push(
       'lint',
@@ -427,7 +502,7 @@ export function buildValidationSteps({
       ...ALL_TEST_LAYERS,
     );
     if (plan.toolingTestPaths.length > 0) {
-      checkLane.push({
+      unitLane.push({
         args: ['test', 'tooling'],
         command: 'bun',
         label: 'test:tooling',
@@ -454,7 +529,34 @@ export function buildValidationSteps({
     });
   }
 
-  return { checkLane, checkedLabels, e2eLabel, e2eSteps, integrationLane };
+  return {
+    checkLane,
+    checkedLabels,
+    e2eLabel,
+    e2eSteps,
+    integrationLane,
+    unitLane,
+  };
+}
+
+interface RunValidationStepsInput {
+  cwd?: string;
+  output?: OutputSink;
+  steps: ValidationSteps;
+}
+
+export function runValidationSteps({
+  cwd,
+  output,
+  steps,
+}: RunValidationStepsInput): Promise<StepResult[]> {
+  return runStages({
+    cwd,
+    finalSteps: steps.e2eSteps,
+    firstSteps: steps.checkLane,
+    lanes: [steps.unitLane, steps.integrationLane],
+    output,
+  });
 }
 
 async function runValidation({
@@ -465,15 +567,26 @@ async function runValidation({
   wholeUnitSuites,
 }: RunValidationInput): Promise<RunValidationResult> {
   const timings: CheckTiming[] = [];
-  const { checkLane, checkedLabels, e2eLabel, e2eSteps, integrationLane } =
-    buildValidationSteps({ onlyE2e, plan, skipE2e, tier, wholeUnitSuites });
+  const steps = buildValidationSteps({
+    onlyE2e,
+    plan,
+    skipE2e,
+    tier,
+    wholeUnitSuites,
+  });
+  const { checkedLabels, e2eLabel } = steps;
 
-  const results = await runStages({
-    finalSteps: e2eSteps,
-    lanes: [checkLane, integrationLane],
+  // The i18n compile runs before every check: lint, typecheck and tests read
+  // the compiled messages, and a stale compile fails them falsely.
+  const results = await runValidationSteps({
+    steps: {
+      ...steps,
+      checkLane: [...VALIDATE_SETUP_STEPS, ...steps.checkLane],
+    },
   });
 
-  for (const label of checkedLabels) {
+  const setupLabels = VALIDATE_SETUP_STEPS.map(({ label }) => label);
+  for (const label of [...setupLabels, ...checkedLabels]) {
     const layerResults = results.filter((result) => result.label === label);
     if (layerResults.length === 0) pushSkipped({ label, timings });
     else pushLayerTiming({ label, results: layerResults, timings });
@@ -796,7 +909,8 @@ export function formatTimingSummary({
 
 if (import.meta.main) {
   const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
-  if (argumentsResult.tier === 'no-docker') {
+  const { tier } = argumentsResult;
+  if (tier === 'no-docker') {
     console.log(
       'validate:no-docker skips integration tests and browser journeys; CI runs them.',
     );
@@ -845,7 +959,19 @@ if (import.meta.main) {
     console.error('');
     console.error(explainPlan({ baseRef, plan }));
   } else {
-    const lock = await holdValidateLock({ tier: argumentsResult.tier });
+    const mergeBase =
+      baseRef && isWholeLocalRun({ argumentsResult, ci: process.env.CI })
+        ? readMergeBase({ baseRef })
+        : null;
+    const reusablePass = mergeBase
+      ? findReusablePass({ base: mergeBase, tier })
+      : null;
+    if (reusablePass) {
+      console.log(formatReusedPass({ pass: reusablePass }));
+      process.exit(0);
+    }
+    const tree = mergeBase ? readCleanTree({}) : null;
+    const lock = await holdValidateLock({ tier });
     let failed: boolean;
     let timings: Awaited<ReturnType<typeof runValidation>>['timings'];
     try {
@@ -853,7 +979,7 @@ if (import.meta.main) {
         onlyE2e: argumentsResult.onlyE2e,
         plan,
         skipE2e: argumentsResult.skipE2e,
-        tier: argumentsResult.tier,
+        tier,
         wholeUnitSuites: argumentsResult.dailyGate,
       }));
     } finally {
@@ -863,7 +989,7 @@ if (import.meta.main) {
     const explanation = explainPlan({
       baseRef,
       plan,
-      tier: argumentsResult.tier,
+      tier,
       wholeUnitSuites: argumentsResult.dailyGate,
     });
     console.log('');
@@ -878,5 +1004,6 @@ if (import.meta.main) {
       );
     }
     if (failed) process.exitCode = 1;
+    else if (tree && mergeBase) recordPass({ base: mergeBase, tier, tree });
   }
 }

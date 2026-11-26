@@ -16,9 +16,11 @@ import {
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HomeError } from '@/features/home/components/home-error';
-import type { HomeSectionProps } from '@/features/home/components/home-section-props';
+import type {
+  HomeReadProps,
+  HomeSectionProps,
+} from '@/features/home/components/home-section-props';
 import { HomeWidget } from '@/features/home/components/home-widget';
-import { useHomeSchedules } from '@/features/home/components/leadership-section';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
 import { notificationQueryKey } from '@/features/notifications/lib/notification-cache';
 import { notificationUnreadLabel } from '@/features/notifications/lib/notification-unread-label';
@@ -29,101 +31,6 @@ import {
   notificationsApi,
   peopleApi,
 } from '@/utils/api-instances';
-
-interface SummaryProps extends HomeSectionProps {
-  scope: string;
-}
-
-const STAGES = [
-  {
-    stage: 'to_prepare',
-    fill: 'bg-primary/25',
-    label: () => m.schedules_to_prepare(),
-  },
-  {
-    stage: 'asking',
-    fill: 'bg-primary/50',
-    label: () => m.schedules_asking_stage(),
-  },
-  {
-    stage: 'assigning',
-    fill: 'bg-primary/75',
-    label: () => m.schedules_assigning(),
-  },
-  {
-    stage: 'published',
-    fill: 'bg-primary',
-    label: () => m.schedules_published(),
-  },
-] as const;
-
-/** Current Schedules by stage as one pipeline: segment widths are the counts, darker means further along. */
-export function ScheduleSummary(props: SummaryProps) {
-  const query = useHomeSchedules(props);
-  const counts = query.data?.counts;
-  const total = counts
-    ? STAGES.reduce((sum, { stage }) => sum + counts[stage], 0)
-    : 0;
-  return (
-    <HomeWidget
-      title={m.home_summary()}
-      action={
-        counts ? (
-          <span className="text-muted-foreground text-sm tabular-nums">
-            {m.home_pipeline_total({ count: total })}
-          </span>
-        ) : undefined
-      }
-      loading={query.isPending}
-      error={
-        query.isError
-          ? { message: m.schedules_error(), retry: () => query.refetch() }
-          : undefined
-      }
-    >
-      {counts ? (
-        <div className="space-y-3">
-          <div
-            aria-hidden
-            className="radius-control flex h-3 gap-0.5 overflow-hidden bg-muted"
-          >
-            {STAGES.map(({ stage, fill }) =>
-              counts[stage] > 0 ? (
-                <div
-                  key={stage}
-                  className={cn('h-full', fill)}
-                  style={{ flexGrow: counts[stage] }}
-                />
-              ) : null,
-            )}
-          </div>
-          <ul className="grid @3xl:grid-cols-4 @3xl:gap-x-6">
-            {STAGES.map(({ stage, fill, label }) => (
-              <li key={stage}>
-                <Link
-                  to="/schedules"
-                  search={{ stage }}
-                  className="radius-control -mx-2 flex min-h-11 items-center gap-3 px-2 py-1 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-                >
-                  <span aria-hidden className={cn('size-3', fill)} />
-                  <span className="flex-1 text-sm">{label()}</span>{' '}
-                  <span
-                    className={cn(
-                      'font-semibold text-lg tabular-nums',
-                      counts[stage] === 0 && 'text-muted-foreground',
-                    )}
-                  >
-                    {counts[stage]}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </HomeWidget>
-  );
-}
 
 interface AttentionRowProps {
   label: string;
@@ -206,8 +113,12 @@ function PeopleRow({ label, count, link, Icon }: PeopleRowProps) {
   );
 }
 
-export function AdminSummary({ churchId, userId }: HomeSectionProps) {
-  const people = useQuery({
+export function usePeopleCounts({
+  churchId,
+  userId,
+  enabled = true,
+}: HomeReadProps) {
+  return useQuery({
     queryKey: homeSectionQueryKey({
       section: 'church',
       churchId,
@@ -215,7 +126,12 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
       parts: ['people-counts'],
     }),
     queryFn: () => peopleApi.listPeople({ limit: 1 }),
+    enabled,
   });
+}
+
+export function AdminSummary({ churchId, userId }: HomeSectionProps) {
+  const people = usePeopleCounts({ churchId, userId });
   const invitations = useQuery({
     queryKey: homeSectionQueryKey({
       section: 'church',
@@ -244,7 +160,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
             label: m.home_people_without_ministry(),
             count: people.data.counts.withoutMinistry,
             link: linkOptions({
-              to: '/people',
+              to: '/app/people',
               search: { withoutMinistry: true },
             }),
             Icon: UserX,
@@ -253,7 +169,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
             label: m.home_invites_pending(),
             count: invitations.data.counts.pending,
             link: linkOptions({
-              to: '/invitations',
+              to: '/app/invitations',
               search: { status: 'pending' },
             }),
             Icon: Mail,
@@ -262,7 +178,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
             label: m.home_invites_expired(),
             count: invitations.data.counts.expired,
             link: linkOptions({
-              to: '/invitations',
+              to: '/app/invitations',
               search: { status: 'expired' },
             }),
             Icon: MailX,
@@ -271,7 +187,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
             label: m.home_ministries_review(),
             count: ministries.data.counts.review,
             link: linkOptions({
-              to: '/ministries',
+              to: '/app/ministries',
               search: { status: 'review' },
             }),
             Icon: ClipboardCheck,
@@ -280,7 +196,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
             label: m.home_ministries_no_sectors(),
             count: ministries.data.counts.noSectors,
             link: linkOptions({
-              to: '/ministries',
+              to: '/app/ministries',
               search: { status: 'no-sectors' },
             }),
             Icon: Layers,
@@ -311,7 +227,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
           <section aria-label={m.home_people_group()} className="space-y-3">
             <h3 className="font-medium text-sm">{m.home_people_group()}</h3>
             <Link
-              to="/people"
+              to="/app/people"
               className="radius-control -mx-2 block space-y-2 px-2 py-1.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
             >
               <span className="flex items-baseline justify-between gap-3">
@@ -344,7 +260,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
                 label={m.home_admins()}
                 count={counts.admins}
                 link={linkOptions({
-                  to: '/people',
+                  to: '/app/people',
                   search: { access: 'admin' },
                 })}
                 Icon={ShieldCheck}
@@ -353,7 +269,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
                 label={m.home_leaders()}
                 count={counts.leaders}
                 link={linkOptions({
-                  to: '/people',
+                  to: '/app/people',
                   search: { access: 'leader' },
                 })}
                 Icon={UserCog}
@@ -362,7 +278,7 @@ export function AdminSummary({ churchId, userId }: HomeSectionProps) {
                 label={m.home_volunteers()}
                 count={counts.volunteers}
                 link={linkOptions({
-                  to: '/people',
+                  to: '/app/people',
                   search: { access: 'volunteer' },
                 })}
                 Icon={HandHeart}
@@ -413,7 +329,7 @@ export function NotificationSummary({ churchId, userId }: HomeSectionProps) {
     );
   return (
     <Link
-      to="/notifications"
+      to="/app/notifications"
       className="inline-flex min-h-11 items-center gap-2 text-sm underline underline-offset-4"
     >
       {m.home_notifications()} ·{' '}

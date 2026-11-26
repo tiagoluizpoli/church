@@ -3,7 +3,7 @@ import {
   reportDatabaseTarget,
   requireDatabaseUrl,
   requireExecPurpose,
-} from '../src/purpose-database-url-guard';
+} from '@/purpose-database-url-guard';
 
 function resetEnv(): void {
   delete process.env.CHURCH_EXEC_PURPOSE;

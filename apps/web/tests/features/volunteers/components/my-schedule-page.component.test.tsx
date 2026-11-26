@@ -45,7 +45,7 @@ const item = (id: string, startTime: string, endTime: string) => ({
   sectorName: 'Babies Room',
   roleId: 'r',
   roleName: 'Teacher',
-  status: 'confirmed' as const,
+  status: 'pending' as const,
   swapRequested: false,
 });
 
@@ -134,7 +134,7 @@ describe('MySchedulePage', () => {
       name: 'Next assignment',
     });
     const hero = within(next).getByRole('link');
-    expect(hero).toHaveAttribute('href', '/my-schedule/a-1');
+    expect(hero).toHaveAttribute('href', '/app/my-schedule/a-1');
     expect(hero).toHaveTextContent(
       'Today Mon 12 Oct 10:30–12:00 Sunday Teacher · Babies Room',
     );
@@ -155,7 +155,7 @@ describe('MySchedulePage', () => {
     for (const link of screen.getAllByRole('link', {
       name: 'Open Sunday, Mon 12 Oct 14:00–15:00',
     })) {
-      expect(link).toHaveAttribute('href', '/my-schedule/a-2');
+      expect(link).toHaveAttribute('href', '/app/my-schedule/a-2');
       expect(link.closest('[role="listitem"], [role="row"]')).toHaveTextContent(
         '14:00–15:00',
       );
@@ -167,7 +167,7 @@ describe('MySchedulePage', () => {
     ).toHaveLength(2);
     expect(
       screen.getByRole('link', { name: 'Kids · October' }),
-    ).toHaveAttribute('href', '/my-schedule/kids/c-1');
+    ).toHaveAttribute('href', '/app/my-schedule/kids/c-1');
     // Assignments are informational: no response actions.
     expect(
       screen.queryByRole('button', { name: /accept|decline/i }),
@@ -233,7 +233,7 @@ describe('MySchedulePage', () => {
         within(
           tag.closest('[role="listitem"], [role="row"]') as HTMLElement,
         ).getByRole('link'),
-      ).toHaveAttribute('href', '/my-schedule/a-2');
+      ).toHaveAttribute('href', '/app/my-schedule/a-2');
     }
     expect(
       within(
@@ -359,7 +359,7 @@ describe('MySchedulePage', () => {
     ).toBeVisible();
     expect(
       screen.getByRole('link', { name: 'Answer availability' }),
-    ).toHaveAttribute('href', '/availability');
+    ).toHaveAttribute('href', '/app/availability');
   });
 
   it('renders the not-serving refusal on 403', async () => {
@@ -481,7 +481,7 @@ describe('filters and grouping', () => {
       within(
         await screen.findByRole('region', { name: 'Next assignment' }),
       ).getByRole('link'),
-    ).toHaveAttribute('href', '/my-schedule/a-1');
+    ).toHaveAttribute('href', '/app/my-schedule/a-1');
     expect(api.getPublishedVolunteerSchedule).toHaveBeenCalledWith({
       search: 'Sun',
       month: '2026-11',

@@ -122,6 +122,18 @@ describe('error handler locale', () => {
     });
     expect(res.headers['x-request-id']).toMatch(/^[0-9a-f]{32}$/);
   });
+
+  it("writes the unexpected error to stderr, so a failing test's 500 names its cause", async () => {
+    const write = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    try {
+      const res = await inject('/boom/crash');
+      const written = write.mock.calls.map(([chunk]) => String(chunk)).join('');
+      expect(written).toContain('secret detail');
+      expect(written).toContain(String(res.headers['x-request-id']));
+    } finally {
+      write.mockRestore();
+    }
+  });
 });
 
 describe('database connection failures', () => {

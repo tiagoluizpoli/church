@@ -1,16 +1,23 @@
-import { fromTimeColumn } from '@church/time';
+import {
+  fromTimeColumn,
+  parseInstant,
+  resetClock,
+  setTestClock,
+} from '@church/time';
 import { AxiosError, type AxiosResponse } from 'axios';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import type {
   CycleEventGroup,
   CycleFormState,
   SelectedCycle,
   TemplateFormState,
+  TemplateRecurrence,
   TemplateTimeBlockDraft,
 } from '@/features/scheduling/components/planning-admin/planning-admin.types';
 import {
   calculateTotalEventTimeBlocks,
   canCreateCycle,
+  canEditEvent,
   canSaveTemplate,
   conflictingCyclesOf,
   cycleIsReadOnly,
@@ -22,6 +29,7 @@ import {
   suggestCycleName,
   templateBlockErrors,
   toTemplateRequestBlocks,
+  toTemplateRequestBody,
 } from '@/features/scheduling/components/planning-admin/planning-admin.utils';
 
 function makeCycle(overrides: Partial<SelectedCycle> = {}): SelectedCycle {
@@ -59,6 +67,9 @@ function makeEventGroup(eventTimeBlockCount: number): CycleEventGroup {
         eventId: 'event-1',
         startTime: '2027-01-03T09:00:00.000Z',
         endTime: '2027-01-03T09:30:00.000Z',
+        isPublic: false,
+        place: null,
+        placeAddressId: null,
         status: 'active',
         requirements: [],
       }),
@@ -85,6 +96,9 @@ function makeTemplateTimeBlock(
     label: 'Welcome',
     startTime: fromTimeColumn({ value: '09:00:00' }),
     endTime: fromTimeColumn({ value: '09:30:00' }),
+    isPublic: false,
+    place: '',
+    placeAddressId: null,
     ...overrides,
   };
 }
@@ -94,7 +108,7 @@ function makeTemplateForm(
 ): TemplateFormState {
   return {
     name: 'Sunday',
-    weekday: '0',
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [makeTemplateTimeBlock()],
     ...overrides,
   };
@@ -477,7 +491,12 @@ describe('toTemplateRequestBlocks', () => {
     expect(
       toTemplateRequestBlocks({
         blocks: [
-          makeTemplateTimeBlock({ key: 'row-1', label: ' New ' }),
+          makeTemplateTimeBlock({
+            key: 'row-1',
+            label: ' New ',
+            isPublic: true,
+            place: ' Hall ',
+          }),
           makeTemplateTimeBlock({
             key: 'row-2',
             persistedId: 'stored-id',
@@ -486,8 +505,66 @@ describe('toTemplateRequestBlocks', () => {
         ],
       }),
     ).toEqual([
-      { label: 'New', startTime: '09:00', endTime: '09:30' },
-      { id: 'stored-id', label: 'Kept', startTime: '09:00', endTime: '09:30' },
+      {
+        label: 'New',
+        startTime: '09:00',
+        endTime: '09:30',
+        isPublic: true,
+        place: 'Hall',
+        placeAddressId: null,
+      },
+      {
+        id: 'stored-id',
+        label: 'Kept',
+        startTime: '09:00',
+        endTime: '09:30',
+        isPublic: false,
+        place: '',
+        placeAddressId: null,
+      },
     ]);
+  });
+});
+
+describe('Recurrence in the template request', () => {
+  const monthly: TemplateRecurrence = {
+    kind: 'monthly',
+    entries: [{ kind: 'dayOfMonth', day: 15 }],
+  };
+
+  it('sends a loaded monthly Recurrence back unchanged', () => {
+    expect(
+      toTemplateRequestBody({ form: makeTemplateForm({ recurrence: monthly }) })
+        .recurrence,
+    ).toEqual(monthly);
+  });
+});
+
+describe('canEditEvent', () => {
+  const sunday = {
+    cycleState: 'sent',
+    eventStatus: 'scheduled',
+    end: '2026-08-02T11:00:00Z',
+  };
+  afterEach(() => resetClock());
+
+  it.each([
+    ['before it starts', '2026-08-01T09:00:00Z', true],
+    ['while it runs', '2026-08-02T10:00:00Z', true],
+    ['once it has ended', '2026-08-02T11:00:00Z', false],
+  ])('%s', (_when, instant, expected) => {
+    setTestClock({ instant: parseInstant({ value: instant }) });
+
+    expect(canEditEvent(sunday)).toBe(expected);
+  });
+
+  it.each([
+    [{ cycleState: 'draft' }],
+    [{ cycleState: 'past' }],
+    [{ eventStatus: 'cancelled' }],
+  ])('is closed outside a scheduled Event of a Sent Cycle: %o', (override) => {
+    setTestClock({ instant: parseInstant({ value: '2026-08-01T09:00:00Z' }) });
+
+    expect(canEditEvent({ ...sunday, ...override })).toBe(false);
   });
 });

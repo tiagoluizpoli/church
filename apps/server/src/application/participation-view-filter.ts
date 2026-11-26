@@ -23,15 +23,19 @@ export interface FilteredCycleParticipation {
   dayMarkers: CalendarDay[];
   /** Blocks of the unfiltered cycle. */
   totalBlocks: number;
-  /** Served blocks of the unfiltered cycle with a Shift that has no headcount. */
+  /** Served, uncancelled blocks of the unfiltered cycle with a Shift that has no headcount. */
   needsAttentionBlocks: number;
 }
 
-/** A served block with a Shift lacking a ShiftRequirement: the prepare list's "needs headcount". */
+/** A served, uncancelled block with a Shift lacking a ShiftRequirement: the prepare list's "needs headcount". */
 export function blockNeedsAttention(
   block: ParticipationEventTimeBlockView,
 ): boolean {
-  return block.included && block.shifts.some((shift) => shift.flagged);
+  return (
+    block.included &&
+    !block.cancelled &&
+    block.shifts.some((shift) => shift.flagged)
+  );
 }
 
 interface BlockMatchesInput {

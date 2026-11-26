@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "church_contact_group_church_name_idx" ON "church_contact_group" USING btree ("church_id",lower("name"));

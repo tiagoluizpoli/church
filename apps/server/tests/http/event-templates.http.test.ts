@@ -5,6 +5,7 @@ import {
   eventTimeBlock,
   shift,
   shiftRequirement,
+  templatePrecedence,
   templateTimeBlock,
   usualSetup,
 } from '@church/db';
@@ -31,7 +32,9 @@ import {
   VolunteerId,
 } from '@/domain/branded-ids';
 import { DuplicateTemplateBlockLabelError } from '@/domain/errors/duplicate-template-block-label';
+import type { Recurrence } from '@/domain/recurrence';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -53,6 +56,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { insertChurchAddress } from '@/tests/test-support/church-address';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -80,6 +84,9 @@ beforeAll(async () => {
     cycleManager: {} as never,
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository: new DrizzleEventTemplateRepository({
+        db: schedulingTestDb,
+      }),
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({
         db: schedulingTestDb,
       }),
       unitOfWork: new DrizzleUnitOfWork({ db: schedulingTestDb }),
@@ -171,11 +178,14 @@ interface BlockBody {
   startTime: string;
   endTime: string;
   id?: string;
+  isPublic?: boolean;
+  place?: string;
+  placeAddressId?: string | null;
 }
 
 interface TemplateBody {
   name: string;
-  weekday: number;
+  recurrence: Recurrence;
   blocks: BlockBody[];
 }
 
@@ -186,7 +196,12 @@ const welcome: BlockBody = {
 };
 
 function body(overrides: Partial<TemplateBody> = {}): TemplateBody {
-  return { name: 'Sunday', weekday: 0, blocks: [welcome], ...overrides };
+  return {
+    name: 'Sunday',
+    recurrence: { kind: 'weekly', weekdays: [0] },
+    blocks: [welcome],
+    ...overrides,
+  };
 }
 
 function post(payload: unknown) {
@@ -220,7 +235,7 @@ describe('POST /event-templates', () => {
     const res = await post(
       body({
         name: '  Vigil ',
-        weekday: 5,
+        recurrence: { kind: 'weekly', weekdays: [5] },
         blocks: [
           { label: 'Late', startTime: '23:30', endTime: '02:00' },
           { label: ' Tie B ', startTime: '09:15', endTime: '11:00' },
@@ -240,9 +255,18 @@ describe('POST /event-templates', () => {
     ).toEqual(['0:Tie B', '1:Tie A', '2:Late']);
     expect(created.blocks[2].endTime).toBe('02:00');
 
-    expect((await post(body({ name: 'Other', weekday: 5 }))).statusCode).toBe(
-      201,
-    );
+    expect(
+      (
+        await post(
+          body({
+            name: 'Other',
+            recurrence: { kind: 'weekly', weekdays: [5] },
+            // Shares Friday without overlapping a Vigil block: no collision to answer.
+            blocks: [{ label: 'Noon', startTime: '12:00', endTime: '13:00' }],
+          }),
+        )
+      ).statusCode,
+    ).toBe(201);
     const listed = (await list()).json();
     expect(listed.templates.map((t: { name: string }) => t.name)).toEqual([
       'Other',
@@ -253,8 +277,36 @@ describe('POST /event-templates', () => {
   it.each([
     ['blank name', { name: '   ' }],
     ['name over 255 characters', { name: 'x'.repeat(256) }],
-    ['weekday 7', { weekday: 7 }],
-    ['fractional weekday', { weekday: 1.5 }],
+    ['no recurrence', { recurrence: undefined }],
+    ['weekday 7', { recurrence: { kind: 'weekly', weekdays: [7] } }],
+    ['fractional weekday', { recurrence: { kind: 'weekly', weekdays: [1.5] } }],
+    [
+      'weekly without weekdays',
+      { recurrence: { kind: 'weekly', weekdays: [] } },
+    ],
+    [
+      'monthly without entries',
+      { recurrence: { kind: 'monthly', entries: [] } },
+    ],
+    [
+      '6th weekday',
+      {
+        recurrence: {
+          kind: 'monthly',
+          entries: [{ kind: 'nthWeekday', ordinal: 6, weekday: 0 }],
+        },
+      },
+    ],
+    [
+      'day of month 32',
+      {
+        recurrence: {
+          kind: 'monthly',
+          entries: [{ kind: 'dayOfMonth', day: 32 }],
+        },
+      },
+    ],
+    ['unknown recurrence kind', { recurrence: { kind: 'yearly' } }],
     ['no blocks', { blocks: [] }],
     ['blank label', { blocks: [{ ...welcome, label: ' ' }] }],
     [
@@ -276,6 +328,43 @@ describe('POST /event-templates', () => {
     expect(res.statusCode).toBe(422);
     expect(res.json().error).toBe('VALIDATION_ERROR');
     expect(await storedTemplateCount()).toBe(0);
+  });
+
+  it('stores weekly on several weekdays and a mixed monthly Recurrence and lists them', async () => {
+    await signIn();
+    const monthly: Recurrence = {
+      kind: 'monthly',
+      entries: [
+        { kind: 'nthWeekday', ordinal: 1, weekday: 0 },
+        { kind: 'nthWeekday', ordinal: 'last', weekday: 6 },
+        { kind: 'dayOfMonth', day: 15 },
+        { kind: 'lastDayOfMonth' },
+      ],
+    };
+
+    const weekly = await post(
+      body({
+        name: 'Midweek',
+        recurrence: { kind: 'weekly', weekdays: [3, 5] },
+        blocks: [{ label: 'Evening', startTime: '19:00', endTime: '20:00' }],
+      }),
+    );
+    const created = await post(body({ name: 'Monthly', recurrence: monthly }));
+
+    expect(weekly.statusCode).toBe(201);
+    expect(created.statusCode).toBe(201);
+    expect(created.json().recurrence).toEqual(monthly);
+    expect(
+      (await list())
+        .json()
+        .templates.map((t: { name: string; recurrence: Recurrence }) => [
+          t.name,
+          t.recurrence,
+        ]),
+    ).toEqual([
+      ['Midweek', { kind: 'weekly', weekdays: [3, 5] }],
+      ['Monthly', monthly],
+    ]);
   });
 
   it('refuses equal endpoints with 400 INVALID_TIME_RANGE', async () => {
@@ -316,7 +405,7 @@ describe('POST /event-templates', () => {
       db: schedulingTestDb,
       churchId: seed.churchBId,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [],
     });
     expect((await post(body({ name: 'Sunday' }))).statusCode).toBe(201);
@@ -363,11 +452,179 @@ describe('POST /event-templates', () => {
   });
 });
 
+describe('TemplateTimeBlock Publico and place', () => {
+  const sermon: BlockBody = {
+    label: 'Sermon',
+    startTime: '10:00',
+    endTime: '11:00',
+  };
+
+  it('defaults to private with no place, and keeps a private block beside a public one', async () => {
+    await signIn();
+
+    const res = await post(
+      body({
+        blocks: [welcome, { ...sermon, isPublic: true, place: '  Main hall ' }],
+      }),
+    );
+
+    expect(res.statusCode).toBe(201);
+    const [first, second] = res.json().blocks;
+    expect(first).toMatchObject({ isPublic: false, place: null });
+    expect(second).toMatchObject({ isPublic: true, place: 'Main hall' });
+    const detail = await getDetail(res.json().id);
+    expect(
+      detail.json().blocks.map(({ isPublic }: BlockBody) => isPublic),
+    ).toEqual([false, true]);
+  });
+
+  it('says in the list how many public blocks each template has', async () => {
+    await signIn();
+    await post(
+      body({
+        name: 'With public',
+        blocks: [welcome, { ...sermon, isPublic: true }],
+      }),
+    );
+    await post(
+      body({
+        name: 'Private only',
+        recurrence: { kind: 'weekly', weekdays: [1] },
+        blocks: [welcome],
+      }),
+    );
+
+    const listed = (await list()).json().templates;
+
+    expect(
+      Object.fromEntries(
+        listed.map((t: { name: string; publicBlockCount: number }) => [
+          t.name,
+          t.publicBlockCount,
+        ]),
+      ),
+    ).toEqual({ 'With public': 1, 'Private only': 0 });
+  });
+
+  it('stores an empty place as no place and refuses a place over 120 characters', async () => {
+    await signIn();
+
+    const empty = await post(body({ blocks: [{ ...welcome, place: '   ' }] }));
+    const long = await post(
+      body({ blocks: [{ ...welcome, place: 'x'.repeat(121) }] }),
+    );
+
+    expect(empty.statusCode).toBe(201);
+    expect(empty.json().blocks[0].place).toBeNull();
+    expect(long.statusCode).toBe(422);
+  });
+
+  it('updates both fields in place on edit', async () => {
+    await signIn();
+    const created = (await post(body())).json();
+    const [block] = created.blocks;
+
+    const res = await patch({
+      templateId: created.id,
+      payload: body({
+        blocks: [{ ...welcome, id: block.id, isPublic: true, place: 'Lobby' }],
+      }),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().blocks[0]).toMatchObject({
+      id: block.id,
+      isPublic: true,
+      place: 'Lobby',
+    });
+  });
+
+  it('takes a Church Address of the same Church as the place, and moves between address, free text and nothing on edit', async () => {
+    const seed = await signIn();
+    const addressId = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+    });
+
+    const created = await post(
+      body({ blocks: [{ ...welcome, placeAddressId: addressId }] }),
+    );
+
+    expect(created.statusCode).toBe(201);
+    expect(created.json().blocks[0]).toMatchObject({
+      place: null,
+      placeAddressId: addressId,
+    });
+    const [block] = created.json().blocks;
+    const toText = await patch({
+      templateId: created.json().id,
+      payload: body({ blocks: [{ ...welcome, id: block.id, place: 'Lobby' }] }),
+    });
+    expect(toText.json().blocks[0]).toMatchObject({
+      place: 'Lobby',
+      placeAddressId: null,
+    });
+    const toNothing = await patch({
+      templateId: created.json().id,
+      payload: body({ blocks: [{ ...welcome, id: block.id }] }),
+    });
+    expect(toNothing.json().blocks[0]).toMatchObject({
+      place: null,
+      placeAddressId: null,
+    });
+  });
+
+  it("refuses another Church's address and a place given both ways, writing nothing", async () => {
+    const seed = await signIn();
+    const foreign = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchBId,
+    });
+    const own = await insertChurchAddress({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+    });
+
+    const foreignRes = await post(
+      body({ blocks: [{ ...welcome, placeAddressId: foreign }] }),
+    );
+    const both = await post(
+      body({ blocks: [{ ...welcome, place: 'Lobby', placeAddressId: own }] }),
+    );
+
+    expect(foreignRes.statusCode).toBe(422);
+    expect(foreignRes.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      reason: 'PLACE_ADDRESS_NOT_FOUND',
+    });
+    expect(both.statusCode).toBe(422);
+    expect(both.json().error).toBe('VALIDATION_ERROR');
+    expect(await storedTemplateCount()).toBe(0);
+  });
+
+  it.each([
+    'member',
+    'leader',
+    'volunteer',
+  ] as const)('refuses %s sending Publico or place with 403 and writes nothing', async (persona) => {
+    await signIn({ persona });
+
+    const res = await post(
+      body({ blocks: [{ ...welcome, isPublic: true, place: 'Lobby' }] }),
+    );
+
+    expect(res.statusCode).toBe(403);
+    expect(await storedTemplateCount()).toBe(0);
+  });
+});
+
 describe('PATCH /event-templates/:templateId name rules', () => {
   it('allows an unchanged name and refuses a name taken in the Church, ignoring case', async () => {
     const seed = await signIn();
     const first = (await post(body({ name: 'First' }))).json();
-    await post(body({ name: 'Second' }));
+    await post(
+      body({ name: 'Second', recurrence: { kind: 'weekly', weekdays: [1] } }),
+    );
 
     const unchanged = await patch({
       templateId: first.id,
@@ -437,7 +694,7 @@ async function seedEditGraph(): Promise<EditGraph> {
     churchId,
     id: ids.template,
     name: 'Sunday',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [
       {
         id: ids.welcome,
@@ -464,7 +721,7 @@ async function seedEditGraph(): Promise<EditGraph> {
     churchId,
     id: ids.sibling,
     name: 'Wednesday',
-    weekday: 3,
+    recurrence: { kind: 'weekly', weekdays: [3] },
     blocks: [
       {
         id: ids.siblingBlock,
@@ -479,7 +736,7 @@ async function seedEditGraph(): Promise<EditGraph> {
     churchId: seed.churchBId,
     id: ids.foreign,
     name: 'Foreign',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [
       {
         id: ids.foreignBlock,
@@ -579,7 +836,7 @@ async function seedEditGraph(): Promise<EditGraph> {
       volunteerId: seed.adminVolunteerId,
       roleId: role.id,
       shiftRequirementId: requirement.id,
-      status: 'confirmed',
+      status: 'pending',
     });
   }
   return { seed, sectorId: sector.id, roleId: role.id };
@@ -655,7 +912,7 @@ describe('GET /event-templates/:templateId', () => {
     expect(res.json()).toMatchObject({
       id: ids.template,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         { id: ids.welcome, order: 0, startTime: '09:00', endTime: '10:00' },
         { id: ids.worship, order: 1 },
@@ -667,7 +924,6 @@ describe('GET /event-templates/:templateId', () => {
   it.each([
     ['another Church', ids.foreign],
     ['a missing id', '99999999-9999-4999-8999-999999999999'],
-    ['a malformed id', 'not-a-uuid'],
   ])('answers 404 NOT_FOUND for %s, alike for detail and usage', async (_case, templateId) => {
     await seedEditGraph();
 
@@ -677,6 +933,17 @@ describe('GET /event-templates/:templateId', () => {
     ]) {
       expect(res.statusCode).toBe(404);
       expect(res.json().error).toBe('NOT_FOUND');
+    }
+  });
+
+  it('answers 422 for a malformed id, alike for detail and usage', async () => {
+    await seedEditGraph();
+
+    for (const res of [
+      await getDetail('not-a-uuid'),
+      await getUsage('not-a-uuid'),
+    ]) {
+      expect(res.statusCode).toBe(422);
     }
   });
 });
@@ -705,7 +972,7 @@ describe('GET /event-templates/:templateId/usage', () => {
 });
 
 describe('PATCH /event-templates/:templateId identity', () => {
-  it('keeps retained ids and Usual setup through rename, weekday, retime, reorder and a label swap, adds new ids and removes only omitted blocks and their setup', async () => {
+  it('keeps retained ids and Usual setup through rename, a weekly-to-monthly Recurrence, retime, reorder and a label swap, adds new ids and removes only omitted blocks and their setup', async () => {
     await seedEditGraph();
     const before = await storedState();
 
@@ -713,7 +980,10 @@ describe('PATCH /event-templates/:templateId identity', () => {
       templateId: ids.template,
       payload: {
         name: 'Sunday renamed',
-        weekday: 6,
+        recurrence: {
+          kind: 'monthly',
+          entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+        },
         blocks: [
           // Welcome and Worship swap labels and move after a new early block.
           {
@@ -735,7 +1005,13 @@ describe('PATCH /event-templates/:templateId identity', () => {
 
     expect(res.statusCode).toBe(200);
     const saved = res.json();
-    expect(saved).toMatchObject({ name: 'Sunday renamed', weekday: 6 });
+    expect(saved).toMatchObject({
+      name: 'Sunday renamed',
+      recurrence: {
+        kind: 'monthly',
+        entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+      },
+    });
     expect(
       saved.blocks.map(
         (b: { label: string; order: number }) => `${b.order}:${b.label}`,
@@ -931,7 +1207,7 @@ describe('PATCH /event-templates/:templateId identity', () => {
           churchId: ChurchId.from(graph.seed.churchAId),
           templateId: EventTemplateId.from(ids.template),
           name: 'Sunday',
-          weekday: 0,
+          recurrence: { kind: 'weekly', weekdays: [0] },
           blocks: [desired('Same', 0), desired('SAME', 1)],
           tx,
         }),
@@ -942,7 +1218,7 @@ describe('PATCH /event-templates/:templateId identity', () => {
         repository.create({
           churchId: ChurchId.from(graph.seed.churchAId),
           name: 'Bypass',
-          weekday: 1,
+          recurrence: { kind: 'weekly', weekdays: [1] },
           blocks: [desired('Same', 0), desired('same', 1)],
           tx,
         }),
@@ -1003,18 +1279,20 @@ describe('DELETE /event-templates/:templateId', () => {
     expect(await countOf(assignment)).toBe(before.assignments);
   });
 
-  it('answers the same 404 for a missing, malformed and foreign-Church target and changes nothing', async () => {
+  it('answers the same 404 for a missing and foreign-Church target, 422 for a malformed one, and changes nothing', async () => {
     await seedEditGraph();
     const before = await storedState();
 
     const responses = await Promise.all(
-      [crypto.randomUUID(), 'not-a-uuid', ids.foreign].map(del),
+      [crypto.randomUUID(), ids.foreign].map(del),
     );
+    const malformed = await del('not-a-uuid');
 
     for (const res of responses) {
       expect(res.statusCode).toBe(404);
       expect(res.json().error).toBe('NOT_FOUND');
     }
+    expect(malformed.statusCode).toBe(422);
     expect(new Set(responses.map((r) => r.json().message)).size).toBe(1);
     expect(await storedState()).toEqual(before);
   });
@@ -1028,7 +1306,7 @@ describe('GET /event-templates and authorization', () => {
         db: schedulingTestDb,
         churchId: seed.churchAId,
         name,
-        weekday: 1,
+        recurrence: { kind: 'weekly', weekdays: [1] },
         blocks: [],
       });
     }
@@ -1036,7 +1314,7 @@ describe('GET /event-templates and authorization', () => {
       db: schedulingTestDb,
       churchId: seed.churchBId,
       name: 'Foreign',
-      weekday: 1,
+      recurrence: { kind: 'weekly', weekdays: [1] },
       blocks: [],
     });
 
@@ -1059,6 +1337,16 @@ describe('GET /event-templates and authorization', () => {
       (await patch({ templateId: ids.template, payload: body() })).statusCode,
     ).toBe(401);
     expect((await del(ids.template)).statusCode).toBe(401);
+    expect((await listPrecedences(ids.template)).statusCode).toBe(401);
+    expect(
+      (
+        await putPrecedence({
+          templateId: ids.template,
+          otherTemplateId: ids.sibling,
+          answer: 'both',
+        })
+      ).statusCode,
+    ).toBe(401);
   });
 
   it.each([
@@ -1077,5 +1365,279 @@ describe('GET /event-templates and authorization', () => {
       (await patch({ templateId: ids.template, payload: body() })).statusCode,
     ).toBe(403);
     expect(await storedTemplateCount()).toBe(0);
+  });
+});
+
+function listPrecedences(templateId: string) {
+  return app.inject({
+    method: 'GET',
+    url: `/api/v1/admin/event-templates/${templateId}/precedences`,
+  });
+}
+
+function putPrecedence(input: {
+  templateId: string;
+  otherTemplateId: string;
+  answer: string;
+}) {
+  return app.inject({
+    method: 'PUT',
+    url: `/api/v1/admin/event-templates/${input.templateId}/precedences/${input.otherTemplateId}`,
+    payload: { answer: input.answer },
+  });
+}
+
+/** 1st Sunday and the 15th: collides with Sunday (09:30) and Wednesday (19:30 on a Wednesday 15th). */
+function santaCeia(overrides: Record<string, unknown> = {}) {
+  return {
+    ...body({
+      name: 'Santa Ceia',
+      recurrence: {
+        kind: 'monthly',
+        entries: [
+          { kind: 'nthWeekday', ordinal: 1, weekday: 0 },
+          { kind: 'dayOfMonth', day: 15 },
+        ],
+      },
+      blocks: [
+        { label: 'Ceia', startTime: '09:30', endTime: '10:30' },
+        { label: 'Noite', startTime: '19:30', endTime: '20:30' },
+      ],
+    }),
+    ...overrides,
+  };
+}
+
+async function createAnsweredSantaCeia() {
+  const res = await post(
+    santaCeia({
+      precedences: [
+        { otherTemplateId: ids.template, answer: 'thisWins' },
+        { otherTemplateId: ids.sibling, answer: 'both' },
+      ],
+    }),
+  );
+  expect(res.statusCode).toBe(201);
+  return res.json() as { id: string };
+}
+
+async function precedenceRows() {
+  return schedulingTestDb.select().from(templatePrecedence);
+}
+
+describe('Template Precedence', () => {
+  it('returns the unanswered colliding pairs by name and saves nothing until every pair is answered, then stores the answers', async () => {
+    const { seed } = await seedEditGraph();
+
+    const unanswered = await post(santaCeia());
+
+    expect(unanswered.statusCode).toBe(409);
+    expect(unanswered.json()).toEqual({
+      error: 'UNANSWERED_TEMPLATE_COLLISIONS',
+      message: expect.any(String),
+      collisions: [
+        { templateId: ids.template, name: 'Sunday' },
+        { templateId: ids.sibling, name: 'Wednesday' },
+      ],
+    });
+    expect(await storedTemplateCount()).toBe(3);
+
+    const partial = await post(
+      santaCeia({
+        precedences: [{ otherTemplateId: ids.template, answer: 'thisWins' }],
+      }),
+    );
+    expect(partial.statusCode).toBe(409);
+    expect(partial.json().collisions).toEqual([
+      { templateId: ids.sibling, name: 'Wednesday' },
+    ]);
+    expect(await storedTemplateCount()).toBe(3);
+    expect(await precedenceRows()).toEqual([]);
+
+    const created = await createAnsweredSantaCeia();
+
+    expect((await listPrecedences(created.id)).json()).toEqual({
+      precedences: [
+        {
+          otherTemplateId: ids.template,
+          otherTemplateName: 'Sunday',
+          answer: 'thisWins',
+        },
+        {
+          otherTemplateId: ids.sibling,
+          otherTemplateName: 'Wednesday',
+          answer: 'both',
+        },
+      ],
+    });
+    expect((await listPrecedences(ids.template)).json()).toEqual({
+      precedences: [
+        {
+          otherTemplateId: created.id,
+          otherTemplateName: 'Santa Ceia',
+          answer: 'otherWins',
+        },
+      ],
+    });
+    const rows = await precedenceRows();
+    expect(rows).toHaveLength(2);
+    expect(rows.every((row) => row.churchId === seed.churchAId)).toBe(true);
+  });
+
+  it('never re-asks a stored answer and asks an edit only about its new pairs', async () => {
+    await seedEditGraph();
+    const created = await createAnsweredSantaCeia();
+    const youth = await post(
+      body({
+        name: 'Youth',
+        recurrence: { kind: 'weekly', weekdays: [6] },
+        blocks: [{ label: 'Youth', startTime: '18:00', endTime: '19:00' }],
+      }),
+    );
+    expect(youth.statusCode).toBe(201);
+
+    const resaved = await patch({
+      templateId: created.id,
+      payload: santaCeia(),
+    });
+    expect(resaved.statusCode).toBe(200);
+
+    const withYouthOverlap = santaCeia({
+      blocks: [
+        { label: 'Ceia', startTime: '09:30', endTime: '10:30' },
+        { label: 'Jovens', startTime: '18:30', endTime: '20:30' },
+      ],
+    });
+    const edited = await patch({
+      templateId: created.id,
+      payload: withYouthOverlap,
+    });
+    expect(edited.statusCode).toBe(409);
+    expect(edited.json().collisions).toEqual([
+      { templateId: youth.json().id, name: 'Youth' },
+    ]);
+    expect(
+      (await getDetail(created.id))
+        .json()
+        .blocks.map((block: BlockBody) => block.label),
+    ).toEqual(['Ceia', 'Noite']);
+
+    const answered = await patch({
+      templateId: created.id,
+      payload: {
+        ...withYouthOverlap,
+        precedences: [
+          { otherTemplateId: youth.json().id, answer: 'otherWins' },
+        ],
+      },
+    });
+    expect(answered.statusCode).toBe(200);
+    expect(
+      (await listPrecedences(created.id))
+        .json()
+        .precedences.map(
+          (precedence: { otherTemplateName: string; answer: string }) => [
+            precedence.otherTemplateName,
+            precedence.answer,
+          ],
+        ),
+    ).toEqual([
+      ['Sunday', 'thisWins'],
+      ['Wednesday', 'both'],
+      ['Youth', 'otherWins'],
+    ]);
+  });
+
+  it('changes one stored precedence without editing either template, and 404s a pair with no answer or another Church', async () => {
+    await seedEditGraph();
+    const created = await createAnsweredSantaCeia();
+    const before = (await getDetail(ids.template)).json();
+
+    const changed = await putPrecedence({
+      templateId: ids.template,
+      otherTemplateId: created.id,
+      answer: 'thisWins',
+    });
+
+    expect(changed.statusCode).toBe(200);
+    expect(changed.json()).toEqual({
+      otherTemplateId: created.id,
+      otherTemplateName: 'Santa Ceia',
+      answer: 'thisWins',
+    });
+    expect((await listPrecedences(created.id)).json().precedences[0]).toEqual({
+      otherTemplateId: ids.template,
+      otherTemplateName: 'Sunday',
+      answer: 'otherWins',
+    });
+    expect((await getDetail(ids.template)).json()).toEqual(before);
+
+    for (const [templateId, otherTemplateId] of [
+      [ids.template, ids.sibling],
+      [ids.foreign, created.id],
+      [created.id, ids.foreign],
+    ] as const) {
+      expect(
+        (await putPrecedence({ templateId, otherTemplateId, answer: 'both' }))
+          .statusCode,
+      ).toBe(404);
+    }
+    expect(
+      (
+        await putPrecedence({
+          templateId: created.id,
+          otherTemplateId: 'not-a-uuid',
+          answer: 'both',
+        })
+      ).statusCode,
+    ).toBe(422);
+    expect((await listPrecedences(ids.foreign)).statusCode).toBe(404);
+    expect(
+      (
+        await putPrecedence({
+          templateId: ids.template,
+          otherTemplateId: created.id,
+          answer: 'nobody',
+        })
+      ).statusCode,
+    ).toBe(422);
+  });
+
+  it('drops the answer of a pair an edit no longer makes collide', async () => {
+    await seedEditGraph();
+    const created = await createAnsweredSantaCeia();
+
+    const edited = await patch({
+      templateId: created.id,
+      payload: santaCeia({
+        blocks: [{ label: 'Ceia', startTime: '09:30', endTime: '10:30' }],
+      }),
+    });
+
+    expect(edited.statusCode).toBe(200);
+    expect((await listPrecedences(created.id)).json()).toEqual({
+      precedences: [
+        {
+          otherTemplateId: ids.template,
+          otherTemplateName: 'Sunday',
+          answer: 'thisWins',
+        },
+      ],
+    });
+    expect((await listPrecedences(ids.sibling)).json()).toEqual({
+      precedences: [],
+    });
+  });
+
+  it('drops its precedences when a template is deleted', async () => {
+    await seedEditGraph();
+    const created = await createAnsweredSantaCeia();
+
+    expect((await del(created.id)).statusCode).toBe(204);
+
+    expect(await precedenceRows()).toEqual([]);
+    expect((await listPrecedences(ids.template)).json()).toEqual({
+      precedences: [],
+    });
   });
 });

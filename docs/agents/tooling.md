@@ -28,9 +28,9 @@ and task ordering.
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
 | Generate worktree `.env.local` | `bun run env:local` |
 | Revalidate its ports before launch | `bun run env:local -- --revalidate` |
-| Create + migrate its dev/int/E2E databases | `bun run db:bootstrap` |
+| Create + migrate its dev/int/E2E databases and its `church-<worktree>` storage bucket | `bun run db:bootstrap` |
 | Make a worktree ready (all of the above) | `bun run worktree:bootstrap` |
-| Report databases of removed worktrees | `bun run db:prune` (`-- --apply` drops them) |
+| Report databases and buckets of removed worktrees | `bun run db:prune` (`-- --apply` drops them) |
 | Start / stop this machine's opt-in URL resolver | `bun run dns:start` / `bun run dns:stop` |
 
 Local validation has three tiers, all planned by the same
@@ -47,8 +47,22 @@ Local validation has three tiers, all planned by the same
 - `validate:affected`: once per ticket, before reporting it done (see below).
 - `validate`: final handoff or merge.
 
-`validate` and `validate:affected` run lint → typecheck → unit tests
-concurrently with integration tests, then E2E only if both lanes pass. Output
+A whole local run that passes records its tier against the committed tree
+and the merge-base its selection diffed against (`validate` against the tree
+alone) in `~/.local/state/church/gate-passes/`. `validate:no-docker` and
+`validate:affected` then exit 0 at once on that tree when it already passed
+an equal or stronger tier (`no-docker` < `affected` < `validate`), and say
+which run they reuse, so `git push` after a green `validate:affected` skips
+the hook's validation. Any uncommitted or untracked file, an amend that changes
+files, a new commit or a moved merge-base validates again; the seed-impact
+check still runs before a pass is reused. Runs with `--base`, `--e2e`,
+`--only-e2e`, `--skip-e2e`, `--daily-gate`, `--dry-run` or under CI neither
+reuse nor record a pass.
+
+`validate:affected` runs lint, its guards and typecheck first and stops on a
+failure; then unit tests run concurrently with integration tests, then E2E
+only if both lanes pass. `validate` runs lint → typecheck → unit tests
+concurrently with integration tests, then E2E. Output
 lines carry a `[stage]` prefix and a final table reports each stage's status.
 
 Every command that reads configuration runs through Varlock from its
@@ -247,6 +261,19 @@ wrapper run (a spec with ticket branches that get no CI), workers run the
 per-ticket gate once each and the coordinator owns the single final
 `bun run validate` on the integration branch; workers do not run it.
 
+With no `--base`, `validate:affected` diffs against the branch's
+`validateBase` git setting, else `develop`. On a wrapper run the coordinator
+sets it when it creates each ticket worktree (nothing infers the integration
+branch), so the gate and the seed-impact trailer lookup see only the ticket's
+own commits:
+
+```sh
+git config branch.<ticket-branch>.validateBase spec/<n>-<slug>
+```
+
+`--base` still wins, a setting naming a missing ref fails the gate, and the
+dry run's `Base ref:` line shows the choice.
+
 ## Validate slot
 
 `validate`, `validate:affected` and `validate:no-docker` share one slot per
@@ -263,7 +290,9 @@ That line means the gate is queued, not hung: it starts when the holder
 finishes. A holder whose process died is taken over (`Taking over the validate
 slot from dead holder …`) with no manual cleanup; the slot is released when
 the gate passes, fails, or gets SIGINT/SIGTERM. After 30 minutes
-(`CHURCH_VALIDATE_LOCK_TIMEOUT_MS` overrides) the run fails naming the holder.
+(`CHURCH_VALIDATE_LOCK_TIMEOUT_MS` overrides) the run exits 75 naming the
+holder: nothing was validated, so run the gate again to keep waiting; it is
+not a check failure to repair.
 The summary ends with `Waited Ns for the validate slot.`
 
 The pre-push hook's `validate:no-docker` does wait, but at most 5 minutes
@@ -271,11 +300,6 @@ The pre-push hook's `validate:no-docker` does wait, but at most 5 minutes
 gate, and it must not push unvalidated behind one either. If the holder is
 still running, the push fails naming it; retry when it finishes. A deliberate
 `git push --no-verify` is the maintainer's override.
-
-In the next multi-ticket run, record per ticket the affected-gate run count,
-the reason for each rerun, the final outcome, and any waiting failures (sleep
-guard, unsupported monitor calls), and report them as follow-up evidence for
-[#580](https://github.com/tiagoluizpoli/church/issues/580).
 
 Local `test:e2e` runs hold one lock shared by every worktree: a second run
 prints that it is waiting and starts nothing until the first ends (CI skips
@@ -299,6 +323,14 @@ Local Compose services are shared dependencies, not per-worktree state. The
 checkout's `docker-compose.yml` (`tooling/worktree/shared-compose.sh`), from
 any worktree, so a branch's copy never starts or reshapes them. A Compose
 change takes effect once it is in the primary checkout.
+
+Object storage is the Compose `storage` service (RustFS, S3 API on port
+9000). `env:local` points the server's `S3_*` and `STORAGE_PUBLIC_URL` at it
+and at the worktree's own `church-<worktree>` bucket, which `db:bootstrap`
+creates with anonymous read on `public/*` only; worktree removal and
+`db:prune -- --apply` delete it. The adapter contract suite
+(`apps/server/tests/integration/storage/`) runs against it; HTTP tests inject
+the in-memory fake (`tests/test-support/in-memory-object-storage.ts`).
 
 - **Approval**: Worktrunk asks once to approve the project hook and again
   whenever its command changes; `--yes` approves non-interactively. Declining

@@ -82,7 +82,7 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
 
     // The admin issues a leader-level offer from the Invitations page.
     await signInPersonaPage({ page, persona: journey.personas.admin });
-    await page.goto('/invitations');
+    await page.goto('/app/invitations');
     await invite({
       page,
       email: journey.leaderEmail,
@@ -123,7 +123,7 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
         churchName: journey.church.name,
       });
       expect(leaderJoin.kind).toBe('full-success');
-      await expect(leaderPage).toHaveURL(/:\d+\/(\?.*)?$/);
+      await expect(leaderPage).toHaveURL(/:\d+\/app(\?.*)?$/);
 
       // The leader leads exactly the invited Ministry, without ChurchAdmin.
       const capabilities = await fetchJson<CallerCapabilities>({
@@ -136,7 +136,7 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
       ]);
 
       // The leader invites a Volunteer into their own Ministry with a Role.
-      await leaderPage.goto('/invitations');
+      await leaderPage.goto('/app/invitations');
       await invite({
         page: leaderPage,
         email: journey.volunteerEmail,
@@ -162,7 +162,7 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
       });
       expect(volunteerJoin.kind).toBe('full-success');
       expect(volunteerJoin.volunteerId).toEqual(expect.any(String));
-      await expect(volunteerPage).toHaveURL(/:\d+\/(\?.*)?$/);
+      await expect(volunteerPage).toHaveURL(/:\d+\/app(\?.*)?$/);
 
       const options = await fetchVolunteerMinistryOptions({
         request: volunteerPage.request,
@@ -170,7 +170,7 @@ test.describe('J4 — invite a leader, who invites a Volunteer, and both join', 
       expect(options.map((option) => option.id)).toEqual([worship.id]);
 
       // The leader's history now shows the Volunteer's accepted offer and Role.
-      await leaderPage.goto('/invitations');
+      await leaderPage.goto('/app/invitations');
       await leaderPage
         .getByRole('combobox', { name: m.invitations_filter_status({}, PT) })
         .click();

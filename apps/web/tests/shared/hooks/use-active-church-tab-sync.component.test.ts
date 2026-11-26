@@ -3,9 +3,9 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { createElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { useActiveChurchTabSync } from '@/shared/hooks/use-active-church-tab-sync';
-import { postActiveChurchSwitched } from '@/shared/utils/active-church-broadcast';
+import { postFromAnotherTab } from '@/tests/setup/active-church-broadcast';
 
-let mockHref = '/dashboard';
+let mockHref = '/app/dashboard';
 const mockNavigate = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
@@ -35,7 +35,7 @@ describe('useActiveChurchTabSync', () => {
     const { result } = renderTabSync(queryClient);
 
     act(() => {
-      postActiveChurchSwitched({
+      postFromAnotherTab({
         availableAreas: ['dashboard'],
         churchId: 'church-b',
         churchName: 'Igreja Central',
@@ -53,13 +53,13 @@ describe('useActiveChurchTabSync', () => {
   });
 
   it('clears cache, navigates per route policy, and dismisses the block on continue', async () => {
-    mockHref = '/cycles?view=board';
+    mockHref = '/app/cycles?view=board';
     const queryClient = new QueryClient();
     queryClient.setQueryData(['cycles'], { church: 'church-a' });
     const { result } = renderTabSync(queryClient);
 
     act(() => {
-      postActiveChurchSwitched({
+      postFromAnotherTab({
         availableAreas: ['dashboard'],
         churchId: 'church-b',
         churchName: 'Igreja Central',
@@ -72,7 +72,7 @@ describe('useActiveChurchTabSync', () => {
     });
 
     expect(queryClient.getQueryData(['cycles'])).toBeUndefined();
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/' });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/app' });
     expect(result.current.pendingSwitch).toBeNull();
   });
 });

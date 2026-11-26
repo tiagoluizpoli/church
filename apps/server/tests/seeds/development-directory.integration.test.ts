@@ -3,6 +3,12 @@ import {
   assignment,
   availabilityCheck,
   church,
+  churchAddress,
+  churchContact,
+  churchContactGroup,
+  churchLegalProfile,
+  churchSlugHistory,
+  churchSocialLink,
   cycle,
   event,
   eventTemplate,
@@ -27,7 +33,18 @@ import {
 } from '@church/db';
 import { parseCalendarDay } from '@church/time';
 import { verifyPassword } from 'better-auth/crypto';
-import { and, count, countDistinct, eq, isNull, ne, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  countDistinct,
+  eq,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { expectAssignmentRequirementsToAgree } from './assignment-requirement-contract';
 import { createFastify } from '@/main/fastify/setup';
@@ -44,6 +61,7 @@ import {
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { InMemoryObjectStorage } from '@/tests/test-support/in-memory-object-storage';
 
 const ANCHOR = parseCalendarDay({ value: '2026-03-15' });
 /** One per (published Schedule, Volunteer assigned when it was published). */
@@ -214,12 +232,13 @@ async function queryCount({ query }: QueryCountInput): Promise<number> {
  */
 describe('development seed recipe', () => {
   let seeded: DevelopmentRecipeResult;
+  const objectStorage = new InMemoryObjectStorage();
 
   beforeAll(async () => {
     await truncateAll();
     seeded = await runSeedRecipe({
       db: testDb,
-      recipe: createDevelopmentRecipe({ anchor: ANCHOR }),
+      recipe: createDevelopmentRecipe({ anchor: ANCHOR, objectStorage }),
     });
   }, 120_000);
 
@@ -237,6 +256,239 @@ describe('development seed recipe', () => {
       ]),
     );
     expect(seeded.anchor).toBe(ANCHOR);
+  });
+
+  it('gives the primary Church a website and an accent colour, the second Church neither', async () => {
+    const churches = await testDb
+      .select({
+        id: church.id,
+        website: church.website,
+        accentColor: church.accentColor,
+      })
+      .from(church);
+
+    expect(churches).toEqual(
+      expect.arrayContaining([
+        {
+          id: seeded.church.id,
+          website: 'https://igreja-semente.test',
+          accentColor: '#0f766e',
+        },
+        { id: seeded.secondChurch.id, website: null, accentColor: null },
+      ]),
+    );
+  });
+
+  it('gives the primary Church social links across networks, several on one, and the second none', async () => {
+    const rows = await testDb
+      .select()
+      .from(churchSocialLink)
+      .where(eq(churchSocialLink.churchId, seeded.church.id))
+      .orderBy(asc(churchSocialLink.position));
+
+    expect(rows.map((row) => row.network)).toEqual([
+      'instagram',
+      'youtube',
+      'youtube',
+      'facebook',
+      'telegram',
+      'whatsappChannel',
+      'instagram',
+      'spotify',
+    ]);
+    expect(rows[1]?.description).toBe('Cultos ao vivo');
+    expect(
+      await testDb
+        .select()
+        .from(churchSocialLink)
+        .where(eq(churchSocialLink.churchId, seeded.secondChurch.id)),
+    ).toEqual([]);
+  });
+
+  it('gives the primary Church a public legal profile and the second none', async () => {
+    const rows = await testDb.select().from(churchLegalProfile);
+
+    expect(rows).toEqual([
+      {
+        churchId: seeded.church.id,
+        legalName: 'Igreja Semente de Campinas',
+        documentType: 'CNPJ',
+        documentNumber: '11222333000181',
+        isPublic: true,
+      },
+    ]);
+  });
+
+  it('keeps a slug the primary Church gave up, for the old-slug redirect', async () => {
+    expect(
+      await testDb
+        .select({
+          slug: churchSlugHistory.slug,
+          churchId: churchSlugHistory.churchId,
+        })
+        .from(churchSlugHistory),
+    ).toEqual([{ slug: 'semente-de-campinas', churchId: seeded.church.id }]);
+  });
+
+  it('gives the primary Church a pinned Main Address, a labelled second and a private one', async () => {
+    const rows = await testDb
+      .select()
+      .from(churchAddress)
+      .where(eq(churchAddress.churchId, seeded.church.id))
+      .orderBy(asc(churchAddress.position));
+
+    expect(
+      rows.map((row) => [row.label, row.isMain, row.isPublic, row.pinSource]),
+    ).toEqual([
+      ['Templo', true, true, 'admin'],
+      ['Salão anexo', false, true, null],
+      ['Célula na casa do Marcos', false, false, null],
+    ]);
+    expect(rows[0]).toMatchObject({ latitude: -22.9057, cep: '13012100' });
+    expect(
+      await testDb
+        .select()
+        .from(churchAddress)
+        .where(eq(churchAddress.churchId, seeded.secondChurch.id)),
+    ).toEqual([]);
+  });
+
+  it('places the public Sunday template blocks, and the Events copied from them, at the seeded addresses', async () => {
+    const templateRows = await testDb
+      .select({
+        label: templateTimeBlock.label,
+        place: templateTimeBlock.place,
+        address: churchAddress.label,
+      })
+      .from(templateTimeBlock)
+      .leftJoin(
+        churchAddress,
+        eq(churchAddress.id, templateTimeBlock.placeAddressId),
+      )
+      .where(
+        and(
+          eq(templateTimeBlock.churchId, seeded.church.id),
+          eq(templateTimeBlock.isPublic, true),
+        ),
+      )
+      .orderBy(asc(templateTimeBlock.startTime));
+    const copiedWithoutAddress = await testDb
+      .select({ id: eventTimeBlock.id })
+      .from(eventTimeBlock)
+      .innerJoin(
+        templateTimeBlock,
+        eq(templateTimeBlock.id, eventTimeBlock.sourceTemplateTimeBlockId),
+      )
+      .where(
+        and(
+          eq(eventTimeBlock.churchId, seeded.church.id),
+          isNotNull(templateTimeBlock.placeAddressId),
+          or(
+            isNull(eventTimeBlock.placeAddressId),
+            ne(eventTimeBlock.placeAddressId, templateTimeBlock.placeAddressId),
+          ),
+        ),
+      );
+
+    expect(templateRows).toEqual([
+      { label: 'Culto 08:00', place: null, address: 'Templo' },
+      { label: 'Culto 10:30', place: null, address: 'Templo' },
+      { label: 'Santa Ceia 10:30', place: null, address: 'Templo' },
+      { label: 'Culto 18:30', place: null, address: 'Salão anexo' },
+    ]);
+    expect(copiedWithoutAddress).toEqual([]);
+  });
+
+  it('gives the primary Church public and private contacts in order, the second none', async () => {
+    const contacts = await testDb
+      .select({
+        churchId: churchContact.churchId,
+        value: churchContact.value,
+        isPublic: churchContact.isPublic,
+      })
+      .from(churchContact)
+      .orderBy(churchContact.position);
+
+    expect(contacts).toEqual([
+      { churchId: seeded.church.id, value: '+5511987654321', isPublic: true },
+      {
+        churchId: seeded.church.id,
+        value: 'contato@igreja-semente.test',
+        isPublic: true,
+      },
+      { churchId: seeded.church.id, value: '+551134567890', isPublic: false },
+      {
+        churchId: seeded.church.id,
+        value: 'louvor@igreja-semente.test',
+        isPublic: true,
+      },
+    ]);
+  });
+
+  it('groups some of the primary Church contacts and links and leaves the rest ungrouped', async () => {
+    const groups = await testDb
+      .select({ name: churchContactGroup.name })
+      .from(churchContactGroup)
+      .where(eq(churchContactGroup.churchId, seeded.church.id))
+      .orderBy(asc(churchContactGroup.position));
+    const contactGroups = await testDb
+      .select({ group: churchContactGroup.name })
+      .from(churchContact)
+      .leftJoin(
+        churchContactGroup,
+        eq(churchContactGroup.id, churchContact.groupId),
+      )
+      .orderBy(churchContact.position);
+    const linkGroups = await testDb
+      .select({ group: churchContactGroup.name })
+      .from(churchSocialLink)
+      .leftJoin(
+        churchContactGroup,
+        eq(churchContactGroup.id, churchSocialLink.groupId),
+      )
+      .orderBy(churchSocialLink.position);
+
+    expect(groups.map(({ name }) => name)).toEqual([
+      'Pastora Helena',
+      'Louvor',
+    ]);
+    expect(contactGroups.map(({ group }) => group)).toEqual([
+      null,
+      null,
+      'Pastora Helena',
+      'Louvor',
+    ]);
+    expect(linkGroups.map(({ group }) => group)).toEqual([
+      null,
+      null,
+      'Pastora Helena',
+      null,
+      null,
+      null,
+      'Louvor',
+      null,
+    ]);
+  });
+
+  it('uploads a logo for the primary Church through the logo pipeline, none for the second', async () => {
+    const churches = await testDb
+      .select({ id: church.id, logoKey: church.logoKey })
+      .from(church);
+
+    const [key] = objectStorage.objects.keys();
+    expect(objectStorage.objects.size).toBe(1);
+    expect(key).toMatch(
+      new RegExp(
+        `^public/churches/${seeded.church.id}/logo/[0-9a-f]{64}\\.png$`,
+      ),
+    );
+    expect(objectStorage.objects.get(key ?? '')?.contentType).toBe('image/png');
+    expect(churches).toEqual(
+      expect.arrayContaining([
+        { id: seeded.church.id, logoKey: key },
+        { id: seeded.secondChurch.id, logoKey: null },
+      ]),
+    );
   });
 
   it('seats 305 Ministry Memberships in the primary Church', async () => {
@@ -465,7 +717,7 @@ describe('development seed recipe', () => {
       .select({
         churchId: eventTemplate.churchId,
         template: eventTemplate.name,
-        weekday: eventTemplate.weekday,
+        recurrence: eventTemplate.recurrence,
         startTime: templateTimeBlock.startTime,
         endTime: templateTimeBlock.endTime,
       })
@@ -474,12 +726,12 @@ describe('development seed recipe', () => {
         eventTemplate,
         eq(eventTemplate.id, templateTimeBlock.templateId),
       )
-      .orderBy(eventTemplate.weekday, templateTimeBlock.order);
+      .orderBy(eventTemplate.name, templateTimeBlock.order);
 
     const sunday = {
       churchId: seeded.church.id,
       template: 'Culto de Domingo',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
     };
     expect(blocks).toEqual([
       { ...sunday, startTime: '08:00:00', endTime: '09:30:00' },
@@ -488,9 +740,29 @@ describe('development seed recipe', () => {
       {
         churchId: seeded.church.id,
         template: 'Culto de Quarta',
-        weekday: 3,
+        recurrence: { kind: 'weekly', weekdays: [3] },
         startTime: '20:00:00',
         endTime: '22:00:00',
+      },
+      {
+        churchId: seeded.church.id,
+        template: 'Oração do Dia 15',
+        recurrence: {
+          kind: 'monthly',
+          entries: [{ kind: 'dayOfMonth', day: 15 }],
+        },
+        startTime: '07:00:00',
+        endTime: '08:00:00',
+      },
+      {
+        churchId: seeded.church.id,
+        template: 'Santa Ceia (1º Domingo)',
+        recurrence: {
+          kind: 'monthly',
+          entries: [{ kind: 'nthWeekday', ordinal: 1, weekday: 0 }],
+        },
+        startTime: '10:30:00',
+        endTime: '12:30:00',
       },
     ]);
   });
@@ -509,7 +781,7 @@ describe('development seed recipe', () => {
     const profiles = await testDb
       .select({
         ministry: ministry.name,
-        weekday: eventTemplate.weekday,
+        template: eventTemplate.name,
         startTime: templateTimeBlock.startTime,
         serves: usualSetup.serves,
         shiftSplit: usualSetup.shiftSplit,
@@ -526,11 +798,11 @@ describe('development seed recipe', () => {
         eq(eventTemplate.id, templateTimeBlock.templateId),
       )
       .where(eq(usualSetup.churchId, seeded.church.id))
-      .orderBy(ministry.name, eventTemplate.weekday, templateTimeBlock.order);
+      .orderBy(ministry.name, eventTemplate.name, templateTimeBlock.order);
 
     const readable = profiles.map((profile) => ({
       ministry: profile.ministry,
-      block: `${profile.weekday} ${profile.startTime.slice(0, 5)}`,
+      block: `${profile.template} ${profile.startTime.slice(0, 5)}`,
       serves: profile.serves,
       shiftSplit: profile.shiftSplit,
       headcounts: profile.headcounts.map((headcount) =>
@@ -550,15 +822,36 @@ describe('development seed recipe', () => {
       '1 Líder Maternal',
       '3 Auxiliar Maternal',
     ];
-    const blocks = ['0 08:00', '0 10:30', '0 18:30', '3 20:00'];
-    const everyBlock = ({ ministryName, headcounts }: ServedBlocksInput) =>
-      blocks.map((block) => ({
+    const blocks = [
+      'Culto de Domingo 08:00',
+      'Culto de Domingo 10:30',
+      'Culto de Domingo 18:30',
+      'Culto de Quarta 20:00',
+    ];
+    // The day-of-month and 1st-Sunday templates are declared for every Ministry, served by none.
+    const everyBlock = ({ ministryName, headcounts }: ServedBlocksInput) => [
+      ...blocks.map((block) => ({
         ministry: ministryName,
         block,
         serves: true,
         shiftSplit: oneShift,
         headcounts,
-      }));
+      })),
+      {
+        ministry: ministryName,
+        block: 'Oração do Dia 15 07:00',
+        serves: false,
+        shiftSplit: oneShift,
+        headcounts: [],
+      },
+      {
+        ministry: ministryName,
+        block: 'Santa Ceia (1º Domingo) 10:30',
+        serves: false,
+        shiftSplit: oneShift,
+        headcounts: [],
+      },
+    ];
 
     expect(readable).toEqual([
       ...everyBlock({
@@ -571,7 +864,7 @@ describe('development seed recipe', () => {
       }),
       {
         ministry: 'Kids',
-        block: '0 08:00',
+        block: 'Culto de Domingo 08:00',
         serves: false,
         shiftSplit: oneShift,
         headcounts: [],
@@ -579,7 +872,7 @@ describe('development seed recipe', () => {
       ...everyBlock({ ministryName: 'Kids', headcounts: kids }).slice(1),
       {
         ministry: 'Projeção',
-        block: '0 08:00',
+        block: 'Culto de Domingo 08:00',
         serves: true,
         shiftSplit: oneShift,
         headcounts: ['1 Operador de Projeção Templo'],
@@ -620,7 +913,7 @@ describe('development seed recipe', () => {
     ]);
   });
 
-  it("materializes February's Sundays and Wednesdays and one manual Encontro Teens, all past", async () => {
+  it("materializes February's Sundays, Wednesdays, the 15th and one manual Encontro Teens, all past", async () => {
     const events = await testDb
       .select({
         title: event.title,
@@ -654,9 +947,23 @@ describe('development seed recipe', () => {
       })),
     ).toEqual([
       sunday({ day: '01' }),
+      {
+        title: 'Santa Ceia (1º Domingo)',
+        start: '2026-02-01T13:30:00.000Z',
+        end: '2026-02-01T15:30:00.000Z',
+        status: 'past',
+        fromTemplate: true,
+      },
       wednesday({ day: '04', next: '05' }),
       sunday({ day: '08' }),
       wednesday({ day: '11', next: '12' }),
+      {
+        title: 'Oração do Dia 15',
+        start: '2026-02-15T10:00:00.000Z',
+        end: '2026-02-15T11:00:00.000Z',
+        status: 'past',
+        fromTemplate: true,
+      },
       sunday({ day: '15' }),
       wednesday({ day: '18', next: '19' }),
       sunday({ day: '22' }),
@@ -676,7 +983,7 @@ describe('development seed recipe', () => {
         fromBlocks: sql<number>`count(${eventTimeBlock.sourceTemplateTimeBlockId})::int`,
       })
       .from(eventTimeBlock);
-    expect(eventTimeBlocks).toEqual({ total: 17, fromBlocks: 16 });
+    expect(eventTimeBlocks).toEqual({ total: 19, fromBlocks: 18 });
   });
 
   it('publishes one MinistryParticipation per serving Ministry and Event, Kids not on Sunday at 08:00', async () => {
@@ -859,10 +1166,7 @@ describe('development seed recipe', () => {
       .from(assignment)
       .groupBy(assignment.status)
       .orderBy(assignment.status);
-    expect(statuses).toEqual([
-      { status: 'confirmed', value: 364 },
-      { status: 'declined', value: 1 },
-    ]);
+    expect(statuses).toEqual([{ status: 'pending', value: 364 }]);
 
     // Every Assignment staffs its named requirement, including same-Role Sectors.
     const result = await testDb.execute<StaffingRow>(sql`
@@ -871,7 +1175,7 @@ describe('development seed recipe', () => {
         sum(sr.people_needed)::int as required,
         (select count(*) from ${assignment} a
           where a.shift_requirement_id = sr.id
-            and a.status in ('draft', 'pending', 'confirmed'))::int as assigned
+            and a.status in ('draft', 'pending'))::int as assigned
       from ${shiftRequirement} sr
       join ${shift} sh on sh.id = sr.shift_id
       join ${ministryParticipation} p on p.id = sr.participation_id
@@ -894,7 +1198,7 @@ describe('development seed recipe', () => {
       await queryCount({
         query: sql`select count(*) as value from ${assignment} a
           join ${ministryParticipation} p on p.id = a.participation_id
-          where a.status in ('draft', 'pending', 'confirmed')
+          where a.status in ('draft', 'pending')
             and not exists (select 1 from ${ministryMembership} mv
               join ${ministryMembershipRole} q on q.ministry_membership_id = mv.id
               where mv.volunteer_id = a.volunteer_id and mv.ministry_id = p.ministry_id
@@ -907,8 +1211,8 @@ describe('development seed recipe', () => {
           join ${shift} s on s.id = a.shift_id
           join ${assignment} b on b.volunteer_id = a.volunteer_id and b.id < a.id
           join ${shift} t on t.id = b.shift_id
-          where a.status in ('draft', 'pending', 'confirmed')
-            and b.status in ('draft', 'pending', 'confirmed')
+          where a.status in ('draft', 'pending')
+            and b.status in ('draft', 'pending')
             and s.start_time < t.end_time and t.start_time < s.end_time`,
       }),
     ).toBe(0);
@@ -918,13 +1222,13 @@ describe('development seed recipe', () => {
           join ${ministryMembership} mv on mv.volunteer_id = a.volunteer_id
           join ${availabilityCheck} c on c.ministry_membership_id = mv.id
           join unavailable_shift u on u.availability_check_id = c.id
-          where a.status in ('draft', 'pending', 'confirmed')
+          where a.status in ('draft', 'pending')
             and u.shift_id = a.shift_id`,
       }),
     ).toBe(0);
   });
 
-  it('keeps a trail of unavailability, a decline, a resolved overlap, replacements and cross-Ministry service', async () => {
+  it('keeps a trail of unavailability, a resolved overlap, replacements and cross-Ministry service', async () => {
     const [checks] = await testDb
       .select({
         total: count(),
@@ -1015,8 +1319,7 @@ describe('development seed recipe', () => {
           to_char(s.start_time at time zone 'America/Sao_Paulo', 'YYYY-MM-DD HH24:MI'))
         in (values ('bruno.dias', '2026-02-01 10:30'), ('bruno.dias', '2026-02-01 18:30'),
           ('rafael.moura', '2026-02-08 10:30'), ('rafael.moura', '2026-02-08 18:30'),
-          ('joao.pereira', '2026-02-11 20:00'), ('daniel.moreira', '2026-02-11 20:00'),
-          ('isabela.medeiros', '2026-02-18 20:00'), ('vanessa.campos', '2026-02-18 20:00'))
+          ('joao.pereira', '2026-02-11 20:00'), ('daniel.moreira', '2026-02-11 20:00'))
       order by starts, ministry, email`);
     const row = ({ email, ministryName, starts }: TrailPersonInput) => ({
       email: `${email}@igreja-semente.test`,
@@ -1030,7 +1333,7 @@ describe('development seed recipe', () => {
           ministryName: 'Projeção',
           starts: '2026-02-01 10:30',
         }),
-        status: 'confirmed',
+        status: 'pending',
         reason: null,
       },
       {
@@ -1039,7 +1342,7 @@ describe('development seed recipe', () => {
           ministryName: 'Kids',
           starts: '2026-02-01 18:30',
         }),
-        status: 'confirmed',
+        status: 'pending',
         reason: null,
       },
       {
@@ -1048,7 +1351,7 @@ describe('development seed recipe', () => {
           ministryName: 'Intercessão',
           starts: '2026-02-11 20:00',
         }),
-        status: 'confirmed',
+        status: 'pending',
         reason: null,
       },
       // The leader reassigned João's Projeção post to Daniel: the product
@@ -1059,26 +1362,8 @@ describe('development seed recipe', () => {
           ministryName: 'Projeção',
           starts: '2026-02-11 20:00',
         }),
-        status: 'confirmed',
+        status: 'pending',
         reason: 'Já escalado na Intercessão neste culto',
-      },
-      {
-        ...row({
-          email: 'isabela.medeiros',
-          ministryName: 'Intercessão',
-          starts: '2026-02-18 20:00',
-        }),
-        status: 'declined',
-        reason: 'Viagem a trabalho',
-      },
-      {
-        ...row({
-          email: 'vanessa.campos',
-          ministryName: 'Intercessão',
-          starts: '2026-02-18 20:00',
-        }),
-        status: 'confirmed',
-        reason: null,
       },
     ]);
 
@@ -1094,7 +1379,7 @@ describe('development seed recipe', () => {
       join ${assignment} a on a.id = au.assignment_id
       where au.action = 'created'`)
       .then((result) => result.rows);
-    expect(created).toEqual({ audits: 365, assignments: 365, matching: 365 });
+    expect(created).toEqual({ audits: 364, assignments: 364, matching: 364 });
 
     const audits = await testDb.execute<AuditRow>(sql`
       select actor.email as actor, subject.email as subject, au.action, au.reason,
@@ -1121,20 +1406,13 @@ describe('development seed recipe', () => {
         reason: 'Já escalado na Intercessão neste culto',
         at: '2026-02-09T13:00Z',
       },
-      {
-        actor: 'henrique.freitas@igreja-semente.test',
-        subject: 'vanessa.campos@igreja-semente.test',
-        action: 'created',
-        reason: null,
-        at: '2026-02-16T13:00Z',
-      },
     ]);
 
     const crossMinistryServers = await queryCount({
       query: sql`select count(*) as value from (
           select a.volunteer_id from ${assignment} a
           join ${ministryParticipation} p on p.id = a.participation_id
-          where a.status = 'confirmed'
+          where a.status = 'pending'
           group by a.volunteer_id having count(distinct p.ministry_id) > 1
         ) as cross_ministry`,
     });
@@ -1322,11 +1600,11 @@ describe('development seed recipe', () => {
       },
     },
     {
-      label: 'a confirmed Assignment is removed',
+      label: 'an Assignment is removed',
       problem: 'staffed',
       break: async ({ tx }: SeedTransactionInput) => {
         await tx.execute(sql`delete from ${assignment}
-          where id = (select a.id from ${assignment} a where a.status = 'confirmed'
+          where id = (select a.id from ${assignment} a where a.status = 'pending'
             and a.assigned_at = '2026-01-27T13:00:00Z' order by a.id limit 1)`);
       },
     },
@@ -1338,14 +1616,14 @@ describe('development seed recipe', () => {
           from ${assignment} other, ${shift} target_shift, ${shift} other_shift
           where target.id = (select a.id from ${assignment} a join ${shift} s on s.id = a.shift_id
               join ${shift} o on o.event_time_block_id = s.event_time_block_id and o.id <> s.id
-              join ${assignment} b on b.shift_id = o.id and b.status = 'confirmed'
-              where a.status = 'confirmed' order by a.id limit 1)
+              join ${assignment} b on b.shift_id = o.id and b.status = 'pending'
+              where a.status = 'pending' order by a.id limit 1)
             and target_shift.id = target.shift_id
             and other_shift.event_time_block_id = target_shift.event_time_block_id
             and other_shift.id <> target_shift.id
-            and other.shift_id = other_shift.id and other.status = 'confirmed'
+            and other.shift_id = other_shift.id and other.status = 'pending'
             and other.id = (select b.id from ${assignment} b where b.shift_id = other_shift.id
-              and b.status = 'confirmed' order by b.id limit 1)`);
+              and b.status = 'pending' order by b.id limit 1)`);
       },
     },
     {
@@ -1357,7 +1635,7 @@ describe('development seed recipe', () => {
           from ${assignment} a
           join ${ministryMembership} mv on mv.volunteer_id = a.volunteer_id
           join ${availabilityCheck} c on c.ministry_membership_id = mv.id
-          where a.status = 'confirmed'
+          where a.status = 'pending'
           order by a.id, c.id
           limit 1`);
       },
@@ -1390,15 +1668,6 @@ describe('development seed recipe', () => {
             join ${volunteer} v on v.id = mv.volunteer_id
             join ${user} usr on usr.id = v.user_id
             where usr.email = 'bruno.dias@igreja-semente.test' order by u.id limit 1)`);
-      },
-    },
-    {
-      label: 'the decline is lost from the trail',
-      problem: 'trail',
-      break: async ({ tx }: SeedTransactionInput) => {
-        await tx.execute(
-          sql`update ${assignment} set status = 'cancelled' where status = 'declined'`,
-        );
       },
     },
   ])('refuses the graph when $label', async ({

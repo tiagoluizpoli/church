@@ -62,7 +62,7 @@ describe('volunteer-dashboard E2E journey recipe', () => {
       .from(assignment)
       .where(eq(assignment.churchId, journey.church.id));
     expect(assignments).toEqual([
-      { id: expect.any(String), status: 'confirmed', volunteerId },
+      { id: expect.any(String), status: 'pending', volunteerId },
     ]);
 
     const participations = await testDb
@@ -169,7 +169,7 @@ describe('volunteer-dashboard E2E journey recipe', () => {
       .where(eq(notificationTable.id, journey.notification.id));
     await testDb
       .update(assignment)
-      .set({ status: 'declined' })
+      .set({ status: 'cancelled' })
       .where(eq(assignment.churchId, journey.church.id));
 
     const reloaded = await load({ anchor: ANCHOR });

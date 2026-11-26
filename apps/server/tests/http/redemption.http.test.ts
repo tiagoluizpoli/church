@@ -65,6 +65,7 @@ import { runOperatorCommand } from '@/scripts/operator';
 import { buildChurchMembership } from '@/seeds/builders/church';
 import { buildUser } from '@/seeds/builders/identity';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
@@ -247,8 +248,9 @@ async function createHarness({
   const identityGateway = new FaultInjectingIdentityGateway();
   const failureLog = new RecordingFailureLog();
   const verificationCodeManager = new InvitationVerificationCodeManager({
+    churchIdentity: nullChurchIdentity,
     repository: verificationCodeRepository,
-    emailSender: new CaptureEmailSender('Church'),
+    emailSender: new CaptureEmailSender({ appName: 'Church' }),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
     config: appConfig,
@@ -261,6 +263,7 @@ async function createHarness({
     redemptionRepository,
     securityLogRepository,
     unitOfWork,
+    verificationCodeRepository,
     failureLog,
   });
   const volunteerTransferManager = new DbVolunteerTransferManager({
@@ -808,6 +811,39 @@ describe('Church invitation redemption HTTP boundary', () => {
         .select()
         .from(volunteer)
         .where(eq(volunteer.userId, redeemedUser.id)),
+    ).toHaveLength(1);
+  });
+
+  it('answers a same-key retry after commit, and a concurrent same-key twin, with the original success', async () => {
+    const invitation = await mintInvitation();
+    const { app } = await createHarness();
+    await app.inject({
+      method: 'POST',
+      url: `${redemptionUrl({ invitationId: invitation.churchInvitationId })}/code`,
+    });
+    const payload = {
+      name: 'Retried HTTP User',
+      password: 'correct horse battery staple',
+      code: '123456',
+      idempotencyKey: '99999999-9999-4999-8999-999999999991',
+    };
+    const redeem = () =>
+      app.inject({
+        method: 'POST',
+        url: `${redemptionUrl({ invitationId: invitation.churchInvitationId })}/redeem`,
+        payload,
+      });
+
+    const concurrent = await Promise.all([redeem(), redeem()]);
+    const retry = await redeem();
+
+    for (const response of [...concurrent, retry]) {
+      expect(response.json()).toMatchObject({ kind: 'full-success' });
+      expect(response.headers['set-cookie']).toContain('session_token=');
+    }
+    const email = `redemption-${fixture.churchA.slug}@fixture.test`;
+    expect(
+      await testDb.select().from(user).where(eq(user.email, email)),
     ).toHaveLength(1);
   });
 

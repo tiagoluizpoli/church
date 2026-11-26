@@ -4,6 +4,7 @@ import {
   availabilityCheck,
   event,
   eventTimeBlock,
+  eventTimeBlockMove,
   ministry,
   ministryMembership,
   ministryParticipation,
@@ -18,7 +19,7 @@ import {
   user,
   volunteer,
 } from '@church/db';
-import { fromDate, nowAsDate } from '@church/time';
+import { compareInstants, fromDate, nowAsDate, toDate } from '@church/time';
 import {
   and,
   asc,
@@ -47,9 +48,11 @@ import type {
   CreatePlanningEventTimeBlockInput,
   DeletePlanningEventInput,
   DeleteScopeUnavailableShiftsInput,
+  EventShiftBounds,
   GetPlanningEventInput,
   ListCancellationScopeAssignmentsInput,
   ListCycleEventsInput,
+  ListEventShiftsInput,
   ListMoveClashCandidatesInput,
   ListMoveScopeAssignmentsInput,
   ListScopeParticipatingMinistriesInput,
@@ -57,12 +60,16 @@ import type {
   MoveEventTimeBlocksInput,
   PlanningEventRepository,
   RemoveLastToldAssignmentsInput,
+  RetimeEventTimeBlocksInput,
   ScopeParticipatingMinistry,
   SeededMinistry,
   SeedPlanningParticipationsInput,
   UpdatePlanningEventInput,
 } from '../../domain/contracts/infrastructure/planning-event.repository';
-import { PUBLISHED_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
+import {
+  ACTIVE_ASSIGNMENT_STATUSES,
+  PUBLISHED_ASSIGNMENT_STATUSES,
+} from '../../domain/entities/assignment';
 import type {
   Event,
   EventWithEventTimeBlocks,
@@ -76,10 +83,13 @@ import type {
 import { mapEvent } from '../mappers/event.mapper';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
-import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import {
+  assertPlaceAddresses,
+  getClient,
+  isValidUuid,
+  withChurchIsolation,
+} from './helpers';
 import type { AnyDrizzleDb } from './types';
-
-const ACTIVE_ASSIGNMENT_STATUSES = ['draft', 'pending', 'confirmed'] as const;
 
 interface DrizzlePlanningEventRepositoryInput {
   db: AnyDrizzleDb;
@@ -269,6 +279,11 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     input: CreatePlanningEventTimeBlockInput,
   ): Promise<EventTimeBlockId> {
     const db = getClient({ db: this.db, tx: input.tx });
+    await assertPlaceAddresses({
+      db,
+      churchId: input.churchId,
+      addressIds: [input.placeAddressId],
+    });
     const [eventTimeBlockRow] = await db
       .insert(eventTimeBlock)
       .values({
@@ -278,6 +293,9 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         startTime: input.startTime,
         endTime: input.endTime,
         label: input.label ?? null,
+        isPublic: input.isPublic ?? false,
+        place: input.place ?? null,
+        placeAddressId: input.placeAddressId ?? null,
       })
       .returning();
 
@@ -367,7 +385,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     const conditions: SQL[] = [
       withChurchIsolation({ table: assignment, churchId }),
       eq(eventTimeBlock.eventId, eventId),
-      inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+      inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES),
     ];
     if (eventTimeBlockId) {
       conditions.push(eq(eventTimeBlock.id, eventTimeBlockId));
@@ -422,7 +440,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     const conditions: SQL[] = [
       withChurchIsolation({ table: assignment, churchId }),
       inArray(assignment.volunteerId, volunteerIds),
-      inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+      inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES),
       // Strict overlap: back-to-back Shifts are compatible.
       lt(shift.startTime, endTime),
       gt(shift.endTime, startTime),
@@ -551,6 +569,29 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     if (eventTimeBlockIds.length === 0) return;
     const client = getClient({ db: this.db, tx });
     const delta = sql`(${deltaMs} * interval '1 millisecond')`;
+    // Same transaction as the update below, so the record cannot drift.
+    await client.insert(eventTimeBlockMove).select(
+      client
+        .select({
+          id: sql<string>`gen_random_uuid()`.as('id'),
+          churchId: eventTimeBlock.churchId,
+          eventTimeBlockId: eventTimeBlock.id,
+          previousStart: eventTimeBlock.startTime,
+          previousEnd: eventTimeBlock.endTime,
+          newStart: sql<Date>`${eventTimeBlock.startTime} + ${delta}`.as(
+            'new_start',
+          ),
+          newEnd: sql<Date>`${eventTimeBlock.endTime} + ${delta}`.as('new_end'),
+          movedAt: sql<Date>`now()`.as('moved_at'),
+        })
+        .from(eventTimeBlock)
+        .where(
+          and(
+            withChurchIsolation({ table: eventTimeBlock, churchId }),
+            inArray(eventTimeBlock.id, eventTimeBlockIds),
+          ),
+        ),
+    );
     await client
       .update(eventTimeBlock)
       .set({
@@ -577,6 +618,100 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       );
   }
 
+  async listEventShifts({
+    churchId,
+    eventTimeBlockIds,
+    tx,
+  }: ListEventShiftsInput): Promise<EventShiftBounds[]> {
+    if (eventTimeBlockIds.length === 0) return [];
+    const rows = await getClient({ db: this.db, tx })
+      .select({
+        shiftId: shift.id,
+        eventTimeBlockId: shift.eventTimeBlockId,
+        start: shift.startTime,
+        end: shift.endTime,
+      })
+      .from(shift)
+      .where(
+        and(
+          withChurchIsolation({ table: shift, churchId }),
+          inArray(shift.eventTimeBlockId, eventTimeBlockIds),
+        ),
+      )
+      .orderBy(asc(shift.startTime), asc(shift.id));
+    return rows.map((row) => ({
+      shiftId: ShiftId.from(row.shiftId),
+      eventTimeBlockId: EventTimeBlockId.from(row.eventTimeBlockId),
+      start: fromDate({ date: row.start }),
+      end: fromDate({ date: row.end }),
+    }));
+  }
+
+  async retimeEventTimeBlocks({
+    churchId,
+    eventTimeBlocks,
+    shifts,
+    tx,
+  }: RetimeEventTimeBlocksInput): Promise<void> {
+    const client = getClient({ db: this.db, tx });
+    for (const { eventTimeBlockId, label, start, end } of eventTimeBlocks) {
+      const isolated = and(
+        withChurchIsolation({ table: eventTimeBlock, churchId }),
+        eq(eventTimeBlock.id, eventTimeBlockId),
+      );
+      const [stored] = await client
+        .select({
+          start: eventTimeBlock.startTime,
+          end: eventTimeBlock.endTime,
+        })
+        .from(eventTimeBlock)
+        .where(isolated);
+      if (!stored)
+        throw new NotFoundError(
+          `EventTimeBlock not found: ${eventTimeBlockId}`,
+        );
+      const startTime = toDate({ instant: start });
+      const endTime = toDate({ instant: end });
+      if (
+        compareInstants({
+          left: fromDate({ date: stored.start }),
+          right: start,
+        }) !== 0 ||
+        compareInstants({
+          left: fromDate({ date: stored.end }),
+          right: end,
+        }) !== 0
+      ) {
+        await client.insert(eventTimeBlockMove).values({
+          churchId,
+          eventTimeBlockId,
+          previousStart: stored.start,
+          previousEnd: stored.end,
+          newStart: startTime,
+          newEnd: endTime,
+        });
+      }
+      await client
+        .update(eventTimeBlock)
+        .set({ label, startTime, endTime })
+        .where(isolated);
+    }
+    for (const { shiftId, start, end } of shifts) {
+      await client
+        .update(shift)
+        .set({
+          startTime: toDate({ instant: start }),
+          endTime: toDate({ instant: end }),
+        })
+        .where(
+          and(
+            withChurchIsolation({ table: shift, churchId }),
+            eq(shift.id, shiftId),
+          ),
+        );
+    }
+  }
+
   async listCancellationScopeAssignments({
     churchId,
     eventId,
@@ -589,7 +724,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     const conditions: SQL[] = [
       withChurchIsolation({ table: assignment, churchId }),
       eq(eventTimeBlock.eventId, eventId),
-      inArray(assignment.status, [...ACTIVE_ASSIGNMENT_STATUSES]),
+      inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES),
     ];
     if (eventTimeBlockId) {
       conditions.push(eq(eventTimeBlock.id, eventTimeBlockId));

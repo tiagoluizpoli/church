@@ -167,7 +167,6 @@ beforeAll(async () => {
   const volunteer = new VolunteerController({
     volunteerManager: scheduling.volunteerManager,
     activeChurchResolver: activeChurchResolver as never,
-    config: appConfig,
   });
   const prepare = new PrepareController({
     config: appConfig,
@@ -942,7 +941,7 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
         title: 'Ensaio',
         eventStart: '2026-11-10T19:00:00.000Z',
         eventEnd: '2026-11-10T21:00:00.000Z',
-        status: 'confirmed',
+        status: 'pending',
       });
       // A running multi-day Event protects its already-ended Shift.
       const running = await service({
@@ -972,7 +971,7 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
           title: 'Recusada',
           eventStart: '2026-11-20T09:00:00.000Z',
           eventEnd: '2026-11-20T11:00:00.000Z',
-          status: 'declined',
+          status: 'cancelled',
         },
         {
           roleId: f.vocals,
@@ -2064,7 +2063,7 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
         eventEnd: '2026-11-04T10:00:00.000Z',
         shiftStart: '2026-11-02T10:00:00.000Z',
         shiftEnd: '2026-11-02T12:00:00.000Z',
-        status: 'confirmed',
+        status: 'pending',
       });
 
       const res = await removeFrom({
@@ -2090,13 +2089,13 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
       expect(await audits()).toEqual([]);
     });
 
-    it('ignores past, cancelled and declined Assignments, which stay as history', async () => {
+    it('ignores past and cancelled Assignments, which stay as history', async () => {
       const past = await service({
         roleId: f.vocals,
         title: 'Ontem',
         eventStart: '2026-11-02T10:00:00.000Z',
         eventEnd: '2026-11-03T12:00:00.000Z',
-        status: 'confirmed',
+        status: 'pending',
       });
       await service({
         roleId: f.vocals,
@@ -2107,10 +2106,10 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
       });
       await service({
         roleId: f.keys,
-        title: 'Recusado',
+        title: 'Cancelado depois',
         eventStart: '2026-11-16T10:00:00.000Z',
         eventEnd: '2026-11-16T12:00:00.000Z',
-        status: 'declined',
+        status: 'cancelled',
       });
 
       const res = await removeFrom({
@@ -2123,7 +2122,7 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
         .select({ status: assignment.status })
         .from(assignment)
         .where(eq(assignment.id, past.assignmentId));
-      expect(kept).toEqual({ status: 'confirmed' });
+      expect(kept).toEqual({ status: 'pending' });
     });
   });
 

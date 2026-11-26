@@ -22,6 +22,7 @@ import {
   MinistryInvitationId,
   RoleId,
   UserId,
+  VolunteerId,
 } from '@/domain/branded-ids';
 import type { RedemptionIdentityGateway } from '@/domain/contracts/infrastructure/redemption-identity-gateway';
 import type { MinistryInvitation } from '@/domain/entities/ministry-invitation';
@@ -38,6 +39,7 @@ import {
   buildMinistryMembership,
   buildVolunteer,
 } from '@/seeds/builders/volunteer';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import {
   seedTwoChurchIdentityFixture,
   type TwoChurchIdentityFixture,
@@ -93,12 +95,16 @@ const unusedIdentityGateway: RedemptionIdentityGateway = {
   async verifyPassword() {
     throw new Error('Identity gateway is not used by checkpoint-three tests.');
   },
+  async signIn() {
+    throw new Error('Identity gateway is not used by checkpoint-three tests.');
+  },
 };
 
 function createHarness(): RedemptionHarness {
   const verificationCodeManager = new InvitationVerificationCodeManager({
+    churchIdentity: nullChurchIdentity,
     repository: verificationCodeRepository,
-    emailSender: new CaptureEmailSender('Church'),
+    emailSender: new CaptureEmailSender({ appName: 'Church' }),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
     config: appConfig,
@@ -113,6 +119,7 @@ function createHarness(): RedemptionHarness {
       redemptionRepository,
       securityLogRepository,
       unitOfWork,
+      verificationCodeRepository,
       failureLog: { record: () => {} },
     }),
   };
@@ -224,6 +231,7 @@ describe('verification code persistence', () => {
     const { verificationCodeManager } = createHarness();
     const now = new Date('2026-01-01T00:00:00.000Z');
     await verificationCodeManager.issue({
+      churchId: ChurchId.from(fixture.churchA.id),
       churchInvitationId: pairedChurchInvitationId({ invitation }),
       recipientEmail: 'new-redemption-user@fixture.test',
       churchName: fixture.churchA.name,
@@ -257,6 +265,7 @@ describe('verification code persistence', () => {
     const now = new Date('2026-01-01T00:00:00.000Z');
     const idempotencyKey = '11111111-1111-4111-8111-111111111111';
     await verificationCodeManager.issue({
+      churchId: ChurchId.from(fixture.churchA.id),
       churchInvitationId: pairedChurchInvitationId({ invitation }),
       recipientEmail: 'new-redemption-user@fixture.test',
       churchName: fixture.churchA.name,
@@ -287,11 +296,73 @@ describe('verification code persistence', () => {
     ).rejects.toMatchObject({ code: 'VERIFICATION_CODE_CONSUMED' });
   });
 
+  it('reads a stored redemption outcome back through its schema, refusing a malformed one', async () => {
+    const invitation = await mintInvitation();
+    const { verificationCodeManager } = createHarness();
+    const churchInvitationId = pairedChurchInvitationId({ invitation });
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    const idempotencyKey = '33333333-3333-4333-8333-333333333333';
+    await verificationCodeManager.issue({
+      churchId: ChurchId.from(fixture.churchA.id),
+      churchInvitationId,
+      recipientEmail: 'new-redemption-user@fixture.test',
+      churchName: fixture.churchA.name,
+      now,
+    });
+    await verificationCodeManager.verify({
+      churchInvitationId,
+      code: '123456',
+      idempotencyKey,
+      now,
+    });
+    const stored = {
+      email: 'new-redemption-user@fixture.test',
+      outcome: {
+        kind: 'full-success' as const,
+        volunteerId: VolunteerId.from('44444444-4444-4444-8444-444444444444'),
+      },
+    };
+    const key = {
+      churchInvitationId,
+      redemptionIdempotencyKey: idempotencyKey,
+    };
+    await unitOfWork.run((tx) =>
+      verificationCodeRepository.recordRedemptionOutcome({
+        ...key,
+        outcome: stored,
+        tx,
+      }),
+    );
+
+    await expect(
+      verificationCodeRepository.findRedemptionOutcome(key),
+    ).resolves.toEqual(stored);
+    await expect(
+      verificationCodeRepository.findRedemptionOutcome({
+        churchInvitationId,
+        redemptionIdempotencyKey: '55555555-5555-4555-8555-555555555555',
+      }),
+    ).resolves.toBeNull();
+
+    await testDb
+      .update(invitationVerificationCode)
+      .set({
+        redemptionOutcome: { email: stored.email, outcome: { kind: 'x' } },
+      })
+      .where(
+        eq(invitationVerificationCode.churchInvitationId, churchInvitationId),
+      );
+    await expect(
+      verificationCodeRepository.findRedemptionOutcome(key),
+    ).rejects.toThrow();
+  });
+
   it('never increments past five failed attempts under concurrent invalid submissions', async () => {
     const invitation = await mintInvitation();
     const { verificationCodeManager } = createHarness();
     const now = new Date('2026-01-01T00:00:00.000Z');
     await verificationCodeManager.issue({
+      churchId: ChurchId.from(fixture.churchA.id),
       churchInvitationId: pairedChurchInvitationId({ invitation }),
       recipientEmail: 'new-redemption-user@fixture.test',
       churchName: fixture.churchA.name,
@@ -323,10 +394,11 @@ describe('verification code persistence', () => {
 
   it('allows only one concurrent resend claim and dispatch', async () => {
     const invitation = await mintInvitation();
-    const emailSenderA = new CaptureEmailSender('Church');
-    const emailSenderB = new CaptureEmailSender('Church');
+    const emailSenderA = new CaptureEmailSender({ appName: 'Church' });
+    const emailSenderB = new CaptureEmailSender({ appName: 'Church' });
     const now = new Date('2026-01-01T00:00:00.000Z');
     const managerA = new InvitationVerificationCodeManager({
+      churchIdentity: nullChurchIdentity,
       repository: verificationCodeRepository,
       emailSender: emailSenderA,
       generateCode: () => '123456',
@@ -334,6 +406,7 @@ describe('verification code persistence', () => {
       config: appConfig,
     });
     const managerB = new InvitationVerificationCodeManager({
+      churchIdentity: nullChurchIdentity,
       repository: verificationCodeRepository,
       emailSender: emailSenderB,
       generateCode: () => '123456',
@@ -343,12 +416,14 @@ describe('verification code persistence', () => {
 
     const outcomes = await Promise.allSettled([
       managerA.issue({
+        churchId: ChurchId.from(fixture.churchA.id),
         churchInvitationId: pairedChurchInvitationId({ invitation }),
         recipientEmail: 'new-redemption-user@fixture.test',
         churchName: fixture.churchA.name,
         now,
       }),
       managerB.issue({
+        churchId: ChurchId.from(fixture.churchA.id),
         churchInvitationId: pairedChurchInvitationId({ invitation }),
         recipientEmail: 'new-redemption-user@fixture.test',
         churchName: fixture.churchA.name,
@@ -367,7 +442,7 @@ describe('checkpoint-three redemption persistence', () => {
   it('derives Ministry access and roles from the pending invitation in one transaction', async () => {
     const invitation = await mintInvitation();
     await createOutboxDrainer({
-      emailSender: new CaptureEmailSender('Church'),
+      emailSender: new CaptureEmailSender({ appName: 'Church' }),
     }).drainOnce({ limit: 10 });
     const { redemptionManager } = createHarness();
 

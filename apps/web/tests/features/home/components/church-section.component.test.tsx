@@ -12,7 +12,7 @@ import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChurchSection } from '@/features/home/components/church-section';
-import { NextCycleCard } from '@/features/home/components/next-cycle-card';
+import { CycleBand } from '@/features/home/components/cycle-band';
 import { homeSectionQueryPrefix } from '@/features/home/lib/home-query-keys';
 import type {
   GetSetupProgress200,
@@ -23,6 +23,7 @@ import { renderWithProviders } from '@/tests/setup/render';
 const api = vi.hoisted(() => ({
   getSetupProgress: vi.fn(),
   getCycleAnchors: vi.fn(),
+  listSchedules: vi.fn(),
 }));
 vi.mock('@/utils/api-instances', () => ({ setupApi: api, adminApi: api }));
 
@@ -74,6 +75,17 @@ const DECEMBER_DRAFT = cycle({
   state: 'draft',
 });
 
+const NO_SCHEDULES = {
+  schedules: [],
+  counts: {
+    ['to_prepare']: 0,
+    asking: 0,
+    assigning: 0,
+    published: 0,
+    ['not_serving']: 0,
+  },
+};
+
 function givenProgress(progress: Partial<GetSetupProgress200>) {
   api.getSetupProgress.mockResolvedValue({ ...NOTHING_SET_UP, ...progress });
 }
@@ -100,18 +112,30 @@ function renderSection(includeCycles = false) {
       <>
         <ChurchSection churchId={CHURCH_ID} userId={USER_ID} />
         {includeCycles ? (
-          <NextCycleCard churchId={CHURCH_ID} userId={USER_ID} />
+          <CycleBand
+            churchId={CHURCH_ID}
+            userId={USER_ID}
+            scope="admin:"
+            showCycles
+          />
         ) : null}
       </>
     ),
   });
-  const cycles = createRoute({ getParentRoute: () => root, path: '/cycles' });
+  const cycles = createRoute({
+    getParentRoute: () => root,
+    path: '/app/cycles',
+  });
   const cycleDetail = createRoute({
     getParentRoute: () => root,
-    path: '/cycles/$cycleId',
+    path: '/app/cycles/$cycleId',
+  });
+  const schedules = createRoute({
+    getParentRoute: () => root,
+    path: '/app/schedules',
   });
   const router = createRouter({
-    routeTree: root.addChildren([cycles, cycleDetail]),
+    routeTree: root.addChildren([cycles, cycleDetail, schedules]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
   });
   renderWithProviders(<RouterProvider router={router} />, {
@@ -139,6 +163,7 @@ async function stepFor(label: string) {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  api.listSchedules.mockResolvedValue(NO_SCHEDULES);
   setTestClock({ instant: parseInstant({ value: CHURCH_LATE_EVENING }) });
 });
 
@@ -169,11 +194,11 @@ describe('ChurchSection setup checklist', () => {
     renderSection();
 
     const targets = [
-      [m.home_setup_ministry(), '/ministries'],
-      [m.home_setup_sectors_roles(), '/ministries'],
-      [m.home_setup_leader(), '/invitations'],
-      [m.home_setup_template(), '/event-templates'],
-      [m.home_setup_cycle(), '/cycles'],
+      [m.home_setup_ministry(), '/app/ministries'],
+      [m.home_setup_sectors_roles(), '/app/ministries'],
+      [m.home_setup_leader(), '/app/invitations'],
+      [m.home_setup_template(), '/app/event-templates'],
+      [m.home_setup_cycle(), '/app/cycles'],
     ];
     for (const [label, href] of targets) {
       const { link } = await stepFor(label);
@@ -249,17 +274,15 @@ describe('ChurchSection setup checklist', () => {
   });
 });
 
-describe('ChurchSection next-Cycle card', () => {
+describe('Cycle band timeline', () => {
   it('replaces the checklist for good once any Cycle was sent, even if none is upcoming', async () => {
     givenProgress({ hasEverSentCycle: true });
     givenAnchors();
     renderSection(true);
 
-    expect(await screen.findAllByText(m.home_next_cycle_none())).toHaveLength(
-      2,
-    );
+    expect(await screen.findByText(m.home_next_cycle_none())).toBeVisible();
     expect(checklist()).not.toBeInTheDocument();
-    expect(planCycle()).toHaveAttribute('href', '/cycles');
+    expect(planCycle()).toHaveAttribute('href', '/app/cycles');
   });
 
   it('links the latest draft and says it is still a draft', async () => {
@@ -274,7 +297,7 @@ describe('ChurchSection next-Cycle card', () => {
     ).toBeVisible();
     expect(screen.getByRole('link', { name: 'December' })).toHaveAttribute(
       'href',
-      '/cycles/december',
+      '/app/cycles/december',
     );
   });
 
@@ -285,10 +308,20 @@ describe('ChurchSection next-Cycle card', () => {
 
     expect(
       await screen.findByRole('link', { name: 'November' }),
-    ).toHaveAttribute('href', '/cycles/november');
-    expect(screen.getByText('01/11/2026')).toBeVisible();
-    expect(screen.getByText('30/11/2026')).toBeVisible();
-    expect(planCycle()).toHaveAttribute('href', '/cycles');
+    ).toHaveAttribute('href', '/app/cycles/november');
+    expect(
+      screen.getByText(
+        m.home_cycle_range({
+          cycleName: 'November',
+          start: '01/11/2026',
+          end: '30/11/2026',
+        }),
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(m.home_cycle_progress({ day: 10, total: 30 })),
+    ).toBeVisible();
+    expect(planCycle()).toHaveAttribute('href', '/app/cycles');
   });
 
   it('shows a draft next Cycle beside the current Sent one', async () => {
@@ -313,10 +346,10 @@ describe('ChurchSection next-Cycle card', () => {
     renderSection(true);
     expect(
       await screen.findByRole('link', { name: 'November' }),
-    ).toHaveAttribute('href', '/cycles/november');
+    ).toHaveAttribute('href', '/app/cycles/november');
     expect(screen.getByRole('link', { name: 'December' })).toHaveAttribute(
       'href',
-      '/cycles/december',
+      '/app/cycles/december',
     );
     expect(
       screen.getByText(m.home_cycle_starts({ date: '01/12/2026' })),
@@ -338,7 +371,7 @@ describe('ChurchSection next-Cycle card', () => {
 
     expect(
       await screen.findByRole('link', { name: 'November' }),
-    ).toHaveAttribute('href', '/cycles/november');
+    ).toHaveAttribute('href', '/app/cycles/november');
   });
 
   it('renders in pt-BR from the catalog', async () => {

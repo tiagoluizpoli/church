@@ -3,6 +3,7 @@ import {
   assignmentAudit,
   event,
   eventTimeBlock,
+  eventTimeBlockMove,
   outboxMessage,
   scheduleLastTold,
   shift,
@@ -56,6 +57,7 @@ import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-o
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -85,6 +87,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -138,12 +141,14 @@ beforeAll(async () => {
       }),
       volunteerRepository: new DrizzleVolunteerRepository({ db }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     planningEventManager: new DbPlanningEventManager({
       cycleRepository,
       eventRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       templateRepository,
       churchRepository,
       unitOfWork,
@@ -156,11 +161,13 @@ beforeAll(async () => {
         volunteerRepository: new DrizzleVolunteerRepository({ db }),
       }),
       notifications: new ChurchNotifications({
+        churchIdentity: nullChurchIdentity,
         outboxRepository: new DrizzleOutboxRepository({ db }),
       }),
     }),
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository,
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       unitOfWork,
     }),
     activeChurchResolver: activeChurchResolver as never,
@@ -389,7 +396,7 @@ interface BookInput {
   volunteerId: string;
   start: string;
   end: string;
-  status: 'draft' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
+  status: 'draft' | 'pending' | 'cancelled';
 }
 
 function book({ start, end, ...rest }: BookInput) {
@@ -483,14 +490,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move/preview', () => {
       state: 'preparing',
       eventTimeBlockIds: [],
     });
-    const names = [
-      'draft',
-      'pending',
-      'confirmed',
-      'declined',
-      'touching',
-      'selfshift',
-    ];
+    const names = ['draft', 'pending', 'cancelled', 'touching', 'selfshift'];
     const people = Object.fromEntries(
       await Promise.all(
         names.map(async (name) => [
@@ -511,13 +511,13 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move/preview', () => {
         participationId: participation.id,
         roleId: role.id,
         volunteerId: people[name]?.id as string,
-        status: 'confirmed',
+        status: 'pending',
         ...moved,
       });
     }
     // Elsewhere: active statuses overlap 14:30–15:30; others do not clash.
     const elsewhere = { start: day20('14:30'), end: day20('15:30') };
-    for (const name of ['draft', 'pending', 'confirmed'] as const) {
+    for (const name of ['draft', 'pending'] as const) {
       await book({
         churchId,
         eventId: other.event.id,
@@ -533,8 +533,8 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move/preview', () => {
       eventId: other.event.id,
       participationId: otherParticipation.id,
       roleId: role.id,
-      volunteerId: people.declined?.id as string,
-      status: 'declined',
+      volunteerId: people.cancelled?.id as string,
+      status: 'cancelled',
       ...elsewhere,
     });
     // Touching: ends exactly when the moved Shift starts (14:00).
@@ -544,7 +544,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move/preview', () => {
       participationId: otherParticipation.id,
       roleId: role.id,
       volunteerId: people.touching?.id as string,
-      status: 'confirmed',
+      status: 'pending',
       start: day20('13:00'),
       end: target,
     });
@@ -562,7 +562,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move/preview', () => {
       clashes
         .map((row: { volunteer: { name: string } }) => row.volunteer.name)
         .sort(),
-    ).toEqual(['confirmed', 'draft', 'pending']);
+    ).toEqual(['draft', 'pending']);
     expect(clashes[0]).toMatchObject({
       ministry: { id: seed.ministryAId, name: 'Scheduling Ministry A' },
       proposedStart: target,
@@ -601,7 +601,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move/preview', () => {
         participationId: participation.id,
         roleId: role.id,
         volunteerId: volunteer.id,
-        status: 'confirmed',
+        status: 'pending',
         start,
         end,
       });
@@ -815,7 +815,7 @@ async function seedClashBoard({ bookedBeforePreview }: ClashBoardInput) {
     eventTimeBlockIds: [],
   });
   const day20 = (time: string) => local({ day: '2026-10-20', time });
-  const names = ['draft', 'pending', 'confirmed', 'declined', 'touching'];
+  const names = ['draft', 'pending', 'cancelled', 'touching'];
   const moved: Record<string, string> = {};
   const volunteers: Record<string, string> = {};
   for (const name of names) {
@@ -827,7 +827,7 @@ async function seedClashBoard({ bookedBeforePreview }: ClashBoardInput) {
       participationId: participation.id,
       roleId: role.id,
       volunteerId: id,
-      status: 'confirmed',
+      status: 'pending',
       start: at('09:00'),
       end: at('10:00'),
     });
@@ -843,7 +843,7 @@ async function seedClashBoard({ bookedBeforePreview }: ClashBoardInput) {
       roleId: role.id,
       volunteerId,
       // Touching ends exactly when the moved Shift starts (14:00).
-      status: touching ? 'confirmed' : (name as BookInput['status']),
+      status: touching ? 'pending' : (name as BookInput['status']),
       start: touching ? day20('13:00') : day20('14:30'),
       end: touching ? day20('14:00') : day20('15:30'),
     });
@@ -897,7 +897,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
       participationId: participation.id,
       roleId: role.id,
       volunteerId: volunteer.id,
-      status: 'confirmed',
+      status: 'pending',
       start: at('10:00'),
       end: at('11:00'),
     });
@@ -972,7 +972,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
       .where(eq(assignment.id, booked.assignment.id));
     expect(kept).toMatchObject({
       shiftId: booked.shift.id,
-      status: 'confirmed',
+      status: 'pending',
     });
     expect(await db.select().from(unavailableShift)).toEqual(unavailableBefore);
     const [swap] = await db.select().from(swapRequest);
@@ -989,7 +989,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
   });
 
   it('recalculates over a stale preview and withdraws only the actual active clashes, closing their open SwapRequests as covered', async () => {
-    const board = await seedClashBoard({ bookedBeforePreview: ['confirmed'] });
+    const board = await seedClashBoard({ bookedBeforePreview: ['draft'] });
     const target = local({ day: '2026-10-20', time: '14:00' });
     const stale = await preview({
       cycleId: board.cycle.id,
@@ -1012,19 +1012,15 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
 
     const names = (rows: { volunteer: { name: string } }[]) =>
       rows.map((row) => row.volunteer.name).sort();
-    expect(names(stale.json().clashes)).toEqual(['confirmed']);
+    expect(names(stale.json().clashes)).toEqual(['draft']);
     expect(response.statusCode).toBe(200);
-    expect(names(response.json().withdrawn)).toEqual([
-      'confirmed',
-      'draft',
-      'pending',
-    ]);
+    expect(names(response.json().withdrawn)).toEqual(['draft', 'pending']);
     const remaining = await db
       .select({ id: assignment.id })
       .from(assignment)
       .where(inArray(assignment.id, Object.values(board.moved) as string[]));
     expect(remaining.map(({ id }) => id).sort()).toEqual(
-      [board.moved.declined, board.moved.touching].sort(),
+      [board.moved.cancelled, board.moved.touching].sort(),
     );
     const [swap] = await db.select().from(swapRequest);
     expect(swap).toMatchObject({
@@ -1035,7 +1031,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
 
   it('enqueues one N10 move row per affected leader, counting withdrawn Volunteers, with fallback that skips the acting admin', async () => {
     const board = await seedClashBoard({
-      bookedBeforePreview: ['draft', 'pending', 'confirmed', 'touching'],
+      bookedBeforePreview: ['draft', 'pending', 'touching'],
     });
     const { seed, cycle, moving } = board;
     const churchId = seed.churchAId;
@@ -1122,13 +1118,13 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
       ministries: [{ id: seed.ministryAId, name: 'Scheduling Ministry A' }],
       change: {
         ...change,
-        // Five served the moved Event; three were withdrawn for clashes.
-        volunteerCount: 5,
+        // Four served the moved Event; two were withdrawn for clashes.
+        volunteerCount: 4,
         impacts: [
           {
             ministryId: seed.ministryAId,
             ministryName: 'Scheduling Ministry A',
-            volunteerCount: 5,
+            volunteerCount: 4,
             answersGiven: true,
           },
         ],
@@ -1180,6 +1176,73 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/move', () => {
     expect(outside.statusCode).toBe(409);
     expect(outside.json()).toMatchObject({ error: 'EVENT_OUTSIDE_CYCLE' });
     expect(await writeSnapshot()).toEqual(before);
+  });
+
+  it('records every moved block after Send, chaining each move from the previous one', async () => {
+    const seed = await signIn();
+    const cycle = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+    const {
+      event: sunday,
+      welcome,
+      service,
+    } = await seedScheduledEvent({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+    });
+    const day = (time: string) => local({ day: '2026-10-20', time });
+
+    await confirm({
+      cycleId: cycle.id,
+      eventId: sunday.id,
+      start: day('14:00'),
+    });
+    await confirm({
+      cycleId: cycle.id,
+      eventId: sunday.id,
+      start: day('15:00'),
+    });
+
+    const rows = await db
+      .select()
+      .from(eventTimeBlockMove)
+      .orderBy(eventTimeBlockMove.movedAt, eventTimeBlockMove.previousStart);
+    const bounds = (blockId: string) =>
+      rows
+        .filter((row) => row.eventTimeBlockId === blockId)
+        .map((row) => [
+          row.previousStart.toISOString(),
+          row.previousEnd.toISOString(),
+          row.newStart.toISOString(),
+          row.newEnd.toISOString(),
+        ]);
+    expect(rows).toHaveLength(4);
+    expect(bounds(welcome.id)).toEqual([
+      [at('09:00'), at('10:00'), day('14:00'), day('15:00')],
+      [day('14:00'), day('15:00'), day('15:00'), day('16:00')],
+    ]);
+    expect(bounds(service.id)).toEqual([
+      [at('10:00'), at('12:00'), day('15:00'), day('17:00')],
+      [day('15:00'), day('17:00'), day('16:00'), day('18:00')],
+    ]);
+    expect(rows.every((row) => row.churchId === seed.churchAId)).toBe(true);
+  });
+
+  it('records nothing when the move is refused', async () => {
+    const seed = await signIn();
+    const cycle = await seedCycle({ churchId: seed.churchAId, state: 'sent' });
+    const { event: sunday } = await seedScheduledEvent({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+    });
+
+    const response = await confirm({
+      cycleId: cycle.id,
+      eventId: sunday.id,
+      start: local({ day: '2026-10-26', time: '00:30' }),
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(await db.select().from(eventTimeBlockMove)).toEqual([]);
   });
 
   it('answers 403 to a non-admin', async () => {
@@ -1248,7 +1311,7 @@ async function seedBlockBoard() {
       participationId: participation.id,
       roleId: role.id,
       volunteerId,
-      status: 'confirmed',
+      status: 'pending',
       start: at(start),
       end: at(end),
     });
@@ -1420,7 +1483,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTi
       participationId: otherParticipation.id,
       roleId: board.role.id,
       volunteerId: bruno.id,
-      status: 'confirmed',
+      status: 'pending',
       start: at('13:30'),
       end: at('14:30'),
     });
@@ -1505,7 +1568,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTi
       participationId: otherParticipation.id,
       roleId: board.role.id,
       volunteerId: ana.id,
-      status: 'confirmed',
+      status: 'pending',
       start: at('13:30'),
       end: at('14:30'),
     });

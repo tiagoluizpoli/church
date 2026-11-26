@@ -45,7 +45,7 @@ export function LeadershipSection(props: LeadershipSectionProps) {
       action={
         schedules.length > 0 ? (
           <Link
-            to="/schedules"
+            to="/app/schedules"
             search={{ attention: true }}
             className="inline-flex min-h-11 items-center underline"
           >

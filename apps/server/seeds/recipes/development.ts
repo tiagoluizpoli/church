@@ -6,6 +6,7 @@ import {
   toInstant,
 } from '@church/time';
 import { hashPassword } from 'better-auth/crypto';
+import type { ObjectStorage } from '../../src/domain/contracts/infrastructure/object-storage';
 import { SEED_PERSONA_PASSWORD } from '../blueprints/credentials';
 import { DEVELOPMENT_BLUEPRINT } from '../blueprints/development';
 import type {
@@ -16,6 +17,14 @@ import type {
   Person,
 } from '../blueprints/directory/types';
 import {
+  buildChurchAddresses,
+  buildChurchContactGroups,
+  buildChurchContacts,
+  buildChurchLegalProfile,
+  buildChurchLogo,
+  buildChurchSettings,
+  buildChurchSlugHistory,
+  buildChurchSocialLinks,
   buildProvisionedChurch,
   redeemChurchInvitation,
 } from '../builders/church';
@@ -38,6 +47,8 @@ import {
 export interface CreateDevelopmentRecipeInput {
   /** The day date-sensitive data is derived from; fixed for reproduction. */
   anchor: CalendarDay;
+  /** Where the seeded logo is uploaded; without it the Church has no logo. */
+  objectStorage?: ObjectStorage;
 }
 
 export interface DevelopmentRecipeResult {
@@ -207,6 +218,7 @@ interface LoadChurchDirectoryInput {
   blueprint: ChurchDirectoryBlueprint;
   passwordHash: string;
   userIdByEmail: Map<string, string>;
+  objectStorage?: ObjectStorage;
 }
 
 /** One loaded Church directory, as the planning data built on it needs it. */
@@ -221,17 +233,66 @@ async function loadChurchDirectory({
   blueprint,
   passwordHash,
   userIdByEmail,
+  objectStorage,
 }: LoadChurchDirectoryInput): Promise<SeededChurchDirectory> {
   const { church, adminInvitationId } = await buildProvisionedChurch({
     db,
     id: deriveSeedId({ kind: 'church', parentIds: [blueprint.church.slug] }),
     ...blueprint.church,
+    // The seeded slugs are the names' own: provisioning derives them from the name.
+    slug: undefined,
     adminEmail: blueprint.churchAdmin.email,
     adminInvitationId: deriveSeedId({
       kind: 'church-admin-invitation',
       parentIds: [blueprint.church.slug],
     }),
   });
+  await buildChurchSettings({
+    db,
+    churchId: church.id,
+    website: blueprint.church.website ?? null,
+    accentColor: blueprint.church.accentColor ?? null,
+  });
+  await buildChurchSlugHistory({
+    db,
+    churchId: church.id,
+    slugs: blueprint.church.previousSlugs ?? [],
+  });
+  const groupIds = await buildChurchContactGroups({
+    db,
+    churchId: church.id,
+    names: blueprint.church.contactGroups ?? [],
+  });
+  await buildChurchContacts({
+    db,
+    churchId: church.id,
+    contacts: blueprint.church.contacts ?? [],
+    groupIds,
+  });
+  await buildChurchAddresses({
+    db,
+    churchId: church.id,
+    addresses: blueprint.church.addresses ?? [],
+  });
+  await buildChurchSocialLinks({
+    db,
+    churchId: church.id,
+    socialLinks: blueprint.church.socialLinks ?? [],
+    groupIds,
+  });
+  await buildChurchLegalProfile({
+    db,
+    churchId: church.id,
+    legalProfile: blueprint.church.legalProfile,
+  });
+  if (objectStorage && blueprint.church.logoSvg) {
+    await buildChurchLogo({
+      db,
+      objectStorage,
+      churchId: church.id,
+      svg: blueprint.church.logoSvg,
+    });
+  }
   const context: ChurchDirectoryContext = {
     db,
     churchId: church.id,
@@ -387,6 +448,7 @@ async function loadMemberInbox({
  */
 export function createDevelopmentRecipe({
   anchor,
+  objectStorage,
 }: CreateDevelopmentRecipeInput): SeedRecipe<DevelopmentRecipeResult> {
   return {
     name: 'development',
@@ -401,6 +463,7 @@ export function createDevelopmentRecipe({
         blueprint: blueprint.primary,
         passwordHash,
         userIdByEmail,
+        objectStorage,
       });
       const { church: secondChurch } = await loadChurchDirectory({
         db,
@@ -446,6 +509,7 @@ export function createDevelopmentRecipe({
         churchId: church.id,
         blueprint: blueprint.gatherings,
         ministries: primary.ministries,
+        addresses: blueprint.primary.church.addresses ?? [],
       });
       const historicalCycle = await loadDevelopmentHistory({
         db,

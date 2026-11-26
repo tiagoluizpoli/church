@@ -37,7 +37,7 @@ interface BackToCycleProps {
 export function BackToCycle({ cycleId }: BackToCycleProps) {
   return (
     <Link
-      to="/cycles/$cycleId"
+      to="/app/cycles/$cycleId"
       params={{ cycleId }}
       className={buttonVariants()}
     >
@@ -54,7 +54,7 @@ interface CancelToCycleProps {
 export function CancelToCycle({ cycleId }: CancelToCycleProps) {
   return (
     <Link
-      to="/cycles/$cycleId"
+      to="/app/cycles/$cycleId"
       params={{ cycleId }}
       className={buttonVariants({ variant: 'outline' })}
     >
@@ -106,7 +106,7 @@ export function EventEditorPage({
               <p className="text-muted-foreground text-sm">
                 {m.cycle_review_not_found()}
               </p>
-              <Link to="/cycles" className={buttonVariants()}>
+              <Link to="/app/cycles" className={buttonVariants()}>
                 {m.nav_cycles()}
               </Link>
             </div>

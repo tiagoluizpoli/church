@@ -1,4 +1,3 @@
-import { appConfig } from '@church/app-config';
 import {
   event,
   eventTimeBlock,
@@ -77,7 +76,6 @@ beforeAll(async () => {
     new VolunteerController({
       volunteerManager,
       activeChurchResolver,
-      config: appConfig,
     }),
   ];
   await app.register(
@@ -192,7 +190,7 @@ async function seedWorld() {
   const role = await seedRole({ churchId, ministryId, name: 'Teacher' });
   const assignMe = async (
     seeded: Awaited<ReturnType<typeof seedShiftGraph>>,
-    status: 'confirmed' | 'pending' | 'declined' = 'confirmed',
+    status: 'pending' | 'cancelled' = 'pending',
   ) => {
     const requirement = await seedRequirement({
       churchId,
@@ -594,7 +592,7 @@ describe('GET /volunteer/ministries/:ministryId/schedule (database-backed)', () 
 describe('Volunteer reads after an admin cancellation', () => {
   /**
    * Live, a cancelled Event and a scheduled Event whose block is cancelled.
-   * Cancellation cancels active Assignments; a declined one stays declined,
+   * Cancellation cancels active Assignments; a cancelled one stays cancelled,
    * so only the Event or block status can hide it.
    */
   async function seedCancelled() {
@@ -626,8 +624,8 @@ describe('Volunteer reads after an admin cancellation', () => {
       endOffsetMs: 3 * DAY_MS + HOUR_MS,
     });
     const liveAssignment = await assignMe(live);
-    const inEvent = await assignMe(cancelledEvent, 'declined');
-    const inBlock = await assignMe(cancelledBlock, 'declined');
+    const inEvent = await assignMe(cancelledEvent, 'cancelled');
+    const inBlock = await assignMe(cancelledBlock, 'cancelled');
     await db
       .update(event)
       .set({ status: 'cancelled' })

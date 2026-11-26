@@ -59,7 +59,14 @@ export interface OutboxEmailDelivery {
   confirmedDestinations: EmailDestination[];
 }
 
-export interface ChainedInvitationOutboxPayload {
+/** The Church identity frozen when the row is queued; absent on older rows. */
+export interface OutboxChurchIdentity {
+  churchLogoUrl?: string | null;
+  churchAccent?: string | null;
+  churchLocality?: string;
+}
+
+export interface ChainedInvitationOutboxPayload extends OutboxChurchIdentity {
   ministryInvitationId: string;
   churchInvitationId: string;
 }
@@ -74,7 +81,7 @@ export interface MinistryInvitationOutboxPayload {
   ministryInvitationId: string;
 }
 
-export interface ChurchBootstrapOutboxPayload {
+export interface ChurchBootstrapOutboxPayload extends OutboxChurchIdentity {
   churchInvitationId: string;
 }
 
@@ -105,6 +112,8 @@ export type OutboxMessage =
 export interface ClaimPendingOutboxMessagesInput {
   limit: number;
   now: Date;
+  /** A `processing` row claimed before this is stranded and is reclaimed. */
+  staleBefore: Date;
   tx: TransactionContext;
 }
 
@@ -177,7 +186,8 @@ export interface FindLatestOutboxStatusForMinistryInvitationInput {
 
 export interface OutboxRepository {
   /**
-   * Claims up to `limit` due, pending rows via `FOR UPDATE SKIP LOCKED` and
+   * Claims up to `limit` due, pending rows (or stale `processing` ones, whose
+   * replay is safe under the email idempotency key) via `FOR UPDATE SKIP LOCKED` and
    * transitions them to `processing`, all within the caller's transaction —
    * which the caller commits immediately after this call returns. The actual
    * send happens outside any open transaction (so a slow or hung EmailSender

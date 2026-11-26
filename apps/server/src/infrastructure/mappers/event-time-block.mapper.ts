@@ -31,6 +31,9 @@ export function mapEventTimeBlock({
     startTime: fromDate({ date: row.startTime }),
     endTime: fromDate({ date: row.endTime }),
     label: row.label ?? undefined,
+    isPublic: row.isPublic,
+    place: row.place ?? undefined,
+    placeAddressId: row.placeAddressId ?? undefined,
     status: row.status,
     requirements,
   };

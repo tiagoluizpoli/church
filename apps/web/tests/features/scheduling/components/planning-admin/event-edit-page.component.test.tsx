@@ -18,7 +18,11 @@ const deletePlanningEvent = vi.fn();
 const navigate = vi.fn();
 const toastSuccess = vi.fn();
 
+const getChurchSettings = vi.fn();
 vi.mock('@/utils/api-instances', () => ({
+  churchSettingsApi: {
+    getChurchSettings: (...args: unknown[]) => getChurchSettings(...args),
+  },
   adminApi: {
     getCycle: (...args: unknown[]) => getCycle(...args),
     updatePlanningEvent: (...args: unknown[]) => updatePlanningEvent(...args),
@@ -26,6 +30,10 @@ vi.mock('@/utils/api-instances', () => ({
       updatePlanningEventDetails(...args),
     deletePlanningEvent: (...args: unknown[]) => deletePlanningEvent(...args),
   },
+}));
+const capabilities = vi.hoisted(() => ({ isChurchAdmin: true }));
+vi.mock('@/shared/hooks/use-caller-capabilities', () => ({
+  useCallerCapabilities: () => capabilities,
 }));
 vi.mock('sonner', () => ({
   toast: {
@@ -95,12 +103,18 @@ function cycleResponse({
           {
             id: 'block-welcome',
             label: 'Welcome',
+            isPublic: false,
+            place: null,
+            placeAddressId: null,
             startTime: '2026-10-18T12:00:00.000Z',
             endTime: '2026-10-18T13:00:00.000Z',
           },
           {
             id: 'block-service',
             label: 'Service',
+            isPublic: false,
+            place: null,
+            placeAddressId: null,
             startTime: '2026-10-18T13:00:00.000Z',
             endTime: '2026-10-18T15:00:00.000Z',
           },
@@ -186,7 +200,7 @@ describe('EventEditPage', () => {
     ]);
     expect(
       screen.getByRole('link', { name: m.event_editor_cancel() }),
-    ).toHaveAttribute('href', '/cycles/cycle-1');
+    ).toHaveAttribute('href', '/app/cycles/cycle-1');
     expect(updatePlanningEvent).not.toHaveBeenCalled();
   });
 
@@ -213,7 +227,7 @@ describe('EventEditPage', () => {
 
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
-        to: '/cycles/$cycleId',
+        to: '/app/cycles/$cycleId',
         params: { cycleId: 'cycle-1' },
         search: { eventId: 'event-1' },
       }),
@@ -230,11 +244,17 @@ describe('EventEditPage', () => {
           label: 'Arrival',
           startTime: '2026-10-18T12:00:00.000Z',
           endTime: '2026-10-18T13:00:00.000Z',
+          isPublic: false,
+          place: '',
+          placeAddressId: null,
         },
         {
           label: 'Lunch',
           startTime: '2026-10-18T14:00:00.000Z',
           endTime: '2026-10-18T15:00:00.000Z',
+          isPublic: false,
+          place: '',
+          placeAddressId: null,
         },
       ],
     });
@@ -423,7 +443,7 @@ describe('Delete a Draft Event', () => {
     resolveDelete(undefined);
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
-        to: '/cycles/$cycleId',
+        to: '/app/cycles/$cycleId',
         params: { cycleId: 'cycle-1' },
       }),
     );
@@ -514,8 +534,9 @@ describe('Edit Sent Event details', () => {
     expect(screen.getByText(m.event_details_description())).toBeVisible();
   });
 
-  it('saves only title and location, then returns to the review revealing the Event', async () => {
+  it('saves the title, location and Público of each unstarted block, then returns to the review revealing the Event', async () => {
     updatePlanningEventDetails.mockResolvedValue(SAVED_GRAPH);
+    setTestClock({ instant: parseInstant({ value: '2026-10-01T12:00:00Z' }) });
     const user = userEvent.setup();
     renderPage();
     const form = await screen.findByTestId('event-details-form');
@@ -538,7 +559,24 @@ describe('Edit Sent Event details', () => {
       expect(updatePlanningEventDetails).toHaveBeenCalledWith(
         'cycle-1',
         'event-1',
-        { title: 'Worship', location: '' },
+        {
+          title: 'Worship',
+          location: '',
+          eventTimeBlocks: [
+            {
+              id: 'block-welcome',
+              isPublic: false,
+              place: '',
+              placeAddressId: null,
+            },
+            {
+              id: 'block-service',
+              isPublic: false,
+              place: '',
+              placeAddressId: null,
+            },
+          ],
+        },
       ),
     );
     expect(updatePlanningEvent).not.toHaveBeenCalled();
@@ -548,7 +586,7 @@ describe('Edit Sent Event details', () => {
       ),
     );
     expect(navigate).toHaveBeenCalledWith({
-      to: '/cycles/$cycleId',
+      to: '/app/cycles/$cycleId',
       params: { cycleId: 'cycle-1' },
       search: { eventId: 'event-1' },
     });
@@ -590,6 +628,220 @@ describe('Edit Sent Event details', () => {
       await screen.findByTestId('event-edit-not-draft'),
     ).toBeInTheDocument();
     expect(screen.queryByTestId('event-details-form')).not.toBeInTheDocument();
+  });
+});
+
+const CAMPINAS = {
+  number: '10',
+  complement: null,
+  bairro: 'Centro',
+  city: 'Campinas',
+  uf: 'SP',
+};
+
+describe('Público and place on a Sent Event', () => {
+  beforeEach(() => {
+    getChurchSettings.mockResolvedValue({ addresses: [] });
+    getCycle.mockResolvedValue(
+      cycleResponse({ state: 'sent', eventStatus: 'scheduled' }),
+    );
+    capabilities.isChurchAdmin = true;
+  });
+
+  it('sends the ticked Público and place of a block that has not started', async () => {
+    updatePlanningEventDetails.mockResolvedValue(SAVED_GRAPH);
+    setTestClock({ instant: parseInstant({ value: '2026-10-01T12:00:00Z' }) });
+    const user = userEvent.setup();
+    renderPage();
+    const form = await screen.findByTestId('event-details-form');
+
+    const [checkbox] = within(form).getAllByTestId(
+      'event-block-public-checkbox',
+    );
+    const [place] = within(form).getAllByTestId('event-block-place-input');
+    await user.click(checkbox as HTMLElement);
+    await user.type(place as HTMLElement, ' Annex ');
+    await user.click(
+      within(form).getByRole('button', { name: m.event_details_submit() }),
+    );
+
+    await waitFor(() =>
+      expect(updatePlanningEventDetails).toHaveBeenCalledWith(
+        'cycle-1',
+        'event-1',
+        expect.objectContaining({
+          eventTimeBlocks: [
+            {
+              id: 'block-welcome',
+              isPublic: true,
+              place: 'Annex',
+              placeAddressId: null,
+            },
+            {
+              id: 'block-service',
+              isPublic: false,
+              place: '',
+              placeAddressId: null,
+            },
+          ],
+        }),
+      ),
+    );
+  });
+
+  it("picks one of the Church's addresses as a block's place, beside free text", async () => {
+    getChurchSettings.mockResolvedValue({
+      addresses: [
+        { id: 'address-templo', label: 'Templo', ...CAMPINAS },
+        { id: 'address-anexo', label: null, ...CAMPINAS, street: 'Rua B' },
+      ],
+    });
+    updatePlanningEventDetails.mockResolvedValue(SAVED_GRAPH);
+    setTestClock({ instant: parseInstant({ value: '2026-10-01T12:00:00Z' }) });
+    const user = userEvent.setup();
+    renderPage();
+    const form = await screen.findByTestId('event-details-form');
+
+    const [picker] = await within(form).findAllByTestId(
+      'event-block-place-select',
+    );
+    await user.click(picker as HTMLElement);
+    expect(
+      (await screen.findAllByRole('option')).map(
+        (option) => option.textContent,
+      ),
+    ).toEqual([
+      m.time_block_place_none(),
+      'Templo',
+      'Rua B, 10 · Centro · Campinas/SP',
+      m.time_block_place_free_text(),
+    ]);
+    await user.click(screen.getByRole('option', { name: 'Templo' }));
+    await user.click(
+      within(form).getByRole('button', { name: m.event_details_submit() }),
+    );
+
+    await waitFor(() =>
+      expect(updatePlanningEventDetails).toHaveBeenCalledWith(
+        'cycle-1',
+        'event-1',
+        expect.objectContaining({
+          eventTimeBlocks: [
+            {
+              id: 'block-welcome',
+              isPublic: false,
+              place: '',
+              placeAddressId: 'address-templo',
+            },
+            {
+              id: 'block-service',
+              isPublic: false,
+              place: '',
+              placeAddressId: null,
+            },
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('locks a block that has started and sends no change for it', async () => {
+    updatePlanningEventDetails.mockResolvedValue(SAVED_GRAPH);
+    setTestClock({ instant: parseInstant({ value: '2026-10-18T12:30:00Z' }) });
+    const user = userEvent.setup();
+    renderPage();
+    const form = await screen.findByTestId('event-details-form');
+
+    const [welcome, service] = within(form).getAllByTestId(
+      'event-block-public-checkbox',
+    );
+    expect(welcome).toHaveAttribute('aria-disabled', 'true');
+    expect(service).not.toHaveAttribute('aria-disabled', 'true');
+    await user.click(
+      within(form).getByRole('button', { name: m.event_details_submit() }),
+    );
+
+    await waitFor(() =>
+      expect(updatePlanningEventDetails).toHaveBeenCalledWith(
+        'cycle-1',
+        'event-1',
+        expect.objectContaining({
+          eventTimeBlocks: [
+            {
+              id: 'block-service',
+              isPublic: false,
+              place: '',
+              placeAddressId: null,
+            },
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('hides the controls and sends no block fields to a non-admin', async () => {
+    updatePlanningEventDetails.mockResolvedValue(SAVED_GRAPH);
+    capabilities.isChurchAdmin = false;
+    const user = userEvent.setup();
+    renderPage();
+    const form = await screen.findByTestId('event-details-form');
+
+    expect(
+      screen.queryByTestId('event-block-public-checkbox'),
+    ).not.toBeInTheDocument();
+    await user.click(
+      within(form).getByRole('button', { name: m.event_details_submit() }),
+    );
+    await waitFor(() =>
+      expect(updatePlanningEventDetails).toHaveBeenCalledWith(
+        'cycle-1',
+        'event-1',
+        { title: 'Sunday', location: 'Main hall', eventTimeBlocks: undefined },
+      ),
+    );
+  });
+});
+
+describe('Público and place in the Draft editor', () => {
+  beforeEach(() => {
+    capabilities.isChurchAdmin = true;
+  });
+
+  it('prefills the saved values and sends the edited ones', async () => {
+    const cycle = cycleResponse();
+    const [welcome] = cycle.events[1]?.eventTimeBlocks ?? [];
+    Object.assign(welcome ?? {}, { isPublic: true, place: 'Annex' });
+    getCycle.mockResolvedValue(cycle);
+    updatePlanningEvent.mockResolvedValue(SAVED_GRAPH);
+    setTestClock({ instant: parseInstant({ value: '2026-10-01T12:00:00Z' }) });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByTestId('event-editor-form');
+
+    const [checkbox] = screen.getAllByTestId('event-block-public-checkbox');
+    const [place] = screen.getAllByTestId('event-block-place-input');
+    expect(checkbox).toBeChecked();
+    expect(place).toHaveValue('Annex');
+    await user.clear(place as HTMLElement);
+    await user.type(place as HTMLElement, 'Hall');
+    await user.click(saveButton());
+
+    await waitFor(() =>
+      expect(updatePlanningEvent).toHaveBeenCalledWith(
+        'cycle-1',
+        'event-1',
+        expect.objectContaining({
+          eventTimeBlocks: [
+            expect.objectContaining({
+              id: 'block-welcome',
+              isPublic: true,
+              place: 'Hall',
+            }),
+            expect.objectContaining({ id: 'block-service', isPublic: false }),
+          ],
+        }),
+      ),
+    );
   });
 });
 

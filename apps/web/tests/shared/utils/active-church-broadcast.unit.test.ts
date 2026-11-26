@@ -4,6 +4,10 @@ import {
   postActiveChurchSwitched,
   subscribeToActiveChurchSwitch,
 } from '@/shared/utils/active-church-broadcast';
+import {
+  listenAsAnotherTab,
+  postFromAnotherTab,
+} from '@/tests/setup/active-church-broadcast';
 
 const SAMPLE_MESSAGE: ActiveChurchSwitchedMessage = {
   availableAreas: ['dashboard'],
@@ -21,17 +25,35 @@ describe('active Church cross-tab broadcast', () => {
     vi.restoreAllMocks();
   });
 
-  it('delivers a posted message to a subscriber', async () => {
+  it("delivers another tab's switch to a subscriber", async () => {
     const onMessage = vi.fn();
     const received = new Promise<void>((resolve) => {
       onMessage.mockImplementation(() => resolve());
     });
     unsubscribers.push(subscribeToActiveChurchSwitch({ onMessage }));
 
-    postActiveChurchSwitched(SAMPLE_MESSAGE);
+    postFromAnotherTab(SAMPLE_MESSAGE);
     await received;
 
     expect(onMessage).toHaveBeenCalledWith(SAMPLE_MESSAGE);
+  });
+
+  it("reaches other tabs but not this tab's own subscribers", async () => {
+    const onOwnMessage = vi.fn();
+    const onOtherTabMessage = vi.fn();
+    const otherTabReceived = new Promise<void>((resolve) => {
+      onOtherTabMessage.mockImplementation(() => resolve());
+    });
+    unsubscribers.push(
+      subscribeToActiveChurchSwitch({ onMessage: onOwnMessage }),
+      listenAsAnotherTab({ onMessage: onOtherTabMessage }),
+    );
+
+    postActiveChurchSwitched(SAMPLE_MESSAGE);
+    await otherTabReceived;
+
+    expect(onOtherTabMessage).toHaveBeenCalledWith(SAMPLE_MESSAGE);
+    expect(onOwnMessage).not.toHaveBeenCalled();
   });
 
   it('does nothing when BroadcastChannel is unavailable', () => {

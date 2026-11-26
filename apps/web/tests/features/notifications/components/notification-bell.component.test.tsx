@@ -173,7 +173,7 @@ describe('NotificationBell', () => {
     );
 
     expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/invitations/ministry/$invitationId',
+      to: '/app/invitations/ministry/$invitationId',
       params: { invitationId: INVITATION_ID },
     });
     expect(setSelectedNotificationId).toHaveBeenCalledWith(undefined);
@@ -200,7 +200,7 @@ describe('NotificationBell', () => {
     );
 
     expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/invitations/ministry/$invitationId',
+      to: '/app/invitations/ministry/$invitationId',
       params: { invitationId: INVITATION_ID },
     });
   });
@@ -256,7 +256,7 @@ describe('NotificationBell', () => {
     );
 
     expect(mockNavigate).toHaveBeenCalledWith({
-      to: '/schedules',
+      to: '/app/schedules',
       search: { cycleId, ministryIds: `${MINISTRY_ID},${kidsId}` },
     });
   });
@@ -279,7 +279,7 @@ describe('NotificationBell', () => {
       screen.getByRole('button', { name: m.notification_open_context() }),
     );
 
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/notifications' });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/app/notifications' });
     expect(toast.info).toHaveBeenCalledWith(m.notification_open_unavailable());
   });
 
@@ -294,6 +294,6 @@ describe('NotificationBell', () => {
 
     expect(
       screen.getByRole('link', { name: m.notification_view_all() }),
-    ).toHaveAttribute('href', '/notifications');
+    ).toHaveAttribute('href', '/app/notifications');
   });
 });

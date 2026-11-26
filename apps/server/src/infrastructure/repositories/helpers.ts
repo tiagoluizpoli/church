@@ -1,5 +1,7 @@
-import { eq, isNull } from 'drizzle-orm';
+import { churchAddress } from '@church/db';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import { PlaceAddressNotFoundError } from '../../domain/errors/place-address-not-found';
 import { DrizzleTransactionContext } from './drizzle-transaction-context';
 import type { AnyDrizzleDb } from './types';
 
@@ -62,4 +64,30 @@ export interface ContainsPatternInput {
 /** ILIKE pattern matching the value literally anywhere: `%`, `_` and `\` are escaped. */
 export function containsPattern({ value }: ContainsPatternInput): string {
   return `%${value.replace(/[\\%_]/g, '\\$&')}%`;
+}
+
+export interface AssertPlaceAddressesInput {
+  db: AnyDrizzleDb;
+  churchId: string;
+  addressIds: readonly (string | null | undefined)[];
+}
+
+/** Refuses a time-block place naming an address another Church (or nobody) has. */
+export async function assertPlaceAddresses({
+  db,
+  churchId,
+  addressIds,
+}: AssertPlaceAddressesInput): Promise<void> {
+  const ids = [...new Set(addressIds.filter((id): id is string => !!id))];
+  if (ids.length === 0) return;
+  const found = await db
+    .select({ id: churchAddress.id })
+    .from(churchAddress)
+    .where(
+      and(
+        withChurchIsolation({ table: churchAddress, churchId }),
+        inArray(churchAddress.id, ids),
+      ),
+    );
+  if (found.length !== ids.length) throw new PlaceAddressNotFoundError();
 }

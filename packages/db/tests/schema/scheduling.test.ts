@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { clearDatabase, testDb } from './setup';
 import {
   assignment,
   availabilityCheck,
@@ -20,9 +21,8 @@ import {
   unavailableShift,
   user,
   volunteer,
-} from '../../src/schema';
-import { createChurch } from '../../src/tenancy';
-import { clearDatabase, testDb } from './setup';
+} from '@/schema';
+import { createChurch } from '@/tenancy';
 
 interface SchedulingSeed {
   churchAId: string;
@@ -130,7 +130,11 @@ async function seedPlanningGraph(seed: SchedulingSeed): Promise<PlanningSeed> {
 
   const [template] = await testDb
     .insert(eventTemplate)
-    .values({ churchId: seed.churchAId, name: 'Sunday', weekday: 0 })
+    .values({
+      churchId: seed.churchAId,
+      name: 'Sunday',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+    })
     .returning();
   if (!template) throw new Error('Template seed failed');
   const [block] = await testDb

@@ -13,6 +13,7 @@ import {
 import { Link } from '@tanstack/react-router';
 import { ChevronRightIcon, TriangleAlertIcon } from 'lucide-react';
 import { memo, useEffect, useMemo, useState } from 'react';
+import { CancelledBadge } from '../cancelled-badge';
 import { blockTitle, coverageTone } from '../participation-prepare.utils';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
@@ -70,6 +71,8 @@ interface BlockLeaf {
   /** Church day of the start, and the Sunday that opens its week. */
   day: CalendarDay;
   week: CalendarDay;
+  /** It or its Event was cancelled: shown, but nothing to open or staff. */
+  cancelled: boolean;
 }
 
 /** Week, then day, then time block. */
@@ -143,6 +146,7 @@ export const PrepareEventTimeBlockList = memo(
               block,
               day,
               week: addCalendarDays({ day, days: -weekdayIndex({ day }) }),
+              cancelled: block.cancelled,
             };
           }),
         ),
@@ -241,9 +245,10 @@ export const PrepareEventTimeBlockList = memo(
         </Badge>
       );
     }
-    function hasStatus({ block, event }: BlockLeaf) {
+    function hasStatus({ block, event, cancelled }: BlockLeaf) {
       return Boolean(
-        (showsCoverage && block.answerCoverage.needed !== null) ||
+        cancelled ||
+          (showsCoverage && block.answerCoverage.needed !== null) ||
           !event.generatedFromTemplate ||
           !block.included ||
           block.shifts.some((shift) => shift.flagged) ||
@@ -274,6 +279,7 @@ export const PrepareEventTimeBlockList = memo(
     }
     function statusBadges(leaf: BlockLeaf) {
       const { block, event } = leaf;
+      if (leaf.cancelled) return <CancelledBadge />;
       return (
         <span className="inline-flex flex-wrap items-center gap-2">
           {coverage({ block })}
@@ -292,7 +298,8 @@ export const PrepareEventTimeBlockList = memo(
       );
     }
     /** The one token a narrowed row has room for: what most needs a decision. */
-    function primaryStatus({ block }: BlockLeaf) {
+    function primaryStatus({ block, cancelled }: BlockLeaf) {
+      if (cancelled) return <CancelledBadge />;
       if (!block.included) return notServed();
       if (block.shifts.some((shift) => shift.flagged)) return needsHeadcount();
       return coverage({ block });
@@ -323,6 +330,7 @@ export const PrepareEventTimeBlockList = memo(
     /** The row's one way in, as on every other list: an Abrir action at its end.
      * It carries the row's id, so closing a block returns focus here. */
     function openAction(leaf: BlockLeaf) {
+      if (leaf.cancelled) return null;
       const { id } = leaf.block.eventTimeBlock;
       return (
         <Link
@@ -330,7 +338,7 @@ export const PrepareEventTimeBlockList = memo(
           data-testid={
             isMobile ? undefined : `prepare-event-time-block-row-${id}`
           }
-          to="/schedules/$ministryId/$cycleId/slots/$timeSlotId"
+          to="/app/schedules/$ministryId/$cycleId/slots/$timeSlotId"
           params={{ ministryId, cycleId, timeSlotId: id }}
           search={(previous) => previous}
           aria-current={id === selectedBlockId ? 'page' : undefined}
@@ -348,6 +356,44 @@ export const PrepareEventTimeBlockList = memo(
       const { block } = leaf;
       const { id } = block.eventTimeBlock;
       const selected = id === selectedBlockId;
+      const content = (
+        <span className="min-w-0 flex-1 space-y-1">
+          <span
+            className={cn(
+              'block break-words',
+              selected ? 'font-bold' : 'font-medium',
+              leaf.cancelled && 'line-through',
+            )}
+          >
+            <span className="tabular-nums">{timeRange(leaf)}</span>{' '}
+            <span>{title(leaf)}</span>
+          </span>
+          {/* Coverage replaces the summary; an unserved or cancelled block says so in its badge. */}
+          {(showsCoverage && block.answerCoverage.needed !== null) ||
+          !block.included ||
+          leaf.cancelled ? null : (
+            <span className="block text-muted-foreground text-xs">
+              {blockSummary({ block })}
+            </span>
+          )}
+          {hasStatus(leaf) ? statusBadges(leaf) : null}
+        </span>
+      );
+      const cardClassName =
+        'surface-subtle radius-control flex scroll-mt-(--app-topbar-h) items-center gap-3 p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring';
+      // Nothing to open on a cancelled block: the card reads, it does not link.
+      if (leaf.cancelled)
+        return (
+          <div
+            id={isMobile ? `event-time-block-${id}` : undefined}
+            data-testid={
+              isMobile ? `prepare-event-time-block-row-${id}` : undefined
+            }
+            className={cn(cardClassName, 'text-muted-foreground')}
+          >
+            {content}
+          </div>
+        );
       return (
         <Link
           // On a phone the card is the row; on desktop the table's Abrir is.
@@ -355,35 +401,18 @@ export const PrepareEventTimeBlockList = memo(
           data-testid={
             isMobile ? `prepare-event-time-block-row-${id}` : undefined
           }
-          to="/schedules/$ministryId/$cycleId/slots/$timeSlotId"
+          to="/app/schedules/$ministryId/$cycleId/slots/$timeSlotId"
           params={{ ministryId, cycleId, timeSlotId: id }}
           search={(previous) => previous}
           aria-current={selected ? 'page' : undefined}
           className={cn(
-            'surface-subtle radius-control flex items-center gap-3 p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            // Returning scrolls the card in clear of the sticky mobile top bar.
+            cardClassName,
             selected && 'bg-accent/60',
             isPast(leaf) && 'text-muted-foreground',
           )}
         >
-          <span className="min-w-0 flex-1 space-y-1">
-            <span
-              className={cn(
-                'block break-words',
-                selected ? 'font-bold' : 'font-medium',
-              )}
-            >
-              <span className="tabular-nums">{timeRange(leaf)}</span>{' '}
-              <span>{title(leaf)}</span>
-            </span>
-            {/* Coverage replaces the summary; an unserved block says so in its badge. */}
-            {(showsCoverage && block.answerCoverage.needed !== null) ||
-            !block.included ? null : (
-              <span className="block text-muted-foreground text-xs">
-                {blockSummary({ block })}
-              </span>
-            )}
-            {hasStatus(leaf) ? statusBadges(leaf) : null}
-          </span>
+          {content}
           <ChevronRightIcon
             aria-hidden="true"
             className="size-4 shrink-0 text-muted-foreground"
@@ -433,7 +462,9 @@ export const PrepareEventTimeBlockList = memo(
               isSelected: ({ leaf }) =>
                 leaf.block.eventTimeBlock.id === selectedBlockId,
               leafClassName: ({ leaf }) =>
-                isPast(leaf) ? 'text-muted-foreground' : undefined,
+                isPast(leaf) || leaf.cancelled
+                  ? 'text-muted-foreground'
+                  : undefined,
             })}
             renderCell={({ item, column }) => {
               if (item.kind === 'group')
@@ -473,13 +504,15 @@ export const PrepareEventTimeBlockList = memo(
                       selected ? 'font-bold' : 'font-medium',
                     )}
                   >
-                    {compact ? (
-                      <span className="truncate" title={title(leaf)}>
-                        {title(leaf)}
-                      </span>
-                    ) : (
-                      title(leaf)
-                    )}
+                    <span
+                      className={cn(
+                        compact && 'truncate',
+                        leaf.cancelled && 'line-through',
+                      )}
+                      title={compact ? title(leaf) : undefined}
+                    >
+                      {title(leaf)}
+                    </span>
                     {compact ? (
                       <span className="font-normal">{primaryStatus(leaf)}</span>
                     ) : null}
@@ -494,7 +527,9 @@ export const PrepareEventTimeBlockList = memo(
               if (column.id === 'people')
                 return (
                   <span className="text-muted-foreground">
-                    {block.included ? blockSummary({ block }) : '—'}
+                    {block.included && !leaf.cancelled
+                      ? blockSummary({ block })
+                      : '—'}
                   </span>
                 );
               if (column.id === 'status') return statusBadges(leaf);

@@ -182,6 +182,9 @@ function createPlanningEventHarness() {
   const manager = new DbPlanningEventManager({
     ...dependencies,
     templateRepository,
+    precedenceRepository: {
+      listByTemplate: vi.fn().mockResolvedValue([]),
+    } as never,
     eventTimeBlockRepository,
     // Move confirmation is covered by the HTTP suite on real PostgreSQL.
     assignmentRepository: {} as never,
@@ -328,7 +331,7 @@ describe('DbCycleManager', () => {
     });
   });
 
-  it('schedules draft events when sending and reopens an event on request', async () => {
+  it('schedules draft events when sending', async () => {
     const {
       manager,
       cycle,
@@ -380,25 +383,6 @@ describe('DbCycleManager', () => {
       churchId,
       eventId,
       status: 'scheduled',
-      tx,
-    });
-    const scheduled = new Event({
-      id: eventId,
-      props: {
-        churchId,
-        cycleId,
-        title: 'Service',
-        start: event.start,
-        end: event.end,
-        status: 'scheduled',
-      },
-    });
-    vi.mocked(eventRepository.getEvent).mockResolvedValue(scheduled);
-    await manager.reopenEvent({ churchId, cycleId, eventId });
-    expect(eventRepository.updateEvent).toHaveBeenCalledWith({
-      churchId,
-      eventId,
-      status: 'draft',
       tx,
     });
   });
@@ -468,29 +452,6 @@ describe('DbCycleManager', () => {
       state: 'past',
     });
   });
-
-  it('rejects reopening an event from another cycle without writing', async () => {
-    const { manager, cycle, cycleRepository, eventRepository } =
-      createCycleHarness();
-    const eventId = EventId.from('event-1');
-    const event = new Event({
-      id: eventId,
-      props: {
-        churchId,
-        cycleId: CycleId.from('other-cycle'),
-        title: 'Other event',
-        start: fromDate({ date: new Date('2099-01-02T09:00:00Z') }),
-        end: fromDate({ date: new Date('2099-01-02T10:00:00Z') }),
-      },
-    });
-    vi.mocked(cycleRepository.getById).mockResolvedValue(cycle);
-    vi.mocked(eventRepository.getEvent).mockResolvedValue(event);
-
-    await expect(
-      manager.reopenEvent({ churchId, cycleId, eventId }),
-    ).rejects.toThrow('Event not found');
-    expect(eventRepository.updateEvent).not.toHaveBeenCalled();
-  });
 });
 
 describe('DbPlanningEventManager', () => {
@@ -512,7 +473,12 @@ describe('DbPlanningEventManager', () => {
     });
     const template = new EventTemplate({
       id: templateId,
-      props: { churchId, name: 'Sunday', weekday: 0, blocks: [templateBlock] },
+      props: {
+        churchId,
+        name: 'Sunday',
+        recurrence: { kind: 'weekly', weekdays: [0] },
+        blocks: [templateBlock],
+      },
     });
     vi.mocked(templateRepository.getByIds).mockResolvedValue([template]);
     vi.mocked(eventRepository.createEventTimeBlock).mockResolvedValue(
@@ -526,6 +492,7 @@ describe('DbPlanningEventManager', () => {
     expect(result).toEqual({
       generatedEventCount: 4,
       generatedEventTimeBlockCount: 4,
+      leftoverEventTimeBlocks: [],
     });
     expect(eventRepository.createEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -557,7 +524,12 @@ describe('DbPlanningEventManager', () => {
     });
     const template = new EventTemplate({
       id: templateId,
-      props: { churchId, name: 'Sunday', weekday: 0, blocks: [templateBlock] },
+      props: {
+        churchId,
+        name: 'Sunday',
+        recurrence: { kind: 'weekly', weekdays: [0] },
+        blocks: [templateBlock],
+      },
     });
     vi.mocked(templateRepository.getByIds).mockResolvedValue([template]);
     const existing = [4, 11, 18, 25].map((day, index) => {
@@ -596,6 +568,7 @@ describe('DbPlanningEventManager', () => {
     await expect(manager.generateFromTemplates(input)).resolves.toEqual({
       generatedEventCount: 0,
       generatedEventTimeBlockCount: 0,
+      leftoverEventTimeBlocks: [],
     });
     expect(eventRepository.createEvent).not.toHaveBeenCalled();
     vi.mocked(eventRepository.listCycleEvents).mockResolvedValue(
@@ -607,6 +580,7 @@ describe('DbPlanningEventManager', () => {
     await expect(manager.generateFromTemplates(input)).resolves.toEqual({
       generatedEventCount: 1,
       generatedEventTimeBlockCount: 1,
+      leftoverEventTimeBlocks: [],
     });
   });
   it('refuses to apply templates to a sent cycle without writing', async () => {
@@ -784,7 +758,7 @@ describe('DbPlanningEventManager', () => {
       tx,
     });
   });
-  it('refuses editing or deleting a sent Cycle event, even one reopened to draft', async () => {
+  it('refuses editing or deleting a sent Cycle event', async () => {
     const { manager, cycleRepository, eventRepository } =
       createPlanningEventHarness();
     vi.mocked(cycleRepository.getById).mockResolvedValue(

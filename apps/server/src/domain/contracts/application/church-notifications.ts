@@ -1,6 +1,6 @@
 import type { ChurchId, UserId } from '../../branded-ids';
 import type {
-  NotificationRequestDataOf,
+  NotificationEnqueueDataOf,
   NotificationRequestKind,
 } from '../../notification-kinds';
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
@@ -16,7 +16,8 @@ export interface EnqueueNotificationInput<K extends NotificationRequestKind> {
   tx: TransactionContext;
   kind: K;
   to: ChurchRecipient[];
-  data: NotificationRequestDataOf<K>;
+  /** The Church identity is stamped by `enqueue`, not supplied. */
+  data: NotificationEnqueueDataOf<K>;
 }
 
 export interface IChurchNotifications {

@@ -3,6 +3,7 @@ import {
   ASSIGN_CYCLE_SCHEMA,
   ASSIGN_JOURNEY_BASE_SCHEMA,
   ASSIGN_PERSONA_SCHEMA,
+  ASSIGN_POOL_VOLUNTEER_SCHEMA,
   assignMinistrySchema,
   type LoadAssignJourneyInput,
 } from './assign-church';
@@ -29,7 +30,11 @@ export const SCHEDULE_PUBLISH_JOURNEY_SCHEMA =
       volunteer: ASSIGN_PERSONA_SCHEMA,
       other: ASSIGN_PERSONA_SCHEMA,
     }),
-    pool: z.object({}),
+    pool: z.object({
+      elisa: ASSIGN_POOL_VOLUNTEER_SCHEMA,
+      davi: ASSIGN_POOL_VOLUNTEER_SCHEMA,
+      caio: ASSIGN_POOL_VOLUNTEER_SCHEMA,
+    }),
     cycle: ASSIGN_CYCLE_SCHEMA,
     event: z.object({
       id: z.string().min(1),
@@ -37,6 +42,10 @@ export const SCHEDULE_PUBLISH_JOURNEY_SCHEMA =
       startsAt: z.string().min(1),
     }),
     worship: PARTICIPATION_SCHEMA.extend({ peopleNeeded: z.number() }),
+    worshipSecond: PARTICIPATION_SCHEMA.extend({
+      peopleNeeded: z.number(),
+      event: z.object({ id: z.string().min(1), title: z.string().min(1) }),
+    }),
     care: PARTICIPATION_SCHEMA,
   });
 

@@ -33,8 +33,8 @@ interface HarnessInput {
 }
 
 function harness({ mode }: HarnessInput): Harness {
-  const mailpit = new FakeProvider('Church');
-  const resend = new FakeProvider('Church');
+  const mailpit = new FakeProvider({ appName: 'Church' });
+  const resend = new FakeProvider({ appName: 'Church' });
   const readMode = vi.fn().mockResolvedValue(mode);
   const sender = new DeliveryModeEmailSender({
     mailpit,

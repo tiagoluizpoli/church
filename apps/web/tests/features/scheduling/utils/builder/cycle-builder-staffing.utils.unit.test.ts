@@ -19,6 +19,7 @@ function makeShift(
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
+    cancelled: false,
     peopleNeeded: 1,
     assignedCount: 0,
     requirements: [
@@ -39,7 +40,7 @@ function makeShift(
         volunteerId: `volunteer-${index}`,
         roleId: 'role-1',
         shiftRequirementId: 'requirement-1',
-        status: 'confirmed' as const,
+        status: 'pending' as const,
         assignedAt: '2027-01-01T10:00:00Z',
         lateMark: false,
       }),
@@ -58,6 +59,7 @@ function makeEventTimeBlock(
     label: 'manhã',
     startTime: '2027-01-04T12:00:00.000Z',
     endTime: '2027-01-04T13:00:00.000Z',
+    cancelled: false,
     included: true,
     peopleNeeded: 1,
     assignedCount: 0,
@@ -190,6 +192,48 @@ describe('summarizeCycleStaffing (B-4)', () => {
       required: 2,
       percent: 50,
       shiftsBelowTarget: 1,
+    });
+  });
+
+  it('ignores a cancelled time block, keeping its assignments out of filled', () => {
+    const data = {
+      events: [
+        makeEvent({
+          eventTimeBlocks: [
+            makeEventTimeBlock({
+              shifts: [makeShift({ peopleNeeded: 2, assignedCount: 1 })],
+            }),
+            makeEventTimeBlock({
+              eventTimeBlockId: 'event-time-block-cancelled',
+              cancelled: true,
+              shifts: [
+                makeShift({
+                  shiftId: 'shift-cancelled',
+                  cancelled: true,
+                  peopleNeeded: 4,
+                  assignedCount: 1,
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+      assignments: [],
+      roles: [],
+    };
+
+    expect(summarizeCycleStaffing({ data })).toEqual({
+      filled: 1,
+      coveredPlaces: 1,
+      required: 2,
+      percent: 50,
+      shiftsBelowTarget: 1,
+    });
+    expect(summarizeCycleCounts({ data, assignedCount: 1 })).toEqual({
+      eventCount: 1,
+      eventTimeBlockCount: 1,
+      shiftCount: 1,
+      assignedCount: 1,
     });
   });
 

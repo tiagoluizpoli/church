@@ -23,16 +23,23 @@ import type { TransactionContext } from '../domain/contracts/infrastructure/tran
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import type { Assignment } from '../domain/entities/assignment';
+import {
+  type Assignment,
+  isActiveAssignmentStatus,
+} from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
 import type { MinistryParticipation } from '../domain/entities/ministry-participation';
-import { IllegalStateTransitionError } from '../domain/errors/illegal-state-transition';
+import type { ShiftRequirement } from '../domain/entities/shift-requirement';
+import { ShiftRequirementFullError } from '../domain/errors/shift-requirement-full';
+import { assertEventTimeBlockNotCancelled } from '../domain/event-time-block-cancellation';
 import { removeAssignment } from './remove-assignment';
 
 interface CreateParticipationAssignmentTransactionInput {
   input: CreateParticipationAssignmentInput;
   tx: TransactionContext;
   participation: MinistryParticipation;
+  /** The Assignment a reassignment replaces; it does not take a place. */
+  replacingId?: Assignment['id'];
 }
 
 interface DbAssignmentManagerDependencies {
@@ -201,6 +208,7 @@ export class DbAssignmentManager implements IAssignmentManager {
             },
             tx,
             participation,
+            replacingId: currentAssignment.id,
           });
         if (!nextAssignmentResult.assignment.participationId) {
           throw new Error('Assignment is missing a participation reference');
@@ -304,6 +312,11 @@ export class DbAssignmentManager implements IAssignmentManager {
           message: 'Volunteer is already assigned to this shift',
         });
       }
+      assertRequirementHasRoom({
+        assignments,
+        requirement: target,
+        excludeId: current.id,
+      });
       // A move never carries the request along: the leader already acted.
       await this.swapRequestRepo.closeOpenByAssignment({
         churchId: input.churchId,
@@ -349,6 +362,7 @@ export class DbAssignmentManager implements IAssignmentManager {
     input,
     tx,
     participation,
+    replacingId,
   }: CreateParticipationAssignmentTransactionInput): Promise<CreateParticipationAssignmentResult> {
     const shift = await this.shiftRepository.getById({
       churchId: input.churchId,
@@ -368,12 +382,7 @@ export class DbAssignmentManager implements IAssignmentManager {
       eventTimeBlockId: shift.eventTimeBlockId,
       tx,
     });
-    if (event.status === 'cancelled' || block.status === 'cancelled') {
-      throw new IllegalStateTransitionError({
-        from: 'cancelled',
-        to: 'assign',
-      });
-    }
+    assertEventTimeBlockNotCancelled({ event, eventTimeBlock: block });
     const requirement = await this.shiftRepository.getRequirementForShift({
       churchId: input.churchId,
       shiftId: shift.id,
@@ -431,6 +440,12 @@ export class DbAssignmentManager implements IAssignmentManager {
         message: 'Volunteer is already assigned to this shift',
       });
     }
+
+    assertRequirementHasRoom({
+      assignments: existingShiftAssignments,
+      requirement,
+      excludeId: replacingId,
+    });
 
     const unavailableShifts =
       await this.unavailableShiftRepository.listByVolunteers({
@@ -513,8 +528,24 @@ export class DbAssignmentManager implements IAssignmentManager {
   }
 }
 
-function isActiveAssignmentStatus(status: Assignment['status']): boolean {
-  return status === 'draft' || status === 'pending' || status === 'confirmed';
+interface RequirementRoomInput {
+  assignments: Assignment[];
+  requirement: ShiftRequirement;
+  excludeId?: Assignment['id'];
+}
+
+function assertRequirementHasRoom({
+  assignments,
+  requirement,
+  excludeId,
+}: RequirementRoomInput): void {
+  const taken = assignments.filter(
+    (other) =>
+      other.id !== excludeId &&
+      other.shiftRequirementId === requirement.id &&
+      isActiveAssignmentStatus(other.status),
+  ).length;
+  if (taken >= requirement.peopleNeeded) throw new ShiftRequirementFullError();
 }
 
 interface ShiftStartGuardInput {

@@ -66,8 +66,6 @@ export function createAssignmentRepositoryFake() {
       vi.fn<AssignmentRepository['countByVolunteerInRange']>(),
     deleteByEvent: vi.fn<AssignmentRepository['deleteByEvent']>(),
     deleteById: vi.fn<AssignmentRepository['deleteById']>(),
-    listDeclinedByEventTimeBlock:
-      vi.fn<AssignmentRepository['listDeclinedByEventTimeBlock']>(),
   } satisfies AssignmentRepository;
 }
 
@@ -118,6 +116,16 @@ export function createChurchRepositoryFake() {
     findMemberEmail: vi.fn<ChurchRepository['findMemberEmail']>(),
     findMemberContact: vi.fn<ChurchRepository['findMemberContact']>(),
     findUserName: vi.fn<ChurchRepository['findUserName']>(),
+    getSettings: vi.fn<ChurchRepository['getSettings']>(),
+    saveSettings: vi.fn<ChurchRepository['saveSettings']>(),
+    slugAvailability: vi.fn<ChurchRepository['slugAvailability']>(),
+    saveLogoKey: vi.fn<ChurchRepository['saveLogoKey']>(),
+    getAddressUsage: vi.fn<ChurchRepository['getAddressUsage']>(),
+    findPublicIdentityBySlug:
+      vi.fn<ChurchRepository['findPublicIdentityBySlug']>(),
+    findPublicAddresses: vi.fn<ChurchRepository['findPublicAddresses']>(),
+    getPublicContactDetails:
+      vi.fn<ChurchRepository['getPublicContactDetails']>(),
   } satisfies ChurchRepository;
 }
 
@@ -273,6 +281,9 @@ export function createPlanningEventRepositoryFake() {
       vi.fn<PlanningEventRepository['listScopeParticipatingMinistries']>(),
     moveEventTimeBlocks:
       vi.fn<PlanningEventRepository['moveEventTimeBlocks']>(),
+    listEventShifts: vi.fn<PlanningEventRepository['listEventShifts']>(),
+    retimeEventTimeBlocks:
+      vi.fn<PlanningEventRepository['retimeEventTimeBlocks']>(),
     listCancellationScopeAssignments:
       vi.fn<PlanningEventRepository['listCancellationScopeAssignments']>(),
     cancelEventTimeBlock:

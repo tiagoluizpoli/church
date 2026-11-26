@@ -1,3 +1,4 @@
+import { PLATFORM_ACCENT } from '@church/domain-rules/email-accent';
 import { m } from '@church/i18n/messages';
 import {
   formatCalendarDay,
@@ -27,6 +28,8 @@ import type {
 } from '../../domain/contracts/infrastructure/email-sender';
 import {
   type EmailContent,
+  type EmailCredit,
+  type EmailIdentity,
   emailSender,
   formatEmailDuration,
   renderEmailLayout,
@@ -39,6 +42,14 @@ export interface PrepareEmailFromInput {
   locale?: EmailLocale;
   /** Display name for app-branded kinds; injected from composition. */
   appName: string;
+  platform?: PlatformBranding;
+}
+
+/** Platform assets the layout needs; both are absolute URLs. */
+export interface PlatformBranding {
+  logoUrl?: string;
+  /** Where the "Enviado com {appName}" credit links; plain text when unset. */
+  siteUrl?: string;
 }
 
 /**
@@ -51,19 +62,38 @@ export function prepareEmail({
   from,
   locale = 'en',
   appName,
+  platform = {},
 }: PrepareEmailFromInput): PreparedEmail {
+  const platformIdentity: EmailIdentity = {
+    displayName: appName,
+    logoUrl: platform.logoUrl,
+    accent: PLATFORM_ACCENT,
+  };
+  const credit: EmailCredit = { appName, siteUrl: platform.siteUrl };
+  // Password reset is an account email: platform identity, never the credit.
+  const layoutEmail = (
+    input: Omit<PrepareLayoutEmailInput, 'identity' | 'credit'>,
+  ) =>
+    prepareLayoutEmail({
+      ...input,
+      identity:
+        input.payload.kind === 'auth.password-reset'
+          ? platformIdentity
+          : churchIdentity(input.payload),
+      credit: input.payload.kind === 'auth.password-reset' ? undefined : credit,
+    });
   const sender = (displayName: string) =>
     emailSender({ displayName, configuredFrom: from });
   switch (payload.kind) {
     case 'invitation.verification-code':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
         content: verificationCodeContent({ payload, locale }),
       });
     case 'auth.password-reset':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(appName),
@@ -71,7 +101,7 @@ export function prepareEmail({
       });
     case 'invitation.chained':
     case 'invitation.church-bootstrap':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
@@ -83,35 +113,35 @@ export function prepareEmail({
     case 'schedule.published':
     case 'schedule.updated':
     case 'swap.request':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
         content: memberNotificationContent({ payload, locale }),
       });
     case 'cycle.ready-to-prepare':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
         content: cycleReadyToPrepareContent({ payload, locale }),
       });
     case 'event.changed':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
         content: eventChangedContent({ payload, locale }),
       });
     case 'event.cancelled':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
         content: eventCancelledContent({ payload, locale }),
       });
     case 'swap-request.answered':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
@@ -119,7 +149,7 @@ export function prepareEmail({
       });
     case 'transfer.ministry-digest':
     case 'transfer.leaderless-ministry':
-      return prepareLayoutEmail({
+      return layoutEmail({
         payload,
         locale,
         from: sender(payload.churchName),
@@ -132,12 +162,25 @@ export function prepareEmail({
   }
 }
 
+/** The Church's own band; an unset accent is the app's default brand colour. */
+function churchIdentity(
+  payload: Exclude<EmailPayload, PasswordResetEmail>,
+): EmailIdentity {
+  return {
+    displayName: payload.churchName,
+    logoUrl: payload.churchLogoUrl ?? undefined,
+    accent: payload.churchAccent ?? PLATFORM_ACCENT,
+  };
+}
+
 interface PrepareLayoutEmailInput {
   payload: EmailPayload;
   locale: EmailLocale;
   /** The composed sender (see `emailSender`). */
   from: string;
   content: EmailContent;
+  identity: EmailIdentity;
+  credit?: EmailCredit;
 }
 
 /** A kind on the shared layout: HTML and text from the same content. */
@@ -146,8 +189,15 @@ export function prepareLayoutEmail({
   locale,
   from,
   content,
+  identity,
+  credit,
 }: PrepareLayoutEmailInput): PreparedEmail {
-  const { subject, html, text } = renderEmailLayout(content);
+  const { subject, html, text } = renderEmailLayout({
+    content,
+    locale,
+    identity,
+    credit,
+  });
   return {
     payload,
     locale,
@@ -312,14 +362,18 @@ function memberNotificationContent({
     };
   }
   if (payload.kind === 'invitation.ministry') {
-    return {
-      ...base,
-      ...ministryOfferContent({ offer: payload, locale }),
-      action: {
-        label: m.notification_ministry_invitation_action({}, options),
-        url: payload.redemptionUrl,
+    return withChurchPlace({
+      content: {
+        ...base,
+        ...ministryOfferContent({ offer: payload, locale }),
+        action: {
+          label: m.notification_ministry_invitation_action({}, options),
+          url: payload.redemptionUrl,
+        },
       },
-    };
+      payload,
+      locale,
+    });
   }
   const { cycleName } = payload;
   const title =
@@ -721,6 +775,38 @@ interface InvitationContentInput {
 
 /** T1: ChurchAdmin-only (bootstrap) and paired Ministry invitations. */
 function invitationContent({
+  payload,
+  locale,
+}: InvitationContentInput): EmailContent {
+  return withChurchPlace({
+    content: invitationBody({ payload, locale }),
+    payload,
+    locale,
+  });
+}
+
+interface WithChurchPlaceInput {
+  content: EmailContent;
+  payload: { churchName: string; churchLocality?: string };
+  locale: EmailLocale;
+}
+
+/** Tells a same-named Church apart, as the select-church screen does. */
+function withChurchPlace({
+  content,
+  payload,
+  locale,
+}: WithChurchPlaceInput): EmailContent {
+  const { churchName, churchLocality } = payload;
+  if (!churchLocality) return content;
+  const placeLine = m.email_invitation_church_place(
+    { churchName, locality: churchLocality },
+    { locale },
+  );
+  return { ...content, facts: [placeLine, ...content.facts] };
+}
+
+function invitationBody({
   payload,
   locale,
 }: InvitationContentInput): EmailContent {

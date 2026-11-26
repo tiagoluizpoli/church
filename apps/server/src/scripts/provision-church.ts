@@ -2,20 +2,20 @@ import { appConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
   type ChurchRecord,
+  churchSlugHistory,
   createChurch,
   createDb,
   invitation,
   type TenancyWriter,
   user,
 } from '@church/db';
+import { slugFromName } from '@church/domain-rules/church-slug';
 import { now } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { ChurchSlugTakenError } from '../domain/errors/church-slug-taken';
-import { isUniqueViolation } from '../infrastructure/repositories/unique-violation';
+import { isChurchSlugConflict } from '../infrastructure/repositories/unique-violation';
 import { expiresAtAfter } from './shared-time';
-
-const ORGANIZATION_SLUG_UNIQUE_CONSTRAINT = 'organization_slug_unique';
 
 /** The invitation table's `expiresAt`, `churchInvitation.ttlMs` from now. */
 function churchInvitationExpiresAt(): Date {
@@ -77,7 +77,8 @@ function printRedemptionPath({
 export interface ProvisionChurchInput {
   db: TenancyWriter;
   churchName: string;
-  churchSlug: string;
+  /** Omitted, derived from `churchName` through the Church Slug schema. */
+  churchSlug?: string;
   adminEmail: string;
   /** The Platform Operator's own User id — resolving which User that is happens outside this operation. */
   operatorUserId: string;
@@ -116,23 +117,25 @@ export async function provisionChurch(
   const { church, invitationId } = await input.db.transaction(async (tx) => {
     await assertOperatorExists({ tx, operatorUserId: input.operatorUserId });
 
+    const churchSlug = input.churchSlug ?? slugFromName(input.churchName);
+    const [held] = await tx
+      .select({ slug: churchSlugHistory.slug })
+      .from(churchSlugHistory)
+      .where(eq(churchSlugHistory.slug, churchSlug));
+    if (held) throw new ChurchSlugTakenError(churchSlug);
+
     let createdChurch: ChurchRecord;
     try {
       createdChurch = await createChurch({
         db: tx,
         id: input.id,
         name: input.churchName,
-        slug: input.churchSlug,
+        slug: churchSlug,
         timezone: input.timezone,
       });
     } catch (error) {
-      if (
-        isUniqueViolation({
-          error,
-          constraint: ORGANIZATION_SLUG_UNIQUE_CONSTRAINT,
-        })
-      ) {
-        throw new ChurchSlugTakenError(input.churchSlug);
+      if (isChurchSlugConflict({ error })) {
+        throw new ChurchSlugTakenError(churchSlug);
       }
       throw error;
     }

@@ -19,6 +19,7 @@ import type {
 import {
   canCancelEvent,
   canCancelEventBlocks,
+  canEditEvent,
   groupRowsByWeek,
   isNotFoundError,
   toCycleCalendarTableRow,
@@ -339,6 +340,13 @@ export function CycleReviewCard({
                           cycleState: reviewedCycle.state,
                           eventStatus: item.row.status,
                         }),
+                      canEdit:
+                        item.kind === 'parent' &&
+                        canEditEvent({
+                          cycleState: reviewedCycle.state,
+                          eventStatus: item.row.status,
+                          end: item.row.end,
+                        }),
                       ...permissions,
                       isConfirmingDeleteEventTimeBlock:
                         item.kind === 'event-time-block' &&
@@ -388,6 +396,11 @@ export function CycleReviewCard({
                         canPreviewMove={canPreviewEventMove({
                           cycleState: reviewedCycle.state,
                           eventStatus: item.row.status,
+                        })}
+                        canEdit={canEditEvent({
+                          cycleState: reviewedCycle.state,
+                          eventStatus: item.row.status,
+                          end: item.row.end,
                         })}
                         {...permissions}
                         deleteEventTimeBlockPending={

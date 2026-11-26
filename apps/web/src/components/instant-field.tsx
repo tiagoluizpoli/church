@@ -14,6 +14,8 @@ export interface InstantFieldProps {
   timeZone: string;
   onChange: (instant: Instant) => void;
   disabled?: boolean;
+  /** Shows only the time; the day stays the value's own. */
+  dateHidden?: boolean;
   'aria-labelledby'?: string;
   'aria-invalid'?: boolean;
   'aria-describedby'?: string;
@@ -33,6 +35,7 @@ export function InstantField({
   timeZone,
   onChange,
   disabled,
+  dateHidden = false,
   'aria-labelledby': ariaLabelledby,
   'aria-invalid': ariaInvalid,
   'aria-describedby': ariaDescribedby,
@@ -42,25 +45,34 @@ export function InstantField({
   const time = toTimeOfDay({ instant: value, timeZone });
 
   return (
-    <div className="flex gap-2">
-      <DatePickerField
-        id={`${idPrefix}-date`}
-        value={day}
-        aria-labelledby={ariaLabelledby}
-        aria-invalid={ariaInvalid}
-        aria-describedby={ariaDescribedby}
-        disabled={disabled}
-        data-testid={dataTestId ? `${dataTestId}-date` : undefined}
-        onChange={(nextDayValue) =>
-          onChange(
-            toInstant({
-              day: parseCalendarDay({ value: nextDayValue }),
-              time,
-              timeZone,
-            }),
-          )
-        }
-      />
+    // The date gives way (min-w-0) so a narrow column never pushes the time out.
+    <div
+      className={
+        dateHidden ? 'w-28' : 'grid grid-cols-[minmax(0,1fr)_7rem] gap-2'
+      }
+    >
+      {dateHidden ? null : (
+        <div className="min-w-0">
+          <DatePickerField
+            id={`${idPrefix}-date`}
+            value={day}
+            aria-labelledby={ariaLabelledby}
+            aria-invalid={ariaInvalid}
+            aria-describedby={ariaDescribedby}
+            disabled={disabled}
+            data-testid={dataTestId ? `${dataTestId}-date` : undefined}
+            onChange={(nextDayValue) =>
+              onChange(
+                toInstant({
+                  day: parseCalendarDay({ value: nextDayValue }),
+                  time,
+                  timeZone,
+                }),
+              )
+            }
+          />
+        </div>
+      )}
       <TimeOfDayField
         id={`${idPrefix}-time`}
         value={time}

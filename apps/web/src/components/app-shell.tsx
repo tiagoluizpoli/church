@@ -5,7 +5,6 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import {
   CalendarCheck,
-  CalendarClock,
   CalendarRange,
   ChevronLeft,
   ChevronRight,
@@ -16,6 +15,7 @@ import {
   Mail,
   Menu,
   Search,
+  Settings,
   Users,
   UsersRound,
 } from 'lucide-react';
@@ -27,6 +27,7 @@ import {
   useCallerCapabilities,
 } from '../shared/hooks/use-caller-capabilities';
 import { ActiveChurchTabSyncGuard } from './active-church-tab-sync-guard';
+import { ChurchLogoTile } from './church-logo-tile';
 import { CommandPalette } from './command-palette';
 import { MobileDrawer } from './mobile-drawer';
 import { ModeToggle } from './mode-toggle';
@@ -110,70 +111,79 @@ interface NavGroupModel {
   entries: NavEntry[];
 }
 
+const APP_HOME = '/app';
+
 // The one nav list: add or retarget an entry here. Order is render order.
 const NAV_ENTRIES: NavEntry[] = [
   {
     group: 'home',
     label: () => m.nav_home(),
-    to: '/',
+    to: APP_HOME,
     icon: House,
     isVisible: () => true,
   },
   {
     group: 'serving',
     label: () => m.nav_my_schedule(),
-    to: '/my-schedule',
+    to: '/app/my-schedule',
     icon: CalendarCheck,
     isVisible: (c) => c.hasVolunteerMembership,
   },
   {
     group: 'serving',
     label: () => m.nav_availability(),
-    to: '/availability',
+    to: '/app/availability',
     icon: Clock,
     isVisible: (c) => c.hasVolunteerMembership,
   },
   {
     group: 'scheduling',
     label: () => m.nav_schedules(),
-    to: '/schedules',
+    to: '/app/schedules',
     icon: UsersRound,
     isVisible: isAdminOrLeader,
   },
   {
     group: 'scheduling',
     label: () => m.nav_cycles(),
-    to: '/cycles',
+    to: '/app/cycles',
     icon: CalendarRange,
     isVisible: (c) => c.isChurchAdmin,
   },
   {
     group: 'scheduling',
     label: () => m.nav_event_templates(),
-    to: '/event-templates',
+    to: '/app/event-templates',
     icon: LayoutTemplate,
     isVisible: (c) => c.isChurchAdmin,
   },
   {
     group: 'church',
     label: () => m.nav_ministries(),
-    to: '/ministries',
+    to: '/app/ministries',
     icon: Layers,
     isVisible: isAdminOrLeader,
   },
   {
     group: 'church',
     label: () => m.nav_people(),
-    to: '/people',
+    to: '/app/people',
     icon: Users,
     isVisible: isAdminOrLeader,
   },
   {
     group: 'church',
     label: () => m.nav_invitations(),
-    to: '/invitations',
+    to: '/app/invitations',
     icon: Mail,
     isVisible: isAdminOrLeader,
+  },
+  {
+    group: 'church',
+    label: () => m.nav_church_settings(),
+    to: '/app/church-settings',
+    icon: Settings,
+    isVisible: (c) => c.isChurchAdmin,
   },
 ];
 
@@ -204,6 +214,7 @@ const BREADCRUMB_SEGMENT_LABELS: Record<string, () => string> = {
   ministries: () => m.nav_ministries(),
   people: () => m.nav_people(),
   invitations: () => m.nav_invitations(),
+  'church-settings': () => m.nav_church_settings(),
   ministry: () => m.breadcrumb_ministry(),
   operational: () => m.ministry_tab_structure(),
   sectors: () => m.ministry_tab_sectors(),
@@ -213,11 +224,11 @@ const BREADCRUMB_SEGMENT_LABELS: Record<string, () => string> = {
 };
 
 function isEntryActive({ pathname, entry }: IsEntryActiveInput): boolean {
-  if (entry.to === '/' && pathname === '/') {
+  if (entry.to === APP_HOME && pathname === APP_HOME) {
     return true;
   }
   const targets = [
-    ...(entry.to === '/' ? [] : [entry.to]),
+    ...(entry.to === APP_HOME ? [] : [entry.to]),
     ...(EXTRA_ACTIVE_PATHS[entry.to] ?? []),
   ];
   return targets.some(
@@ -274,7 +285,7 @@ function ChurchName({ name }: ChurchNameProps) {
 function getSelectChurchDestination({
   destination,
 }: GetSelectChurchDestinationInput): string {
-  return `/select-church?redirect=${encodeURIComponent(destination)}`;
+  return `/app/select-church?redirect=${encodeURIComponent(destination)}`;
 }
 
 // One render for the desktop sidebar (expanded or icon-only) and the drawer.
@@ -416,10 +427,13 @@ export function AppShell({
   const churches = churchOptions?.churches ?? [];
   // Outside an Active Church (e.g. a Ministry Invitation for someone with no
   // Church Membership yet) there is no Church name to wait for.
+  const activeChurch = churchScope
+    ? churches.find((church) => church.churchId === churchScope.churchId)
+    : undefined;
   const churchName = churchScope
-    ? (churches.find((church) => church.churchId === churchScope.churchId)
-        ?.name ?? null)
+    ? (activeChurch?.name ?? null)
     : appConfig.appName;
+  const churchLogoUrl = activeChurch?.logoUrl ?? null;
   const canSwitchChurch = churches.length >= 2;
   const selectChurchDestination = getSelectChurchDestination({
     destination: location.href,
@@ -445,7 +459,8 @@ export function AppShell({
   // active). When no label is known yet, the hidden-id rule still applies,
   // so the last visible crumb remains a real link rather than being
   // mislabeled as the current page.
-  const pathSegments = location.pathname.split('/').filter(Boolean);
+  // Crumbs start below `/app`, which is Home.
+  const pathSegments = location.pathname.split('/').filter(Boolean).slice(1);
   const overridesBySegment = React.useMemo(
     () =>
       new Map([
@@ -459,7 +474,7 @@ export function AppShell({
     [breadcrumbOverrides],
   );
   const breadcrumbs: BreadcrumbItemModel[] = [
-    { label: m.nav_home(), to: '/', isLast: pathSegments.length === 0 },
+    { label: m.nav_home(), to: APP_HOME, isLast: pathSegments.length === 0 },
     ...pathSegments.flatMap((segment, index) => {
       // A Schedule is Ministry × Cycle; the Ministry has no intermediate page.
       const isSchedulePath = pathSegments[0] === 'schedules';
@@ -481,7 +496,7 @@ export function AppShell({
         return [];
       }
 
-      const to = `/${pathSegments.slice(0, index + 1).join('/')}`;
+      const to = `${APP_HOME}/${pathSegments.slice(0, index + 1).join('/')}`;
       return [
         {
           label,
@@ -513,9 +528,11 @@ export function AppShell({
         className="sticky top-0 z-40 flex h-(--app-topbar-h) shrink-0 items-center justify-between border-sidebar-border border-b bg-sidebar/95 px-4 backdrop-blur md:hidden"
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="radius-icon flex h-10 w-10 shrink-0 items-center justify-center bg-primary/12 text-primary shadow-sm">
-            <CalendarClock className="h-5 w-5" />
-          </div>
+          <ChurchLogoTile
+            name={churchName ?? ''}
+            logoUrl={churchLogoUrl}
+            size="mobile"
+          />
           <div className="min-w-0 space-y-0.5">
             <ChurchName name={churchName} />
             {mobileSubtitle ? (
@@ -565,17 +582,22 @@ export function AppShell({
         >
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
-              <div className="radius-icon flex h-10 w-10 items-center justify-center bg-primary/12 text-primary shadow-sm">
-                <CalendarClock className="h-5 w-5" />
-              </div>
+              <ChurchLogoTile
+                name={churchName ?? ''}
+                logoUrl={churchLogoUrl}
+                size="desktop"
+              />
               <div className="space-y-0.5">
                 <ChurchName name={churchName} />
               </div>
             </div>
           ) : (
-            <div className="radius-icon mx-auto flex h-10 w-10 items-center justify-center bg-primary/12 text-primary shadow-sm">
-              <CalendarClock className="h-5 w-5" />
-            </div>
+            <ChurchLogoTile
+              name={churchName ?? ''}
+              logoUrl={churchLogoUrl}
+              size="collapsed"
+              className="mx-auto"
+            />
           )}
         </div>
 

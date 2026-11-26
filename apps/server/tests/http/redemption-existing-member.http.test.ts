@@ -45,6 +45,7 @@ import {
   buildVolunteer,
 } from '@/seeds/builders/volunteer';
 import { testDb, truncateAll } from '@/tests/integration/repositories/setup';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import {
@@ -84,8 +85,9 @@ beforeEach(async () => {
   await truncateAll();
   fixture = await seedTwoChurchIdentityFixture({ db: testDb });
   const verificationCodeManager = new InvitationVerificationCodeManager({
+    churchIdentity: nullChurchIdentity,
     repository: verificationCodeRepository,
-    emailSender: new CaptureEmailSender('Church'),
+    emailSender: new CaptureEmailSender({ appName: 'Church' }),
     generateCode: () => '123456',
     verificationCodeSecret: 'test-secret',
     config: appConfig,
@@ -102,6 +104,7 @@ beforeEach(async () => {
     redemptionRepository,
     securityLogRepository,
     unitOfWork,
+    verificationCodeRepository,
     failureLog: { record: () => {} },
   });
   const volunteerTransferManager = new DbVolunteerTransferManager({
@@ -159,6 +162,15 @@ async function createSessionCookie({
   });
   const signature = await makeSignature(token, env.BETTER_AUTH_SECRET);
   return `better-auth.session_token=${token}.${signature}`;
+}
+
+async function activeChurchOf(cookie: string): Promise<string | null> {
+  const token = cookie.split('=')[1]?.split('.')[0] ?? '';
+  const [row] = await testDb
+    .select({ activeChurchId: session.activeOrganizationId })
+    .from(session)
+    .where(eq(session.token, token));
+  return row?.activeChurchId ?? null;
 }
 
 async function mintExistingMemberInvitation() {
@@ -425,6 +437,8 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         .innerJoin(member, eq(member.userId, fixture.existingChurchMemberA))
         .where(eq(ministryMembership.ministryId, fixture.ministryOneA));
       expect(membership).toBeDefined();
+      // No Church half was granted: the Active Church stays as it was.
+      expect(await activeChurchOf(cookie)).toBeNull();
     });
 
     it('rejoins a removed member into a fresh active membership, leaving the ended one and its checks as history', async () => {
@@ -557,6 +571,7 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       });
 
       expect(response.json()).toMatchObject({ kind: 'full-success' });
+      expect(await activeChurchOf(cookie)).toBe(fixture.churchA.id);
       expect(
         await testDb
           .select({ role: member.role })
@@ -670,6 +685,39 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
       ).toHaveLength(0);
     });
 
+    it('sets the Active Church when only the Church half commits for a User with a Volunteer profile elsewhere', async () => {
+      await buildVolunteer({
+        db: testDb,
+        churchId: fixture.churchB.id,
+        userId: fixture.adminB,
+      });
+      const invitation = await invitationManager.mint({
+        churchId: ChurchId.from(fixture.churchA.id),
+        ministryId: MinistryId.from(fixture.ministryOneA),
+        inviterId: UserId.from(fixture.adminA),
+        email: `${fixture.adminB}@fixture.test`,
+        ministryAccessLevel: 'volunteer',
+        roleIds: [RoleId.from(fixture.roleInMinistryOneA)],
+      });
+      const cookie = await createSessionCookie({ userId: fixture.adminB });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/ministry/${invitation.id}/accept`,
+        headers: { cookie },
+        payload: await reviewedAcceptance({
+          invitationId: invitation.id,
+          cookie,
+        }),
+      });
+
+      expect(response.json()).toMatchObject({
+        kind: 'church-only',
+        destinationChurchId: fixture.churchA.id,
+      });
+      expect(await activeChurchOf(cookie)).toBe(fixture.churchA.id);
+    });
+
     it('splits when the member already holds an active Volunteer profile in another Church (spec §7.5)', async () => {
       // dualMemberAB is a Church Member of A and B, active Volunteer in B.
       const invitation = await invitationManager.mint({
@@ -703,6 +751,8 @@ describe('Existing-member Ministry Invitation HTTP boundary', () => {
         ministryInvitationId: invitation.id,
         ministryName: expect.stringMatching(/^Worship /),
       });
+      // dualMemberAB already belongs to A: no Church half, Active Church untouched.
+      expect(await activeChurchOf(cookie)).toBeNull();
 
       // The Ministry half is refused: invitation stays pending, no grant, no
       // Volunteer profile in Church A, and one church_only_partial_acceptance

@@ -11,7 +11,7 @@ import {
   parseTimeOfDay,
   type TimeOfDay,
   type ToDateInput,
-} from '../src';
+} from '@/index';
 
 describe('brands', () => {
   it('are nominally distinct, so one kind never passes for another', () => {

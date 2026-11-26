@@ -210,7 +210,12 @@ it('lists and saves a valid usual setup and rejects invalid splits', async () =>
   });
   const template = new EventTemplate({
     id: templateId,
-    props: { churchId, name: 'Sunday', weekday: 0, blocks: [block] },
+    props: {
+      churchId,
+      name: 'Sunday',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+      blocks: [block],
+    },
   });
   vi.mocked(repositories.eventTemplateRepository.list).mockResolvedValue([
     template,
@@ -314,7 +319,7 @@ it('flags an eligible volunteer with an overlapping active assignment', async ()
       volunteerId,
       roleId: RoleId.from('role'),
       shiftRequirementId: ShiftRequirementId.from({ raw: 'requirement' }),
-      status: 'confirmed',
+      status: 'pending',
     },
   });
   vi.mocked(repositories.shiftRepository.getById).mockImplementation(
@@ -471,7 +476,7 @@ it('counts only active assignments towards each required place', async () => {
       peopleNeeded: 2,
     },
   });
-  const assignment = (status: 'confirmed' | 'declined') =>
+  const assignment = (status: 'pending' | 'cancelled') =>
     new Assignment({
       props: {
         churchId,
@@ -489,7 +494,7 @@ it('counts only active assignments towards each required place', async () => {
   ).mockResolvedValue([requirement]);
   vi.mocked(
     repositories.assignmentRepository.listByParticipation,
-  ).mockResolvedValue([assignment('confirmed'), assignment('declined')]);
+  ).mockResolvedValue([assignment('pending'), assignment('cancelled')]);
   await expect(
     manager.getCompletion({ churchId, participationId }),
   ).resolves.toEqual({

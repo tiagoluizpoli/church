@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appConfig, appConfigSchema, withAllParkedOn } from '../src';
+import { appConfig, appConfigSchema, withAllParkedOn } from '@/index';
 
 describe('appConfig', () => {
   it('ships with every parked switch off', () => {
@@ -39,6 +39,16 @@ describe('appConfigSchema', () => {
   it('refuses a blank app name', () => {
     expect(
       appConfigSchema.safeParse({ ...appConfig, appName: '  ' }).success,
+    ).toBe(false);
+  });
+
+  it('takes an optional platform site URL and refuses a non-URL', () => {
+    const withSite = { ...appConfig, platformSiteUrl: 'https://platform.test' };
+    expect(appConfigSchema.safeParse(appConfig).success).toBe(true);
+    expect(appConfigSchema.safeParse(withSite).success).toBe(true);
+    expect(
+      appConfigSchema.safeParse({ ...appConfig, platformSiteUrl: 'nope' })
+        .success,
     ).toBe(false);
   });
 

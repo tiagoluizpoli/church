@@ -378,7 +378,7 @@ describe('volunteer dashboard', () => {
           shiftId: shift.id,
           roleId: RoleId.from('role'),
           shiftRequirementId: ShiftRequirementId.from({ raw: 'requirement' }),
-          status: 'confirmed',
+          status: 'pending',
         },
       });
       const notification = new Notification({
@@ -448,7 +448,7 @@ describe('volunteer dashboard', () => {
           assignments: [
             expect.objectContaining({
               assignmentId: AssignmentId.from('assignment'),
-              status: 'confirmed',
+              status: 'pending',
             }),
           ],
         }),
@@ -499,7 +499,7 @@ describe('volunteer dashboard', () => {
             shiftId: id,
             roleId: RoleId.from('role'),
             shiftRequirementId: requirementId,
-            status: 'confirmed',
+            status: 'pending',
           },
         });
       const bounds: Record<string, [string, string]> = {

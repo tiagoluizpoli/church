@@ -25,7 +25,7 @@ const EXISTING_ASSIGNMENT: RawAssignment = {
   volunteerId: 'ana',
   roleId: 'role-1',
   shiftRequirementId: 'requirement-role-1',
-  status: 'confirmed',
+  status: 'pending',
   assignedAt: '2026-07-01T10:00:00.000Z',
   lateMark: false,
 };
@@ -68,6 +68,9 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
               eventId: 'event-1',
               startTime: '2026-07-05T09:00:00.000Z',
               endTime: '2026-07-05T11:00:00.000Z',
+              isPublic: false,
+              place: null,
+              placeAddressId: null,
               status: 'active',
               requirements: [],
             },

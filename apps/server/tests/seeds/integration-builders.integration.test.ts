@@ -479,7 +479,7 @@ describe('integration composition of the shared seed builders', () => {
         roleId: usher.id,
         volunteerId: volunteerRow.id,
         shiftRequirementId: undefined as never,
-        status: 'confirmed',
+        status: 'pending',
       }),
     ).rejects.toThrow('explicit ShiftRequirement');
     const assigned = await buildAssignment({
@@ -490,7 +490,7 @@ describe('integration composition of the shared seed builders', () => {
       volunteerId: volunteerRow.id,
       roleId: usher.id,
       shiftRequirementId: sideRequirement.id,
-      status: 'confirmed',
+      status: 'pending',
       assignedAt: parseInstant({ value: '2024-06-01T10:00:00Z' }),
       assignedBy: ADMIN_USER_ID,
     });
@@ -546,7 +546,7 @@ describe('integration composition of the shared seed builders', () => {
       .from(assignment)
       .where(eq(assignment.id, assigned.id));
     expect(storedAssignment).toMatchObject({
-      status: 'confirmed',
+      status: 'pending',
       assignedBy: ADMIN_USER_ID,
       assignedAt: new Date('2024-06-01T10:00:00Z'),
     });
@@ -634,7 +634,7 @@ describe('integration composition of the shared seed builders', () => {
       roleId: usher.id,
       start,
       end,
-      status: 'confirmed',
+      status: 'pending',
     });
 
     expect(assigned.eventTimeBlock.eventId).toBe(planned.id);
@@ -645,7 +645,7 @@ describe('integration composition of the shared seed builders', () => {
     expect(assigned.assignment).toMatchObject({
       shiftId: assigned.shift.id,
       volunteerId: volunteerRow.id,
-      status: 'confirmed',
+      status: 'pending',
     });
   });
 
@@ -661,7 +661,7 @@ describe('integration composition of the shared seed builders', () => {
       db: testDb,
       churchId: CHURCH_ID,
       name: 'Sunday',
-      weekday: 0,
+      recurrence: { kind: 'weekly', weekdays: [0] },
       blocks: [
         {
           label: 'Early',
@@ -678,7 +678,10 @@ describe('integration composition of the shared seed builders', () => {
       ],
     });
 
-    expect(built.template).toMatchObject({ name: 'Sunday', weekday: 0 });
+    expect(built.template).toMatchObject({
+      name: 'Sunday',
+      recurrence: { kind: 'weekly', weekdays: [0] },
+    });
     expect(built.blocks.map((block) => block.label)).toEqual(['Early', 'Late']);
   });
 

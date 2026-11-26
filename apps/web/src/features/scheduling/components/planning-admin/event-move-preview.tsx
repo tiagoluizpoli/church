@@ -3,6 +3,7 @@ import type { Instant } from '@church/time';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CalendarClock } from 'lucide-react';
 import { useState } from 'react';
+import { refreshPlanning } from './refresh-planning';
 import { InstantField } from '@/components/instant-field';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,14 +17,13 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { CYCLE_BUILDER_QUERY_KEY } from '@/features/scheduling/hooks/use-cycle-builder';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatInstantRangeOf } from '@/shared/utils/church-time';
 import { pluralMessage } from '@/shared/utils/plural';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
-interface BoundsRange {
+export interface BoundsRange {
   start: string;
   end: string;
 }
@@ -39,7 +39,7 @@ export interface EventMovePreviewProps {
   size?: 'touch' | 'icon-xs';
 }
 
-interface MoveClashRow {
+export interface MoveClashRow {
   assignmentId: string;
   volunteer: { name: string };
   ministry: { name: string };
@@ -86,17 +86,7 @@ export function EventMovePreview({
             { start: value },
           )
         : adminApi.movePlanningEvent(cycleId, eventId, { start: value }),
-    onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['cycle-details', cycleId] }),
-        queryClient.invalidateQueries({ queryKey: ['cycles'] }),
-        queryClient.invalidateQueries({ queryKey: CYCLE_BUILDER_QUERY_KEY }),
-        // Every Ministry's Schedule reads the moved Shifts.
-        queryClient.invalidateQueries({
-          predicate: ({ queryKey: [key] }) =>
-            typeof key === 'string' && key.startsWith('prepare-'),
-        }),
-      ]),
+    onSuccess: () => refreshPlanning({ queryClient, cycleId }),
   });
   const result = preview.data;
   const moved = move.data;
@@ -277,12 +267,12 @@ export function EventMovePreview({
   );
 }
 
-interface ClashListProps {
+export interface ClashListProps {
   clashes: MoveClashRow[];
   range: (value: BoundsRange) => string;
 }
 
-function ClashList({ clashes, range }: ClashListProps) {
+export function ClashList({ clashes, range }: ClashListProps) {
   return (
     <ul className="text-xs">
       {clashes.map(

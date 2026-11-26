@@ -128,8 +128,8 @@ export function runAssignmentRepositoryContractTests(
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
         input: {
-          status: 'confirmed',
-          reason: 'Confirmed by test',
+          status: 'cancelled',
+          reason: 'Updated by test',
         },
       });
 
@@ -137,8 +137,8 @@ export function runAssignmentRepositoryContractTests(
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
         assignmentId: '99999999-9999-9999-9999-999999999991' as AssignmentId,
       });
-      expect(found.status).toBe('confirmed');
-      expect(found.reason).toBe('Confirmed by test');
+      expect(found.status).toBe('cancelled');
+      expect(found.reason).toBe('Updated by test');
     });
 
     it('should count assignments in range', async () => {
@@ -148,20 +148,9 @@ export function runAssignmentRepositoryContractTests(
         volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
         startTime: new Date('2024-06-01T00:00:00Z'),
         endTime: new Date('2024-06-30T23:59:59Z'),
-        statusFilter: ['confirmed'],
+        statusFilter: ['pending'],
       });
       expect(count).toBeGreaterThanOrEqual(1);
-    });
-
-    it('should list declined assignments by event time block', async () => {
-      const list = await repo.listDeclinedByEventTimeBlock({
-        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
-        eventTimeBlockId:
-          '77777777-7777-7777-7777-777777777771' as EventTimeBlockId,
-      });
-      expect(list.length).toBe(1);
-      expect(list[0]?.id).toBe('99999999-9999-9999-9999-999999999992');
-      expect(list[0]?.status).toBe('declined');
     });
 
     it('should delete assignments by event', async () => {

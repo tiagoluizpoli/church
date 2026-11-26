@@ -83,7 +83,7 @@ async function seedOpenRequest() {
     volunteerId: volunteer.id,
     roleId: role.id,
     shiftRequirementId: from.id,
-    status: 'confirmed',
+    status: 'pending',
   });
   const [inserted] = await db
     .insert(swapRequest)

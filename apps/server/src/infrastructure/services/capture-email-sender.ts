@@ -13,7 +13,7 @@ import type {
   LastVerificationCodeForInput,
   VerificationCodeInspector,
 } from '../../domain/contracts/infrastructure/verification-code-inspector';
-import { prepareEmail } from './email-templates';
+import { type PlatformBranding, prepareEmail } from './email-templates';
 
 const CAPTURE_FROM = 'Church <capture@church.test>';
 
@@ -23,6 +23,11 @@ const CAPTURE_FROM = 'Church <capture@church.test>';
  * Like the provider, a repeated idempotency key is deduplicated: it records
  * nothing new, so a replay is observable as one captured email.
  */
+export interface CaptureEmailSenderOptions {
+  appName: string;
+  platform?: PlatformBranding;
+}
+
 export class CaptureEmailSender
   implements EmailSender, VerificationCodeInspector
 {
@@ -30,7 +35,13 @@ export class CaptureEmailSender
   readonly delivered: ReplayableEmail[] = [];
   private readonly seenKeys = new Set<string>();
 
-  constructor(private readonly appName: string) {}
+  private readonly appName: string;
+  private readonly platform: PlatformBranding | undefined;
+
+  constructor({ appName, platform }: CaptureEmailSenderOptions) {
+    this.appName = appName;
+    this.platform = platform;
+  }
 
   prepare({ payload, locale }: PrepareEmailInput): PreparedEmail {
     return prepareEmail({
@@ -38,6 +49,7 @@ export class CaptureEmailSender
       locale,
       from: CAPTURE_FROM,
       appName: this.appName,
+      platform: this.platform,
     });
   }
 

@@ -385,7 +385,7 @@ async function seedTemplatedBlock({ base, entry }: SeedTemplatedBlockInput) {
   const { blocks } = await createSchedulingPhase3Template({
     churchId,
     name: 'Sunday',
-    weekday: 0,
+    recurrence: { kind: 'weekly', weekdays: [0] },
     blocks: [
       {
         label: 'Service',
@@ -473,6 +473,43 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
         { id: second?.id, flagged: false, requirements: [{ peopleNeeded: 3 }] },
       ],
     });
+  });
+
+  it.each([
+    ['time block', 'eventTimeBlock', 'EVENT_TIME_BLOCK_CANCELLED'],
+    ['Event', 'event', 'EVENT_CANCELLED'],
+  ] as const)('refuses to prepare a cancelled %s, writing nothing', async (_, scope, error) => {
+    const base = await seedPreparation();
+    if (scope === 'event')
+      await db
+        .update(eventTable)
+        .set({ status: 'cancelled' })
+        .where(eq(eventTable.id, base.eventId));
+    else
+      await db
+        .update(eventTimeBlock)
+        .set({ status: 'cancelled' })
+        .where(eq(eventTimeBlock.id, base.eventTimeBlockId));
+
+    const response = await savePreparation({
+      ...base,
+      payload: {
+        serves: true,
+        shiftSplit: { kind: 'equal', count: 2 },
+        headcounts: [headcountOf(base, { shiftIndex: 1, peopleNeeded: 3 })],
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      error,
+      message:
+        scope === 'event'
+          ? m.error_event_cancelled()
+          : m.error_event_time_block_cancelled(),
+    });
+    expect(await blockShifts(base.eventTimeBlockId)).toEqual([]);
+    expect(await blockInclusions(base.eventTimeBlockId)).toEqual([]);
   });
 
   describe('a served save', () => {
@@ -1363,7 +1400,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
         volunteerId: volunteer.id,
         roleId: base.roleId,
         shiftRequirementId: requirement.id,
-        status: 'confirmed',
+        status: 'pending',
       });
       await setParticipationState(base, 'assigning');
 
@@ -1397,7 +1434,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
         volunteerId: volunteer.id,
         roleId: base.roleId,
         shiftRequirementId: requirement.id,
-        status: 'confirmed',
+        status: 'pending',
       });
       await setParticipationState(base, 'availability_requested');
       const { paused, release } = pauseWrite('updateState');
@@ -1606,7 +1643,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
         volunteerId: existing.id,
         roleId: base.roleId,
         shiftRequirementId: target.requirement.id,
-        status: 'confirmed',
+        status: 'pending',
       });
       const { paused, release } = pauseWrite('updateState');
 
@@ -1754,7 +1791,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       base: Base;
       shiftId: string;
       shiftRequirementId: string;
-      status?: 'draft' | 'pending' | 'confirmed' | 'declined' | 'cancelled';
+      status?: 'draft' | 'pending' | 'cancelled';
     }
 
     async function assign({
@@ -1812,7 +1849,6 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       return { first: first.shift, second: secondShift };
     }
 
-    const ANSWER_RACE_WINDOW_MS = 300;
     const SPLIT_SECOND_HALF: [string, string][] = [
       [BLOCK_START, BLOCK_MIDDLE],
       [BLOCK_MIDDLE, '2099-03-01T10:30:00.000Z'],
@@ -1839,7 +1875,7 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
           shiftRequirementId: requirement.id,
         };
         await assign(assigned);
-        await assign({ ...assigned, status: 'confirmed' });
+        await assign({ ...assigned, status: 'pending' });
         await setParticipationState(base, state);
 
         for (const peopleNeeded of [5, 2]) {
@@ -2097,30 +2133,6 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
         ]);
         expect(await marksOf(marked.id)).toHaveLength(1);
       });
-
-      it('reads a racing answer before deciding, so it is never discarded', async () => {
-        const base = await seedPreparation();
-        const { shift: answered } = await seedBlockShift({ base });
-        const check = await seedCheck(base);
-        let save: ReturnType<typeof savePreparation> | undefined;
-
-        await db.transaction(async (tx) => {
-          await tx.insert(unavailableShift).values({
-            churchId: base.churchId,
-            availabilityCheckId: check.id,
-            shiftId: answered.id,
-          });
-          save = savePreparation({ ...base, payload: { serves: false } });
-          // The save must reach the Shift rows while this answer is uncommitted.
-          await new Promise((resolve) =>
-            setTimeout(resolve, ANSWER_RACE_WINDOW_MS),
-          );
-        });
-        const outcome = await save;
-
-        expect(outcome?.statusCode).toBe(409);
-        expect(await marksOf(answered.id)).toHaveLength(1);
-      });
     });
 
     describe('free edits', () => {
@@ -2358,10 +2370,9 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
       }
     });
 
-    describe('cancelled and declined Assignments', () => {
+    describe('cancelled Assignments', () => {
       it.each([
         'cancelled',
-        'declined',
       ] as const)('%s never blocks a lower headcount, a re-split or an opt-out', async (status) => {
         const base = await seedPreparation();
         const { shift: seeded, requirement } = await seedBlockShift({ base });

@@ -6,10 +6,10 @@ import {
   canSaveTemplate,
   createEmptyTemplateTimeBlock,
 } from './planning-admin.utils';
+import type { RecurrenceChangeInput } from './recurrence-editor';
 import type {
   NameChangeInput,
   TemplateEditorFields,
-  WeekdayChangeInput,
 } from './template-editor-form';
 import type { TemplateTimeBlockRowProps } from './template-time-block-row';
 import {
@@ -51,6 +51,8 @@ export interface UseTemplateFormInput {
 
 export interface UseTemplateFormResult {
   form: TemplateFormState;
+  /** The draft differs from what the form opened with. */
+  dirty: boolean;
   setRefusal: Dispatch<SetStateAction<SaveRefusal>>;
   fields: TemplateEditorFields;
 }
@@ -63,6 +65,7 @@ export function useTemplateForm({
   initialForm,
 }: UseTemplateFormInput): UseTemplateFormResult {
   const [form, setForm] = useState<TemplateFormState>(initialForm);
+  const [baseline] = useState(() => JSON.stringify(form));
   const [refusal, setRefusal] = useState<SaveRefusal>({});
 
   const onBlockChange: TemplateTimeBlockRowProps['onBlockChange'] = (input) => {
@@ -79,6 +82,7 @@ export function useTemplateForm({
 
   return {
     form,
+    dirty: baseline !== JSON.stringify(form),
     setRefusal,
     fields: {
       form,
@@ -89,8 +93,8 @@ export function useTemplateForm({
         setRefusal({});
         setForm((current) => ({ ...current, name }));
       },
-      onWeekdayChange: ({ weekday }: WeekdayChangeInput) =>
-        setForm((current) => ({ ...current, weekday })),
+      onRecurrenceChange: ({ recurrence }: RecurrenceChangeInput) =>
+        setForm((current) => ({ ...current, recurrence })),
       onBlockChange,
       onRemoveBlock: ({ blockKey }: RemoveBlockInput) =>
         setForm((current) => ({

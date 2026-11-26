@@ -13,15 +13,19 @@ import { fileURLToPath } from 'node:url';
  * config load, so a new spec is classified deliberately.
  */
 export const ISOLATED_SPECS = [
+  'church-settings/church-settings-journey.spec.ts',
+  'public-church/public-church-profile.spec.ts',
   'identity/active-church-switching.spec.ts',
   'identity/cross-tenant-invitation-isolation.spec.ts',
   'identity/first-admin-onboarding.spec.ts',
   'identity/invitation-journey.spec.ts',
   'identity/redemption-existing-member.spec.ts',
+  'identity/redemption-church-only-sign-in.spec.ts',
   'identity/redemption-new-user.spec.ts',
   'identity/route-protection.spec.ts',
   'identity/volunteer-transfer-journey.spec.ts',
   'ministries/ministries-directory.spec.ts',
+  'ministries/ministry-tabs-narrow.spec.ts',
   'people/people-journey.spec.ts',
   'resilience/reconnecting-banner.spec.ts',
   'scheduling/a11y-planning-nav.spec.ts',
@@ -33,6 +37,7 @@ export const ISOLATED_SPECS = [
   'scheduling/planning-nav-restructure.spec.ts',
   'scheduling/planning-role-guard-matrix.spec.ts',
   'scheduling/single-create-event-ui.spec.ts',
+  'scheduling/template-precedence.spec.ts',
   'scheduling/us1-admin-plan.spec.ts',
   // Journey recipes (#327, #329): each test loads its own Church, personas
   // and schedule.
@@ -41,10 +46,12 @@ export const ISOLATED_SPECS = [
   'scheduling/qualification.spec.ts',
   'scheduling/smoke.spec.ts',
   'scheduling/us2-leader-prepare.spec.ts',
+  'scheduling/prepare-panel.spec.ts',
   'scheduling/j6-leader-availability.spec.ts',
   'scheduling/us3-volunteer-availability.spec.ts',
   'scheduling/j9-swap-request.spec.ts',
   'scheduling/j10-admin-cancel.spec.ts',
+  'scheduling/j11-admin-edit-event.spec.ts',
   'scheduling/us4-schedule-publish.spec.ts',
   'scheduling/us5-leader-reassign.spec.ts',
   'volunteer-dashboard/us-notification-bell.spec.ts',

@@ -20,6 +20,10 @@ vi.mock('@/utils/api-instances', () => ({
     createPlanningEvent: (...args: unknown[]) => createPlanningEvent(...args),
   },
 }));
+const capabilities = vi.hoisted(() => ({ isChurchAdmin: true }));
+vi.mock('@/shared/hooks/use-caller-capabilities', () => ({
+  useCallerCapabilities: () => capabilities,
+}));
 vi.mock('sonner', () => ({
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
@@ -131,6 +135,18 @@ beforeEach(() => {
   getCycle.mockResolvedValue(cycleResponse());
 });
 
+describe('Público and place visibility', () => {
+  it('hides the controls from a non-admin', async () => {
+    capabilities.isChurchAdmin = false;
+    renderPage();
+    await screen.findByTestId('event-editor-form');
+    expect(
+      screen.queryByTestId('event-block-public-checkbox'),
+    ).not.toBeInTheDocument();
+    capabilities.isChurchAdmin = true;
+  });
+});
+
 describe('EventCreatePage', () => {
   it('starts on the first Cycle day with one whole-Event row, a disabled Save and Cancel back to the Cycle', async () => {
     renderPage();
@@ -147,7 +163,7 @@ describe('EventCreatePage', () => {
     expect(saveButton()).toBeDisabled();
     expect(
       screen.getByRole('link', { name: m.event_editor_cancel() }),
-    ).toHaveAttribute('href', '/cycles/cycle-1');
+    ).toHaveAttribute('href', '/app/cycles/cycle-1');
     expect(screen.queryByLabelText(/descri/i)).not.toBeInTheDocument();
   });
 
@@ -298,11 +314,15 @@ describe('EventCreatePage', () => {
     await setTime({ user, testId: 'event-block-2-start', time: '22:00' });
     await setDay({ user, testId: 'event-block-2-end', date: '2026-10-26' });
     await setTime({ user, testId: 'event-block-2-end', time: '02:00' });
+    const [publicBox] = screen.getAllByTestId('event-block-public-checkbox');
+    const [placeInput] = screen.getAllByTestId('event-block-place-input');
+    await user.click(publicBox as HTMLElement);
+    await user.type(placeInput as HTMLElement, 'Camp hall');
     await user.click(saveButton());
 
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith({
-        to: '/cycles/$cycleId',
+        to: '/app/cycles/$cycleId',
         params: { cycleId: 'cycle-1' },
         search: { eventId: 'event-9' },
       }),
@@ -318,11 +338,17 @@ describe('EventCreatePage', () => {
           label: 'Retreat',
           startTime: '2026-10-25T22:00:00.000Z',
           endTime: '2026-10-27T15:00:00.000Z',
+          isPublic: true,
+          place: 'Camp hall',
+          placeAddressId: null,
         },
         {
           label: 'Vigil',
           startTime: '2026-10-26T01:00:00.000Z',
           endTime: '2026-10-26T05:00:00.000Z',
+          isPublic: false,
+          place: '',
+          placeAddressId: null,
         },
       ],
     });

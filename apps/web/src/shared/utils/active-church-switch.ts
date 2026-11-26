@@ -1,5 +1,6 @@
 import type { Query, QueryClient } from '@tanstack/react-query';
 import { postActiveChurchSwitched } from '@/shared/utils/active-church-broadcast';
+import { ACTIVE_CHURCH_STATUS_QUERY_KEY } from '@/shared/utils/entry-gate-cache';
 
 export type ActiveChurchArea = 'dashboard' | 'scheduling';
 
@@ -38,46 +39,53 @@ interface ClearActiveChurchScopedCacheInput {
   queryClient: QueryClient;
 }
 
-const HOME_DESTINATION = '/';
+const HOME_DESTINATION = '/app';
 const DESTINATION_BASE_URL = 'https://church.local';
 
 // Every current Church-scoped route has an explicit policy. Parameterized
 // resource routes deliberately fall back because their identifiers are owned
 // by the previous Church context.
 const ACTIVE_CHURCH_ROUTE_POLICIES: ActiveChurchRoutePolicy[] = [
-  // Home is the common entry; it keeps dashboard-area Churches on `/`.
-  { pattern: /^\/$/, policy: 'preserve', requiredArea: 'dashboard' },
+  // Home is the common entry; it keeps dashboard-area Churches on `/app`.
+  { pattern: /^\/app\/?$/, policy: 'preserve', requiredArea: 'dashboard' },
   {
-    pattern: /^\/dashboard$/,
+    pattern: /^\/app\/dashboard$/,
     policy: 'preserve',
     requiredArea: 'dashboard',
   },
-  { pattern: /^\/availability$/, policy: 'fallback' },
-  { pattern: /^\/notifications$/, policy: 'fallback' },
+  { pattern: /^\/app\/availability$/, policy: 'fallback' },
+  { pattern: /^\/app\/notifications$/, policy: 'fallback' },
   {
-    pattern: /^\/cycles\/?$/,
+    pattern: /^\/app\/cycles\/?$/,
     policy: 'preserve',
     requiredArea: 'scheduling',
   },
   {
-    pattern: /^\/event-templates$/,
+    pattern: /^\/app\/event-templates$/,
     policy: 'preserve',
     requiredArea: 'scheduling',
   },
-  { pattern: /^\/event-templates\/[^/]+$/, policy: 'fallback' },
-  { pattern: /^\/cycles\/[^/]+$/, policy: 'fallback' },
+  { pattern: /^\/app\/event-templates\/[^/]+$/, policy: 'fallback' },
+  { pattern: /^\/app\/cycles\/[^/]+$/, policy: 'fallback' },
   {
-    pattern: /^\/schedules\/?$/,
+    pattern: /^\/app\/schedules\/?$/,
     policy: 'preserve',
     requiredArea: 'scheduling',
   },
-  { pattern: /^\/schedules\/[^/]+$/, policy: 'fallback' },
-  { pattern: /^\/schedules\/[^/]+\/[^/]+$/, policy: 'fallback' },
-  { pattern: /^\/schedules\/[^/]+\/[^/]+\/assign$/, policy: 'fallback' },
+  { pattern: /^\/app\/schedules\/[^/]+$/, policy: 'fallback' },
+  { pattern: /^\/app\/schedules\/[^/]+\/[^/]+$/, policy: 'fallback' },
+  { pattern: /^\/app\/schedules\/[^/]+\/[^/]+\/assign$/, policy: 'fallback' },
 ];
 
 export function isChurchScopedQuery(query: Query): boolean {
-  return query.queryKey[0] !== 'active-church';
+  // Redemption queries belong to the mounted invitation page, which shows
+  // their own errors; removing them makes it refetch an accepted invitation.
+  // The gate status describes the Active Church, so a switch drops it too.
+  const [scope, name] = query.queryKey;
+  if (scope === 'redemption') return false;
+  return (
+    scope !== 'active-church' || name === ACTIVE_CHURCH_STATUS_QUERY_KEY[1]
+  );
 }
 
 export async function clearActiveChurchScopedCache({
@@ -142,7 +150,7 @@ interface FinishRedemptionAtHomeInput {
 }
 
 /**
- * Lands a full-success redemption on Home (`/`) with a fresh session and
+ * Lands a full-success redemption on Home (`/app`) with a fresh session and
  * no stale Church-scoped cache; the entry gate resolves its one Church. The
  * cross-Church split's outcomes, which leave the User in several Churches,
  * select the destination instead (`useContinueToChurch`).

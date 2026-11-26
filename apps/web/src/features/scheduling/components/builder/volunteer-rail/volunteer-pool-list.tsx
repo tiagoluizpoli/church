@@ -8,6 +8,7 @@ import {
 import { type ReactNode, useMemo, useState } from 'react';
 import type { VolunteerPoolItem } from '../../../hooks/use-volunteer-pool';
 import type { AssignableFitTier } from '../../../utils/builder/cycle-builder-fit.utils';
+import { volunteerDisplayNames } from '../../../utils/builder/volunteer-display-names';
 import type { GroupMode } from '../../../utils/builder/volunteer-pool-groups';
 import {
   flattenPoolRows,
@@ -85,6 +86,16 @@ export function VolunteerPoolList({
     [groupMode, focusedVolunteers, otherVolunteers, unavailableOpen],
   );
 
+  const displayNames = useMemo(
+    () =>
+      volunteerDisplayNames({
+        names: [...(focusedVolunteers ?? []), ...otherVolunteers].map(
+          (volunteer) => volunteer.volunteerName,
+        ),
+      }),
+    [focusedVolunteers, otherVolunteers],
+  );
+
   const renderRow = (row: PoolRow): ReactNode => {
     switch (row.kind) {
       case 'header':
@@ -106,6 +117,7 @@ export function VolunteerPoolList({
         return (
           <VolunteerCard
             volunteer={row.volunteer}
+            displayName={displayNames.get(row.volunteer.volunteerName)}
             isSelected={selectedVolunteerId === row.volunteer.volunteerId}
             isIdeal={idealVolunteerId === row.volunteer.volunteerId}
             onSelect={onSelectVolunteer}
@@ -210,7 +222,7 @@ function GroupHeader({ label, count, icon, open, onToggle }: GroupHeaderProps) {
         <LocateFixed className="size-3.5 text-primary" />
       ) : null}
       <span>{label}</span>
-      <span className="ml-auto normal-case">{count}</span>
+      <span className="ml-auto">{count}</span>
     </>
   );
 
@@ -221,7 +233,7 @@ function GroupHeader({ label, count, icon, open, onToggle }: GroupHeaderProps) {
         onClick={onToggle}
         aria-expanded={open}
         aria-label={`${label} (${count})`}
-        className="flex w-full items-center gap-1.5 text-muted-foreground text-xs uppercase tracking-wide"
+        className="flex w-full items-center gap-1.5 text-muted-foreground text-xs"
       >
         {content}
       </button>
@@ -229,7 +241,7 @@ function GroupHeader({ label, count, icon, open, onToggle }: GroupHeaderProps) {
   }
 
   return (
-    <h3 className="flex items-center gap-1.5 text-muted-foreground text-xs uppercase tracking-wide">
+    <h3 className="flex items-center gap-1.5 text-muted-foreground text-xs">
       {content}
     </h3>
   );

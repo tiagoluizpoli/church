@@ -207,7 +207,7 @@ export class PrepareController implements FastifyController {
           operationId: 'getScheduleInsights',
           summary: "Staffing trends of the caller's Schedules",
           description:
-            "Totals over the caller's Ministries (every active one for a ChurchAdmin, the led ones for a leader): for each of the latest six Sent or Past Cycles, oldest first, the requirement headcount (`needed`), the seats held by a draft, pending or confirmed assignment (`filled`, capped per requirement), assignments by response, and availability checks asked and answered; plus, for the Cycle running on the Church's today (else the latest), the same staffing totals per serving Ministry, least covered first, then by name. Cancelled Events, inactive blocks and archived Ministries, Sectors and Roles are left out.",
+            "Totals over the caller's Ministries (every active one for a ChurchAdmin, the led ones for a leader): for each of the latest six Sent or Past Cycles, oldest first, the requirement headcount (`needed`), the seats held by a draft or pending assignment (`filled`, capped per requirement), and availability checks asked and answered; plus, for the Cycle running on the Church's today (else the latest), the same staffing totals per serving Ministry, least covered first, then by name. Cancelled Events, inactive blocks and archived Ministries, Sectors and Roles are left out.",
           response: {
             200: scheduleInsightsResponseSchema,
             401: errorResponseSchema,
@@ -436,7 +436,7 @@ export class PrepareController implements FastifyController {
           operationId: 'saveEventTimeBlockPreparation',
           summary: "Save one EventTimeBlock's preparation",
           description:
-            'Apply the complete desired Serves, Shift split and headcounts of one EventTimeBlock in one transaction. Omitted or zero headcounts remove their ShiftRequirement; other blocks are untouched. Serving with neither split nor headcounts opts a block with no Shifts in from the Usual setup. A headcount cannot drop below its active Assignments. Re-splitting, deleting a Shift or opting out is refused while an affected Shift carries UnavailableShift marks or active Assignments.',
+            'Apply the complete desired Serves, Shift split and headcounts of one EventTimeBlock in one transaction. Omitted or zero headcounts remove their ShiftRequirement; other blocks are untouched. Serving with neither split nor headcounts opts a block with no Shifts in from the Usual setup. A headcount cannot drop below its active Assignments. Re-splitting, deleting a Shift or opting out is refused while an affected Shift carries UnavailableShift marks or active Assignments. A block under a cancelled Event or EventTimeBlock is refused as EVENT_CANCELLED or EVENT_TIME_BLOCK_CANCELLED.',
           body: savePreparationBodySchema,
           response: {
             200: participationEventTimeBlockViewSchema,

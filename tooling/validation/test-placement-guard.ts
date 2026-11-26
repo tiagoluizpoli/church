@@ -31,7 +31,7 @@ export function getTestPlacementFailures({
         }
       }
     }
-    const app = path.match(/^apps\/[^/]+(?=\/tests\/)/)?.[0];
+    const app = path.match(/^(?:apps|packages)\/[^/]+(?=\/tests\/)/)?.[0];
     if (app) {
       for (const [, , specifier] of source.matchAll(MODULE_SPECIFIER_PATTERN)) {
         const target = posix.join(posix.dirname(path), specifier ?? '');

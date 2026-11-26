@@ -50,6 +50,7 @@ import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/d
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
+import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
@@ -72,6 +73,7 @@ import {
   seedVolunteer,
   staff,
 } from '@/tests/test-support/cancellation-fixture';
+import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -100,6 +102,7 @@ class FlakyNotifications extends ChurchNotifications {
 }
 
 const notifications = new FlakyNotifications({
+  churchIdentity: nullChurchIdentity,
   outboxRepository: new DrizzleOutboxRepository({ db }),
 });
 
@@ -116,6 +119,7 @@ beforeAll(async () => {
     planningEventManager: new DbPlanningEventManager({
       cycleRepository: new DrizzleCycleRepository({ db }),
       eventRepository: new DrizzlePlanningEventRepository({ db }),
+      precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
       templateRepository: new DrizzleEventTemplateRepository({ db }),
       churchRepository,
       unitOfWork: new DrizzleUnitOfWork({ db }),
@@ -311,7 +315,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel/preview', () => {
       eventTitle: 'Sunday',
       start: at('09:00'),
       end: at('12:00'),
-      // Ana and Bia are published; Dani declined, Caio is unpublished.
+      // Ana and Bia are published; Dani cancelled, Caio is unpublished.
       volunteerCount: 2,
       ministryCount: 1,
       ministries: [
@@ -353,12 +357,12 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
     });
     const [sundayRow] = await db.select().from(event);
     expect(sundayRow?.status).toBe('cancelled');
-    // Soft-cancelled and retained; the declined one is not active work.
+    // Soft-cancelled and retained; the cancelled one is not active work.
     const { anaWelcome, biaService, caioService, daniService } = sunday;
     expect(await statusOf(anaWelcome.assignment.id)).toBe('cancelled');
     expect(await statusOf(biaService.assignment.id)).toBe('cancelled');
     expect(await statusOf(caioService.assignment.id)).toBe('cancelled');
-    expect(await statusOf(daniService.assignment.id)).toBe('declined');
+    expect(await statusOf(daniService.assignment.id)).toBe('cancelled');
     const audits = await db
       .select({
         assignmentId: assignmentAudit.assignmentId,
@@ -405,6 +409,8 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
       eventTitle: 'Sunday',
       start: at('09:00'),
       churchName: 'Scheduling Church A',
+      churchLogoUrl: null,
+      churchAccent: null,
       churchTimezone: 'America/Sao_Paulo',
       shifts: [
         {
@@ -472,7 +478,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
       volunteerId: fia.volunteer.id,
       start: '09:00',
       end: '10:00',
-      status: 'confirmed',
+      status: 'pending',
     });
 
     const response = await confirm(sunday);
@@ -749,8 +755,8 @@ describe('POST …/event-time-blocks/:eventTimeBlockId/cancel(/preview)', () => 
     const { anaWelcome, biaService, caioService, daniService } = sunday;
     expect(await statusOf(biaService.assignment.id)).toBe('cancelled');
     expect(await statusOf(caioService.assignment.id)).toBe('cancelled');
-    expect(await statusOf(daniService.assignment.id)).toBe('declined');
-    expect(await statusOf(anaWelcome.assignment.id)).toBe('confirmed');
+    expect(await statusOf(daniService.assignment.id)).toBe('cancelled');
+    expect(await statusOf(anaWelcome.assignment.id)).toBe('pending');
     const audits = await db.select().from(assignmentAudit);
     expect(audits.map(({ assignmentId }) => assignmentId).sort()).toEqual(
       [biaService.assignment.id, caioService.assignment.id].sort(),

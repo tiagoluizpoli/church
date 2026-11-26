@@ -1,22 +1,15 @@
-import { appConfig } from '@church/app-config';
 import { addCalendarDays, type CalendarDay } from '@church/time';
 
 /** The planning window a scheduling journey creates its own Cycle
  * over. It opens CYCLE_START_OFFSET_DAYS after the anchor and includes
  * exactly four weeks (endDate is the last included day), so it always holds
- * four Sundays and ends in the future. The
- * offset keeps the first Sunday beyond the volunteer cancel lead time on any
- * weekday: the server refuses a cancel within `assignment.cancelLeadTimeDays`
- * of the shift, which a Thursday-to-Saturday anchor would otherwise breach. */
+ * four Sundays and ends in the future. */
 export interface CycleWindow {
   startDate: CalendarDay;
   endDate: CalendarDay;
 }
 
-const { cancelLeadTimeDays } = appConfig.assignment;
-/** Keeps the first Sunday off the exact cancel-lead-time border. */
-const CANCEL_BORDER_MARGIN_DAYS = 2;
-const CYCLE_START_OFFSET_DAYS = cancelLeadTimeDays + CANCEL_BORDER_MARGIN_DAYS;
+const CYCLE_START_OFFSET_DAYS = 5;
 const CYCLE_LENGTH_DAYS = 28;
 
 export interface CycleWindowInput {

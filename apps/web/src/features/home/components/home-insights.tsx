@@ -1,46 +1,27 @@
 import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
-import { formatMonthShort, parseCalendarDay } from '@church/time';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import {
-  Bar,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  PolarAngleAxis,
-  RadialBar,
-  RadialBarChart,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
-  type ChartConfig,
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/components/ui/chart';
-
-type ChartTooltipLabelFormatter = NonNullable<
-  React.ComponentProps<typeof ChartTooltipContent>['labelFormatter']
->;
-type ChartTooltipFormatter = NonNullable<
-  React.ComponentProps<typeof ChartTooltipContent>['formatter']
->;
-
+import type { MouseEvent } from 'react';
+import { AnimatedNumber } from '@/features/home/components/animated-number';
 import type { HomeSectionProps } from '@/features/home/components/home-section-props';
 import { HomeWidget } from '@/features/home/components/home-widget';
 import { homeSectionQueryKey } from '@/features/home/lib/home-query-keys';
 import { cn } from '@/lib/utils';
+import { SCHEDULE_TITLE_TRANSITION } from '@/shared/utils/view-transition-names';
 import { adminApi } from '@/utils/api-instances';
 
 interface InsightsProps extends HomeSectionProps {
   scope: string;
+  enabled?: boolean;
 }
 
-function useScheduleInsights({ churchId, userId, scope }: InsightsProps) {
+export function useScheduleInsights({
+  churchId,
+  userId,
+  scope,
+  enabled = true,
+}: InsightsProps) {
   return useQuery({
     queryKey: homeSectionQueryKey({
       section: 'leadership',
@@ -49,6 +30,7 @@ function useScheduleInsights({ churchId, userId, scope }: InsightsProps) {
       parts: ['insights', scope],
     }),
     queryFn: () => adminApi.getScheduleInsights(),
+    enabled,
   });
 }
 
@@ -62,6 +44,15 @@ export function coveragePercent({ filled, needed }: Staffing): number {
   return needed > 0 ? Math.floor((filled * 100) / needed) : 0;
 }
 
+interface Availability {
+  answered: number;
+  asked: number;
+}
+
+function responsePercent({ answered, asked }: Availability): number {
+  return asked > 0 ? Math.floor((answered * 100) / asked) : 0;
+}
+
 interface FormatPercentInput {
   percent: number;
 }
@@ -73,6 +64,8 @@ export function formatPercent({ percent }: FormatPercentInput): string {
   }).format(percent / 100);
 }
 
+const percentText = (percent: number) => formatPercent({ percent });
+
 interface InsightsErrorInput {
   query: ReturnType<typeof useScheduleInsights>;
 }
@@ -83,82 +76,72 @@ function insightsError({ query }: InsightsErrorInput) {
     : undefined;
 }
 
-function OpenSpots({ filled, needed }: Staffing) {
-  const open = needed - filled;
-  if (open <= 0) return null;
-  return <span>{m.home_coverage_open({ count: open })}</span>;
-}
-
 interface MeterToneInput {
   percent: number;
 }
 
 /**
  * The Staffing Meter's traffic light (DESIGN.md), softened for the dashboard:
- * the same hues at reduced opacity, so status reads without shouting.
+ * the same `--meter-*` hues at reduced opacity, so status reads without shouting.
  */
 function meterTone({ percent }: MeterToneInput) {
-  if (percent >= 100)
-    return { color: 'var(--color-green-600)', bar: 'bg-green-600/60' };
-  if (percent >= 50)
-    return { color: 'var(--color-yellow-500)', bar: 'bg-yellow-500/70' };
-  return { color: 'var(--destructive)', bar: 'bg-destructive/60' };
+  if (percent >= 100) return 'bg-meter-success/60';
+  if (percent >= 50) return 'bg-meter-warning/70';
+  return 'bg-meter-danger/60';
 }
 
-const coverageRingConfig = {
-  coverage: { label: m.home_trend_coverage() },
-} satisfies ChartConfig;
-
-interface CoverageRingProps extends Staffing {
+interface MeterProps {
   percent: number;
+  /** Fill class; the track stays visible at 0 so an empty meter still reads as one. */
+  fill: string;
+  thin?: boolean;
 }
 
-function CoverageRing({ filled, needed, percent }: CoverageRingProps) {
+/** A thin bar that grows from its old width to the new one when the value changes after first paint. */
+export function Meter({ percent, fill, thin }: MeterProps) {
   return (
-    <div className="relative mx-auto size-40 shrink-0">
-      <ChartContainer
-        config={coverageRingConfig}
-        className="aspect-square size-full"
-        aria-hidden
-      >
-        <RadialBarChart
-          data={[{ coverage: Math.min(percent, 100) }]}
-          startAngle={90}
-          endAngle={-270}
-          innerRadius="78%"
-          outerRadius="100%"
-          barSize={12}
-        >
-          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-          <RadialBar
-            dataKey="coverage"
-            fill={meterTone({ percent }).color}
-            fillOpacity={percent >= 50 ? 0.7 : 0.6}
-            background={{ fill: 'var(--muted)' }}
-            cornerRadius={6}
-            isAnimationActive={false}
-          />
-        </RadialBarChart>
-      </ChartContainer>
-      <p className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-semibold text-3xl tabular-nums tracking-tight">
-          {formatPercent({ percent })}
-        </span>
-        <span className="text-muted-foreground text-xs tabular-nums">
-          {filled}/{needed}
-        </span>
-      </p>
-    </div>
+    <span
+      aria-hidden
+      className={cn(
+        'radius-control block overflow-hidden bg-muted',
+        thin ? 'h-1' : 'h-1.5',
+      )}
+    >
+      <span
+        className={cn(
+          'radius-control block h-full transition-[width] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none',
+          fill,
+        )}
+        style={{ width: `${Math.min(percent, 100)}%` }}
+      />
+    </span>
   );
 }
 
-/** Coverage of the current Cycle: an overall ring, then each Ministry least covered first. */
+/**
+ * Names only the clicked row's title for the schedule header morph, so the
+ * page never holds two elements with the same view-transition name.
+ */
+function nameMorphSource(event: MouseEvent<HTMLAnchorElement>) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey)
+    return;
+  for (const title of document.querySelectorAll<HTMLElement>(
+    '[data-morph-title]',
+  ))
+    title.style.viewTransitionName = '';
+  const title =
+    event.currentTarget.querySelector<HTMLElement>('[data-morph-title]');
+  if (title) title.style.viewTransitionName = SCHEDULE_TITLE_TRANSITION;
+}
+
+/** Coverage of the focus Cycle: one inline figure, its availability answers, then each Ministry least covered first. */
 export function CoverageWidget(props: InsightsProps) {
   const query = useScheduleInsights(props);
   const focus = query.data?.focus;
   const totals = query.data?.cycles.find(
     (cycle) => cycle.cycleId === focus?.cycleId,
   );
+  const percent = totals ? coveragePercent(totals) : 0;
   return (
     <HomeWidget
       title={
@@ -172,56 +155,91 @@ export function CoverageWidget(props: InsightsProps) {
       {!focus || !totals ? (
         <p className="text-muted-foreground">{m.home_coverage_none()}</p>
       ) : (
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-          <figure className="space-y-2">
-            <CoverageRing {...totals} percent={coveragePercent(totals)} />
-            <figcaption className="text-center text-muted-foreground text-sm">
-              <span className="sr-only">{m.home_coverage_filled(totals)}</span>
-              <OpenSpots {...totals} />
-            </figcaption>
-          </figure>
+        <div className="space-y-5">
+          <div className="grid @xl:grid-cols-2 @xl:gap-8 gap-4">
+            <div className="space-y-2">
+              <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <AnimatedNumber
+                  value={percent}
+                  format={percentText}
+                  className="font-semibold text-3xl tracking-tight"
+                />
+                <span className="text-muted-foreground text-sm tabular-nums">
+                  {m.home_coverage_filled(totals)}
+                  {totals.needed > totals.filled
+                    ? ` · ${m.home_coverage_open({ count: totals.needed - totals.filled })}`
+                    : null}
+                </span>
+              </p>
+              <Meter percent={percent} fill={meterTone({ percent })} />
+            </div>
+            {totals.asked > 0 ? (
+              <div className="space-y-2 @xl:self-end">
+                <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                  <span>{m.home_trend_answered()}</span>
+                  <span className="text-muted-foreground tabular-nums">
+                    <AnimatedNumber
+                      value={responsePercent(totals)}
+                      format={percentText}
+                      className="font-semibold text-foreground"
+                    />{' '}
+                    · {totals.answered}/{totals.asked}
+                  </span>
+                </p>
+                <Meter
+                  percent={responsePercent(totals)}
+                  fill="bg-primary/50"
+                  thin
+                />
+              </div>
+            ) : null}
+          </div>
           {focus.ministries.length === 0 ? (
             <p className="text-muted-foreground">{m.home_coverage_empty()}</p>
           ) : (
-            <ul className="min-w-0 flex-1">
+            <ul className="grid @2xl:grid-cols-2 gap-x-8 border-t pt-3">
               {focus.ministries.map((ministry) => {
-                const percent = coveragePercent(ministry);
+                const ministryPercent = coveragePercent(ministry);
+                const open = ministry.needed - ministry.filled;
                 return (
                   <li key={ministry.ministryId}>
                     <Link
-                      to="/schedules/$ministryId/$cycleId"
+                      to="/app/schedules/$ministryId/$cycleId"
                       params={{
                         ministryId: ministry.ministryId,
                         cycleId: focus.cycleId,
                       }}
+                      viewTransition
+                      onClick={nameMorphSource}
                       aria-label={m.home_coverage_ministry({
                         ministryName: ministry.name,
                         filled: ministry.filled,
                         needed: ministry.needed,
                       })}
-                      className="radius-control -mx-2 flex min-h-11 flex-col justify-center gap-1.5 px-2 py-1.5 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                      className="radius-control -mx-2 flex min-h-11 flex-col justify-center gap-1.5 px-2 py-2 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
                     >
                       <span className="flex items-baseline justify-between gap-3 text-sm">
-                        <span className="truncate">{ministry.name}</span>
-                        <span className="flex shrink-0 gap-2 text-muted-foreground text-xs tabular-nums">
-                          <OpenSpots {...ministry} />
+                        <span data-morph-title className="truncate">
+                          {ministry.name}
+                        </span>
+                        <span className="flex shrink-0 items-baseline gap-2 text-muted-foreground text-xs tabular-nums">
+                          {open > 0 ? (
+                            <span>{m.home_coverage_open({ count: open })}</span>
+                          ) : null}
                           <span>
                             {ministry.filled}/{ministry.needed}
                           </span>
+                          <AnimatedNumber
+                            value={ministryPercent}
+                            format={percentText}
+                            className="min-w-9 text-right font-semibold text-foreground"
+                          />
                         </span>
                       </span>
-                      <span
-                        aria-hidden
-                        className="radius-control h-1.5 overflow-hidden bg-muted"
-                      >
-                        <span
-                          className={cn(
-                            'radius-control block h-full',
-                            meterTone({ percent }).bar,
-                          )}
-                          style={{ width: `${Math.min(percent, 100)}%` }}
-                        />
-                      </span>
+                      <Meter
+                        percent={ministryPercent}
+                        fill={meterTone({ percent: ministryPercent })}
+                      />
                     </Link>
                   </li>
                 );
@@ -234,45 +252,44 @@ export function CoverageWidget(props: InsightsProps) {
   );
 }
 
-// One axis (percent of 0–100) for both series; the bar/line mark split carries identity alongside the legend.
-const trendConfig = {
-  filled: { label: m.home_trend_coverage(), color: 'var(--chart-1)' },
-  responded: {
-    label: m.home_trend_answered(),
-    color: 'var(--muted-foreground)',
-  },
-} satisfies ChartConfig;
+interface TrendMeterProps {
+  label: string;
+  /** Null when the Cycle had nothing to measure. */
+  percent: number | null;
+  detail: string;
+  fill: string;
+  thin?: boolean;
+}
 
-// named-parameters-ignore: Recharts calls the tooltip label formatter positionally
-const trendCycleName: ChartTooltipLabelFormatter = (_, payload) =>
-  payload[0]?.payload.name;
+function TrendMeter({ label, percent, detail, fill, thin }: TrendMeterProps) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-1">
+      <dt className="text-muted-foreground text-xs">{label}</dt>
+      <dd className="text-right text-xs tabular-nums">
+        {percent === null ? (
+          <span className="text-muted-foreground">{detail}</span>
+        ) : (
+          <>
+            <AnimatedNumber
+              value={percent}
+              format={percentText}
+              className="font-semibold"
+            />{' '}
+            <span className="text-muted-foreground">{detail}</span>
+          </>
+        )}
+      </dd>
+      <dd className="col-span-2">
+        <Meter percent={percent ?? 0} fill={fill} thin={thin} />
+      </dd>
+    </div>
+  );
+}
 
-// named-parameters-ignore: Recharts calls the tooltip formatter positionally
-const formatTrendValue: ChartTooltipFormatter = (value, name) => (
-  <div className="flex w-full items-center justify-between gap-4">
-    <span className="text-muted-foreground">
-      {trendConfig[name as keyof typeof trendConfig].label}
-    </span>
-    <span className="font-medium font-mono tabular-nums">
-      {formatPercent({ percent: Number(value) })}
-    </span>
-  </div>
-);
-
-/** Spots filled and availability answered across the latest Cycles, oldest first. */
+/** The latest Cycles as small multiples, oldest first: spots filled and availability answered, each labelled. */
 export function TrendWidget(props: InsightsProps) {
   const query = useScheduleInsights(props);
   const cycles = query.data?.cycles ?? [];
-  const data = cycles.map((cycle) => ({
-    name: cycle.name,
-    month: formatMonthShort({
-      day: parseCalendarDay({ value: cycle.startDate }),
-      locale: getLocale(),
-    }),
-    filled: cycle.needed > 0 ? coveragePercent(cycle) : null,
-    responded:
-      cycle.asked > 0 ? Math.floor((cycle.answered * 100) / cycle.asked) : null,
-  }));
   return (
     <HomeWidget
       title={m.home_trend_title()}
@@ -282,89 +299,39 @@ export function TrendWidget(props: InsightsProps) {
       {cycles.length === 0 ? (
         <p className="text-muted-foreground">{m.home_coverage_none()}</p>
       ) : (
-        <figure>
-          <ChartContainer
-            config={trendConfig}
-            className="aspect-auto h-56 w-full"
-          >
-            <ComposedChart
-              data={data}
-              margin={{ top: 8, right: 4, bottom: 0, left: 0 }}
-              accessibilityLayer
-            >
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="month"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                className="capitalize"
-              />
-              <YAxis
-                domain={[0, 100]}
-                ticks={[0, 50, 100]}
-                tickLine={false}
-                axisLine={false}
-                width={48}
-                tickFormatter={(percent: number) => formatPercent({ percent })}
-              />
-              <ChartTooltip
-                cursor={{ fill: 'var(--muted)', opacity: 0.6 }}
-                content={
-                  <ChartTooltipContent
-                    labelFormatter={trendCycleName}
-                    formatter={formatTrendValue}
+        <ul className="grid @3xl:grid-cols-1 @md:grid-cols-2 gap-x-6 gap-y-4">
+          {cycles.map((cycle) => {
+            const filled = cycle.needed > 0 ? coveragePercent(cycle) : null;
+            return (
+              <li key={cycle.cycleId} className="space-y-2">
+                <h3 className="font-medium text-sm">{cycle.name}</h3>
+                <dl className="space-y-2">
+                  <TrendMeter
+                    label={m.home_trend_coverage()}
+                    percent={filled}
+                    detail={
+                      filled === null
+                        ? m.home_trend_no_spots()
+                        : `${cycle.filled}/${cycle.needed}`
+                    }
+                    fill={meterTone({ percent: filled ?? 0 })}
                   />
-                }
-              />
-              <Bar
-                dataKey="filled"
-                fill="var(--color-filled)"
-                radius={[4, 4, 0, 0]}
-                maxBarSize={36}
-                isAnimationActive={false}
-              />
-              <Line
-                dataKey="responded"
-                type="monotone"
-                stroke="var(--color-responded)"
-                strokeWidth={2}
-                dot={{ r: 4, fill: 'var(--card)', strokeWidth: 2 }}
-                connectNulls
-                isAnimationActive={false}
-              />
-              <ChartLegend
-                itemSorter="dataKey"
-                content={<ChartLegendContent />}
-              />
-            </ComposedChart>
-          </ChartContainer>
-          <figcaption className="sr-only">
-            <ul>
-              {cycles.map((cycle) => (
-                <li key={cycle.cycleId}>
-                  {cycle.needed > 0
-                    ? m.home_trend_cycle_coverage({
-                        cycleName: cycle.name,
-                        percent: formatPercent({
-                          percent: coveragePercent(cycle),
-                        }),
-                        filled: cycle.filled,
-                        needed: cycle.needed,
-                      })
-                    : `${cycle.name}: ${m.home_trend_no_spots()}`}
-                  {cycle.asked > 0
-                    ? `. ${m.home_trend_availability({
-                        cycleName: cycle.name,
-                        answered: cycle.answered,
-                        asked: cycle.asked,
-                      })}`
-                    : null}
-                </li>
-              ))}
-            </ul>
-          </figcaption>
-        </figure>
+                  <TrendMeter
+                    label={m.home_trend_answered()}
+                    percent={cycle.asked > 0 ? responsePercent(cycle) : null}
+                    detail={
+                      cycle.asked > 0
+                        ? `${cycle.answered}/${cycle.asked}`
+                        : m.home_trend_no_asks()
+                    }
+                    fill="bg-primary/50"
+                    thin
+                  />
+                </dl>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </HomeWidget>
   );

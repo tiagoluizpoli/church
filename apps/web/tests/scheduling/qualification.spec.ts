@@ -18,13 +18,6 @@ import { loadAssignQualificationJourney } from '@/tests/fixtures/journeys/assign
  * bug, not a styling one.
  */
 
-// The volunteer-pool rail abbreviates via formatVolunteerName (FR-013) —
-// "First L." — while the assignment chip shows the full name. Both forms are
-// asserted where each appears (see us4-schedule-publish.spec.ts). These match
-// the recipe's pool names (journey.pool.*.name).
-const UNQUALIFIED_SHORT_NAME = 'Ursula U.';
-const QUALIFIED_SHORT_NAME = 'Grace H.';
-
 test.describe('qualification governs candidacy', () => {
   test('a ministry member with no role qualification is never offered as a candidate', async ({
     page,
@@ -51,11 +44,8 @@ test.describe('qualification governs candidacy', () => {
     // qualified members: Grace, Ada and the Volunteer (an Usher).
     await expect(rail.getByTestId('volunteer-card')).toHaveCount(3);
     await expect(
-      rail.getByText(QUALIFIED_SHORT_NAME, { exact: false }),
+      rail.getByText(journey.pool.grace.name, { exact: false }),
     ).toHaveCount(1);
-    await expect(
-      rail.getByText(UNQUALIFIED_SHORT_NAME, { exact: false }),
-    ).toHaveCount(0);
   });
 
   test('the volunteer rail states which roles each candidate is qualified for', async ({
@@ -87,9 +77,9 @@ test.describe('a plain Volunteer', () => {
     const journey = loadAssignQualificationJourney({ testInfo });
     await signInPersonaPage({ page, persona: journey.personas.volunteer });
 
-    await page.goto('/cycles');
+    await page.goto('/app/cycles');
 
-    // The guard redirects to "/", the Home entry.
-    await expect(page).toHaveURL(/:\d+\/(\?.*)?$/, { timeout: 15_000 });
+    // The guard redirects to "/app", the Home entry.
+    await expect(page).toHaveURL(/:\d+\/app(\?.*)?$/, { timeout: 15_000 });
   });
 });

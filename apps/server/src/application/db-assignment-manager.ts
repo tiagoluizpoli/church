@@ -1,5 +1,3 @@
-import { DomainError } from '@church/core';
-import { compareInstants, type Instant, now, toDate } from '@church/time';
 import { HardConstraintError } from '../domain/conflict/errors/hard-constraint-error';
 import type {
   CreateParticipationAssignmentInput,
@@ -23,16 +21,13 @@ import type { TransactionContext } from '../domain/contracts/infrastructure/tran
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import {
-  type Assignment,
-  isActiveAssignmentStatus,
-} from '../domain/entities/assignment';
+import type { Assignment } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
 import type { MinistryParticipation } from '../domain/entities/ministry-participation';
-import type { ShiftRequirement } from '../domain/entities/shift-requirement';
-import { ShiftRequirementFullError } from '../domain/errors/shift-requirement-full';
-import { assertEventTimeBlockNotCancelled } from '../domain/event-time-block-cancellation';
-import { removeAssignment } from './remove-assignment';
+import {
+  AssignmentFactsReader,
+  AssignmentLifecycle,
+} from './assignment-lifecycle';
 
 interface CreateParticipationAssignmentTransactionInput {
   input: CreateParticipationAssignmentInput;
@@ -61,13 +56,10 @@ export class DbAssignmentManager implements IAssignmentManager {
   private readonly auditRepo: AssignmentAuditRepository;
   private readonly shiftRepository: ShiftRepository;
   private readonly participationRepository: MinistryParticipationRepository;
-  private readonly volunteerRepository: VolunteerRepository;
-  private readonly unavailableShiftRepository: UnavailableShiftRepository;
   private readonly cycleRepository: CycleRepository;
-  private readonly eventRepository: EventRepository;
-  private readonly eventTimeBlockRepository: EventTimeBlockRepository;
-  private readonly swapRequestRepo: SwapRequestRepository;
   private readonly unitOfWork: UnitOfWork;
+  private readonly lifecycle: AssignmentLifecycle;
+  private readonly factsReader: AssignmentFactsReader;
 
   constructor({
     assignmentRepo,
@@ -86,13 +78,22 @@ export class DbAssignmentManager implements IAssignmentManager {
     this.auditRepo = auditRepo;
     this.shiftRepository = shiftRepository;
     this.participationRepository = participationRepository;
-    this.volunteerRepository = volunteerRepository;
-    this.unavailableShiftRepository = unavailableShiftRepository;
     this.cycleRepository = cycleRepository;
-    this.eventRepository = eventRepository;
-    this.eventTimeBlockRepository = eventTimeBlockRepository;
-    this.swapRequestRepo = swapRequestRepo;
     this.unitOfWork = unitOfWork;
+    this.lifecycle = new AssignmentLifecycle({
+      assignmentRepository: assignmentRepo,
+      auditRepository: auditRepo,
+      swapRequestRepository: swapRequestRepo,
+      participationRepository,
+    });
+    this.factsReader = new AssignmentFactsReader({
+      assignmentRepository: assignmentRepo,
+      shiftRepository,
+      eventRepository,
+      eventTimeBlockRepository,
+      volunteerRepository,
+      unavailableShiftRepository,
+    });
   }
 
   async getAssignment(input: GetAssignmentInput): Promise<Assignment> {
@@ -153,17 +154,8 @@ export class DbAssignmentManager implements IAssignmentManager {
         shiftId: assignment.shiftId,
         tx,
       });
-      const currentInstant = now();
-      assertShiftNotStarted({ startTime: shift.startTime, currentInstant });
-      await removeAssignment({
-        churchId,
-        assignmentId,
-        actorId,
-        tx,
-        assignmentRepository: this.assignmentRepo,
-        auditRepository: this.auditRepo,
-        swapRequestRepository: this.swapRequestRepo,
-      });
+      this.lifecycle.assertNotStarted({ startTime: shift.startTime });
+      await this.lifecycle.remove({ churchId, assignmentId, actorId, tx });
     });
   }
 
@@ -214,25 +206,11 @@ export class DbAssignmentManager implements IAssignmentManager {
           throw new Error('Assignment is missing a participation reference');
         }
 
-        await this.swapRequestRepo.closeOpenByAssignment({
+        await this.lifecycle.replace({
           churchId: input.churchId,
-          assignmentId: currentAssignment.id,
-          status: 'covered',
-          closedBy: input.actorId,
-          tx,
-        });
-        await this.assignmentRepo.deleteById({
-          churchId: input.churchId,
-          assignmentId: currentAssignment.id,
-          tx,
-        });
-        await this.auditRepo.create({
-          churchId: input.churchId,
-          input: {
-            assignmentId: nextAssignmentResult.assignment.id,
-            actorId: input.actorId,
-            action: 'updated',
-          },
+          replacedId: currentAssignment.id,
+          replacement: nextAssignmentResult.assignment,
+          actorId: input.actorId,
           tx,
         });
 
@@ -268,76 +246,27 @@ export class DbAssignmentManager implements IAssignmentManager {
         assignmentId: input.assignmentId,
         tx,
       });
-      const shift = await this.shiftRepository.getById({
+      const { facts, target } = await this.factsReader.forMove({
         churchId: input.churchId,
-        shiftId: initial.shiftId,
+        current,
+        shiftRequirementId: input.shiftRequirementId,
         tx,
       });
-      const currentInstant = now();
-      assertShiftNotStarted({ startTime: shift.startTime, currentInstant });
-      const requirements =
-        await this.shiftRepository.listRequirementsByParticipation({
-          churchId: input.churchId,
-          participationId: initial.participationId,
-          tx,
-        });
-      const target = requirements.find(
-        (requirement) => requirement.id === input.shiftRequirementId,
-      );
-      if (
-        !target ||
-        target.shiftId !== current.shiftId ||
-        target.roleId !== current.roleId
-      ) {
-        throw new HardConstraintError({
-          reason: 'INVALID_MOVE_TARGET',
-          message: 'Move target must have the same shift and role',
-        });
-      }
-      const assignments = await this.assignmentRepo.listByShift({
-        churchId: input.churchId,
-        shiftId: initial.shiftId,
-        tx,
+      this.lifecycle.admit({
+        check: 'move',
+        facts,
+        notOnShift: () =>
+          new HardConstraintError({
+            reason: 'INVALID_MOVE_TARGET',
+            message: 'Move target must have the same shift and role',
+          }),
       });
-      if (
-        assignments.some(
-          (other) =>
-            other.id !== current.id &&
-            other.volunteerId === current.volunteerId &&
-            isActiveAssignmentStatus(other.status),
-        )
-      ) {
-        throw new HardConstraintError({
-          reason: 'DUPLICATE_ASSIGNMENT',
-          message: 'Volunteer is already assigned to this shift',
-        });
-      }
-      assertRequirementHasRoom({
-        assignments,
-        requirement: target,
-        excludeId: current.id,
-      });
-      // A move never carries the request along: the leader already acted.
-      await this.swapRequestRepo.closeOpenByAssignment({
-        churchId: input.churchId,
-        assignmentId: current.id,
-        status: 'covered',
-        closedBy: input.actorId,
-        tx,
-      });
-      const moved = await this.assignmentRepo.move({
+      if (!target) throw new Error('Move target was admitted without a need');
+      const moved = await this.lifecycle.move({
         churchId: input.churchId,
         assignmentId: current.id,
         shiftRequirementId: target.id,
-        tx,
-      });
-      await this.auditRepo.create({
-        churchId: input.churchId,
-        input: {
-          assignmentId: current.id,
-          actorId: input.actorId,
-          action: 'updated',
-        },
+        actorId: input.actorId,
         tx,
       });
       return moved;
@@ -364,207 +293,22 @@ export class DbAssignmentManager implements IAssignmentManager {
     participation,
     replacingId,
   }: CreateParticipationAssignmentTransactionInput): Promise<CreateParticipationAssignmentResult> {
-    const shift = await this.shiftRepository.getById({
+    const facts = await this.factsReader.forAssign({
       churchId: input.churchId,
+      participation,
       shiftId: input.shiftId,
-      tx,
-    });
-    const currentInstant = now();
-    assertShiftNotStarted({ startTime: shift.startTime, currentInstant });
-    // Read under the caller's Church lock, after any cancellation committed.
-    const event = await this.eventRepository.getById({
-      churchId: input.churchId,
-      eventId: participation.eventId,
-      tx,
-    });
-    const block = await this.eventTimeBlockRepository.getById({
-      churchId: input.churchId,
-      eventTimeBlockId: shift.eventTimeBlockId,
-      tx,
-    });
-    assertEventTimeBlockNotCancelled({ event, eventTimeBlock: block });
-    const requirement = await this.shiftRepository.getRequirementForShift({
-      churchId: input.churchId,
-      shiftId: shift.id,
       shiftRequirementId: input.shiftRequirementId,
+      volunteerId: input.volunteerId,
+      replacingId,
       tx,
     });
-    const { roleId } = requirement;
-    const hasMembership =
-      await this.volunteerRepository.hasMembershipInMinistry({
-        churchId: input.churchId,
-        volunteerId: input.volunteerId,
-        ministryId: participation.ministryId,
-        tx,
-      });
-
-    if (!hasMembership) {
-      throw new HardConstraintError({
-        reason: 'NOT_IN_MINISTRY',
-        message: 'Volunteer does not belong to the requested ministry',
-      });
-    }
-
-    const hasQualification =
-      await this.volunteerRepository.hasRoleQualification({
-        churchId: input.churchId,
-        volunteerId: input.volunteerId,
-        ministryId: participation.ministryId,
-        roleId,
-        tx,
-      });
-    if (!hasQualification) {
-      throw new HardConstraintError({
-        reason: 'NOT_QUALIFIED',
-        message: 'Volunteer is not qualified for the requested role',
-      });
-    }
-
-    const existingShiftAssignments = await this.assignmentRepo.listByShift({
+    return this.lifecycle.assign({
       churchId: input.churchId,
-      shiftId: shift.id,
+      participation,
+      volunteerId: input.volunteerId,
+      actorId: input.actorId,
+      facts,
       tx,
     });
-
-    const warnings: CreateParticipationAssignmentResult['warnings'] = [];
-
-    if (
-      existingShiftAssignments.some(
-        (assignment) =>
-          assignment.volunteerId === input.volunteerId &&
-          isActiveAssignmentStatus(assignment.status),
-      )
-    ) {
-      throw new HardConstraintError({
-        reason: 'DUPLICATE_ASSIGNMENT',
-        message: 'Volunteer is already assigned to this shift',
-      });
-    }
-
-    assertRequirementHasRoom({
-      assignments: existingShiftAssignments,
-      requirement,
-      excludeId: replacingId,
-    });
-
-    const unavailableShifts =
-      await this.unavailableShiftRepository.listByVolunteers({
-        churchId: input.churchId,
-        volunteerIds: [input.volunteerId],
-        tx,
-      });
-    const overlappingAssignments =
-      await this.assignmentRepo.listByVolunteerInRange({
-        churchId: input.churchId,
-        volunteerId: input.volunteerId,
-        startTime: toDate({ instant: shift.startTime }),
-        endTime: toDate({ instant: shift.endTime }),
-        tx,
-      });
-
-    if (
-      unavailableShifts.some(
-        (unavailableShift) =>
-          (unavailableShift.shiftId as string) === (shift.id as string),
-      )
-    ) {
-      warnings.push({
-        type: 'UNAVAILABLE' as const,
-        details: 'Volunteer is marked unavailable for this shift',
-      });
-    }
-
-    // Church-wide, so an overlap in any Ministry is refused.
-    const hasOverlapConflict = overlappingAssignments.some(
-      (assignment) =>
-        assignment.shiftId !== shift.id &&
-        isActiveAssignmentStatus(assignment.status),
-    );
-    if (hasOverlapConflict) {
-      throw new HardConstraintError({
-        reason: 'DUPLICATE_ASSIGNMENT',
-        message: 'Volunteer is already assigned to another overlapping shift',
-      });
-    }
-
-    const assignment = await this.assignmentRepo.create({
-      churchId: input.churchId,
-      input: {
-        eventTimeBlockId: shift.eventTimeBlockId,
-        participationId: requirement.participationId ?? participation.id,
-        shiftId: requirement.shiftId ?? shift.id,
-        volunteerId: input.volunteerId,
-        shiftRequirementId: requirement.id,
-        status: 'pending',
-        assignedBy: input.actorId,
-      },
-      tx,
-    });
-
-    if (participation.state === 'availability_requested') {
-      participation.startAssigning();
-      await this.participationRepository.updateState({
-        churchId: input.churchId,
-        participationId: participation.id,
-        state: participation.state,
-        tx,
-      });
-    }
-
-    await this.auditRepo.create({
-      churchId: input.churchId,
-      input: {
-        assignmentId: assignment.id,
-        actorId: input.actorId,
-        action: 'created',
-      },
-      tx,
-    });
-
-    return {
-      assignment,
-      warnings,
-    };
-  }
-}
-
-interface RequirementRoomInput {
-  assignments: Assignment[];
-  requirement: ShiftRequirement;
-  excludeId?: Assignment['id'];
-}
-
-function assertRequirementHasRoom({
-  assignments,
-  requirement,
-  excludeId,
-}: RequirementRoomInput): void {
-  const taken = assignments.filter(
-    (other) =>
-      other.id !== excludeId &&
-      other.shiftRequirementId === requirement.id &&
-      isActiveAssignmentStatus(other.status),
-  ).length;
-  if (taken >= requirement.peopleNeeded) throw new ShiftRequirementFullError();
-}
-
-interface ShiftStartGuardInput {
-  startTime: Instant;
-  currentInstant: Instant;
-}
-
-class ShiftStartedError extends DomainError {
-  readonly code = 'SHIFT_STARTED' as const;
-  constructor() {
-    super('Shift has started');
-  }
-}
-
-function assertShiftNotStarted({
-  startTime,
-  currentInstant,
-}: ShiftStartGuardInput): void {
-  if (compareInstants({ left: startTime, right: currentInstant }) <= 0) {
-    throw new ShiftStartedError();
   }
 }

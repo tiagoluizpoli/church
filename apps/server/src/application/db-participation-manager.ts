@@ -156,6 +156,7 @@ import {
   spansFitBlock,
   usualSetupNeedsReview,
 } from '../domain/services/usual-setup-planner';
+import { AssignmentLifecycle } from './assignment-lifecycle';
 import { filterCycleParticipation } from './participation-view-filter';
 import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
 
@@ -545,7 +546,6 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly shiftRepository: ShiftRepository;
   private readonly eventRepository: PlanningEventRepository;
   private readonly assignmentRepository: AssignmentRepository;
-  private readonly auditRepository: AssignmentAuditRepository;
   private readonly proposalApplicationRepository: AssignmentProposalApplicationRepository;
   private readonly unavailableShiftRepository: UnavailableShiftRepository;
   private readonly eventTimeBlockRepository: EventTimeBlockRepository;
@@ -561,6 +561,7 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly staffingSeeder: UsualSetupStaffingSeeder;
   private readonly notifications: IChurchNotifications;
   private readonly unitOfWork: UnitOfWork;
+  private readonly lifecycle: AssignmentLifecycle;
 
   constructor({
     availabilityCheckRepository,
@@ -585,7 +586,6 @@ export class DbParticipationManager implements IParticipationManager {
     notifications,
     unitOfWork,
   }: DbParticipationManagerDependencies) {
-    this.auditRepository = auditRepository;
     this.proposalApplicationRepository = proposalApplicationRepository;
     this.availabilityCheckRepository = availabilityCheckRepository;
     this.swapRequestRepo = swapRequestRepo;
@@ -606,6 +606,12 @@ export class DbParticipationManager implements IParticipationManager {
     this.staffingSeeder = staffingSeeder;
     this.notifications = notifications;
     this.unitOfWork = unitOfWork;
+    this.lifecycle = new AssignmentLifecycle({
+      assignmentRepository,
+      auditRepository,
+      swapRequestRepository: swapRequestRepo,
+      participationRepository,
+    });
   }
 
   async getCycleParticipation(
@@ -1541,27 +1547,13 @@ export class DbParticipationManager implements IParticipationManager {
         const shift = shiftId && shiftById.get(shiftId);
         // Unreachable: findStaleAdditions refused unknown needs.
         if (!shift) throw new AssignmentProposalStaleError();
-        const created = await this.assignmentRepository.create({
+        const created = await this.lifecycle.add({
           churchId,
-          input: {
-            eventTimeBlockId: shift.eventTimeBlockId,
-            participationId: shift.participationId,
-            shiftId: shift.id,
-            volunteerId,
-            shiftRequirementId,
-            status: 'pending',
-            assignedBy: actorId,
-          },
-          tx,
-        });
-        await this.auditRepository.create({
-          churchId,
-          input: {
-            assignmentId: created.id,
-            actorId,
-            action: 'created',
-            correlationId: applicationKey,
-          },
+          shift,
+          shiftRequirementId,
+          volunteerId,
+          actorId,
+          correlationId: applicationKey,
           tx,
         });
         applied.push({
@@ -1573,18 +1565,8 @@ export class DbParticipationManager implements IParticipationManager {
       }
       // As manual creation does: the first Assignment starts assigning.
       for (const participation of proposable) {
-        if (
-          participation.state !== 'availability_requested' ||
-          !touchedParticipationIds.has(participation.id as string)
-        )
-          continue;
-        participation.startAssigning();
-        await this.participationRepository.updateState({
-          churchId,
-          participationId: participation.id,
-          state: participation.state,
-          tx,
-        });
+        if (touchedParticipationIds.has(participation.id as string))
+          await this.lifecycle.startAssigning({ churchId, participation, tx });
       }
 
       const application = await this.proposalApplicationRepository.create({

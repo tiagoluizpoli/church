@@ -99,8 +99,7 @@ import {
   type PrecedencePair,
 } from '../domain/services/template-precedence-application';
 import type { TemplatePrecedence } from '../domain/template-precedence';
-import { cancelAssignment } from './cancel-assignment';
-import { removeAssignment } from './remove-assignment';
+import { cancelAssignment, removeAssignment } from './assignment-lifecycle';
 
 const sameBounds = ({ left, right }: BoundsPair) =>
   compareInstants({ left: left.start, right: right.start }) === 0 &&

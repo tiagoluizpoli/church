@@ -1,4 +1,3 @@
-import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
   addCalendarMonths,
@@ -14,26 +13,32 @@ import {
   today,
   toTimeOfDay,
 } from '@church/time';
-import {
-  CycleId,
-  type EventTimeBlockId,
-  type MinistryId,
-  type ShiftId,
-} from '../domain/branded-ids';
+import { CycleId, type MinistryId, type ShiftId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
   AnswerAvailabilityCheckInput,
   AssignmentDetail,
+  CapUpcomingAssignmentsInput,
+  CompareTextInput,
   DashboardAssignmentGroup,
+  DashboardAssignmentGroupDraft,
   DashboardAssignmentItem,
+  DbVolunteerManagerDependencies,
   GetAssignmentDetailInput,
   GetAvailabilityCheckInput,
   GetDashboardInput,
   GetMinistryScheduleInput,
+  GetOwnedCheckContextInput,
   GetPublishedScheduleInput,
+  InCancelledScopeInput,
   IVolunteerManager,
   ListAvailabilityChecksInput,
   MinistrySchedule,
+  RequirementCoverageInput,
+  RequirementCoverageStatusInput,
+  ResolveCheckDetailInput,
+  ScheduleShiftLabelInput,
+  ServingMonthsInput,
   VolunteerAvailabilityCheckDetail,
   VolunteerAvailabilityCheckSummary,
   VolunteerCheckShift,
@@ -57,7 +62,6 @@ import type { NotificationRepository } from '../domain/contracts/infrastructure/
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
@@ -66,8 +70,6 @@ import {
   type AssignmentStatus,
   isActiveAssignmentStatus,
 } from '../domain/entities/assignment';
-import type { EventWithEventTimeBlocks } from '../domain/entities/event';
-import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import { isSwapRequestExpired } from '../domain/entities/swap-request';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
 import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
@@ -87,21 +89,6 @@ import {
 
 const NOTIFICATION_PREVIEW_LIMIT = 3;
 
-interface DashboardAssignmentGroupDraft {
-  eventId: string;
-  eventTitle: string;
-  ministryId: string;
-  ministryName: string;
-  eventStart: string;
-  items: DashboardAssignmentItem[];
-}
-
-interface InCancelledScopeInput {
-  /** The Assignment's or Shift's Event with its blocks; absent reads as live. */
-  group: EventWithEventTimeBlocks | undefined;
-  eventTimeBlockId: EventTimeBlockId;
-}
-
 /** Cancelled work: its Event or its own EventTimeBlock is cancelled. */
 function inCancelledScope({
   group,
@@ -116,19 +103,9 @@ function inCancelledScope({
   return isEventTimeBlockCancelled({ event, eventTimeBlock });
 }
 
-interface CompareTextInput {
-  left: string;
-  right: string;
-}
-
 /** Byte-order text comparison, so tie-breaks don't depend on the runtime locale. */
 function compareText({ left, right }: CompareTextInput): number {
   return left < right ? -1 : left > right ? 1 : 0;
-}
-
-interface CapUpcomingAssignmentsInput {
-  groups: DashboardAssignmentGroup[];
-  limit: number;
 }
 
 /** The first `limit` assignments in group order, dropping groups left empty. */
@@ -150,11 +127,6 @@ function capUpcomingAssignments({
 /** How many Church months the dashboard's serving history covers, the current one included. */
 const SERVING_HISTORY_MONTHS = 6;
 
-interface ServingMonthsInput {
-  churchDay: CalendarDay;
-  count: number;
-}
-
 /** First days of the `count` months ending at `churchDay`'s month, oldest first. */
 function servingMonths({
   churchDay,
@@ -169,19 +141,10 @@ function isPublishedStatus(status: AssignmentStatus): status is 'pending' {
   return status === 'pending';
 }
 
-interface RequirementCoverageStatusInput {
-  status: AssignmentStatus;
-}
-
 function countsTowardRequirementCoverage({
   status,
 }: RequirementCoverageStatusInput): boolean {
   return isActiveAssignmentStatus(status);
-}
-
-interface RequirementCoverageInput {
-  requirement: ShiftRequirement;
-  assignments: Assignment[];
 }
 
 /** The Assignments bound to one requirement, and how many places stay open. */
@@ -196,12 +159,6 @@ function projectRequirementCoverage({
     countsTowardRequirementCoverage({ status: assignment.status }),
   ).length;
   return { bound, openCount: Math.max(0, requirement.peopleNeeded - filled) };
-}
-
-interface ScheduleShiftLabelInput {
-  label?: string;
-  startTime: Instant;
-  endTime: Instant;
 }
 
 /** Fallback label when a Shift has none. No Church Timezone is available at
@@ -222,35 +179,6 @@ function scheduleVolunteerName(name: string | undefined): string | undefined {
   const [firstName, ...rest] = name.trim().split(/\s+/);
   const lastName = rest.at(-1);
   return lastName ? `${firstName} ${lastName.charAt(0)}.` : firstName;
-}
-
-interface GetOwnedCheckContextInput extends GetAvailabilityCheckInput {
-  lockForAnswer?: boolean;
-  tx?: TransactionContext;
-}
-
-interface ResolveCheckDetailInput {
-  context: CheckContext;
-  input: GetAvailabilityCheckInput;
-}
-
-interface DbVolunteerManagerDependencies {
-  volunteerRepo: VolunteerRepository;
-  assignmentRepo: AssignmentRepository;
-  swapRequestRepo: SwapRequestRepository;
-  unavailableShiftRepo: UnavailableShiftRepository;
-  notificationRepo: NotificationRepository;
-  cycleRepo: CycleRepository;
-  eventRepo: EventRepository;
-  shiftRepo: ShiftRepository;
-  ministryRepo: MinistryRepository;
-  participationRepo: MinistryParticipationRepository;
-  roleRepo: RoleRepository;
-  availabilityCheckRepo: AvailabilityCheckRepository;
-  churchRepo: ChurchRepository;
-  authorityManager: Pick<IAuthorityManager, 'decideAuthority'>;
-  unitOfWork: UnitOfWork;
-  config: AppConfig;
 }
 
 export class DbVolunteerManager implements IVolunteerManager {

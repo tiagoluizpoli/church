@@ -6,6 +6,8 @@ import type {
 import type {
   CreateParticipationAssignmentInput,
   CreateParticipationAssignmentResult,
+  CreateParticipationAssignmentTransactionInput,
+  DbAssignmentManagerDependencies,
   DeleteAssignmentInput,
   GetAssignmentInput,
   IAssignmentManager,
@@ -18,30 +20,9 @@ import type { AssignmentAuditRepository } from '../domain/contracts/infrastructu
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { Assignment } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
-import type { MinistryParticipation } from '../domain/entities/ministry-participation';
-
-interface CreateParticipationAssignmentTransactionInput {
-  input: CreateParticipationAssignmentInput;
-  tx: TransactionContext;
-  participation: MinistryParticipation;
-  /** The Assignment a reassignment replaces; it does not take a place. */
-  replacingId?: Assignment['id'];
-}
-
-interface DbAssignmentManagerDependencies {
-  assignmentRepo: AssignmentRepository;
-  auditRepo: AssignmentAuditRepository;
-  shiftRepository: ShiftRepository;
-  participationRepository: MinistryParticipationRepository;
-  cycleRepository: CycleRepository;
-  assignmentLifecycle: IAssignmentLifecycle;
-  assignmentFactsReader: IAssignmentFactsReader;
-  unitOfWork: UnitOfWork;
-}
 
 export class DbAssignmentManager implements IAssignmentManager {
   private readonly assignmentRepo: AssignmentRepository;

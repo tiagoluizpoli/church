@@ -1,4 +1,3 @@
-import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import {
   addMilliseconds,
@@ -19,28 +18,31 @@ import type {
   AskScheduleInput,
   AskScheduleResult,
   CheckStatusRow,
+  CompareRowsInput,
   CycleCheckStatuses,
+  DbAvailabilityCheckManagerDependencies,
+  EnsureCycleAskableInput,
+  FlaggedBlocksOfInput,
   GetAskPreviewInput,
   IAvailabilityCheckManager,
   ListCycleCheckStatusesInput,
+  LockUnpublishedScheduleInput,
+  OpenChecksInput,
+  OpenChecksResult,
+  PagedStatuses,
+  PageStatusesInput,
+  RemindAvailableAtInput,
   RemindScheduleInput,
   RemindScheduleResult,
   SetDeadlineInput,
 } from '../domain/contracts/application/availability-check-manager';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
-import type {
-  ActiveMinistryMembership,
-  AvailabilityCheckRepository,
-  ScheduleScopeInput,
-  ServedShiftRow,
-} from '../domain/contracts/infrastructure/availability-check.repository';
+import type { AvailabilityCheckRepository } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type { Cycle } from '../domain/entities/cycle';
 import { deriveScheduleStage } from '../domain/entities/ministry-participation';
 import { IllegalStateTransitionError } from '../domain/errors';
 import {
@@ -50,50 +52,9 @@ import {
 import { AskNoEligibleVolunteersError } from '../domain/errors/ask-no-eligible-volunteers';
 import { RemindOnCooldownError } from '../domain/errors/remind-on-cooldown';
 
-interface DbAvailabilityCheckManagerDependencies {
-  participationRepository: MinistryParticipationRepository;
-  availabilityCheckRepository: AvailabilityCheckRepository;
-  cycleRepository: CycleRepository;
-  ministryRepository: MinistryRepository;
-  churchRepository: ChurchRepository;
-  notifications: IChurchNotifications;
-  unitOfWork: UnitOfWork;
-  config: AppConfig;
-}
-
-interface RemindAvailableAtInput {
-  lastRemindedAt: Instant | null;
-}
-
-interface EnsureCycleAskableInput {
-  cycle: Cycle;
-  timeZone: string;
-  transition: string;
-}
-
-interface LockUnpublishedScheduleInput extends ScheduleScopeInput {
-  tx: TransactionContext;
-  timeZone: string;
-  transition: string;
-}
-
-interface OpenChecksInput extends ScheduleScopeInput {
-  tx: TransactionContext;
-  eligible: ActiveMinistryMembership[];
-}
-
-interface OpenChecksResult {
-  createdCheckCount: number;
-  notifiedVolunteerCount: number;
-}
-
 const ASK_TRANSITION = 'ask_availability';
 const DEADLINE_TRANSITION = 'set_deadline';
 const REMIND_TRANSITION = 'remind';
-
-interface FlaggedBlocksOfInput {
-  servedShifts: ServedShiftRow[];
-}
 
 function flaggedBlocksOf({
   servedShifts,
@@ -135,29 +96,11 @@ function answerStatusOf({
   return unavailableShiftCount > 0 ? 'unavailable' : 'available';
 }
 
-interface CompareRowsInput {
-  left: CheckStatusRow;
-  right: CheckStatusRow;
-}
-
 function compareRows({ left, right }: CompareRowsInput): number {
   return (
     left.volunteerName.localeCompare(right.volunteerName) ||
     left.volunteerId.localeCompare(right.volunteerId)
   );
-}
-
-interface PagedStatuses {
-  statuses: CheckStatusRow[];
-  nextCursor: string | null;
-}
-
-interface PageStatusesInput {
-  statuses: CheckStatusRow[];
-  status?: AnswerStatus;
-  q?: string;
-  cursor?: string;
-  limit?: number;
 }
 
 /** Filters, totally orders (name, id) and keyset-pages the asked Volunteers. */

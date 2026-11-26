@@ -30,7 +30,6 @@ import {
   isNull,
   ne,
   not,
-  type SQL,
   sql,
 } from 'drizzle-orm';
 import type { PgSelect } from 'drizzle-orm/pg-core';
@@ -68,17 +67,17 @@ import type {
   SetAnswerByInput,
   StampRemindedInput,
 } from '../../domain/contracts/infrastructure/availability-check.repository';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import { PUBLISHED_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
 import type { AvailabilityCheck } from '../../domain/entities/availability-check';
 import { mapAvailabilityCheck } from '../mappers/availability-check.mapper';
+import type {
+  DrizzleAvailabilityCheckRepositoryInput,
+  SelectActiveMembershipsInput,
+  ShareLockMembershipsInput,
+} from './drizzle-availability-check.repository.types';
 import { getClient, withChurchIsolation } from './helpers';
 import { liveEventTimeBlock } from './live-event-time-block';
 import type { AnyDrizzleDb } from './types';
-
-interface DrizzleAvailabilityCheckRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 /** A check that can still be answered: not withdrawn, on an active Ministry Membership (joined by the caller). */
 export const actionable = () =>
@@ -86,15 +85,6 @@ export const actionable = () =>
     isNull(availabilityCheck.withdrawnAt),
     eq(ministryMembership.status, 'active'),
   );
-
-interface SelectActiveMembershipsInput extends ListActiveMembershipsInput {
-  filter?: SQL;
-}
-
-interface ShareLockMembershipsInput<Query extends PgSelect> {
-  query: Query;
-  tx?: TransactionContext;
-}
 
 /** In a transaction, waits out a concurrent removal and re-reads the membership after it. */
 function shareLockMembershipsInTx<Query extends PgSelect>({

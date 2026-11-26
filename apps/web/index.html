@@ -4,9 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>base-fullstack-template</title>
+    <!-- The first-paint stylesheet (src/first-paint.css), inlined by tooling/vite/first-paint.ts:
+         theme colours, page background, AuthShell's frame and the scene stills. -->
+    <!-- first-paint.css -->
     <!-- Runs before the first paint, which is why it is here and not in the bundle:
-         the theme next-themes would pick (same storage key, same default), and on a
-         sign-in route the boot shell below plus a preload of the still it shows. -->
+         the theme next-themes would pick (same storage key, same default), the
+         locale the app will resolve, and on a sign-in route the boot shell below. -->
     <script>
       (() => {
         const root = document.documentElement;
@@ -20,58 +23,56 @@
         root.classList.add(theme);
         root.style.colorScheme = theme;
 
-        // Height in px of each AuthShell route's form column when stacked: below
-        // 640px wide, then from 640px. The panel takes the rest, so these keep
-        // the shell's panel where React's lands. Re-measure when the forms change.
-        const forms = {
-          "/login": [445.5, 460],
-          "/forgot-password": [365.5, 403],
-          "/reset-password": [256, 293],
-        };
-        const form = forms[location.pathname.replace(/(.)\/$/, "$1")];
-        if (!form) return;
-        const width = innerWidth;
-        const height = innerHeight;
-        const formHeight = form[width >= 640 ? 1 : 0];
-        root.dataset.bootShell = "";
-        // Only the login form has a placeholder outline below; the other routes show the panel alone.
-        if (form === forms["/login"]) root.dataset.bootForm = "";
-        root.style.setProperty("--boot-form-h", `${formHeight}px`);
-        // The still the panel's container queries below will pick (the panel's 1px border excluded).
-        const split = width >= 1024 && width > height;
-        const aspect = split
-          ? (width - (width >= 1280 ? 512 : 448) - 1) / height
-          : width / (Math.max(192, height - formHeight) - 1);
-        const still = aspect > 2.4 ? "5" : aspect > 1.5 ? "2-4" : aspect > 1.1 ? "1-5" : "1-1";
-        const preload = document.createElement("link");
-        preload.rel = "preload";
-        preload.as = "image";
-        preload.fetchPriority = "high";
-        preload.href = `/auth-scenes/sanctuary-light-${still}.webp`;
-        document.head.append(preload);
+        // As initLocale and the Paraglide strategy resolve it: a valid ?lang=,
+        // else the locale cookie (any case), else the app's default.
+        const config = {} /* first-paint:config */;
+        const search = new URLSearchParams(location.search);
+        const query = search.get(config.queryParam);
+        const cookie = document.cookie.match(
+          new RegExp(`(?:^|;\\s*)${config.cookieName}=([^;]*)`),
+        )?.[1];
+        const locale = config.locales.includes(query)
+          ? query
+          : config.locales.find((code) => code.toLowerCase() === cookie?.toLowerCase()) ||
+            config.defaultLocale;
+        root.lang = locale;
+
+        // Each AuthShell route in the state a fresh load shows; any other state
+        // (the password-changed notice, an expired reset link) skips the shell.
+        const path = location.pathname.replace(/(.)\/$/, "$1");
+        const route =
+          path === "/login"
+            ? search.get("notice") !== "password-changed" && "login"
+            : path === "/forgot-password"
+              ? "forgot-password"
+              : path === "/reset-password" && search.get("token") && !search.get("error")
+                ? "reset-password"
+                : "";
+        if (!route) return;
+        root.dataset.bootShell = route;
+        window.bootShellCopy = config.messages[locale];
+        // A start that fails (the entry or a module it imports fails to load or
+        // throws) must not leave the shell over the page.
+        addEventListener(
+          "error",
+          (event) => {
+            const script = event.target instanceof HTMLScriptElement && event.target.type === "module";
+            if (script || (event instanceof ErrorEvent && event.error != null)) {
+              document.getElementById("boot-shell")?.remove();
+            }
+          },
+          true,
+        );
       })();
     </script>
     <style>
-      /* Paints before any stylesheet or script: the page background (as index.css
-         has it) and, on a sign-in route, the boot shell, an outline of AuthShell
-         that AuthShell removes as it mounts. Keep both in step with them. */
-      :root {
-        --boot-bg: oklch(0.978 0.004 236);
-        --boot-accent: oklch(0.948 0.018 247);
-      }
-      :root.dark {
-        --boot-bg: oklch(0.205 0.018 252);
-        --boot-accent: oklch(0.332 0.028 246);
-      }
-      body,
-      #boot-shell {
+      /* The boot shell: AuthShell's frame (first-paint.css) over the page until
+         AuthShell mounts and removes it, with the form outlined in bars set in
+         the form's real copy, so they wrap and size as the form will. The rules
+         below mirror the forms' Tailwind classes; the boot-shell e2e spec fails
+         when a bar no longer lands on its element. */
+      body {
         margin: 0;
-        background: linear-gradient(
-            180deg,
-            var(--boot-bg) 0%,
-            color-mix(in oklch, var(--boot-bg) 92%, var(--boot-accent)) 100%
-          )
-          fixed no-repeat var(--boot-bg);
       }
       #boot-shell {
         display: none;
@@ -81,149 +82,111 @@
         inset: 0;
         z-index: 1;
         display: grid;
-        grid-template-rows: minmax(12rem, 1fr) var(--boot-form-h);
+        background: inherit;
       }
-      #boot-shell > .boot-panel {
-        position: relative;
-        border-bottom: 1px solid oklch(0.318 0.018 248);
-        background: oklch(0.17 0.03 258);
-      }
-      @media (width >= 64rem) and (orientation: landscape) {
-        [data-boot-shell] #boot-shell {
-          grid-template-rows: 1fr;
-          grid-template-columns: minmax(0, 1fr) 28rem;
-        }
-        #boot-shell > .boot-panel {
-          border-bottom: 0;
-          border-right: 1px solid oklch(0.318 0.018 248);
-        }
-      }
-      @media (width >= 80rem) and (orientation: landscape) {
-        [data-boot-shell] #boot-shell {
-          grid-template-columns: minmax(0, 1fr) 32rem;
-        }
-      }
-
-      /* Login form placeholder: bars where SignInForm's title, description, labels,
-         fields, link and button land, so the form fills in rather than appears.
-         Offsets are SignInForm's measured boxes, stacked (below 40rem) and from
-         40rem; the boot-shell e2e spec fails when they drift. */
-      :root {
-        --boot-sk: oklch(0.25 0.02 250 / 0.09);
-        --boot-sk-line: oklch(0.25 0.02 250 / 0.16);
-        --boot-sk-button: oklch(0.378 0.09 255 / 0.28);
-      }
-      :root.dark {
-        --boot-sk: oklch(1 0 0 / 0.08);
-        --boot-sk-line: oklch(1 0 0 / 0.14);
-        --boot-sk-button: oklch(0.62 0.09 255 / 0.3);
-      }
-      #boot-shell > .boot-form {
+      .boot-form {
         display: none;
+        --boot-bar: color-mix(in oklch, var(--foreground) 9%, transparent);
+        font: 1rem / 1.5 var(--font-ui);
+        color: transparent;
       }
-      [data-boot-form] #boot-shell > .boot-form {
+      [data-boot-shell="login"] .boot-form[data-form="login"],
+      [data-boot-shell="forgot-password"] .boot-form[data-form="forgot-password"],
+      [data-boot-shell="reset-password"] .boot-form[data-form="reset-password"] {
         display: block;
-        padding: 2rem 1rem 0;
       }
-      .boot-form > div {
-        position: relative;
-        height: 381px;
+      .boot-form [data-m] {
+        border-radius: 4px;
+        /* Not box-decoration-break: clone, which changes how text-wrap: pretty breaks. */
+        background: var(--boot-bar);
       }
-      .boot-form i {
-        position: absolute;
-        left: 0;
-        border-radius: 6px;
-        background: var(--boot-sk);
-        animation: boot-sk 1.6s ease-in-out infinite;
+      .boot-form [data-m],
+      .boot-input,
+      .boot-button {
+        animation: boot-pulse 1.6s ease-in-out infinite;
       }
-      .boot-form .boot-title { top: 4px; height: 24px; width: 62%; }
-      .boot-form .boot-text-1 { top: 43px; height: 14px; width: 92%; }
-      .boot-form .boot-text-2 { top: 66px; height: 14px; width: 50%; }
-      .boot-form .boot-label-1 { top: 117px; height: 12px; width: 48px; }
-      .boot-form .boot-label-2 { top: 209px; height: 12px; width: 44px; }
-      .boot-form .boot-field,
-      .boot-form .boot-button {
-        width: 100%;
-        height: 44px;
-        border-radius: 8px;
+      .boot-form h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        line-height: calc(2 / 1.5);
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        text-wrap: balance;
       }
-      .boot-form .boot-field {
-        background: none;
-        box-shadow: inset 0 0 0 1px var(--boot-sk-line);
+      .boot-form p {
+        margin: 0.5rem 0 2rem;
+        font-size: 0.875rem;
+        line-height: 1.625;
+        text-wrap: pretty;
       }
-      .boot-form .boot-field-1 { top: 137px; }
-      .boot-form .boot-field-2 { top: 229px; }
-      .boot-form .boot-link { top: 295px; left: auto; right: 0; height: 14px; width: 122px; }
-      .boot-form .boot-button { top: 337px; background: var(--boot-sk-button); }
-      @media (width >= 40rem) {
-        [data-boot-form] #boot-shell > .boot-form {
-          padding: 3rem 2rem 0;
+      .boot-form h1.boot-heading-only {
+        margin-bottom: 2rem;
+      }
+      .boot-fields > :not(:last-child) {
+        margin-bottom: 1.25rem;
+      }
+      .boot-label {
+        margin-bottom: 0.5rem;
+        font-size: 0.75rem;
+        line-height: 1;
+      }
+      .boot-input,
+      .boot-button {
+        display: block;
+        height: 2.75rem;
+        border-radius: calc(var(--radius) * 0.8);
+      }
+      .boot-input {
+        box-shadow: inset 0 0 0 1px var(--input);
+      }
+      /* SignInForm's email field keeps the 0.5rem gap above its (empty) error
+         line, as its input is inline-block; the password input's wrapper is a
+         block, whose gap collapses away. Padding, so it cannot collapse here. */
+      .boot-errors {
+        padding-bottom: 0.5rem;
+      }
+      .boot-link {
+        margin-top: -0.25rem;
+        text-align: right;
+      }
+      .boot-link > span {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+      }
+      .boot-submit {
+        padding-top: 0.25rem;
+      }
+      .boot-button {
+        background: color-mix(in oklch, var(--primary) 28%, transparent);
+      }
+      .boot-back {
+        margin-top: 1.5rem;
+      }
+      .boot-back > span {
+        display: inline-flex;
+        align-items: center;
+        height: 2rem;
+        border: 1px solid transparent;
+        font-size: 0.75rem;
+        line-height: 1rem;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      @media (width >= 48rem) {
+        .boot-form h1 {
+          font-size: 1.75rem;
         }
-        .boot-form > div {
-          max-width: 28rem;
-          margin: 0 auto;
-          height: 364px;
-        }
-        .boot-form .boot-title { top: 6px; height: 26px; width: 55%; }
-        .boot-form .boot-text-1 { top: 47px; width: 72%; }
-        .boot-form .boot-text-2 { display: none; }
-        .boot-form .boot-label-1 { top: 100px; }
-        .boot-form .boot-field-1 { top: 120px; }
-        .boot-form .boot-label-2 { top: 192px; }
-        .boot-form .boot-field-2 { top: 212px; }
-        .boot-form .boot-link { top: 278px; }
-        .boot-form .boot-button { top: 320px; }
       }
-      @media (width >= 64rem) and (orientation: landscape) {
-        [data-boot-form] #boot-shell > .boot-form {
-          display: flex;
-          align-items: center;
-          padding: 0 2rem;
+      @keyframes boot-pulse {
+        50% {
+          opacity: 0.5;
         }
-        .boot-form > div {
-          width: 100%;
-          margin: 0;
-        }
-      }
-      @keyframes boot-sk {
-        50% { opacity: 0.5; }
       }
       @media (prefers-reduced-motion: reduce) {
-        .boot-form i { animation: none; }
-      }
-
-      /* Sanctuary light scene stills, shared by the boot shell and the React backdrop.
-         Stills of the scene's real first frame, one per panel shape: the scene frames
-         by height and centres, so each is height-fitted and centred like the canvas.
-         Each still is captured at the widest aspect it serves, so it only ever crops.
-         `height > 0`: before the first layout the container reads as infinitely
-         wide, which would fetch the band still as well. The boot script above
-         preloads the same pick. Recapture them whenever the scene's first frame changes. */
-      .sanctuary-light-backdrop {
-        position: absolute;
-        inset: 0;
-        container-type: size;
-      }
-      .sanctuary-light-still {
-        position: absolute;
-        inset: 0;
-        background: rgb(7 5 4) url("/auth-scenes/sanctuary-light-1-1.webp") center / auto 100%
-          no-repeat;
-      }
-      @container (aspect-ratio > 11 / 10) and (height > 0) {
-        .sanctuary-light-still {
-          background-image: url("/auth-scenes/sanctuary-light-1-5.webp");
-        }
-      }
-      @container (aspect-ratio > 3 / 2) and (height > 0) {
-        .sanctuary-light-still {
-          background-image: url("/auth-scenes/sanctuary-light-2-4.webp");
-        }
-      }
-      /* Wider than the scene's BAND_ASPECT (2.4), it frames only the windows. */
-      @container (aspect-ratio > 12 / 5) and (height > 0) {
-        .sanctuary-light-still {
-          background-image: url("/auth-scenes/sanctuary-light-5.webp");
+        .boot-form [data-m],
+        .boot-input,
+        .boot-button {
+          animation: none;
         }
       }
     </style>
@@ -246,17 +209,61 @@
 
   <body>
     <div id="app"></div>
-    <div id="boot-shell" aria-hidden="true">
-      <div class="boot-panel"><div class="sanctuary-light-backdrop"><div class="sanctuary-light-still"></div></div></div>
-      <div class="boot-form">
-        <div>
-          <i class="boot-title"></i><i class="boot-text-1"></i><i class="boot-text-2"></i>
-          <i class="boot-label-1"></i><i class="boot-field boot-field-1"></i>
-          <i class="boot-label-2"></i><i class="boot-field boot-field-2"></i>
-          <i class="boot-link"></i><i class="boot-button"></i>
+    <div id="boot-shell" class="auth-shell" aria-hidden="true">
+      <div class="auth-shell-panel dark"><div class="sanctuary-light-backdrop"><div class="sanctuary-light-still"></div></div></div>
+      <div class="auth-shell-form">
+        <!-- Each mirrors its form's markup (components/sign-in-form.tsx and the password forms). -->
+        <div class="auth-shell-form-body boot-form" data-form="login">
+          <h1><span data-m="auth_sign_in_title"></span></h1>
+          <p><span data-m="auth_sign_in_invitation_only"></span></p>
+          <div class="boot-fields">
+            <div class="boot-errors"><div class="boot-label"><span data-m="password_recovery_email_label"></span></div><i class="boot-input"></i></div>
+            <div><div class="boot-label"><span data-m="auth_password_label"></span></div><i class="boot-input"></i></div>
+            <div class="boot-link"><span data-m="password_recovery_forgot_link"></span></div>
+            <div class="boot-submit"><i class="boot-button"></i></div>
+          </div>
+        </div>
+        <div class="auth-shell-form-body boot-form" data-form="forgot-password">
+          <h1><span data-m="password_recovery_request_title"></span></h1>
+          <p><span data-m="password_recovery_request_description"></span></p>
+          <div class="boot-fields">
+            <div><div class="boot-label"><span data-m="password_recovery_email_label"></span></div><i class="boot-input"></i></div>
+            <i class="boot-button"></i>
+          </div>
+          <div class="boot-back"><span><span data-m="password_recovery_back_to_login"></span></span></div>
+        </div>
+        <div class="auth-shell-form-body boot-form" data-form="reset-password">
+          <h1 class="boot-heading-only"><span data-m="password_recovery_reset_title"></span></h1>
+          <div class="boot-fields">
+            <div><div class="boot-label"><span data-m="password_recovery_new_password_label"></span></div><i class="boot-input"></i></div>
+            <i class="boot-button"></i>
+          </div>
         </div>
       </div>
     </div>
+    <script>
+      (() => {
+        const copy = window.bootShellCopy;
+        delete window.bootShellCopy;
+        if (!copy) return;
+        const shell = document.getElementById("boot-shell");
+        for (const element of shell.querySelectorAll("[data-m]")) {
+          element.textContent = copy[element.dataset.m];
+        }
+        // The still first-paint.css's container queries pick for this panel, at
+        // the priority a background image would not get on its own.
+        const still = /url\("?(.+?)"?\)/.exec(
+          getComputedStyle(shell.querySelector(".sanctuary-light-still")).backgroundImage,
+        )?.[1];
+        if (!still) return;
+        const preload = document.createElement("link");
+        preload.rel = "preload";
+        preload.as = "image";
+        preload.fetchPriority = "high";
+        preload.href = still;
+        document.head.append(preload);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

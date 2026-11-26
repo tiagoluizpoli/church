@@ -1,13 +1,20 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { appConfig } from '@church/app-config';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { firstPaint } from '../../tooling/vite/first-paint.ts';
 import { nonBlockingEntryStylesheet } from '../../tooling/vite/non-blocking-entry-stylesheet.ts';
 import { devAllowedHosts } from '../../tooling/worktree/dev-hostname.ts';
 
 const I18N_DIR = path.resolve(import.meta.dirname, '../../packages/i18n');
+const inlangSettings = JSON.parse(
+  readFileSync(path.resolve(I18N_DIR, 'project.inlang/settings.json'), 'utf8'),
+) as { locales: string[] };
+
 // Values come from Varlock (`dev` runs through it), never from a value file
 // Vite finds itself: envDir stays this package, which holds none (ADR-0005).
 export default defineConfig(({ command }) => ({
@@ -18,6 +25,17 @@ export default defineConfig(({ command }) => ({
       autoCodeSplitting: true,
     }),
     react(),
+    firstPaint({
+      cssFile: path.resolve(import.meta.dirname, './src/first-paint.css'),
+      locale: {
+        locales: inlangSettings.locales,
+        defaultLocale: appConfig.defaultLocale,
+        cookieName: appConfig.localeCookieName,
+        queryParam: appConfig.localeQueryParam,
+        messagesFile: (locale) =>
+          path.resolve(I18N_DIR, `messages/${locale}.json`),
+      },
+    }),
     nonBlockingEntryStylesheet(),
     VitePWA({
       registerType: 'autoUpdate',

@@ -1,58 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+/* Theme colours, page background and AuthShell's frame, shared with index.html's boot shell. */
+@import "./first-paint.css";
 
 @source "./**/*.{ts,tsx}";
 
 @custom-variant dark (&:is(.dark *));
-/* The signed-out frame splits only on wide landscape screens; portrait tablets stack. */
-@custom-variant auth-split (@media (width >= 64rem) and (orientation: landscape));
 
 :root {
-  --background: oklch(0.978 0.004 236);
-  --foreground: oklch(0.286 0.032 254);
-  --card: oklch(0.992 0.002 220);
-  --card-foreground: oklch(0.286 0.032 254);
-  --popover: oklch(0.996 0.002 220);
-  --popover-foreground: oklch(0.286 0.032 254);
-  --primary: oklch(0.378 0.09 255);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.962 0.01 240);
-  --secondary-foreground: oklch(0.336 0.028 252);
-  --muted: oklch(0.955 0.008 236);
-  --muted-foreground: oklch(0.48 0.024 250);
-  --accent: oklch(0.948 0.018 247);
-  --accent-foreground: oklch(0.324 0.037 252);
-  /* Lightness lowered from 0.614: at 0.614 this red measures 4.05:1 on the
-     card surface, so every use as small text failed WCAG AA (4.5:1). 0.58
-     still measured only 4.46:1 on the panel/page background, so 0.56: 5.1:1
-     on card, 4.85:1 on background. Hue and chroma are unchanged, and
-     destructive-as-a-background only gains contrast against its white
-     foreground. */
-  --destructive: oklch(0.56 0.207 26);
-  /* Staffing Meter fills: at least 3:1 against the track (muted) and the
-   * surface (card/popover); the text forms stay green-700 / yellow-700. */
-  --meter-success: oklch(0.527 0.154 150.069);
-  --meter-warning: oklch(0.554 0.135 66.442);
-  --meter-danger: var(--destructive);
-  --border: oklch(0.885 0.012 242);
-  --input: oklch(0.902 0.012 242);
-  --ring: oklch(0.532 0.082 254);
-  --chart-1: oklch(0.378 0.09 255);
-  --chart-2: oklch(0.536 0.073 221);
-  --chart-3: oklch(0.652 0.054 195);
-  --chart-4: oklch(0.704 0.038 145);
-  --chart-5: oklch(0.612 0.063 285);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.968 0.01 242);
-  --sidebar-foreground: oklch(0.304 0.03 252);
-  --sidebar-primary: oklch(0.378 0.09 255);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.942 0.018 246);
-  --sidebar-accent-foreground: oklch(0.324 0.037 252);
-  --sidebar-border: oklch(0.878 0.014 242);
-  --sidebar-ring: oklch(0.532 0.082 254);
-
   /* Layout / spacing tokens */
   /* Top bar height: the shell's headers and anything sized against the visible workspace. */
   --app-topbar-h: 4rem;
@@ -68,44 +24,6 @@
   --workspace-gap: 1rem;
   --workspace-panel-pad: 1rem;
   --workspace-panel-pad-lg: 1.25rem;
-}
-
-.dark {
-  --background: oklch(0.205 0.018 252);
-  --foreground: oklch(0.94 0.01 240);
-  --card: oklch(0.24 0.018 252);
-  --card-foreground: oklch(0.94 0.01 240);
-  --popover: oklch(0.24 0.018 252);
-  --popover-foreground: oklch(0.94 0.01 240);
-  --primary: oklch(0.72 0.066 238);
-  --primary-foreground: oklch(0.226 0.022 254);
-  --secondary: oklch(0.29 0.016 252);
-  --secondary-foreground: oklch(0.93 0.01 240);
-  --muted: oklch(0.278 0.014 250);
-  --muted-foreground: oklch(0.758 0.018 238);
-  --accent: oklch(0.332 0.028 246);
-  --accent-foreground: oklch(0.948 0.008 236);
-  --destructive: oklch(0.682 0.183 24);
-  --meter-success: oklch(0.723 0.219 149.579);
-  --meter-warning: oklch(0.852 0.199 91.936);
-  --meter-danger: var(--destructive);
-  --border: oklch(0.336 0.018 248);
-  --input: oklch(0.372 0.018 248);
-  --ring: oklch(0.646 0.072 238);
-  --chart-1: oklch(0.72 0.066 238);
-  --chart-2: oklch(0.648 0.072 218);
-  --chart-3: oklch(0.73 0.058 190);
-  --chart-4: oklch(0.768 0.05 150);
-  --chart-5: oklch(0.714 0.07 284);
-  --sidebar: oklch(0.186 0.016 252);
-  --sidebar-foreground: oklch(0.94 0.01 240);
-  --sidebar-primary: oklch(0.72 0.066 238);
-  --sidebar-primary-foreground: oklch(0.226 0.022 254);
-  --sidebar-accent: oklch(0.286 0.024 246);
-  --sidebar-accent-foreground: oklch(0.948 0.008 236);
-  --sidebar-border: oklch(0.318 0.018 248);
-  --sidebar-ring: oklch(0.646 0.072 238);
-  --radius: 0.625rem;
 }
 
 @media (min-width: 768px) {
@@ -125,7 +43,7 @@
 }
 
 @theme {
-  --font-sans: "Atkinson Hyperlegible", sans-serif;
+  --font-sans: var(--font-ui);
   --font-mono: "JetBrains Mono", monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -179,17 +97,9 @@
     @apply font-sans;
   }
 
+  /* Its background is in first-paint.css. */
   body {
     @apply font-sans bg-background text-foreground;
-    /* Fixed to the viewport: as the canvas background it would otherwise tile
-       below a body shorter than the window. */
-    background: linear-gradient(
-        180deg,
-        var(--color-background) 0%,
-        color-mix(in oklch, var(--color-background) 92%, var(--color-accent))
-          100%
-      )
-      fixed no-repeat var(--color-background);
   }
 
   ::selection {
@@ -374,7 +284,7 @@
   }
 }
 
-/* Sanctuary light scene: the stills' rules are in index.html, shared with the boot shell. */
+/* Sanctuary light scene: the stills' rules are in first-paint.css, shared with the boot shell. */
 .sanctuary-light-canvas {
   opacity: 0;
   transition: opacity 700ms ease-out;

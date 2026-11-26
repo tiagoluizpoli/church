@@ -1,10 +1,10 @@
 import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
-import {
-  type CycleBuilderData,
-  type CycleBuilderShiftSummary,
-  isActiveAssignment,
+import type {
+  CycleBuilderData,
+  CycleBuilderShiftSummary,
 } from '../../hooks/use-cycle-builder';
+import { isActiveAssignment } from '../scheduling-rules';
 import type {
   PickerVolunteer,
   ServingAssignmentContext,

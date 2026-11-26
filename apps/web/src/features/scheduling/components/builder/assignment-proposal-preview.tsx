@@ -17,7 +17,7 @@ import {
   scheduleOrdinals,
 } from '../../utils/builder/assignment-proposal.utils';
 import { churchDayOf } from '../../utils/builder/cycle-builder-date.utils';
-import { isStaffedEventTimeBlock } from '../../utils/builder/cycle-builder-staffing.utils';
+import { isStaffedEventTimeBlock } from '../../utils/shift-verdict';
 import {
   type AttentionPerson,
   ProposalAttention,

@@ -1,10 +1,10 @@
-import {
-  type CycleBuilderData,
-  type CycleBuilderEventSummary,
-  type CycleBuilderEventTimeBlockSummary,
-  type CycleBuilderShiftSummary,
-  isActiveAssignment,
+import type {
+  CycleBuilderData,
+  CycleBuilderEventSummary,
+  CycleBuilderEventTimeBlockSummary,
+  CycleBuilderShiftSummary,
 } from '../../hooks/use-cycle-builder';
+import { isActiveAssignment } from '../scheduling-rules';
 
 interface FindShiftByIdInput {
   data: CycleBuilderData;

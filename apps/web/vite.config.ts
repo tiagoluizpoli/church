@@ -6,9 +6,11 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { devAllowedHosts } from '../../tooling/worktree/dev-hostname.ts';
 
+const I18N_DIR = path.resolve(import.meta.dirname, '../../packages/i18n');
+
 // Values come from Varlock (`dev` runs through it), never from a value file
 // Vite finds itself: envDir stays this package, which holds none (ADR-0005).
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     tailwindcss(),
     tanstackRouter({
@@ -56,9 +58,22 @@ export default defineConfig({
   // Keep the lazy availability route from triggering a reload of active pages.
   optimizeDeps: { include: ['@base-ui/react/switch'] },
   resolve: {
-    alias: {
-      '@': path.resolve(import.meta.dirname, './src'),
-    },
+    alias: [
+      { find: '@', replacement: path.resolve(import.meta.dirname, './src') },
+      // The build splits each route's copy into per-message modules; dev and
+      // tests keep the three locale modules (packages/i18n compiles both).
+      ...(command === 'build'
+        ? [
+            {
+              find: /^@church\/i18n\/(messages|runtime)$/,
+              replacement: path.resolve(
+                I18N_DIR,
+                'src/paraglide-message-modules/$1.js',
+              ),
+            },
+          ]
+        : []),
+    ],
   },
   server: {
     // The worktree's CHURCH_WEB_PORT, mapped by .env.schema; Playwright's
@@ -80,4 +95,4 @@ export default defineConfig({
       ],
     },
   },
-});
+}));

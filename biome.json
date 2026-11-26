@@ -24,6 +24,7 @@
       "!!**/.vscode",
       "!!**/routeTree.gen.ts",
       "!!**/src/paraglide",
+      "!!**/src/paraglide-message-modules",
       "!!**/project.inlang/.meta.json",
       "!!**/src-tauri",
       "!!**/.nuxt",

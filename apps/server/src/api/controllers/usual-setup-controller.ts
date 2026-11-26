@@ -7,7 +7,7 @@ import {
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
-import type { IParticipationManager } from '../../domain/contracts/application/participation-manager';
+import type { IUsualSetupManager } from '../../domain/contracts/application/usual-setup-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';
@@ -41,7 +41,7 @@ interface ResolveManagedMinistryInput {
 
 interface UsualSetupControllerDependencies {
   ministryManager: IMinistryManager;
-  participationManager: IParticipationManager;
+  usualSetupManager: IUsualSetupManager;
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: AuthorityGuard;
 }
@@ -51,18 +51,18 @@ export class UsualSetupController implements FastifyController {
   readonly prefix = '/ministries/:ministryId/usual-setup';
 
   private readonly ministryManager: IMinistryManager;
-  private readonly participationManager: IParticipationManager;
+  private readonly usualSetupManager: IUsualSetupManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly authorityGuard: AuthorityGuard;
 
   constructor({
     ministryManager,
-    participationManager,
+    usualSetupManager,
     activeChurchResolver,
     authorityGuard,
   }: UsualSetupControllerDependencies) {
     this.ministryManager = ministryManager;
-    this.participationManager = participationManager;
+    this.usualSetupManager = usualSetupManager;
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
   }
@@ -102,7 +102,7 @@ export class UsualSetupController implements FastifyController {
           reply,
         });
         if (!ministryId) return;
-        const blocks = await this.participationManager.listUsualSetupBlocks({
+        const blocks = await this.usualSetupManager.listUsualSetupBlocks({
           churchId: ChurchId.from(request.churchId),
           ministryId,
         });
@@ -136,7 +136,7 @@ export class UsualSetupController implements FastifyController {
         if (!ministryId) return;
         const { sourceTemplateTimeBlockId } =
           request.params as UsualSetupBlockRouteParams;
-        const block = await this.participationManager.saveUsualSetupBlock({
+        const block = await this.usualSetupManager.saveUsualSetupBlock({
           churchId: ChurchId.from(request.churchId),
           ministryId,
           entry: usualSetupMapper.toEntryInput({

@@ -124,7 +124,7 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   const controller = new AssignController({
-    participationManager: managers.participationManager,
+    ...managers.participationModules,
     assignmentManager: managers.assignmentManager,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: authorityGuard as never,

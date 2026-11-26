@@ -9,8 +9,8 @@ import type {
   CycleParticipationView,
   ParticipationEventTimeBlockView,
   ParticipationEventView,
-  ScheduleSummaryView,
-} from '@/domain/contracts/application/participation-manager';
+} from '@/domain/contracts/application/prepare-manager';
+import type { ScheduleSummaryView } from '@/domain/contracts/application/schedule-read-model';
 import { Event } from '@/domain/entities/event';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
 import { MinistryParticipation } from '@/domain/entities/ministry-participation';

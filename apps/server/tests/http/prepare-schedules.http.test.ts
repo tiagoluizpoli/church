@@ -80,7 +80,7 @@ beforeAll(async () => {
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new PrepareController({
     config: appConfig,
-    participationManager: createSchedulingManagers().participationManager,
+    ...createSchedulingManagers().participationModules,
     availabilityCheckManager: {} as never,
     activeChurchResolver: new DbActiveChurchResolver({
       actorRepository,
@@ -1691,5 +1691,159 @@ describe('GET /prepare/schedules order, attention and scope', () => {
       openSwapRequestCount: 0,
       gapCount: 0,
     });
+  });
+});
+
+describe('GET /prepare/ministries/:ministryId/cycles-summary', () => {
+  function listSummaries(ministryId: string) {
+    return app.inject({
+      method: 'GET',
+      url: `/api/v1/prepare/ministries/${ministryId}/cycles-summary`,
+    });
+  }
+
+  it("summarises every Sent Cycle of the Church for one Ministry, oldest first, leaving out Draft, Past and other Churches' Cycles", async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const november = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'November 2026',
+      month: '2026-11',
+      lastDay: '30',
+      state: 'sent',
+    });
+    const october = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'October 2026',
+      month: '2026-10',
+      lastDay: '31',
+      state: 'sent',
+    });
+    const december = await seedCycle({
+      churchId: seed.churchAId,
+      name: 'December 2026',
+      month: '2026-12',
+      lastDay: '31',
+      state: 'sent',
+    });
+    await seedCycle({
+      churchId: seed.churchAId,
+      name: 'September 2026',
+      month: '2026-09',
+      lastDay: '30',
+      state: 'past-from-sent',
+    });
+    await seedCycle({
+      churchId: seed.churchAId,
+      name: 'January 2027',
+      month: '2027-01',
+      lastDay: '31',
+      state: 'draft',
+    });
+    await seedCycle({
+      churchId: seed.churchBId,
+      name: 'Other Church October',
+      month: '2026-10',
+      lastDay: '31',
+      state: 'sent',
+    });
+    // October: one published and one asked participation, one block each.
+    await seedParticipation({
+      churchId: seed.churchAId,
+      cycleId: october.id,
+      ministryId: seed.ministryAId,
+      state: 'published',
+      startsAt: '2026-10-04T12:00:00.000Z',
+      endsAt: '2026-10-04T14:00:00.000Z',
+    });
+    await seedParticipation({
+      churchId: seed.churchAId,
+      cycleId: october.id,
+      ministryId: seed.ministryAId,
+      state: 'availability_requested',
+      startsAt: '2026-10-11T12:00:00.000Z',
+      endsAt: '2026-10-11T14:00:00.000Z',
+    });
+    // November: every participation published, one opted out of its block.
+    await seedParticipation({
+      churchId: seed.churchAId,
+      cycleId: november.id,
+      ministryId: seed.ministryAId,
+      state: 'published',
+      startsAt: '2026-11-01T12:00:00.000Z',
+      endsAt: '2026-11-01T14:00:00.000Z',
+    });
+    await seedParticipation({
+      churchId: seed.churchAId,
+      cycleId: november.id,
+      ministryId: seed.ministryAId,
+      state: 'published',
+      serves: false,
+      startsAt: '2026-11-08T12:00:00.000Z',
+      endsAt: '2026-11-08T14:00:00.000Z',
+    });
+    // December: only another Ministry takes part.
+    await seedParticipation({
+      churchId: seed.churchAId,
+      cycleId: december.id,
+      ministryId: seed.ministryBId,
+      state: 'preparing',
+      startsAt: '2026-12-06T12:00:00.000Z',
+      endsAt: '2026-12-06T14:00:00.000Z',
+    });
+    signIn({ userId: seed.adminUserId, churchId: seed.churchAId });
+
+    const response = await listSummaries(seed.ministryAId);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      cycles: [
+        {
+          cycleId: october.id,
+          name: 'October 2026',
+          startDate: '2026-10-01',
+          endDate: '2026-10-31',
+          isPartOf: true,
+          eventCount: 2,
+          eventTimeBlockCount: 2,
+          status: 'not_started',
+          availabilityRequestedForAll: true,
+          availabilityRequestedForAny: true,
+        },
+        {
+          cycleId: november.id,
+          name: 'November 2026',
+          startDate: '2026-11-01',
+          endDate: '2026-11-30',
+          isPartOf: true,
+          eventCount: 2,
+          eventTimeBlockCount: 1,
+          status: 'published',
+          availabilityRequestedForAll: true,
+          availabilityRequestedForAny: true,
+        },
+        {
+          cycleId: december.id,
+          name: 'December 2026',
+          startDate: '2026-12-01',
+          endDate: '2026-12-31',
+          isPartOf: false,
+          eventCount: 0,
+          eventTimeBlockCount: 0,
+          status: 'not_started',
+          availabilityRequestedForAll: false,
+          availabilityRequestedForAny: false,
+        },
+      ],
+    });
+  });
+
+  it('answers 404 for a Ministry of another Church', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    signIn({ userId: seed.adminUserId, churchId: seed.churchAId });
+
+    const response = await listSummaries(seed.ministryBId);
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json().error).toBe('NOT_FOUND');
   });
 });

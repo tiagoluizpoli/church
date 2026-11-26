@@ -73,7 +73,7 @@ beforeAll(async () => {
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new PrepareController({
     config: appConfig,
-    participationManager: createSchedulingManagers().participationManager,
+    ...createSchedulingManagers().participationModules,
     availabilityCheckManager: {} as never,
     activeChurchResolver: new DbActiveChurchResolver({
       actorRepository,

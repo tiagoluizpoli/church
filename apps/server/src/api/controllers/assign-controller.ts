@@ -15,7 +15,10 @@ import {
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAssignmentManager } from '../../domain/contracts/application/assignment-manager';
-import type { IParticipationManager } from '../../domain/contracts/application/participation-manager';
+import type { IAssignmentProposalManager } from '../../domain/contracts/application/assignment-proposal-manager';
+import type { IScheduleBuilderReader } from '../../domain/contracts/application/schedule-builder-reader';
+import type { ISchedulePublisher } from '../../domain/contracts/application/schedule-publisher';
+import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
 import type { Assignment } from '../../domain/entities/assignment';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
@@ -115,7 +118,10 @@ interface DenyShiftScopeInput {
 }
 
 interface AssignControllerDependencies {
-  participationManager: IParticipationManager;
+  scheduleBuilderReader: IScheduleBuilderReader;
+  assignmentProposalManager: IAssignmentProposalManager;
+  scheduleReadModel: IScheduleReadModel;
+  schedulePublisher: ISchedulePublisher;
   assignmentManager: IAssignmentManager;
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: AuthorityGuard;
@@ -125,7 +131,10 @@ interface AssignControllerDependencies {
 export class AssignController implements FastifyController {
   readonly prefix = '/assign';
 
-  private readonly participationManager: IParticipationManager;
+  private readonly scheduleBuilderReader: IScheduleBuilderReader;
+  private readonly assignmentProposalManager: IAssignmentProposalManager;
+  private readonly scheduleReadModel: IScheduleReadModel;
+  private readonly schedulePublisher: ISchedulePublisher;
   private readonly assignmentManager: IAssignmentManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly authorityGuard: AuthorityGuard;
@@ -133,13 +142,19 @@ export class AssignController implements FastifyController {
   private readonly parked: AppConfig['parked'];
 
   constructor({
-    participationManager,
+    scheduleBuilderReader,
+    assignmentProposalManager,
+    scheduleReadModel,
+    schedulePublisher,
     assignmentManager,
     activeChurchResolver,
     authorityGuard,
     config,
   }: AssignControllerDependencies) {
-    this.participationManager = participationManager;
+    this.scheduleBuilderReader = scheduleBuilderReader;
+    this.assignmentProposalManager = assignmentProposalManager;
+    this.scheduleReadModel = scheduleReadModel;
+    this.schedulePublisher = schedulePublisher;
     this.assignmentManager = assignmentManager;
     this.activeChurchResolver = activeChurchResolver;
     this.authorityGuard = authorityGuard;
@@ -193,7 +208,7 @@ export class AssignController implements FastifyController {
         )
           return;
 
-        const view = await this.participationManager.getCycleBuilderData({
+        const view = await this.scheduleBuilderReader.getCycleBuilderData({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
@@ -289,11 +304,12 @@ export class AssignController implements FastifyController {
         )
           return;
 
-        const proposal = await this.participationManager.getAssignmentProposal({
-          churchId: ChurchId.from(request.churchId),
-          cycleId: CycleId.from(cycleId),
-          ministryId: MinistryId.from(ministryId),
-        });
+        const proposal =
+          await this.assignmentProposalManager.getAssignmentProposal({
+            churchId: ChurchId.from(request.churchId),
+            cycleId: CycleId.from(cycleId),
+            ministryId: MinistryId.from(ministryId),
+          });
         return reply.send(assignMapper.proposalToResponse(proposal));
       },
     );
@@ -340,8 +356,8 @@ export class AssignController implements FastifyController {
 
         const { applicationKey, reviewToken, additions, excludedAdditions } =
           request.body as ApplyAssignmentProposalBody;
-        const outcome = await this.participationManager.applyAssignmentProposal(
-          {
+        const outcome =
+          await this.assignmentProposalManager.applyAssignmentProposal({
             churchId: ChurchId.from(request.churchId),
             cycleId: CycleId.from(cycleId),
             ministryId: MinistryId.from(ministryId),
@@ -350,8 +366,7 @@ export class AssignController implements FastifyController {
             reviewToken,
             additions: additions.map(toReviewedAddition),
             excludedAdditions: excludedAdditions.map(toReviewedAddition),
-          },
-        );
+          });
         return reply.send(assignMapper.proposalOutcomeToResponse(outcome));
       },
     );
@@ -395,7 +410,7 @@ export class AssignController implements FastifyController {
           return;
 
         const body = request.body as PublishCycleBody;
-        const view = await this.participationManager.publishCycle({
+        const view = await this.schedulePublisher.publishCycle({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
@@ -439,7 +454,7 @@ export class AssignController implements FastifyController {
           })
         )
           return;
-        const result = await this.participationManager.sendScheduleUpdates({
+        const result = await this.schedulePublisher.sendScheduleUpdates({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
@@ -472,7 +487,7 @@ export class AssignController implements FastifyController {
         if (denied) return;
 
         const volunteers =
-          await this.participationManager.listEligibleVolunteers({
+          await this.scheduleBuilderReader.listEligibleVolunteers({
             churchId: ChurchId.from(request.churchId),
             shiftId: ShiftId.from(shiftId),
           });
@@ -671,7 +686,7 @@ export class AssignController implements FastifyController {
         });
         if (denied) return;
 
-        const completion = await this.participationManager.getCompletion({
+        const completion = await this.scheduleReadModel.getCompletion({
           churchId: ChurchId.from(request.churchId),
           participationId: MinistryParticipationId.from(participationId),
         });

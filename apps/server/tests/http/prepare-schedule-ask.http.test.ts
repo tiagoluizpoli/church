@@ -106,7 +106,7 @@ const SECOND_END = new Date('2026-09-13T14:00:00.000Z');
 
 let app: FastifyTypedInstance;
 // Save, Publish and Assignment race the Ask route through their managers.
-const { participationManager, assignmentManager } = createSchedulingManagers();
+const { participationModules, assignmentManager } = createSchedulingManagers();
 
 beforeAll(async () => {
   app = await createFastify({
@@ -118,7 +118,7 @@ beforeAll(async () => {
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new PrepareController({
     config: appConfig,
-    participationManager,
+    ...participationModules,
     availabilityCheckManager: new DbAvailabilityCheckManager({
       participationRepository: new DrizzleMinistryParticipationRepository({
         db,
@@ -824,7 +824,7 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
         roleId: RoleId.from(roleId),
         peopleNeeded: 1,
       });
-      return participationManager.savePreparation({
+      return participationModules.prepareManager.savePreparation({
         churchId: ChurchId.from(askable.churchId),
         participationId: MinistryParticipationId.from(
           askable.first.participation.id,
@@ -839,7 +839,7 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
     }
 
     function publishSchedule(askable: Askable) {
-      return participationManager.publishCycle({
+      return participationModules.schedulePublisher.publishCycle({
         churchId: ChurchId.from(askable.churchId),
         cycleId: CycleId.from(askable.cycleId),
         ministryId: MinistryId.from(askable.ministryId),

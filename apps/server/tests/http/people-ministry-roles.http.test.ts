@@ -153,7 +153,7 @@ beforeAll(async () => {
   const scheduling = createSchedulingManagers();
   // The Assign board's own authority is not under test here; its qualification locking is.
   const assign = new AssignController({
-    participationManager: scheduling.participationManager,
+    ...scheduling.participationModules,
     assignmentManager: scheduling.assignmentManager,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: {
@@ -170,7 +170,7 @@ beforeAll(async () => {
   });
   const prepare = new PrepareController({
     config: appConfig,
-    participationManager: scheduling.participationManager,
+    ...scheduling.participationModules,
     availabilityCheckManager: new DbAvailabilityCheckManager({
       participationRepository: new DrizzleMinistryParticipationRepository({
         db,

@@ -8,7 +8,7 @@ import type {
   CycleParticipationFilters,
   ParticipationEventTimeBlockView,
   ParticipationEventView,
-} from '../domain/contracts/application/participation-manager';
+} from '../domain/contracts/application/prepare-manager';
 
 export interface FilterCycleParticipationInput {
   events: ParticipationEventView[];

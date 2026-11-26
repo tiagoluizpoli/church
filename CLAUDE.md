@@ -26,5 +26,6 @@ seeds as `@/seeds/…`; a relative import only for a file in the same folder.
   `docs/adr/` decisions, and the relevant plan/specification.
 - Backend, API, database, security, or tenancy: [backend guidance](docs/agents/backend.md).
 - Frontend or UI: [frontend guidance](docs/agents/frontend.md).
+- Schedule export rendering, Typst templates: [Typst guidance](docs/agents/typst.md).
 - GitHub issue work: [issue tracker](docs/agents/issue-tracker.md).
 - Triage: [triage labels](docs/agents/triage-labels.md).

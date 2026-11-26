@@ -24,6 +24,7 @@ import {
   summarizeCycleCounts,
   summarizeCycleStaffing,
 } from '../../utils/builder/cycle-builder-staffing.utils';
+import { isCancelledEvent } from '../../utils/scheduling-rules';
 import { UnavailableConfirmDialog } from './assignment/unavailable-confirm-dialog';
 import {
   AssignmentProposalPreview,
@@ -125,7 +126,7 @@ export function CycleBuilder({
   const counts = summarizeCycleCounts({ data, assignedCount: staffing.filled });
   const publishableEvents = data.events.filter(
     (event) =>
-      event.status !== 'cancelled' &&
+      !isCancelledEvent({ eventStatus: event.status }) &&
       (event.state === 'assigning' || event.state === 'availability_requested'),
   );
   const proposalDisabledReasonId = useId();

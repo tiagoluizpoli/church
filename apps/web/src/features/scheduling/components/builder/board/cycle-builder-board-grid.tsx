@@ -4,10 +4,9 @@ import type { now } from '@church/time';
 import { CalendarDays } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { useBoardDragScroll } from '../../../hooks/use-cycle-board-drag-scroll';
-import {
-  type CycleBuilderData,
-  type CycleBuilderEventSummary,
-  isActiveAssignment,
+import type {
+  CycleBuilderData,
+  CycleBuilderEventSummary,
 } from '../../../hooks/use-cycle-builder';
 import type { CellDerived } from '../../../utils/builder/cycle-builder-assignment-index.utils';
 import {
@@ -24,7 +23,10 @@ import {
   countCoveredPlaces,
   staffingStatusClasses,
 } from '../../../utils/builder/cycle-builder-staffing.utils';
-import { isCancelledEvent } from '../../../utils/event-time-block-cancellation';
+import {
+  isActiveAssignment,
+  isCancelledEvent,
+} from '../../../utils/scheduling-rules';
 import { CancelledBadge } from '../../cancelled-badge';
 import {
   CycleBuilderCell,

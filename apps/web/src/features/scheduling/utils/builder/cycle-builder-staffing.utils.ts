@@ -1,17 +1,6 @@
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
-
-export interface CountedEventTimeBlock {
-  included: boolean;
-  cancelled: boolean;
-}
-
-/** A time block asks for people only when this Ministry serves it and neither it nor its Event was cancelled. */
-export function isStaffedEventTimeBlock({
-  included,
-  cancelled,
-}: CountedEventTimeBlock): boolean {
-  return included && !cancelled;
-}
+import { isActiveAssignment } from '../scheduling-rules';
+import { isStaffedEventTimeBlock } from '../shift-verdict';
 
 interface RequirementCoverage {
   id: string;
@@ -35,7 +24,7 @@ export function countCoveredPlaces({
 }: CountCoveredPlacesInput): number {
   const activeByRequirement = new Map<string, number>();
   for (const assignment of assignments) {
-    if (assignment.status === 'cancelled') continue;
+    if (!isActiveAssignment(assignment)) continue;
     const { shiftRequirementId } = assignment;
     const activeCount = activeByRequirement.get(shiftRequirementId) ?? 0;
     activeByRequirement.set(shiftRequirementId, activeCount + 1);

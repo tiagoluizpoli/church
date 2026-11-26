@@ -175,7 +175,9 @@ const KEYS = Object.keys(VARIANTS);
 const q = new URLSearchParams(location.search);
 const state = { variant: q.get("variant") ?? "A", data: q.get("data") ?? "kids", draft: q.get("draft") === "1", split: q.get("split") ?? "all", part: Number(q.get("part") ?? 0),
   // used by the export-screen prototype: ?groups=<json [{name,templates}]> ([] = one plain list)  ?from=&to= (days)  ?cyc=
-  groups: q.get("groups"), from: Number(q.get("from") ?? 1), to: Number(q.get("to") ?? 30), cyc: q.get("cyc") ?? "Novembro 2026" };
+  groups: q.get("groups"), from: Number(q.get("from") ?? 1), to: Number(q.get("to") ?? 30), cyc: q.get("cyc") ?? "Novembro 2026", rng: q.get("rng"),
+  // ?sector=<name> keeps one Sector; ?role=Professor(a)|Auxiliar keeps one Role (fake rule: first name per Sector teaches)
+  sector: q.get("sector"), role: q.get("role") };
 if (q.get("chrome") === "0") document.body.classList.add("nochrome");
 
 // ---- fake data: November 2026 Cycle ----
@@ -228,7 +230,7 @@ const blocksOf = (ev) => ev.blocks.flatMap((b) => b.shiftList ? b.shiftList.map(
 const secIdx = (name) => ["Berçário", "Maternal", "Primários", "Juniores", "Templo", "Kids"].indexOf(name) % 4;
 const nm = (n) => n ?? `<span class="vaga">Vaga</span>`;
 const live = (sectors) => sectors.map((s) => ({ ...s, names: s.names.filter((n) => state.draft || n) }));
-const hideSector = (d) => !!d.single;
+const hideSector = (d) => !!d.single && !state.role || !!state.sector;
 
 function header(d) {
   return `<div class="head"><img src="logo.png" alt=""><div><h1>${d.ministry} · Novembro 2026</h1><div class="range">1 – 30 nov 2026</div></div>${state.draft ? `<div class="stamp">Rascunho</div>` : ""}</div>`
@@ -335,10 +337,10 @@ function cardF(ev, sameTitle) {
   let h = `<div class="card"><div class="ch">${wd ? `<span class="wd">${wd}</span>` : ""}<span class="dn">${dn}</span>${tt ? `<span class="tt">${tt}</span>` : ""}</div>`;
   if (ev.cancelledEvent) return h + `<div class="blk"><div class="cx">Não haverá culto</div></div></div>`;
   return h + bl.map((b) => `<div class="blk">${b.label.length <= 5 ? `<div class="band"><span>${b.label}</span></div>` : `<div class="band wide"><em>${b.label.replace(" · ", " ").replace("–", " – ").split(" ").filter(Boolean).join("<br>")}</em></div>`}` +
-    (b.cancelled ? `<div class="cx">Cancelado</div>` : `<div class="body">` + live(b.sectors).map((x) =>
-      `<div class="sec sec-${secIdx(x.sector)}"><b>${x.sector}</b>${x.names.map((n) => `<div>${nm(n)}</div>`).join("") || "<div>—</div>"}</div>`).join("") + `</div>`) + `</div>`).join("") + `</div>`;
+    (b.cancelled ? `<div class="cx">Cancelado</div>` : `<div class="body"${state.sector ? ' style="grid-template-columns:1fr"' : ""}>` + live(b.sectors).map((x) =>
+      `<div class="sec sec-${secIdx(x.sector)}">${state.sector ? "" : `<b>${x.sector}</b>`}${x.names.map((n) => `<div>${nm(n)}</div>`).join("") || "<div>—</div>"}</div>`).join("") + `</div>`) + `</div>`).join("") + `</div>`;
 }
-const headerE = (d) => `<div class="ehd"><img src="logo.png" alt=""><div class="t"><div class="k">Escala</div><h1>${d.ministry}</h1>${state.draft ? `<span class="stamp">Rascunho</span>` : ""}</div><div class="range"><b>${state.cyc}</b>${state.from} – ${state.to} nov 2026</div></div>`;
+const headerE = (d) => `<div class="ehd"><img src="logo.png" alt=""><div class="t"><div class="k">Escala</div><h1>${d.ministry}</h1>${d.single ? `<div class="k" style="margin-top:2px;color:var(--pri)">${d.single}</div>` : ""}${state.draft ? `<span class="stamp">Rascunho</span>` : ""}</div><div class="range"><b>${state.cyc}</b>${state.rng ?? `${state.from} – ${state.to} nov 2026`}</div></div>`;
 
 function parts(d) {
   if (state.split === "group") return d.groups.map((g) => ({ name: g.name, groups: [g] }));
@@ -355,6 +357,17 @@ function render() {
   if (state.groups) { const cfg = JSON.parse(state.groups); const has = (e) => cfg.some((c) => c.templates.includes(e.title));
     d.groups = cfg.length ? [...cfg.map((c) => ({ name: c.name, events: all.filter((e) => c.templates.includes(e.title)) })), { name: "Outros", events: all.filter((e) => !has(e)) }] : [{ name: "", events: [...all].sort((a, b) => a.day - b.day) }]; }
   d.groups = d.groups.map((g) => ({ ...g, events: g.events.filter((e) => e.day >= state.from && e.day <= state.to) })).filter((g) => g.events.length);
+  if (state.sector || state.role) {
+    const cut = (secs) => secs.filter((x) => !state.sector || x.sector === state.sector)
+      .map((x) => ({ ...x, names: state.role ? x.names.filter((_, i) => (i === 0) === (state.role === "Professor(a)")) : x.names }));
+    const secsOf = (b) => b.sectors ?? b.shiftList.flatMap((x) => x.sectors);
+    for (const g of d.groups) for (const e of g.events) {
+      for (const b of e.blocks) { if (b.sectors) b.sectors = cut(b.sectors); if (b.shiftList) b.shiftList = b.shiftList.map((x) => ({ ...x, sectors: cut(x.sectors) })).filter((x) => x.sectors.length); }
+      e.blocks = e.blocks.filter((b) => secsOf(b).length); // e.g. Projeção's 8h00 has no Kids Sector
+    }
+    d.groups = d.groups.map((g) => ({ ...g, events: g.events.filter((e) => e.blocks.length) })).filter((g) => g.events.length);
+    d.single = [state.sector, state.role].filter(Boolean).join(" · ");
+  }
   const ps = parts(d);
   state.part = Math.min(state.part, ps.length - 1);
   const p = ps[state.part];

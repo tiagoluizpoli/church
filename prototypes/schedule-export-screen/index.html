@@ -133,7 +133,7 @@
   .cf { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .cf > span { font-size: 11.5px; font-weight: 700; color: var(--mfg); }
   .cf select { width: auto; padding: 6px 8px; } .phone .cf select { width: 100%; }
-  .cf .row select { width: auto; }
+  .cf .row select, .cf .row input { width: auto; padding: 6px 8px; }
   .cf .gs { display: flex; gap: 6px; align-items: center; min-height: 34px; flex-wrap: wrap; }
   .phone .cf.wide { grid-column: 1 / -1; }
   .mfoot { display: flex; gap: 8px; align-items: center; padding: 10px 18px; border-top: 1px solid var(--bd); }
@@ -143,12 +143,12 @@
   .cyc button { border: 0; background: none; cursor: pointer; padding: 6px 9px; }
   .cyc button:disabled { opacity: .3; cursor: default; }
   .cyc .cname { flex: 1; font-weight: 700; border-left: 1px solid var(--bd); border-right: 1px solid var(--bd); white-space: nowrap; }
-  .cyc .pop { left: 0; top: calc(100% + 4px); width: 280px; padding: 10px; }
+  .cyc .pop { left: 0; top: calc(100% + 4px); width: 340px; padding: 10px; }
   .phone .cyc .pop { left: 0 !important; right: auto; width: 300px; }
   .cyc .pop input { width: 100%; margin-bottom: 6px; }
   .cyc .pop ul { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; }
   .cyc .pop li.y { font-size: 11.5px; font-weight: 700; color: var(--mfg); padding: 8px 8px 2px; }
-  .cyc .pop li.c { padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; }
+  .cyc .pop li.c { gap: 10px; align-items: baseline; padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; }
   .cyc .pop li.c:hover { background: var(--acc); } .cyc .pop li.c.on { background: var(--acc); font-weight: 700; }
   .phone .cf.cy { grid-column: 1 / -1; }
   .viewer { position: absolute; inset: 0; z-index: 25; background: var(--bg); display: flex; flex-direction: column; }
@@ -170,23 +170,42 @@
 <div id="toast"></div>
 <div id="switcher"><button id="prev" aria-label="Anterior">←</button><span id="vlabel"></span><button id="next" aria-label="Próxima">→</button></div>
 <script>
-const VARIANTS = { D: "Diálogo com prévia sempre aberta", E: "Diálogo, prévia abre em tela cheia", A: "Uma página, grupos numa gaveta", B: "Passo a passo", C: "Prévia primeiro, grupos na página do ministério" };
+const VARIANTS = { D: "Diálogo com prévia sempre aberta" }; // A, B, C, E stay in the branch history
 const KEYS = Object.keys(VARIANTS);
 const q = new URLSearchParams(location.search);
 const TEMPLATES = ["Culto de domingo", "Culto de quarta", "Vigília de oração"]; // the Retiro was added by hand: no template
-const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-const CYCLES = []; for (let y = 2027; y >= 2024; y--) for (let m = 11; m >= 0; m--) if (y * 12 + m <= 2026 * 12 + 11 && y * 12 + m >= 2024 * 12 + 8) CYCLES.push(`${MONTHS[m]} ${y}`); // newest first; Dec 2026 is the next, not yet sent
+const MON = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+// A Cycle is a named block of time of any length. Only Cycles where this Ministry has a Schedule, newest first.
+const CYCLES = [
+  ["Dezembro 2026", "2026-12-01", "2026-12-31"], ["Novembro 2026", "2026-11-01", "2026-11-30"], ["Setembro e outubro", "2026-09-01", "2026-10-31"],
+  ["Inverno 2026", "2026-06-01", "2026-08-31"], ["Maio 2026", "2026-05-01", "2026-05-31"], ["Abril 2026", "2026-04-01", "2026-04-30"],
+  ["1º trimestre 2026", "2026-01-01", "2026-03-31"], ["Dezembro 2025", "2025-12-01", "2025-12-31"], ["Outubro e novembro 2025", "2025-10-01", "2025-11-30"],
+  ["Julho a setembro 2025", "2025-07-01", "2025-09-30"], ["Junho 2025", "2025-06-01", "2025-06-30"], ["Primeiro semestre 2025", "2025-01-01", "2025-05-31"],
+].map(([name, from, to]) => ({ name, from, to }));
+const cycOf = (name) => CYCLES.find((c) => c.name === name);
+const ymd = (iso) => iso.split("-").map(Number);
+const fmtDay = (iso, withYear) => { const [y, m, d] = ymd(iso); return `${d} ${MON[m - 1]}${withYear ? " " + y : ""}`; };
+const fmtSpan = (a, b) => { const [ya, ma] = ymd(a), [yb, mb] = ymd(b); return ya !== yb ? `${fmtDay(a, true)} – ${fmtDay(b, true)}` : ma === mb ? `${ymd(a)[2]} – ${fmtDay(b, true)}` : `${fmtDay(a)} – ${fmtDay(b, true)}`; };
+const plain = (t) => t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+// searchable text: name, dates, and every month the Cycle covers ("fev 2026" finds "1º trimestre 2026")
+const haystack = (c) => { const out = [c.name, fmtSpan(c.from, c.to)]; let [y, m] = ymd(c.from); const [yb, mb] = ymd(c.to);
+  while (y * 12 + m <= yb * 12 + mb) { out.push(`${MONTHS[m - 1]} ${MON[m - 1]} ${y}`); m++; if (m > 12) { m = 1; y++; } } return plain(out.join(" ")); };
+const SECTORS = { kids: ["Berçário", "Maternal", "Primários", "Juniores"], proj: ["Templo", "Kids"] };
+const ROLES = { kids: ["Professor(a)", "Auxiliar"], proj: ["Operador(a)"] };
 const S = {
   variant: q.get("variant") ?? "D", device: q.get("device") ?? "phone", data: q.get("data") ?? "kids", draft: q.get("draft") === "1",
   cyc: "Novembro 2026", whole: true, from: 1, to: 30,
   format: "png", layout: "cards", split: "all",
   useGroups: true, groups: [{ name: "Domingos", templates: ["Culto de domingo"] }, { name: "Quartas", templates: ["Culto de quarta"] }],
-  drawer: false, step: 1, pop: null, page: "export", modal: true, sub: "main", pv: false,
+  dfrom: "2026-11-01", dto: "2026-11-30", drawer: false, step: 1, pop: null, page: "export", modal: true, sub: "main", pv: false,
 };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const phone = () => S.device === "phone";
 const groupNames = () => S.useGroups ? [...S.groups.map((g) => g.name), "Outros"] : [];
-const range = () => S.whole ? "Ciclo inteiro (1 – 30 nov)" : `${S.from} – ${S.to} nov`;
+const range = () => { const c = cycOf(S.cyc); return S.whole ? fmtSpan(c.from, c.to) : fmtSpan(S.dfrom, S.dto); };
+// the fake data only has November 2026: other dates fall back to the whole month in the preview
+const novDay = (iso, dflt) => iso.startsWith("2026-11") ? ymd(iso)[2] : dflt;
 const fmtLabel = () => S.format === "pdf" ? "PDF para imprimir" : S.format === "xlsx" ? "Planilha Excel" : S.layout === "grid" ? "Imagem em tabela" : "Imagens em cartões";
 
 // ---------- shared pieces ----------
@@ -222,20 +241,27 @@ function groupsEditor() {
   <button class="btn sm" data-gnew>+ Novo grupo</button>
   <p class="hint">Fica salvo para as próximas exportações deste ministério.</p>` : ""}</div>`;
 }
-function rendererUrl(variant, split, part) {
-  const p = new URLSearchParams({ chrome: "0", variant, data: S.data, draft: S.draft ? "1" : "0", split, part, cyc: S.cyc, from: S.whole ? 1 : S.from, to: S.whole ? 30 : S.to,
-    groups: JSON.stringify(S.useGroups ? S.groups.filter((g) => g.templates.length) : []) });
+const WEEKS = [[1, 7], [8, 14], [15, 21], [22, 30]];
+function rendererUrl(variant, i) {
+  const sp = S.split, parts = imageParts();
+  const p = new URLSearchParams({ chrome: "0", variant, data: S.data, draft: S.draft ? "1" : "0", cyc: S.cyc, rng: range(),
+    split: ["group", "week"].includes(sp) ? sp : "all", part: sp === "week" ? WEEKS.findIndex(([a, b]) => `${a}–${b} nov` === parts[i]) : sp === "group" ? i : 0,
+    from: S.whole ? 1 : novDay(S.dfrom, 1), to: S.whole ? 30 : novDay(S.dto, 30), groups: JSON.stringify(S.useGroups ? S.groups.filter((g) => g.templates.length) : []) });
+  if (sp === "sector") p.set("sector", parts[i]);
+  if (sp === "role") p.set("role", parts[i]);
   return `../schedule-export-layouts/index.html?${p}`;
 }
+// one split at a time; every format honours it (images: one each, PDF: new page each, Excel: one sheet each)
 function imageParts() {
-  if (S.format !== "png" || S.split === "all") return [null];
   if (S.split === "group") return groupNames();
-  const weeks = [[1, 7], [8, 14], [15, 21], [22, 30]].filter(([a, b]) => S.whole || (b >= S.from && a <= S.to));
-  return weeks.map(([a, b]) => `${a}–${b} nov`);
+  if (S.split === "sector") return SECTORS[S.data];
+  if (S.split === "role") return ROLES[S.data];
+  if (S.split === "week") { const a = S.whole ? 1 : novDay(S.dfrom, 1), b = S.whole ? 30 : novDay(S.dto, 30); return WEEKS.filter(([x, y]) => y >= a && x <= b).map(([x, y]) => `${x}–${y} nov`); }
+  return [null];
 }
 function preview() {
   if (S.format === "xlsx") {
-    const tabs = S.useGroups ? groupNames() : ["Escala"];
+    const tabs = S.split === "all" ? ["Escala"] : imageParts();
     return `<div class="pv"><div class="meta"><span>escala-infantil-novembro-2026.xlsx</span><span>${tabs.length} aba${tabs.length > 1 ? "s" : ""}</span></div>
     <div class="xl"><table><tr><th></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th></tr>
     <tr><th>1</th><td><b>Data</b></td><td><b>Evento</b></td><td><b>Horário</b></td><td><b>Setor</b></td><td><b>Quem serve</b></td></tr>
@@ -245,9 +271,9 @@ function preview() {
   }
   const v = S.format === "pdf" || S.layout === "grid" ? "E" : "F";
   const parts = imageParts();
-  const what = S.format === "pdf" ? "PDF · A4 deitado" : `${parts.length} imagem${parts.length > 1 ? "ns" : ""} PNG`;
+  const what = S.format === "pdf" ? `PDF · A4 deitado${parts.length > 1 ? ` · ${parts.length} partes, cada uma começa numa página nova` : ""}` : `${parts.length} ${parts.length > 1 ? "imagens" : "imagem"} PNG`;
   return `<div class="pv"><div class="meta"><span>${what}</span><span>${fmtLabel()}</span></div>
-  ${parts.map((name, i) => `<div class="part"><small>${parts.length > 1 ? `Imagem ${i + 1} de ${parts.length} · ${name} · ` : ""}<a href="${rendererUrl(v, S.split === "all" || S.format === "pdf" ? "all" : S.split, i)}" target="_blank">ver em tamanho real ↗</a></small><div class="fit"><iframe src="${rendererUrl(v, S.split === "all" || S.format === "pdf" ? "all" : S.split, i)}" scrolling="no"></iframe></div></div>`).join("")}</div>`;
+  ${parts.map((name, i) => `<div class="part"><small>${parts.length > 1 ? `${S.format === "pdf" ? "Página nova" : `Imagem ${i + 1} de ${parts.length}`} · <b>${name}</b> · ` : ""}<a href="${rendererUrl(v, i)}" target="_blank">ver em tamanho real ↗</a></small><div class="fit"><iframe src="${rendererUrl(v, i)}" scrolling="no"></iframe></div></div>`).join("")}</div>`;
 }
 function actions() {
   const many = imageParts().length;
@@ -329,12 +355,12 @@ function schedulePage() {
     <div class="panel" style="margin:12px ${phone() ? "12px" : "24px"};padding:0;overflow:auto"><table class="sched"><tr><th>Data</th><th>Evento</th><th>Horários</th><th>Escalados</th></tr>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</table></div></div>`;
 }
 function cyclePicker() {
-  const i = CYCLES.indexOf(S.cyc);
+  const i = CYCLES.findIndex((c) => c.name === S.cyc);
   let year = "";
-  const list = CYCLES.map((c) => { const y = c.split(" ")[1]; const head = y !== year ? `<li class="y" data-year="${y}">${(year = y)}</li>` : "";
-    return head + `<li class="c ${c === S.cyc ? "on" : ""}" data-pick="${c}" data-y="${y}">${c.split(" ")[0]}${c === "Novembro 2026" ? "<small class='hint' style='margin:0'>atual</small>" : ""}</li>`; }).join("");
+  const list = CYCLES.map((c) => { const y = String(ymd(c.from)[0]); const head = y !== year ? `<li class="y" data-year="${y}">${(year = y)}</li>` : "";
+    return head + `<li class="c ${c.name === S.cyc ? "on" : ""}" data-pick="${esc(c.name)}" data-y="${y}" data-hay="${esc(haystack(c))}"><span>${c.name}${c.name === "Novembro 2026" ? " <small class='hint' style='margin:0;display:inline'>· atual</small>" : ""}</span><small class="hint" style="margin:0">${fmtSpan(c.from, c.to)}</small></li>`; }).join("");
   return `<div class="cyc"><button data-cstep="1" ${i === CYCLES.length - 1 ? "disabled" : ""} aria-label="Ciclo anterior">‹</button><button class="cname" data-pop="cyc">${S.cyc} ▾</button><button data-cstep="-1" ${i === 0 ? "disabled" : ""} aria-label="Próximo ciclo">›</button>
-    ${S.pop === "cyc" ? `<div class="pop"><input type="text" placeholder="Buscar ciclo (ex.: março, 2025)" data-csearch autofocus /><ul>${list}</ul></div>` : ""}</div>`;
+    ${S.pop === "cyc" ? `<div class="pop"><input type="text" placeholder="Buscar por nome ou mês (ex.: fev 2026)" data-csearch autofocus /><ul>${list}</ul></div>` : ""}</div>`;
 }
 function stripFields() {
   const days = Array.from({ length: 30 }, (_, i) => i + 1);
@@ -343,15 +369,15 @@ function stripFields() {
   return `<div class="strip">
     <div class="cf cy"><span>Ciclo</span>${cyclePicker()}</div>
     <div class="cf ${S.whole ? "" : "wide"}"><span>Datas</span><div class="row"><select data-input="whole">${opt(true, "Ciclo inteiro", S.whole)}${opt(false, "Escolher datas…", S.whole)}</select>
-      ${S.whole ? "" : `<select data-input="from">${days.map((d) => opt(d, d + " nov", S.from)).join("")}</select>até<select data-input="to">${days.map((d) => opt(d, d + " nov", S.to)).join("")}</select>`}</div></div>
+      ${S.whole ? `<span class="hint" style="margin:0 0 0 6px">${range()}</span>` : `<input type="date" data-input="dfrom" value="${S.dfrom}" min="${cycOf(S.cyc).from}" max="${cycOf(S.cyc).to}" />até<input type="date" data-input="dto" value="${S.dto}" min="${cycOf(S.cyc).from}" max="${cycOf(S.cyc).to}" />`}</div></div>
     <label class="cf"><span>Formato</span><select data-input="fmt">${opt("png:cards", "Imagem em cartões", fmt)}${opt("png:grid", "Imagem em tabela", fmt)}${opt("pdf:grid", "PDF para imprimir", fmt)}${opt("xlsx:grid", "Planilha Excel", fmt)}</select></label>
-    ${S.format === "png" ? `<label class="cf"><span>Imagens</span><select data-input="split">${opt("all", "Uma só", S.split)}${S.useGroups ? opt("group", "Uma por grupo", S.split) : ""}${opt("week", "Uma por semana", S.split)}</select></label>` : ""}
+    <label class="cf"><span>${S.format === "png" ? "Separar em imagens" : S.format === "pdf" ? "Separar em páginas" : "Separar em abas"}</span><select data-input="split">${opt("all", "Não separar", S.split)}${S.useGroups ? opt("group", "Por grupo", S.split) : ""}${opt("week", "Por semana", S.split)}${opt("sector", "Por setor", S.split)}${ROLES[S.data].length > 1 ? opt("role", "Por função", S.split) : ""}</select></label>
     <div class="cf wide"><span>Grupos</span><div class="gs">${S.useGroups ? groupNames().map((n) => `<span class="chip">${esc(n)}</span>`).join("") : `<span class="hint" style="margin:0">Uma lista só</span>`}<button class="link" data-page="ministry">Organizar na página do ministério →</button></div></div>
   </div>`;
 }
 function exportDialog(inline) {
   const n = imageParts().length;
-  const what = S.format === "xlsx" ? "1 planilha" : S.format === "pdf" ? "1 PDF" : `${n} imagem${n > 1 ? "ns" : ""}`;
+  const what = S.format === "xlsx" ? "1 planilha" : S.format === "pdf" ? "1 PDF" : `${n} ${n > 1 ? "imagens" : "imagem"}`;
   const groupsView = `<p style="margin:0 0 12px"><button class="link" data-set="sub" data-val="main">← Voltar</button></p>${groupsEditor()}`;
   const body = S.sub === "groups" ? groupsView : `${stripFields()}${S.draft ? `<div class="draft">Ainda não publicada: sai marcada como <i>Rascunho</i>, com as vagas em aberto.</div>` : ""}${inline ? `<div style="margin-top:14px">${preview()}</div>` : ""}`;
   const share = phone() && S.format !== "xlsx";
@@ -382,6 +408,7 @@ function fitFrames() {
 }
 let lastPreview = "";
 function render() {
+  if (S.split === "role" && ROLES[S.data].length < 2) S.split = "all";
   const fr = document.getElementById("frame");
   const scroll = fr.querySelector(".scroll")?.scrollTop ?? 0;
   fr.className = S.device;
@@ -405,8 +432,9 @@ document.getElementById("frame").addEventListener("click", (e) => {
   if (d.fmt) { const [f, l] = d.fmt.split(":"); S.format = f; S.layout = l; }
   if (d.pop) S.pop = S.pop === d.pop ? null : d.pop;
   if (d.page) { S.page = d.page; S.pop = null; S.modal = true; }
-  if (d.cstep) { const i = CYCLES.indexOf(S.cyc) + Number(d.cstep); if (CYCLES[i]) S.cyc = CYCLES[i]; }
-  if (d.pick) { S.cyc = d.pick; S.pop = null; }
+  const setCyc = (c) => { S.cyc = c.name; S.whole = true; S.dfrom = c.from; S.dto = c.to; };
+  if (d.cstep) { const c = CYCLES[CYCLES.findIndex((x) => x.name === S.cyc) + Number(d.cstep)]; if (c) setCyc(c); }
+  if (d.pick) { setCyc(cycOf(d.pick)); S.pop = null; }
   if (d.gmove) { const [i, dir] = d.gmove.split(":").map(Number); const j = i + dir; if (j >= 0 && j < S.groups.length) [S.groups[i], S.groups[j]] = [S.groups[j], S.groups[i]]; }
   if (d.gdel) S.groups.splice(Number(d.gdel), 1);
   if (d.gremove) { const [i, tpl] = [Number(d.gremove.split(":")[0]), d.gremove.slice(d.gremove.indexOf(":") + 1)]; S.groups[i].templates = S.groups[i].templates.filter((x) => x !== tpl); }
@@ -420,7 +448,7 @@ document.getElementById("frame").addEventListener("input", (e) => {
   if (!("csearch" in e.target.dataset)) return;
   const qv = e.target.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const ul = e.target.nextElementSibling;
-  ul.querySelectorAll("li.c").forEach((li) => (li.style.display = (li.dataset.pick.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")).includes(qv) ? "" : "none"));
+  ul.querySelectorAll("li.c").forEach((li) => (li.style.display = qv.split(/\s+/).every((w) => li.dataset.hay.includes(w)) ? "" : "none"));
   ul.querySelectorAll("li.y").forEach((li) => (li.style.display = [...ul.querySelectorAll(`li.c[data-y="${li.dataset.year}"]`)].some((c) => c.style.display !== "none") ? "" : "none"));
 });
 document.getElementById("frame").addEventListener("change", (e) => {
@@ -428,7 +456,7 @@ document.getElementById("frame").addEventListener("change", (e) => {
   if ("csearch" in d) return; // its blur would re-render under the click on a Cycle
 
   if (d.input === "fmt") { [S.format, S.layout] = e.target.value.split(":"); }
-  else if (d.input) { S[d.input] = ["from", "to"].includes(d.input) ? Number(e.target.value) : parse(e.target.value); if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; }
+  else if (d.input) { S[d.input] = ["from", "to"].includes(d.input) ? Number(e.target.value) : parse(e.target.value); if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; if (S.dfrom > S.dto) [S.dfrom, S.dto] = [S.dto, S.dfrom]; }
   if (d.gname) S.groups[Number(d.gname)].name = e.target.value;
   if (d.gadd && e.target.value) S.groups[Number(d.gadd)].templates.push(e.target.value);
   render();

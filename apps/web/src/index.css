@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
-
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -377,40 +375,39 @@
 }
 
 /* Sanctuary light scene */
-/* Without WebGL2: three warm arched windows on plaster, one soft beam to a pool of light. */
-.sanctuary-light-fallback {
+/* Stills of the scene's real first frame, one per panel shape: the scene frames
+   by height and centres, so each is height-fitted and centred like the canvas.
+   Each still is captured at the widest aspect it serves, so it only ever crops.
+   `height > 0`: before the first layout the container reads as infinitely
+   wide, which would fetch the band still as well.
+   Recapture them whenever the scene's first frame changes. */
+.sanctuary-light-backdrop {
+  container-type: size;
+}
+
+.sanctuary-light-still {
   background:
-    radial-gradient(
-      ellipse 9% 16% at 44% 29%,
-      oklch(0.95 0.05 85 / 0.75),
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 11% 20% at 60% 26%,
-      oklch(0.96 0.05 85 / 0.85),
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 9% 16% at 77% 29%,
-      oklch(0.95 0.05 85 / 0.75),
-      transparent 70%
-    ),
-    linear-gradient(
-      200deg,
-      transparent 30%,
-      oklch(0.88 0.07 80 / 0.18) 42%,
-      transparent 58%
-    ),
-    radial-gradient(
-      ellipse 12% 6% at 55% 71%,
-      oklch(0.9 0.07 80 / 0.4),
-      transparent 70%
-    ),
-    radial-gradient(
-      ellipse 80% 70% at 55% 40%,
-      oklch(0.36 0.025 70),
-      oklch(0.16 0.015 60)
-    );
+    rgb(7 5 4) url("./assets/auth-scenes/sanctuary-light-1-1.webp") center /
+    auto 100% no-repeat;
+}
+
+@container (aspect-ratio > 11 / 10) and (height > 0) {
+  .sanctuary-light-still {
+    background-image: url("./assets/auth-scenes/sanctuary-light-1-5.webp");
+  }
+}
+
+@container (aspect-ratio > 3 / 2) and (height > 0) {
+  .sanctuary-light-still {
+    background-image: url("./assets/auth-scenes/sanctuary-light-2-4.webp");
+  }
+}
+
+/* Wider than the scene's BAND_ASPECT (2.4), it frames only the windows. */
+@container (aspect-ratio > 12 / 5) and (height > 0) {
+  .sanctuary-light-still {
+    background-image: url("./assets/auth-scenes/sanctuary-light-5.webp");
+  }
 }
 
 .sanctuary-light-canvas {

@@ -1169,10 +1169,15 @@ function startScene({ canvas, onReady, onUnsupported }: StartSceneInput) {
  * a plaster wall; light falls through them onto an open Bible on a lectern.
  * The glass, the shafts and every lit patch come from one window mask and one
  * sun direction, so the light always matches the windows. WebGL2, baked once
- * per size and composited at 30fps; the CSS approximation shows until the first
- * bake is ready (and stays without WebGL2). Fills its positioned parent.
+ * per size and composited at 30fps. The canvas fades in once the first bake
+ * is drawn (`onReady`) and removes itself without WebGL2; it sits over
+ * SanctuaryLightBackdrop's still of that first frame.
  */
-export function SanctuaryLightScene() {
+export interface SanctuaryLightSceneProps {
+  onReady: () => void;
+}
+
+export function SanctuaryLightScene({ onReady }: SanctuaryLightSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<'baking' | 'ready' | 'unsupported'>(
     'baking',
@@ -1183,21 +1188,20 @@ export function SanctuaryLightScene() {
     if (!canvas) return;
     return startScene({
       canvas,
-      onReady: () => setState('ready'),
+      onReady: () => {
+        setState('ready');
+        onReady();
+      },
       onUnsupported: () => setState('unsupported'),
     });
-  }, []);
+  }, [onReady]);
 
+  if (state === 'unsupported') return null;
   return (
-    <div aria-hidden="true" className="absolute inset-0 -z-10">
-      <div className="sanctuary-light-fallback absolute inset-0" />
-      {state !== 'unsupported' && (
-        <canvas
-          ref={canvasRef}
-          className="sanctuary-light-canvas relative block size-full"
-          data-ready={state === 'ready'}
-        />
-      )}
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="sanctuary-light-canvas relative block size-full"
+      data-ready={state === 'ready'}
+    />
   );
 }

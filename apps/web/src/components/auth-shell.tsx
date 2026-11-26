@@ -1,7 +1,7 @@
 import { m } from '@church/i18n/messages';
 import { CalendarClock } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { SanctuaryLightScene } from '@/components/auth-scenes/sanctuary-light-scene';
+import { SanctuaryLightBackdrop } from '@/components/auth-scenes/sanctuary-light-backdrop';
 import { FormControlSizeProvider } from '@/components/ui/form-control-size';
 
 function BrandMark() {
@@ -32,7 +32,7 @@ export function AuthShell({ children }: AuthShellProps) {
     <div className="grid min-h-dvh auth-split:grid-cols-[minmax(0,1fr)_28rem] auth-split:grid-rows-1 grid-rows-[minmax(12rem,1fr)_auto] auth-split:xl:grid-cols-[minmax(0,1fr)_32rem]">
       {/* Stacked, the scene takes whatever height the form leaves, so there is no dead space. */}
       <div className="auth-panel dark relative isolate flex auth-split:min-h-dvh flex-col justify-between gap-6 overflow-hidden border-sidebar-border auth-split:border-r border-b auth-split:border-b-0 bg-[oklch(0.17_0.03_258)] auth-split:p-14 p-5 text-sidebar-foreground sm:p-8">
-        <SanctuaryLightScene />
+        <SanctuaryLightBackdrop />
         <BrandMark />
         <p className="relative max-w-xs text-pretty text-sidebar-foreground/75 text-sm leading-relaxed">
           {m.auth_panel_tagline()}

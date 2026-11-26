@@ -97,6 +97,9 @@
     "@church/i18n#compile": {
       "cache": false
     },
+    "@church/i18n#build": {
+      "cache": false
+    },
     "dev": {
       "dependsOn": ["@church/i18n#compile"],
       "cache": false,

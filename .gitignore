@@ -67,4 +67,5 @@ test-results
 
 # Paraglide compiled catalog
 packages/i18n/src/paraglide
+packages/i18n/src/paraglide-message-modules
 packages/i18n/project.inlang/.meta.json

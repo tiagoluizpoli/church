@@ -1,4 +1,5 @@
 import './default-locale-strategy';
+import { entryStylesheetLoaded } from 'virtual:entry-stylesheet';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import ReactDOM from 'react-dom/client';
@@ -44,7 +45,28 @@ if (!rootElement) {
   throw new Error('Root element not found');
 }
 
+const dropBootShell = () => document.getElementById('boot-shell')?.remove();
+
+// AuthShell removes index.html's boot shell as it mounts; wherever else the
+// router lands (a signed-in redirect, an error), it goes once that has painted.
+router.subscribe('onResolved', () => {
+  requestAnimationFrame(() => {
+    if (!document.querySelector('.auth-panel')) dropBootShell();
+  });
+});
+
 if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(<RouterProvider router={router} />);
+  // The app never renders unstyled: the build's entry stylesheet loads without
+  // blocking the boot shell (tooling/vite/non-blocking-entry-stylesheet.ts).
+  entryStylesheetLoaded
+    .then(() => {
+      ReactDOM.createRoot(rootElement).render(
+        <RouterProvider router={router} />,
+      );
+    })
+    .catch((error: unknown) => {
+      // A failed start must not leave the boot shell covering the page.
+      dropBootShell();
+      throw error;
+    });
 }

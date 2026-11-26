@@ -488,7 +488,13 @@ function isProductionSourcePath({
   workspaceName,
 }: IsProductionSourcePathInput): boolean {
   if (workspaceName !== 'web' && workspaceName !== 'server') return false;
-  if (!/\.tsx?$/.test(changedPath)) return false;
+  // The web page itself and its stylesheets ship too: index.html paints the
+  // boot shell, and the CSS lays out every page.
+  const isWebPage =
+    workspaceName === 'web' &&
+    (changedPath === 'apps/web/index.html' ||
+      /^apps\/web\/src\/.+\.css$/.test(changedPath));
+  if (!/\.tsx?$/.test(changedPath) && !isWebPage) return false;
   if (changedPath.includes('.test.')) return false;
   if (changedPath.includes('/tests/')) return false;
 

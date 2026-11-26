@@ -1,0 +1,198 @@
+/* What the first paint needs, before any stylesheet or script loads: the theme
+   colours, the page background and the signed-out frame (AuthShell) with its
+   scene stills. index.html inlines this file into its head
+   (tooling/vite/first-paint.ts) for its boot shell, and index.css imports it,
+   so the boot shell and the app read the same rules. Plain CSS only (no
+   Tailwind directives), unlayered, and kept to what the first paint needs. */
+
+:root {
+  --font-ui: "Atkinson Hyperlegible", sans-serif;
+  --background: oklch(0.978 0.004 236);
+  --foreground: oklch(0.286 0.032 254);
+  --card: oklch(0.992 0.002 220);
+  --card-foreground: oklch(0.286 0.032 254);
+  --popover: oklch(0.996 0.002 220);
+  --popover-foreground: oklch(0.286 0.032 254);
+  --primary: oklch(0.378 0.09 255);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.962 0.01 240);
+  --secondary-foreground: oklch(0.336 0.028 252);
+  --muted: oklch(0.955 0.008 236);
+  --muted-foreground: oklch(0.48 0.024 250);
+  --accent: oklch(0.948 0.018 247);
+  --accent-foreground: oklch(0.324 0.037 252);
+  /* Lightness lowered from 0.614: at 0.614 this red measures 4.05:1 on the
+     card surface, so every use as small text failed WCAG AA (4.5:1). 0.58
+     still measured only 4.46:1 on the panel/page background, so 0.56: 5.1:1
+     on card, 4.85:1 on background. Hue and chroma are unchanged, and
+     destructive-as-a-background only gains contrast against its white
+     foreground. */
+  --destructive: oklch(0.56 0.207 26);
+  /* Staffing Meter fills: at least 3:1 against the track (muted) and the
+   * surface (card/popover); the text forms stay green-700 / yellow-700. */
+  --meter-success: oklch(0.527 0.154 150.069);
+  --meter-warning: oklch(0.554 0.135 66.442);
+  --meter-danger: var(--destructive);
+  --border: oklch(0.885 0.012 242);
+  --input: oklch(0.902 0.012 242);
+  --ring: oklch(0.532 0.082 254);
+  --chart-1: oklch(0.378 0.09 255);
+  --chart-2: oklch(0.536 0.073 221);
+  --chart-3: oklch(0.652 0.054 195);
+  --chart-4: oklch(0.704 0.038 145);
+  --chart-5: oklch(0.612 0.063 285);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.968 0.01 242);
+  --sidebar-foreground: oklch(0.304 0.03 252);
+  --sidebar-primary: oklch(0.378 0.09 255);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.942 0.018 246);
+  --sidebar-accent-foreground: oklch(0.324 0.037 252);
+  --sidebar-border: oklch(0.878 0.014 242);
+  --sidebar-ring: oklch(0.532 0.082 254);
+}
+
+.dark {
+  --background: oklch(0.205 0.018 252);
+  --foreground: oklch(0.94 0.01 240);
+  --card: oklch(0.24 0.018 252);
+  --card-foreground: oklch(0.94 0.01 240);
+  --popover: oklch(0.24 0.018 252);
+  --popover-foreground: oklch(0.94 0.01 240);
+  --primary: oklch(0.72 0.066 238);
+  --primary-foreground: oklch(0.226 0.022 254);
+  --secondary: oklch(0.29 0.016 252);
+  --secondary-foreground: oklch(0.93 0.01 240);
+  --muted: oklch(0.278 0.014 250);
+  --muted-foreground: oklch(0.758 0.018 238);
+  --accent: oklch(0.332 0.028 246);
+  --accent-foreground: oklch(0.948 0.008 236);
+  --destructive: oklch(0.682 0.183 24);
+  --meter-success: oklch(0.723 0.219 149.579);
+  --meter-warning: oklch(0.852 0.199 91.936);
+  --meter-danger: var(--destructive);
+  --border: oklch(0.336 0.018 248);
+  --input: oklch(0.372 0.018 248);
+  --ring: oklch(0.646 0.072 238);
+  --chart-1: oklch(0.72 0.066 238);
+  --chart-2: oklch(0.648 0.072 218);
+  --chart-3: oklch(0.73 0.058 190);
+  --chart-4: oklch(0.768 0.05 150);
+  --chart-5: oklch(0.714 0.07 284);
+  --sidebar: oklch(0.186 0.016 252);
+  --sidebar-foreground: oklch(0.94 0.01 240);
+  --sidebar-primary: oklch(0.72 0.066 238);
+  --sidebar-primary-foreground: oklch(0.226 0.022 254);
+  --sidebar-accent: oklch(0.286 0.024 246);
+  --sidebar-accent-foreground: oklch(0.948 0.008 236);
+  --sidebar-border: oklch(0.318 0.018 248);
+  --sidebar-ring: oklch(0.646 0.072 238);
+  --radius: 0.625rem;
+}
+
+/* Fixed to the viewport: as the canvas background it would otherwise tile
+   below a body shorter than the window. index.html's boot shell, which covers
+   the page until AuthShell replaces it, wears the same. */
+body,
+#boot-shell {
+  background: linear-gradient(
+      180deg,
+      var(--background) 0%,
+      color-mix(in oklch, var(--background) 92%, var(--accent)) 100%
+    )
+    fixed no-repeat var(--background);
+}
+
+/* The signed-out frame (AuthShell): a wide brand panel beside a narrow form
+   column, only on a screen both 64rem+ wide and landscape; otherwise the panel
+   stacks above the form and fills the height the form leaves. */
+.auth-shell {
+  display: grid;
+  min-height: 100dvh;
+  grid-template-rows: minmax(12rem, 1fr) auto;
+}
+/* Always dark: it carries .dark, so these tokens resolve to their dark values. */
+.auth-shell-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--sidebar-border);
+  background: oklch(0.17 0.03 258);
+}
+.auth-shell-form {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 1rem max(2rem, env(safe-area-inset-bottom));
+}
+.auth-shell-form-body {
+  width: 100%;
+  max-width: 24rem;
+}
+@media (width >= 40rem) {
+  .auth-shell-panel {
+    padding: 2rem;
+  }
+  .auth-shell-form {
+    align-items: center;
+    padding: 3rem 2rem max(3rem, env(safe-area-inset-bottom));
+  }
+  .auth-shell-form-body {
+    max-width: 28rem;
+  }
+}
+@media (width >= 64rem) and (orientation: landscape) {
+  .auth-shell {
+    grid-template-columns: minmax(0, 1fr) 28rem;
+    grid-template-rows: repeat(1, minmax(0, 1fr));
+  }
+  .auth-shell-panel {
+    min-height: 100dvh;
+    padding: 3.5rem;
+    border-bottom-width: 0;
+    border-right: 1px solid var(--sidebar-border);
+  }
+  .auth-shell-form {
+    justify-content: center;
+  }
+}
+@media (width >= 80rem) and (orientation: landscape) {
+  .auth-shell {
+    grid-template-columns: minmax(0, 1fr) 32rem;
+  }
+}
+
+/* Sanctuary light scene stills, shown by the boot shell and the React backdrop.
+   Stills of the scene's real first frame, one per panel shape: the scene frames
+   by height and centres, so each is height-fitted and centred like the canvas.
+   Each still is captured at the widest aspect it serves, so it only ever crops.
+   `height > 0`: before the first layout the container reads as infinitely
+   wide, which would fetch the band still as well. index.html reads the still
+   these rules pick from --sanctuary-still, to preload it. Recapture them
+   whenever the scene's first frame changes. */
+.sanctuary-light-backdrop {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+}
+.sanctuary-light-still {
+  --sanctuary-still: url("/auth-scenes/sanctuary-light-1-1.webp");
+  position: absolute;
+  inset: 0;
+  background: rgb(7 5 4) var(--sanctuary-still) center / auto 100% no-repeat;
+}
+@container (aspect-ratio > 11 / 10) and (height > 0) {
+  .sanctuary-light-still {
+    --sanctuary-still: url("/auth-scenes/sanctuary-light-1-5.webp");
+  }
+}
+@container (aspect-ratio > 3 / 2) and (height > 0) {
+  .sanctuary-light-still {
+    --sanctuary-still: url("/auth-scenes/sanctuary-light-2-4.webp");
+  }
+}
+/* Wider than the scene's BAND_ASPECT (2.4), it frames only the windows. */
+@container (aspect-ratio > 12 / 5) and (height > 0) {
+  .sanctuary-light-still {
+    --sanctuary-still: url("/auth-scenes/sanctuary-light-5.webp");
+  }
+}

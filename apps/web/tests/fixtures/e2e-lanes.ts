@@ -23,6 +23,7 @@ export const ISOLATED_SPECS = [
   'identity/redemption-church-only-sign-in.spec.ts',
   'identity/redemption-new-user.spec.ts',
   'identity/route-protection.spec.ts',
+  'identity/sign-in-boot-shell.spec.ts',
   'identity/volunteer-transfer-journey.spec.ts',
   'ministries/ministries-directory.spec.ts',
   'ministries/ministry-tabs-narrow.spec.ts',

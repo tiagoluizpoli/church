@@ -5,7 +5,7 @@ import { readApplicationSourceFiles, type SourceFile } from './source-files';
 const REPO_ROOT = resolve(import.meta.dir, '../..');
 const CHECKED_PATH_PATTERN = /^(?:apps|packages)\/[^/]+\/src\//;
 const SKIPPED_PATH_PATTERN =
-  /\/tests\/|\/paraglide\/|\.gen\.[cm]?[jt]sx?$|\.d\.[cm]?ts$/;
+  /\/tests\/|\/paraglide(-message-modules)?\/|\.gen\.[cm]?[jt]sx?$|\.d\.[cm]?ts$/;
 const PARAMETER_FIX = 'take one object parameter with a named type';
 
 const PARAMETER_KINDS = new Map<ts.SyntaxKind, string>([

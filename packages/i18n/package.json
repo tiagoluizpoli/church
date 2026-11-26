@@ -15,8 +15,11 @@
   },
   "scripts": {
     "postinstall": "bun run compile",
-    "compile": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy cookie custom-app-default-locale baseLocale --emit-ts-declarations --output-structure locale-modules --silent",
-    "dev": "bun run compile --watch",
+    "paraglide": "paraglide-js compile --project ./project.inlang --strategy cookie custom-app-default-locale baseLocale --silent",
+    "compile:locale-modules": "bun run paraglide --outdir ./src/paraglide --output-structure locale-modules --emit-ts-declarations",
+    "compile:message-modules": "bun run paraglide --outdir ./src/paraglide-message-modules --output-structure message-modules",
+    "compile": "bun run compile:locale-modules && bun run compile:message-modules",
+    "dev": "bun run compile:locale-modules --watch",
     "typecheck": "bun run compile",
     "test:unit": "bun run compile",
     "build": "bun run compile"

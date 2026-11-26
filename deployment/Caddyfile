@@ -11,6 +11,9 @@
 :8080 {
 	root * /srv
 
+	# Compress here, not only at a CDN: without one the bundle travels raw.
+	encode zstd gzip
+
 	# API and Better Auth share the page's origin; `server` resolves only on the
 	# Compose project's own network (see deployment/README.md). Host is kept and
 	# X-Forwarded-* are forwarded as received (trusted proxy above).

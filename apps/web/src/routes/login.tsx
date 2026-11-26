@@ -15,11 +15,15 @@ const loginSearchSchema = z.object({
 export const Route = createFileRoute('/login')({
   validateSearch: (search) => loginSearchSchema.parse(search),
   component: RouteComponent,
-  beforeLoad: async ({ search }) => {
+  // A loader, not beforeLoad: the router fetches the form's chunk while this waits.
+  // Never kept, so a revisit checks the session before showing the form again.
+  gcTime: 0,
+  loaderDeps: ({ search }) => ({ redirect: search.redirect }),
+  loader: async ({ deps }) => {
     const session = await authClient.getSession();
     if (session.data) {
       const target =
-        validateInternalReturnTarget({ target: search.redirect }) ?? HOME_PATH;
+        validateInternalReturnTarget({ target: deps.redirect }) ?? HOME_PATH;
       throw redirect({ href: target });
     }
   },

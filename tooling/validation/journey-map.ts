@@ -49,6 +49,8 @@ export const DELIBERATE_SMOKE_FALLBACK_PATHS: {
   },
 ];
 
+const BOOT_SHELL_SPEC_PATH = 'tests/identity/sign-in-boot-shell.spec.ts';
+
 const REDEMPTION_SPEC_PATHS = [
   'tests/identity/redemption-new-user.spec.ts',
   'tests/identity/redemption-existing-member.spec.ts',
@@ -764,6 +766,38 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix: 'apps/web/src/routes/login.tsx',
     specPaths: ['tests/identity/route-protection.spec.ts'],
   },
+  // index.html's boot shell outlines AuthShell and its three forms; the spec
+  // pins every bar to its element. It follows what that geometry reads: the
+  // shell's own CSS, AuthShell and the forms (markup and the copy they render),
+  // the controls the forms are built from, and the routes whose search decides
+  // whether the shell shows. The message files need no entry: the shell sets
+  // the same copy the forms render, so a copy change cannot move a bar.
+  // Files that had no entry keep the critical smoke set they fell back to.
+  ...[
+    'apps/web/index.html',
+    'apps/web/src/first-paint.css',
+    'apps/web/src/components/auth-shell.tsx',
+    'apps/web/src/routes/login.tsx',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: [BOOT_SHELL_SPEC_PATH],
+  })),
+  ...[
+    'apps/web/src/components/sign-in-form.tsx',
+    'apps/web/src/components/forgot-password-form.tsx',
+    'apps/web/src/components/reset-password-form.tsx',
+    'apps/web/src/routes/forgot-password.tsx',
+    'apps/web/src/routes/reset-password.tsx',
+    'apps/web/src/index.css',
+    'apps/web/src/main.tsx',
+    'apps/web/src/components/ui/button.tsx',
+    'apps/web/src/components/ui/input.tsx',
+    'apps/web/src/components/ui/label.tsx',
+    'apps/web/src/components/ui/form-control-size.tsx',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
+    specPaths: [BOOT_SHELL_SPEC_PATH, ...CRITICAL_SMOKE_SPEC_PATHS],
+  })),
   {
     sourcePathPrefix: 'apps/web/src/shared/utils/return-target.ts',
     specPaths: ['tests/identity/route-protection.spec.ts'],

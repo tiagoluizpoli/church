@@ -216,7 +216,6 @@ describe('classifyChanges', () => {
   it('selects the route-protection journey for the authenticated guard, sign-in route, and landing redirect', () => {
     for (const changedPath of [
       'apps/web/src/routes/app.tsx',
-      'apps/web/src/routes/login.tsx',
       'apps/web/src/shared/utils/return-target.ts',
       'apps/web/src/routes/app/_active-church/index.tsx',
     ]) {
@@ -227,6 +226,18 @@ describe('classifyChanges', () => {
       ]);
       expect(plan.missingJourneyMappings).toEqual([]);
     }
+  });
+
+  it('selects the route-protection and boot-shell journeys for the sign-in route', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/routes/login.tsx'],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/route-protection.spec.ts',
+      'tests/identity/sign-in-boot-shell.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
   });
 
   it('selects the transfer journey for the volunteer-transfer feature and its transfer manager', () => {
@@ -946,6 +957,40 @@ describe('classifyChanges', () => {
       testLayer: 'test:integration',
       workspaceName: '@church/config',
     });
+  });
+
+  it('maps index.html and the first-paint stylesheet to the boot-shell journey', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/index.html', 'apps/web/src/first-paint.css'],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/identity/sign-in-boot-shell.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('keeps the critical smoke set for a shared control the sign-in forms are built from', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/components/ui/input.tsx'],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual(
+      [
+        'tests/identity/sign-in-boot-shell.spec.ts',
+        ...CRITICAL_SMOKE_SPEC_PATHS,
+      ].sort(),
+    );
+  });
+
+  it('treats an unmapped web stylesheet as a production change', () => {
+    const plan = classifyChanges({
+      changedPaths: ['apps/web/src/features/some-page.css'],
+    });
+
+    expect(plan.missingJourneyMappings).toEqual([
+      'apps/web/src/features/some-page.css',
+    ]);
   });
 
   it('records the critical-smoke-fallback reason for an unmapped production change', () => {

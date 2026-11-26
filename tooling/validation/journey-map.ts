@@ -764,6 +764,15 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix: 'apps/web/src/routes/login.tsx',
     specPaths: ['tests/identity/route-protection.spec.ts'],
   },
+  // index.html's boot shell outlines AuthShell; the spec pins their geometry.
+  {
+    sourcePathPrefix: 'apps/web/index.html',
+    specPaths: ['tests/identity/sign-in-boot-shell.spec.ts'],
+  },
+  {
+    sourcePathPrefix: 'apps/web/src/components/auth-shell.tsx',
+    specPaths: ['tests/identity/sign-in-boot-shell.spec.ts'],
+  },
   {
     sourcePathPrefix: 'apps/web/src/shared/utils/return-target.ts',
     specPaths: ['tests/identity/route-protection.spec.ts'],

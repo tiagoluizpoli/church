@@ -1,12 +1,11 @@
 import { m } from '@church/i18n/messages';
-import { compareInstants, now, parseInstant } from '@church/time';
+import { now } from '@church/time';
 import { useDroppable } from '@dnd-kit/core';
 import { PlusIcon, TriangleAlertIcon } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
-import {
-  type CycleBuilderAssignment,
-  type CycleBuilderShiftSummary,
-  isActiveAssignment,
+import type {
+  CycleBuilderAssignment,
+  CycleBuilderShiftSummary,
 } from '../../../hooks/use-cycle-builder';
 import type {
   PickerVolunteer,
@@ -18,6 +17,13 @@ import {
   type ShiftRoleFit,
   volunteerFitForShiftRole,
 } from '../../../utils/builder/cycle-builder-fit.utils';
+import { isActiveAssignment } from '../../../utils/scheduling-rules';
+import {
+  allowsAdding,
+  allowsChanges,
+  lacksRoleHolder,
+  shiftVerdict,
+} from '../../../utils/shift-verdict';
 import { AssignmentPicker } from '../assignment/assignment-picker';
 import { useBoardDragIdentity } from './board-drag-identity';
 import {
@@ -134,22 +140,26 @@ export function CycleBuilderCell({
   onRetryFailedWrite,
   onDismissFailedWrite,
 }: CycleBuilderCellProps) {
-  const isStarted =
-    compareInstants({
-      left: parseInstant({ value: shift.startTime }),
-      right: currentInstant,
-    }) <= 0;
-  const isEditable = editable && !isStarted && !shift.cancelled;
+  const hasRoom = assignments.length < peopleNeeded;
+  const verdict = shiftVerdict({
+    shift,
+    currentInstant,
+    requirement: { roleId, hasRoom },
+  });
+  const isEditable = editable && allowsChanges({ verdict });
+  const canAssign = editable && allowsAdding({ verdict });
   const isTouch = useFormControlSize() === 'touch';
   const { churchTimezone } = useTimezone();
   const shiftLabel =
     shift.label ??
     `${eventTimeBlockLabel} · ${timeLabel({ instant: shift.startTime, timeZone: churchTimezone })} – ${timeLabel({ instant: shift.endTime, timeZone: churchTimezone })}`;
   const [addPickerOpen, setAddPickerOpen] = useState(false);
-  const canAdd = assignments.length < peopleNeeded;
-  const hasRoleHolder = shift.eligibleVolunteers.some((volunteer) =>
-    volunteer.qualifiedRoleIds.includes(roleId),
-  );
+  const showsNoRoleHolder =
+    verdict !== 'cancelled' &&
+    lacksRoleHolder({
+      eligibleVolunteers: shift.eligibleVolunteers,
+      roleId,
+    });
   const selectedVolunteerIsAssignedToShift = shift.assignments.some(
     (assignment) =>
       assignment.volunteerId === selectedVolunteerId &&
@@ -172,19 +182,14 @@ export function CycleBuilderCell({
     : null;
   const dropDisabled =
     !isEditable ||
-    (movingAssignment ? !validMoveTarget : !canAdd) ||
+    (movingAssignment ? !validMoveTarget : !hasRoom) ||
     Boolean(draggedFit && !isAssignableFit({ fit: draggedFit }));
   // Reverse highlight: selecting someone in the rail paints the board with
   // where they actually fit. Before this every under-filled cell offered an
   // identical "Assign X", which said nothing — the board looked the same for a
   // qualified, available volunteer and for one who fits nowhere.
   let selectedCandidateFit: ShiftRoleFit = { tier: 'none' };
-  if (
-    isEditable &&
-    canAdd &&
-    selectedVolunteerId &&
-    !selectedVolunteerIsAssignedToShift
-  ) {
+  if (canAssign && selectedVolunteerId && !selectedVolunteerIsAssignedToShift) {
     selectedCandidateFit = volunteerFitForShiftRole({
       shift,
       roleId,
@@ -284,7 +289,7 @@ export function CycleBuilderCell({
       )}
       data-selected-fit={selectedFit.tier}
       data-drop-target={
-        isEditable && (movingAssignment ? validMoveTarget : canAdd)
+        isEditable && (movingAssignment ? validMoveTarget : hasRoom)
           ? 'append'
           : undefined
       }
@@ -298,7 +303,7 @@ export function CycleBuilderCell({
           onToggleFocus={() => {
             // Below xl the rail is stacked far under the board, so focusing a role there
             // would change nothing in view: open this slot's picker instead.
-            if (!railIsBeside && !isFocused && isEditable && canAdd) {
+            if (!railIsBeside && !isFocused && canAssign) {
               onFocus();
               setAddPickerOpen(true);
             } else onToggleFocus();
@@ -307,14 +312,14 @@ export function CycleBuilderCell({
         <span
           className={cn(
             'shrink-0 text-muted-foreground text-xs',
-            shift.cancelled && 'line-through',
+            verdict === 'cancelled' && 'line-through',
           )}
         >
           {assignments.length}/{peopleNeeded}
         </span>
       </div>
 
-      {isStarted && !shift.cancelled ? (
+      {verdict === 'started' ? (
         <p className="mt-2 text-muted-foreground text-xs">
           {m.builder_shift_started({
             shift: shiftLabel,
@@ -325,7 +330,7 @@ export function CycleBuilderCell({
           })}
         </p>
       ) : null}
-      {!hasRoleHolder && !shift.cancelled ? (
+      {showsNoRoleHolder ? (
         <p className="mt-2 text-muted-foreground text-xs">
           <span>
             {m.builder_no_role_holders({ role: displayRoleLabel ?? roleLabel })}
@@ -403,7 +408,7 @@ export function CycleBuilderCell({
           assignButton
         )}
 
-        {isEditable && canAdd ? (
+        {canAssign ? (
           <AssignmentPicker
             open={addPickerOpen}
             onOpenChange={(open) => {

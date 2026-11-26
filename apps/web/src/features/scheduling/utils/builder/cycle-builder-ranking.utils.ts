@@ -1,9 +1,9 @@
-import {
-  type CycleBuilderAssignment,
-  type CycleBuilderEligibleVolunteerSummary,
-  type CycleBuilderShiftSummary,
-  isActiveAssignment,
+import type {
+  CycleBuilderAssignment,
+  CycleBuilderEligibleVolunteerSummary,
+  CycleBuilderShiftSummary,
 } from '../../hooks/use-cycle-builder';
+import { isActiveAssignment } from '../scheduling-rules';
 import { answerStateRank } from './cycle-builder-answer-state.utils';
 import { lastServedMillis } from './cycle-builder-date.utils';
 import { shiftRoleFitForEligibleVolunteer } from './cycle-builder-fit.utils';

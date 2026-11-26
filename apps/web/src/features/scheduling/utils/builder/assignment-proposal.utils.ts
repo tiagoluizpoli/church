@@ -1,13 +1,11 @@
-import {
-  type CycleBuilderData,
-  type CycleBuilderShiftSummary,
-  isActiveAssignment,
+import type {
+  CycleBuilderData,
+  CycleBuilderShiftSummary,
 } from '../../hooks/use-cycle-builder';
+import { isActiveAssignment } from '../scheduling-rules';
+import { isStaffedEventTimeBlock } from '../shift-verdict';
 import { churchDayOf } from './cycle-builder-date.utils';
-import {
-  countCoveredPlaces,
-  isStaffedEventTimeBlock,
-} from './cycle-builder-staffing.utils';
+import { countCoveredPlaces } from './cycle-builder-staffing.utils';
 import type {
   GetAssignmentProposal200,
   GetAssignmentProposal200AdditionsItem,

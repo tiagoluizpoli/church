@@ -1,5 +1,5 @@
 import { getLocale } from '@church/i18n/runtime';
-import { compareInstants, now, parseInstant } from '@church/time';
+import { now } from '@church/time';
 import {
   DndContext,
   DragOverlay,
@@ -12,10 +12,7 @@ import {
   useBoardDragScroll,
   useDateStripDragScroll,
 } from '../../../hooks/use-cycle-board-drag-scroll';
-import {
-  type CycleBuilderData,
-  isActiveAssignment,
-} from '../../../hooks/use-cycle-builder';
+import type { CycleBuilderData } from '../../../hooks/use-cycle-builder';
 import {
   assignableFits,
   buildCellDerivedIndex,
@@ -55,7 +52,13 @@ import {
   focusKey,
   requirementHasRoom,
 } from '../../../utils/builder/cycle-builder-shift-lookup.utils';
-import { isStaffedEventTimeBlock } from '../../../utils/builder/cycle-builder-staffing.utils';
+import { isActiveAssignment } from '../../../utils/scheduling-rules';
+import {
+  allowsAdding,
+  allowsChanges,
+  isStaffedEventTimeBlock,
+  shiftVerdict,
+} from '../../../utils/shift-verdict';
 import { VolunteerCard } from '../volunteer-rail/volunteer-card';
 import { VolunteerPoolSidebar } from '../volunteer-rail/volunteer-pool-sidebar';
 import {
@@ -342,26 +345,23 @@ export function CycleBuilderMatrix(props: Props) {
       workloadCount: workload.get(poolVolunteer.volunteerId) ?? 0,
     };
   }, [draggingVolunteerId, volunteers, activeAssignments]);
-  // Use the same assignment path for focused picks and board actions.
-  const focusedShiftStart = focusedShift
-    ? parseInstant({ value: focusedShift.startTime })
-    : undefined;
-  const focusedRequirementIsEditable = Boolean(
+  // Use the same assignment path for focused picks and board actions. A full
+  // role can still be focused, so the rail asks for room as the cell does.
+  const focusedRoleCanTakeAssignment = Boolean(
     focused &&
       focusedShift &&
-      !focusedShift.cancelled &&
-      focusedShiftStart &&
-      compareInstants({ left: focusedShiftStart, right: currentInstant }) > 0,
-  );
-  // A full role can still be focused, so the rail honours the same headcount
-  // ceiling the board enforces cell-side as `canAdd`.
-  const focusedRoleHasRoom = Boolean(
-    focused &&
-      focusedShift &&
-      focusedRequirementIsEditable &&
-      requirementHasRoom({
-        shift: focusedShift,
-        shiftRequirementId: focused.shiftRequirementId,
+      allowsAdding({
+        verdict: shiftVerdict({
+          shift: focusedShift,
+          currentInstant,
+          requirement: {
+            roleId: focused.roleId,
+            hasRoom: requirementHasRoom({
+              shift: focusedShift,
+              shiftRequirementId: focused.shiftRequirementId,
+            }),
+          },
+        }),
       }),
   );
   // Everyone the leader may commit to the focused shift, each carrying the tier
@@ -383,23 +383,28 @@ export function CycleBuilderMatrix(props: Props) {
   );
   const assignableFocusedVolunteerFits = useMemo(
     () =>
-      focused && focusedShift && focusedRoleHasRoom
+      focused && focusedShift && focusedRoleCanTakeAssignment
         ? assignableFits({
             shift: focusedShift,
             roleId: focused.roleId,
             excludedVolunteerIds: focusedShiftAssigneeIds,
           })
         : undefined,
-    [focused, focusedShift, focusedRoleHasRoom, focusedShiftAssigneeIds],
+    [
+      focused,
+      focusedShift,
+      focusedRoleCanTakeAssignment,
+      focusedShiftAssigneeIds,
+    ],
   );
   const assignFocusedVolunteer = (volunteerId: string) => {
-    if (!focused || !focusedShift || !focusedRoleHasRoom) return;
-    if (!focusedShiftStart) return;
-    const dispatchInstant = now();
-    if (
-      compareInstants({ left: focusedShiftStart, right: dispatchInstant }) <= 0
-    )
-      return;
+    if (!focused || !focusedShift || !focusedRoleCanTakeAssignment) return;
+    // The Shift may have started since the last clock refresh.
+    const verdict = shiftVerdict({
+      shift: focusedShift,
+      currentInstant: now(),
+    });
+    if (!allowsChanges({ verdict })) return;
     if (focusedShiftAssigneeIds?.has(volunteerId)) return;
     const fit = volunteerFitForShiftRole({
       shift: focusedShift,
@@ -597,7 +602,7 @@ export function CycleBuilderMatrix(props: Props) {
                   idealVolunteerId={focusedRanking?.idealVolunteerId}
                   assignableVolunteerFits={assignableFocusedVolunteerFits}
                   onAssignFocusedVolunteer={
-                    focused && focusedRoleHasRoom
+                    focused && focusedRoleCanTakeAssignment
                       ? assignFocusedVolunteer
                       : undefined
                   }

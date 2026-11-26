@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { answerStateRank } from '../utils/builder/cycle-builder-answer-state.utils';
-import { isActiveAssignment } from './use-cycle-builder';
+import { isActiveAssignment } from '../utils/scheduling-rules';
 import type { AssigneeMembership } from '@/utils/format-assignee-role-label';
 
 export type AvailabilityStatus =

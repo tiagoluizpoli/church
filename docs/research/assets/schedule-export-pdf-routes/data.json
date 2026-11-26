@@ -1,0 +1,414 @@
+{
+ "kicker": "Escala",
+ "ministry": "Ministério Infantil",
+ "period": "Novembro 2026",
+ "range": "1 – 28 nov 2026",
+ "groups": [
+  {
+   "name": "Domingos",
+   "subtitle": "Culto de domingo",
+   "cols": [
+    {
+     "wd": "dom",
+     "dn": "1 nov"
+    },
+    {
+     "wd": "dom",
+     "dn": "8 nov"
+    },
+    {
+     "wd": "dom",
+     "dn": "15 nov"
+    },
+    {
+     "wd": "dom",
+     "dn": "22 nov"
+    }
+   ],
+   "bands": [
+    {
+     "time": "8h30",
+     "rows": [
+      {
+       "sector": "Berçário",
+       "color": 0,
+       "cells": [
+        {
+         "names": [
+          "Mariana Gomes de Azevedo",
+          "Gustavo Nascimento",
+          "Juliana Ribeiro",
+          "Larissa Teixeira",
+          "Vitória Cavalcanti"
+         ]
+        },
+        {
+         "names": [
+          "Ana Beatriz Carvalho Souza",
+          "Daniel Araújo Mendes",
+          "Felipe Rocha",
+          "Maria Eduarda Albuquerque Nogueira",
+          "Samuel Coelho",
+          "Mateus Vieira da Silva"
+         ]
+        },
+        {
+         "names": [
+          "Aline Batista Freitas",
+          "Beatriz Lopes",
+          "Leonardo Prado",
+          "Vinícius Tavares",
+          "Maria Eduarda Albuquerque Nogueira",
+          "Rafael Almeida",
+          "Felipe Rocha"
+         ]
+        },
+        {
+         "names": [
+          "Maria Eduarda Albuquerque Nogueira",
+          "Rafael Almeida",
+          "Fernanda Cristina de Oliveira Martins",
+          "Tatiane Farias",
+          "Isabela Duarte Fonseca"
+         ]
+        }
+       ]
+      },
+      {
+       "sector": "Maternal",
+       "color": 1,
+       "cells": [
+        {
+         "names": [
+          "Sabrina Lacerda",
+          "Patrícia Cunha",
+          "Daniel Araújo Mendes",
+          "Thiago Moreira Cardoso",
+          "Raquel Medeiros",
+          "André Luiz Machado"
+         ]
+        },
+        {
+         "names": [
+          "Lucas Gabriel Ferreira Lima",
+          "Camila Rodrigues Pereira",
+          "Sabrina Lacerda",
+          "Inês Brandão",
+          "Juliana Ribeiro",
+          "Bruno Correia"
+         ]
+        },
+        {
+         "names": [
+          "Otávio Rezende",
+          "Camila Rodrigues Pereira",
+          "Patrícia Cunha",
+          "Eduardo Sales",
+          "Gabriela Monteiro Castro",
+          "Daniel Araújo Mendes",
+          "Lucas Gabriel Ferreira Lima"
+         ]
+        },
+        {
+         "names": [
+          "Bruno Correia",
+          "Helena Viana",
+          "Letícia Ramos",
+          "Leonardo Prado",
+          "Juliana Ribeiro"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "time": "10h30",
+     "rows": [
+      {
+       "sector": "Berçário",
+       "color": 0,
+       "cells": [
+        {
+         "names": [
+          "Bruno Correia",
+          "Inês Brandão",
+          "Felipe Rocha",
+          "Conceição Gonçalves",
+          "Ana Beatriz Carvalho Souza",
+          "Marcos Paulo Guimarães"
+         ]
+        },
+        {
+         "names": [
+          "Maria Eduarda Albuquerque Nogueira",
+          "Vinícius Tavares",
+          "Leonardo Prado",
+          "Samuel Coelho",
+          "Mateus Vieira da Silva",
+          "Natália Antunes Brandão",
+          "Letícia Ramos"
+         ]
+        },
+        {
+         "names": [
+          "Gustavo Nascimento",
+          "Natália Antunes Brandão",
+          "Rafael Almeida",
+          "Rodrigo Dias Moura",
+          "Aline Batista Freitas"
+         ]
+        },
+        {
+         "names": [
+          "Lucas Gabriel Ferreira Lima",
+          "Patrícia Cunha",
+          "Mariana Gomes de Azevedo",
+          "Isabela Duarte Fonseca",
+          "Helena Viana",
+          "Carlos Eduardo Pinto"
+         ]
+        }
+       ]
+      },
+      {
+       "sector": "Maternal",
+       "color": 1,
+       "cells": [
+        {
+         "names": [
+          "Patrícia Cunha",
+          "Pedro Henrique Barbosa",
+          "Isabela Duarte Fonseca",
+          "Rodrigo Dias Moura",
+          "Larissa Teixeira",
+          "Camila Rodrigues Pereira"
+         ]
+        },
+        {
+         "names": [
+          "Rafael Almeida",
+          "Carlos Eduardo Pinto",
+          "Débora Siqueira Bastos",
+          "Aline Batista Freitas",
+          "Lucas Gabriel Ferreira Lima",
+          "Priscila Campos",
+          "Thiago Moreira Cardoso"
+         ]
+        },
+        {
+         "names": [
+          "Fernanda Cristina de Oliveira Martins",
+          "Letícia Ramos",
+          "Samuel Coelho",
+          "Helena Viana",
+          "Conceição Gonçalves"
+         ]
+        },
+        {
+         "names": [
+          "Maria Eduarda Albuquerque Nogueira",
+          "Marcos Paulo Guimarães",
+          "Inês Brandão",
+          "Otávio Rezende",
+          "Gustavo Nascimento",
+          "Sabrina Lacerda"
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "time": "18h30",
+     "rows": [
+      {
+       "sector": "Berçário",
+       "color": 0,
+       "cells": [
+        {
+         "names": [
+          "Aline Batista Freitas",
+          "Daniel Araújo Mendes",
+          "Débora Siqueira Bastos",
+          "Priscila Campos",
+          "Patrícia Cunha",
+          "Beatriz Lopes",
+          "Otávio Rezende"
+         ]
+        },
+        {
+         "names": [
+          "João Pedro Santos",
+          "Thiago Moreira Cardoso",
+          "Rafael Almeida",
+          "Felipe Rocha",
+          "Marcos Paulo Guimarães"
+         ]
+        },
+        {
+         "names": [
+          "Patrícia Cunha",
+          "Rafael Almeida",
+          "Mariana Gomes de Azevedo",
+          "Thiago Moreira Cardoso",
+          "Camila Rodrigues Pereira",
+          "Otávio Rezende"
+         ]
+        },
+        {
+         "cancelled": "Cancelado",
+         "rowspan": 2
+        }
+       ]
+      },
+      {
+       "sector": "Maternal",
+       "color": 1,
+       "cells": [
+        {
+         "names": [
+          "Maria Eduarda Albuquerque Nogueira",
+          "Vinícius Tavares",
+          "Raquel Medeiros",
+          "Camila Rodrigues Pereira",
+          "Marcos Paulo Guimarães",
+          "Gustavo Nascimento",
+          "Sabrina Lacerda"
+         ]
+        },
+        {
+         "names": [
+          "Larissa Teixeira",
+          "Beatriz Lopes",
+          "Aline Batista Freitas",
+          "Samuel Coelho",
+          "Maria Eduarda Albuquerque Nogueira"
+         ]
+        },
+        {
+         "names": [
+          "Vitória Cavalcanti",
+          "Natália Antunes Brandão",
+          "Beatriz Lopes",
+          "Isabela Duarte Fonseca",
+          "João Pedro Santos",
+          "Priscila Campos"
+         ]
+        },
+        null
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Quartas",
+   "subtitle": "Oração e lições · Glória a Deus",
+   "cols": [
+    {
+     "wd": "qua",
+     "dn": "4 nov",
+     "noEvent": false
+    },
+    {
+     "wd": "qua",
+     "dn": "11 nov",
+     "noEvent": false
+    },
+    {
+     "wd": "qua",
+     "dn": "18 nov",
+     "noEvent": true
+    },
+    {
+     "wd": "qua",
+     "dn": "25 nov",
+     "noEvent": false
+    }
+   ],
+   "bands": [
+    {
+     "time": "19h30–21h00",
+     "rows": [
+      {
+       "sector": "Berçário",
+       "color": 0,
+       "cells": [
+        {
+         "names": [
+          "Mariana Gomes de Azevedo",
+          "Gustavo Nascimento",
+          "Juliana Ribeiro",
+          "Larissa Teixeira",
+          "Vitória Cavalcanti"
+         ]
+        },
+        {
+         "names": [
+          "Ana Beatriz Carvalho Souza",
+          "Daniel Araújo Mendes",
+          "Felipe Rocha",
+          "Maria Eduarda Albuquerque Nogueira",
+          "Samuel Coelho",
+          "Mateus Vieira da Silva"
+         ]
+        },
+        {
+         "cancelled": "Não haverá culto",
+         "rowspan": 2
+        },
+        {
+         "names": [
+          "Maria Eduarda Albuquerque Nogueira",
+          "Rafael Almeida",
+          "Fernanda Cristina de Oliveira Martins",
+          "Tatiane Farias",
+          "Isabela Duarte Fonseca"
+         ]
+        }
+       ]
+      },
+      {
+       "sector": "Maternal",
+       "color": 1,
+       "cells": [
+        {
+         "names": [
+          "Sabrina Lacerda",
+          "Patrícia Cunha",
+          "Daniel Araújo Mendes",
+          "Thiago Moreira Cardoso",
+          "Raquel Medeiros",
+          "André Luiz Machado"
+         ]
+        },
+        {
+         "names": [
+          "Lucas Gabriel Ferreira Lima",
+          "Camila Rodrigues Pereira",
+          "Sabrina Lacerda",
+          "Inês Brandão",
+          "Juliana Ribeiro",
+          "Bruno Correia"
+         ]
+        },
+        null,
+        {
+         "names": [
+          "Bruno Correia",
+          "Helena Viana",
+          "Letícia Ramos",
+          "Leonardo Prado",
+          "Juliana Ribeiro"
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

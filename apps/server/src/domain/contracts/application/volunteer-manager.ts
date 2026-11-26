@@ -1,17 +1,41 @@
+import type { AppConfig } from '@church/app-config';
 import type { CalendarDay, Instant } from '@church/time';
 import type {
   AssignmentId,
   AvailabilityCheckId,
   ChurchId,
   CycleId,
+  EventTimeBlockId,
   MinistryId,
   ShiftId,
   UserId,
   VolunteerId,
 } from '../../branded-ids';
+import type { Assignment, AssignmentStatus } from '../../entities/assignment';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
+import type { EventWithEventTimeBlocks } from '../../entities/event';
 import type { Notification } from '../../entities/notification';
+import type { ShiftRequirement } from '../../entities/shift-requirement';
 import type { CheckDayState } from '../../services/availability-check-days';
+import type { IAuthorityManager } from './authority-manager';
+import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
+import type {
+  AvailabilityCheckRepository,
+  CheckContext,
+} from '@/domain/contracts/infrastructure/availability-check.repository';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type { CycleRepository } from '@/domain/contracts/infrastructure/cycle.repository';
+import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
+import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
+import type { MinistryParticipationRepository } from '@/domain/contracts/infrastructure/ministry-participation.repository';
+import type { NotificationRepository } from '@/domain/contracts/infrastructure/notification.repository';
+import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import type { ShiftRepository } from '@/domain/contracts/infrastructure/shift.repository';
+import type { SwapRequestRepository } from '@/domain/contracts/infrastructure/swap-request.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
+import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
 
 export interface DashboardAssignmentItem {
   assignmentId: string;
@@ -311,4 +335,78 @@ export interface IVolunteerManager {
   answerAvailabilityCheck(
     input: AnswerAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail>;
+}
+
+export interface DashboardAssignmentGroupDraft {
+  eventId: string;
+  eventTitle: string;
+  ministryId: string;
+  ministryName: string;
+  eventStart: string;
+  items: DashboardAssignmentItem[];
+}
+
+export interface InCancelledScopeInput {
+  /** The Assignment's or Shift's Event with its blocks; absent reads as live. */
+  group: EventWithEventTimeBlocks | undefined;
+  eventTimeBlockId: EventTimeBlockId;
+}
+
+export interface CompareTextInput {
+  left: string;
+  right: string;
+}
+
+export interface CapUpcomingAssignmentsInput {
+  groups: DashboardAssignmentGroup[];
+  limit: number;
+}
+
+export interface ServingMonthsInput {
+  churchDay: CalendarDay;
+  count: number;
+}
+
+export interface RequirementCoverageStatusInput {
+  status: AssignmentStatus;
+}
+
+export interface RequirementCoverageInput {
+  requirement: ShiftRequirement;
+  assignments: Assignment[];
+}
+
+export interface ScheduleShiftLabelInput {
+  label?: string;
+  startTime: Instant;
+  endTime: Instant;
+}
+
+export interface GetOwnedCheckContextInput extends GetAvailabilityCheckInput {
+  lockForAnswer?: boolean;
+  tx?: TransactionContext;
+}
+
+export interface ResolveCheckDetailInput {
+  context: CheckContext;
+  input: GetAvailabilityCheckInput;
+}
+
+export interface DbVolunteerManagerDependencies {
+  volunteerRepo: VolunteerRepository;
+  assignmentRepo: AssignmentRepository;
+  swapRequestRepo: SwapRequestRepository;
+  unavailableShiftRepo: UnavailableShiftRepository;
+  notificationRepo: NotificationRepository;
+  cycleRepo: CycleRepository;
+  eventRepo: EventRepository;
+  shiftRepo: ShiftRepository;
+  ministryRepo: MinistryRepository;
+  participationRepo: MinistryParticipationRepository;
+  roleRepo: RoleRepository;
+  availabilityCheckRepo: AvailabilityCheckRepository;
+  churchRepo: ChurchRepository;
+  authorityManager: Pick<IAuthorityManager, 'decideAuthority'>;
+  unitOfWork: UnitOfWork;
+  config: AppConfig;
 }

@@ -11,6 +11,18 @@ import type {
 import type { ConflictIssue } from '../../conflict/types';
 import type { Assignment } from '../../entities/assignment';
 import type { AssignmentAudit } from '../../entities/assignment-audit';
+import type { MinistryParticipation } from '../../entities/ministry-participation';
+import type {
+  IAssignmentFactsReader,
+  IAssignmentLifecycle,
+} from './assignment-lifecycle';
+import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
+import type { AssignmentAuditRepository } from '@/domain/contracts/infrastructure/assignment-audit.repository';
+import type { CycleRepository } from '@/domain/contracts/infrastructure/cycle.repository';
+import type { MinistryParticipationRepository } from '@/domain/contracts/infrastructure/ministry-participation.repository';
+import type { ShiftRepository } from '@/domain/contracts/infrastructure/shift.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
 export interface CreateParticipationAssignmentInput {
   churchId: ChurchId;
@@ -71,4 +83,23 @@ export interface IAssignmentManager {
   listAuditLogForCycle(
     input: ListCycleAuditLogInput,
   ): Promise<AssignmentAudit[]>;
+}
+
+export interface CreateParticipationAssignmentTransactionInput {
+  input: CreateParticipationAssignmentInput;
+  tx: TransactionContext;
+  participation: MinistryParticipation;
+  /** The Assignment a reassignment replaces; it does not take a place. */
+  replacingId?: Assignment['id'];
+}
+
+export interface DbAssignmentManagerDependencies {
+  assignmentRepo: AssignmentRepository;
+  auditRepo: AssignmentAuditRepository;
+  shiftRepository: ShiftRepository;
+  participationRepository: MinistryParticipationRepository;
+  cycleRepository: CycleRepository;
+  assignmentLifecycle: IAssignmentLifecycle;
+  assignmentFactsReader: IAssignmentFactsReader;
+  unitOfWork: UnitOfWork;
 }

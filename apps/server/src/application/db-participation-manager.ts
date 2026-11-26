@@ -17,6 +17,7 @@ import type {
   SectorId,
   VolunteerId,
 } from '../domain/branded-ids';
+import type { IAssignmentLifecycle } from '../domain/contracts/application/assignment-lifecycle';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   ApplyAssignmentProposalInput,
@@ -60,7 +61,6 @@ import type {
   UsualSetupBlockView,
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
-import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
 import type { AssignmentProposalApplicationRepository } from '../domain/contracts/infrastructure/assignment-proposal-application.repository';
 import type { AvailabilityCheckRepository } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
@@ -140,8 +140,6 @@ import {
   type AppliedProposalAddition,
   findStaleAdditions,
   type ProposalAssignment,
-  type ProposalNeed,
-  type ProposalShift,
   type ProposalVolunteer,
   type ProposeAssignmentsInput,
   proposalReviewTokenFor,
@@ -507,7 +505,7 @@ interface DbParticipationManagerDependencies {
   shiftRepository: ShiftRepository;
   eventRepository: PlanningEventRepository;
   assignmentRepository: AssignmentRepository;
-  auditRepository: AssignmentAuditRepository;
+  assignmentLifecycle: IAssignmentLifecycle;
   proposalApplicationRepository: AssignmentProposalApplicationRepository;
   unavailableShiftRepository: UnavailableShiftRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
@@ -545,7 +543,6 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly shiftRepository: ShiftRepository;
   private readonly eventRepository: PlanningEventRepository;
   private readonly assignmentRepository: AssignmentRepository;
-  private readonly auditRepository: AssignmentAuditRepository;
   private readonly proposalApplicationRepository: AssignmentProposalApplicationRepository;
   private readonly unavailableShiftRepository: UnavailableShiftRepository;
   private readonly eventTimeBlockRepository: EventTimeBlockRepository;
@@ -561,6 +558,7 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly staffingSeeder: UsualSetupStaffingSeeder;
   private readonly notifications: IChurchNotifications;
   private readonly unitOfWork: UnitOfWork;
+  private readonly lifecycle: IAssignmentLifecycle;
 
   constructor({
     availabilityCheckRepository,
@@ -568,7 +566,7 @@ export class DbParticipationManager implements IParticipationManager {
     shiftRepository,
     eventRepository,
     assignmentRepository,
-    auditRepository,
+    assignmentLifecycle,
     proposalApplicationRepository,
     unavailableShiftRepository,
     eventTimeBlockRepository,
@@ -585,7 +583,6 @@ export class DbParticipationManager implements IParticipationManager {
     notifications,
     unitOfWork,
   }: DbParticipationManagerDependencies) {
-    this.auditRepository = auditRepository;
     this.proposalApplicationRepository = proposalApplicationRepository;
     this.availabilityCheckRepository = availabilityCheckRepository;
     this.swapRequestRepo = swapRequestRepo;
@@ -606,6 +603,7 @@ export class DbParticipationManager implements IParticipationManager {
     this.staffingSeeder = staffingSeeder;
     this.notifications = notifications;
     this.unitOfWork = unitOfWork;
+    this.lifecycle = assignmentLifecycle;
   }
 
   async getCycleParticipation(
@@ -1529,10 +1527,7 @@ export class DbParticipationManager implements IParticipationManager {
 
       const shiftById = new Map(shifts.map((shift) => [shift.id, shift]));
       const shiftIdByNeed = new Map(
-        facts.needs.map(({ shiftRequirementId, shiftId }) => [
-          shiftRequirementId,
-          shiftId,
-        ]),
+        facts.needs.map(({ id, shiftId }) => [id, shiftId]),
       );
       const applied: AppliedProposalAddition[] = [];
       const touchedParticipationIds = new Set<string>();
@@ -1541,27 +1536,13 @@ export class DbParticipationManager implements IParticipationManager {
         const shift = shiftId && shiftById.get(shiftId);
         // Unreachable: findStaleAdditions refused unknown needs.
         if (!shift) throw new AssignmentProposalStaleError();
-        const created = await this.assignmentRepository.create({
+        const created = await this.lifecycle.add({
           churchId,
-          input: {
-            eventTimeBlockId: shift.eventTimeBlockId,
-            participationId: shift.participationId,
-            shiftId: shift.id,
-            volunteerId,
-            shiftRequirementId,
-            status: 'pending',
-            assignedBy: actorId,
-          },
-          tx,
-        });
-        await this.auditRepository.create({
-          churchId,
-          input: {
-            assignmentId: created.id,
-            actorId,
-            action: 'created',
-            correlationId: applicationKey,
-          },
+          shift,
+          shiftRequirementId,
+          volunteerId,
+          actorId,
+          correlationId: applicationKey,
           tx,
         });
         applied.push({
@@ -1573,18 +1554,8 @@ export class DbParticipationManager implements IParticipationManager {
       }
       // As manual creation does: the first Assignment starts assigning.
       for (const participation of proposable) {
-        if (
-          participation.state !== 'availability_requested' ||
-          !touchedParticipationIds.has(participation.id as string)
-        )
-          continue;
-        participation.startAssigning();
-        await this.participationRepository.updateState({
-          churchId,
-          participationId: participation.id,
-          state: participation.state,
-          tx,
-        });
+        if (touchedParticipationIds.has(participation.id as string))
+          await this.lifecycle.startAssigning({ churchId, participation, tx });
       }
 
       const application = await this.proposalApplicationRepository.create({
@@ -1688,7 +1659,7 @@ export class DbParticipationManager implements IParticipationManager {
       });
 
     const shifts: Shift[] = [];
-    const needs: ProposalNeed[] = [];
+    const needs: ShiftRequirement[] = [];
     const scheduleAssignments: Assignment[] = [];
     for (const participation of proposable) {
       const [participationShifts, requirements, assignments] =
@@ -1713,15 +1684,7 @@ export class DbParticipationManager implements IParticipationManager {
       scheduleAssignments.push(
         ...assignments.filter(({ status }) => isActiveAssignmentStatus(status)),
       );
-      for (const { id, shiftId, roleId, peopleNeeded } of requirements) {
-        if (shiftId)
-          needs.push({
-            shiftRequirementId: id,
-            shiftId,
-            roleId,
-            peopleNeeded,
-          });
-      }
+      needs.push(...requirements.filter(({ shiftId }) => shiftId));
     }
 
     // Only Volunteers asked this Cycle are candidates; unconfirmed ones are counted.
@@ -1781,12 +1744,6 @@ export class DbParticipationManager implements IParticipationManager {
           .map(({ id }) => id),
       }),
     );
-    const proposalShifts: ProposalShift[] = shifts.map((shift) => ({
-      shiftId: shift.id,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      cancelled: cancelledBlockIds.has(shift.eventTimeBlockId as string),
-    }));
     const proposalAssignments = toProposalAssignments({
       scheduleAssignments,
       candidateAssignments: activeAssignments,
@@ -1800,7 +1757,12 @@ export class DbParticipationManager implements IParticipationManager {
     return {
       facts: {
         now: now(),
-        shifts: proposalShifts,
+        shifts,
+        cancelledShiftIds: shifts
+          .filter(({ eventTimeBlockId }) =>
+            cancelledBlockIds.has(eventTimeBlockId as string),
+          )
+          .map(({ id }) => id),
         needs,
         volunteers,
         assignments: proposalAssignments,
@@ -2790,26 +2752,20 @@ interface ToProposalAssignmentsInput {
   cycleBlockIds: Set<string>;
 }
 
-/** One entry per Assignment; only target-Schedule ones name a need. */
+/** One entry per Assignment, with its Shift. */
 function toProposalAssignments({
   scheduleAssignments,
   candidateAssignments,
   shiftsById,
   cycleBlockIds,
 }: ToProposalAssignmentsInput): ProposalAssignment[] {
-  const scheduleIds = new Set(scheduleAssignments.map(({ id }) => id));
   const byId = new Map<string, ProposalAssignment>();
   for (const assignment of [...scheduleAssignments, ...candidateAssignments]) {
     const shift = assignment.shiftId && shiftsById.get(assignment.shiftId);
     if (!shift || byId.has(assignment.id)) continue;
     byId.set(assignment.id, {
-      volunteerId: assignment.volunteerId,
-      shiftId: shift.id,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      shiftRequirementId: scheduleIds.has(assignment.id)
-        ? assignment.shiftRequirementId
-        : undefined,
+      assignment,
+      shift,
       inCycle: cycleBlockIds.has(assignment.eventTimeBlockId as string),
     });
   }

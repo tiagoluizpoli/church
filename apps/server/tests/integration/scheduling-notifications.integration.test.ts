@@ -48,8 +48,6 @@ import type { AvailabilityEmail } from '@/domain/contracts/infrastructure/email-
 import type { CreateNotificationInput } from '@/domain/contracts/infrastructure/notification.repository';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 import {
-  DrizzleAssignmentAuditRepository,
-  DrizzleAssignmentRepository,
   DrizzleAvailabilityCheckRepository,
   DrizzleChurchRepository,
   DrizzleCycleRepository,
@@ -59,7 +57,6 @@ import {
   DrizzleMinistryRepository,
   DrizzleNotificationRepository,
   DrizzlePlanningEventRepository,
-  DrizzleSwapRequestRepository,
   DrizzleUnitOfWork,
   DrizzleVolunteerRepository,
 } from '@/infrastructure/repositories';
@@ -90,6 +87,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
 
@@ -305,15 +303,9 @@ function buildPlanningManager() {
     eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({
       db: schedulingTestDb,
     }),
-    assignmentRepository: new DrizzleAssignmentRepository({
+    assignmentLifecycle: buildDrizzleAssignmentLifecycle({
       db: schedulingTestDb,
-    }),
-    auditRepository: new DrizzleAssignmentAuditRepository({
-      db: schedulingTestDb,
-    }),
-    swapRequestRepository: new DrizzleSwapRequestRepository({
-      db: schedulingTestDb,
-    }),
+    }).assignmentLifecycle,
     recipients: new ChurchRecipients({
       churchRepository: new DrizzleChurchRepository({ db: schedulingTestDb }),
       volunteerRepository: new DrizzleVolunteerRepository({

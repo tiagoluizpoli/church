@@ -27,7 +27,6 @@ import { DrizzleAssignmentProposalApplicationRepository } from '@/infrastructure
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
-import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
@@ -62,6 +61,7 @@ import {
   schedulingTestPool,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 
 function createParticipationManager(): DbParticipationManager {
@@ -80,9 +80,9 @@ function createParticipationManager(): DbParticipationManager {
     assignmentRepository: new DrizzleAssignmentRepository({
       db: schedulingTestDb,
     }),
-    auditRepository: new DrizzleAssignmentAuditRepository({
+    assignmentLifecycle: buildDrizzleAssignmentLifecycle({
       db: schedulingTestDb,
-    }),
+    }).assignmentLifecycle,
     proposalApplicationRepository:
       new DrizzleAssignmentProposalApplicationRepository({
         db: schedulingTestDb,
@@ -125,18 +125,13 @@ function createAssignmentManager(input?: {
     participationRepository: new DrizzleMinistryParticipationRepository({
       db: schedulingTestDb,
     }),
-    volunteerRepository:
-      input?.volunteerRepository ??
-      new DrizzleVolunteerRepository({ db: schedulingTestDb }),
-    unavailableShiftRepository: new DrizzleUnavailableShiftRepository({
-      db: schedulingTestDb,
-    }),
     cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
-    eventRepository: new DrizzleEventRepository({ db: schedulingTestDb }),
-    eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({
+    ...buildDrizzleAssignmentLifecycle({
       db: schedulingTestDb,
+      overrides: input?.volunteerRepository && {
+        volunteerRepository: input.volunteerRepository,
+      },
     }),
-    swapRequestRepo: new DrizzleSwapRequestRepository({ db: schedulingTestDb }),
     unitOfWork,
   });
 }

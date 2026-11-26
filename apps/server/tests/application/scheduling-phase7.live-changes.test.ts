@@ -27,6 +27,7 @@ import { MinistryParticipation } from '@/domain/entities/ministry-participation'
 import { Shift } from '@/domain/entities/shift';
 import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 import { UnavailableShift } from '@/domain/entities/unavailable-shift';
+import { buildAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 import {
   createAssignmentAuditRepositoryFake,
@@ -191,12 +192,18 @@ function createHarness() {
     auditRepo,
     shiftRepository,
     participationRepository,
-    volunteerRepository,
-    unavailableShiftRepository,
     cycleRepository,
-    eventRepository: eventRepo,
-    eventTimeBlockRepository,
-    swapRequestRepo: createSwapRequestRepositoryFake(),
+    ...buildAssignmentLifecycle({
+      assignmentRepository: assignmentRepo,
+      auditRepository: auditRepo,
+      swapRequestRepository: createSwapRequestRepositoryFake(),
+      participationRepository,
+      shiftRepository,
+      eventRepository: eventRepo,
+      eventTimeBlockRepository,
+      volunteerRepository,
+      unavailableShiftRepository,
+    }),
     unitOfWork,
   });
   const notifications = createChurchNotificationsSpy();
@@ -205,7 +212,7 @@ function createHarness() {
     participationRepository,
     shiftRepository,
     assignmentRepository: assignmentRepo,
-    auditRepository: {} as never,
+    assignmentLifecycle: {} as never,
     proposalApplicationRepository: {} as never,
     unavailableShiftRepository,
     volunteerRepository,

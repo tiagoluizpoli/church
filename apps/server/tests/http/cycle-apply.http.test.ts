@@ -42,8 +42,6 @@ import {
 } from '@/domain/branded-ids';
 import type { Recurrence } from '@/domain/recurrence';
 import { toStoredPrecedence } from '@/domain/template-precedence';
-import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -53,7 +51,6 @@ import { DrizzleMinistryParticipationRepository } from '@/infrastructure/reposit
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
@@ -70,6 +67,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { insertChurchAddress } from '@/tests/test-support/church-address';
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
@@ -135,9 +133,8 @@ beforeAll(async () => {
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
-      assignmentRepository: new DrizzleAssignmentRepository({ db }),
-      auditRepository: new DrizzleAssignmentAuditRepository({ db }),
-      swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+      assignmentLifecycle: buildDrizzleAssignmentLifecycle({ db })
+        .assignmentLifecycle,
       recipients: new ChurchRecipients({
         churchRepository,
         volunteerRepository: new DrizzleVolunteerRepository({ db }),

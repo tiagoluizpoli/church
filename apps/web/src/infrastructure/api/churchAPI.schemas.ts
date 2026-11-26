@@ -6627,6 +6627,7 @@ export type GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItem = {
 export type GetCycleBuilderData200EventsItemEventTimeBlocksItem = {
   eventTimeBlock: GetCycleBuilderData200EventsItemEventTimeBlocksItemEventTimeBlock;
   included: boolean;
+  cancelled: boolean;
   shifts: GetCycleBuilderData200EventsItemEventTimeBlocksItemShiftsItem[];
 };
 

@@ -101,6 +101,7 @@ function makeCycleBuilderData(): GetCycleBuilderData200 {
               requirements: [],
             },
             included: true,
+            cancelled: false,
             shifts: [
               {
                 shift: {
@@ -284,6 +285,8 @@ describe('useCycleBuilder optimistic assignments', () => {
     if (!item || !block) throw new Error('Missing Event fixture');
     if (scope === 'event') item.event.status = 'cancelled';
     else block.eventTimeBlock.status = 'cancelled';
+    // The server flags a block cancelled by either (#1123).
+    block.cancelled = true;
     adminApiMock.getCycleBuilderData.mockResolvedValue(data);
     const { result } = renderCycleBuilder();
     await waitFor(() => expect(result.current.data).toBeDefined());

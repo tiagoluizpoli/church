@@ -75,6 +75,7 @@ function makeData({ assignments }: MakeDataInput): CycleBuilderQueryData {
               requirements: [],
             },
             included: true,
+            cancelled: false,
             shifts: [
               {
                 shift: {

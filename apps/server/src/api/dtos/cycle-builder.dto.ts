@@ -35,6 +35,8 @@ export type CycleBuilderShiftViewResponse = z.infer<
 export const cycleBuilderEventTimeBlockViewSchema = z.object({
   eventTimeBlock: eventTimeBlockResponseSchema,
   included: z.boolean(),
+  /** The block or its Event was cancelled. */
+  cancelled: z.boolean(),
   shifts: z.array(cycleBuilderShiftViewSchema),
 });
 export type CycleBuilderEventTimeBlockViewResponse = z.infer<
@@ -131,6 +133,7 @@ export const cycleBuilderMapper = {
               eventTimeBlockView.eventTimeBlock,
             ),
             included: eventTimeBlockView.included,
+            cancelled: eventTimeBlockView.cancelled,
             shifts: eventTimeBlockView.shifts.map((shiftView) => ({
               shift: participationMapper.shiftToResponse(shiftView.shift),
               requirements: shiftView.requirements.map((requirement) =>

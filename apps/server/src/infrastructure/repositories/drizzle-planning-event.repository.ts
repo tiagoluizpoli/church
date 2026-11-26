@@ -83,6 +83,7 @@ import type {
 import { mapEvent } from '../mappers/event.mapper';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
+import type { DrizzlePlanningEventRepositoryInput } from './drizzle-planning-event.repository.types';
 import {
   assertPlaceAddresses,
   getClient,
@@ -90,10 +91,6 @@ import {
   withChurchIsolation,
 } from './helpers';
 import type { AnyDrizzleDb } from './types';
-
-interface DrizzlePlanningEventRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 export class DrizzlePlanningEventRepository implements PlanningEventRepository {
   constructor({ db }: DrizzlePlanningEventRepositoryInput) {
@@ -327,8 +324,9 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
       return [];
     }
 
-    // The Schedule stage counts serving, non-cancelled Events only, as the
-    // Schedules list derives it.
+    // The Schedule's state over Events not cancelled, a cancelled block's
+    // inclusion included: Ask moves every participation together, so a new
+    // Event joins the state the others hold (the list's stage skips those blocks).
     const serving = await db
       .selectDistinct({
         ministryId: ministryParticipation.ministryId,

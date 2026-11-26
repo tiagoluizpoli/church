@@ -46,6 +46,7 @@ describe('cycleBuilderResponseSchema', () => {
                 requirements: [],
               },
               included: true,
+              cancelled: false,
               shifts: [
                 {
                   shift: {

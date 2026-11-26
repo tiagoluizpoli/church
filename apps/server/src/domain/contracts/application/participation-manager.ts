@@ -142,6 +142,8 @@ export interface CycleBuilderRequirementView {
 export interface CycleBuilderEventTimeBlockView {
   eventTimeBlock: EventTimeBlock;
   included: boolean;
+  /** The block or its Event was cancelled: read-only, asks for nobody. */
+  cancelled: boolean;
   shifts: CycleBuilderShiftView[];
 }
 

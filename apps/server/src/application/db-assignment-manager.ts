@@ -112,7 +112,7 @@ export class DbAssignmentManager implements IAssignmentManager {
         shiftId: assignment.shiftId,
         tx,
       });
-      this.lifecycle.assertNotStarted({ startTime: shift.startTime });
+      this.lifecycle.assertNotStarted({ shift });
       await this.lifecycle.remove({ churchId, assignmentId, actorId, tx });
     });
   }
@@ -204,7 +204,7 @@ export class DbAssignmentManager implements IAssignmentManager {
         assignmentId: input.assignmentId,
         tx,
       });
-      const { facts, target } = await this.factsReader.forMove({
+      const eligibility = await this.factsReader.forMove({
         churchId: input.churchId,
         current,
         shiftRequirementId: input.shiftRequirementId,
@@ -212,13 +212,14 @@ export class DbAssignmentManager implements IAssignmentManager {
       });
       this.lifecycle.admit({
         check: 'move',
-        facts,
+        eligibility,
         notOnShift: () =>
           new HardConstraintError({
             reason: 'INVALID_MOVE_TARGET',
             message: 'Move target must have the same shift and role',
           }),
       });
+      const target = eligibility.requirement;
       if (!target) throw new Error('Move target was admitted without a need');
       const moved = await this.lifecycle.move({
         churchId: input.churchId,

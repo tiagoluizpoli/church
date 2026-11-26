@@ -6,15 +6,20 @@ import type {
   ShiftRequirementId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import type { Shift } from '@/domain/entities/shift';
+import type { ShiftRequirement } from '@/domain/entities/shift-requirement';
 import {
   findStaleAdditions,
   type ProposalAssignment,
-  type ProposalNeed,
-  type ProposalShift,
   type ProposalVolunteer,
   proposalReviewTokenFor,
   proposeAssignments,
 } from '@/domain/services/assignment-proposal';
+import {
+  testAssignment,
+  testRequirement,
+  testShift,
+} from '@/tests/test-support/scheduling-entities';
 
 const NOW = parseInstant({ value: '2026-10-01T12:00:00.000Z' });
 const at = (day: string, hour: number): Instant =>
@@ -32,21 +37,14 @@ interface ShiftFixtureInput {
   id: string;
   day: string;
   hour: number;
-  cancelled?: boolean;
 }
 
-function shift({
-  id,
-  day,
-  hour,
-  cancelled = false,
-}: ShiftFixtureInput): ProposalShift {
-  return {
-    shiftId: id as ShiftId,
+function shift({ id, day, hour }: ShiftFixtureInput): Shift {
+  return testShift({
+    id,
     startTime: at(day, hour),
     endTime: at(day, hour + 2),
-    cancelled,
-  };
+  });
 }
 
 interface NeedFixtureInput {
@@ -56,17 +54,37 @@ interface NeedFixtureInput {
   peopleNeeded?: number;
 }
 
-function need({
-  id,
+function need(input: NeedFixtureInput): ShiftRequirement {
+  return testRequirement(input);
+}
+
+interface BookedFixtureInput {
+  volunteerId: VolunteerId;
+  shiftId: ShiftId;
+  startTime: Instant;
+  endTime: Instant;
+  /** One of the target needs it fills, if any. */
+  shiftRequirementId?: ShiftRequirementId;
+  inCycle: boolean;
+}
+
+/** An existing active Assignment with its Shift. */
+function booked({
+  volunteerId,
   shiftId,
-  roleId,
-  peopleNeeded = 1,
-}: NeedFixtureInput): ProposalNeed {
+  startTime,
+  endTime,
+  shiftRequirementId,
+  inCycle,
+}: BookedFixtureInput): ProposalAssignment {
   return {
-    shiftRequirementId: id as ShiftRequirementId,
-    shiftId: shiftId as ShiftId,
-    roleId,
-    peopleNeeded,
+    assignment: testAssignment({
+      volunteerId,
+      shiftId,
+      shiftRequirementId: shiftRequirementId ?? `${shiftId as string}-need`,
+    }),
+    shift: testShift({ id: shiftId, startTime, endTime }),
+    inCycle,
   };
 }
 
@@ -92,14 +110,16 @@ function volunteer({
 }
 
 interface ProposeFixtureInput {
-  shifts: ProposalShift[];
-  needs: ProposalNeed[];
+  shifts: Shift[];
+  cancelledShiftIds?: string[];
+  needs: ShiftRequirement[];
   volunteers: ProposalVolunteer[];
   assignments?: ProposalAssignment[];
 }
 
 function propose({
   shifts,
+  cancelledShiftIds = [],
   needs,
   volunteers,
   assignments = [],
@@ -107,6 +127,7 @@ function propose({
   return proposeAssignments({
     now: NOW,
     shifts,
+    cancelledShiftIds: cancelledShiftIds as ShiftId[],
     needs,
     volunteers,
     assignments,
@@ -178,13 +199,13 @@ describe('proposeAssignments', () => {
         volunteer({ id: BRUNO, roleIds: [SINGER] }),
       ],
       assignments: [
-        {
+        booked({
           volunteerId: ANA,
           shiftId: 'other-ministry' as ShiftId,
           startTime: at('20', 19),
           endTime: at('20', 21),
           inCycle: true,
-        },
+        }),
       ],
     });
 
@@ -203,13 +224,13 @@ describe('proposeAssignments', () => {
       shifts: [shift({ id: 's1', day: '18', hour: 9 })],
       needs: [need({ id: 'sing', shiftId: 's1', roleId: SINGER })],
       assignments: [
-        {
+        booked({
           volunteerId: ANA,
           shiftId: 'last-cycle' as ShiftId,
           startTime: at('02', 9),
           endTime: at('02', 11),
           inCycle: false,
-        },
+        }),
       ],
     };
 
@@ -319,22 +340,22 @@ describe('proposeAssignments', () => {
       ],
       assignments: [
         // Ana already sings in s1: one place left there, and not for her.
-        {
+        booked({
           volunteerId: ANA,
           shiftId: 's1' as ShiftId,
           shiftRequirementId: 's1-sing' as ShiftRequirementId,
           startTime: at('18', 9),
           endTime: at('18', 11),
           inCycle: true,
-        },
+        }),
         // Bruno serves another Ministry at the same time as s2.
-        {
+        booked({
           volunteerId: BRUNO,
           shiftId: 'kids' as ShiftId,
           startTime: at('25', 10),
           endTime: at('25', 12),
           inCycle: true,
-        },
+        }),
       ],
     });
 
@@ -347,14 +368,15 @@ describe('proposeAssignments', () => {
   });
 
   it('treats an overfilled need as full', () => {
-    const existing = (volunteerId: VolunteerId): ProposalAssignment => ({
-      volunteerId,
-      shiftId: 's1' as ShiftId,
-      shiftRequirementId: 'sing' as ShiftRequirementId,
-      startTime: at('18', 9),
-      endTime: at('18', 11),
-      inCycle: true,
-    });
+    const existing = (volunteerId: VolunteerId): ProposalAssignment =>
+      booked({
+        volunteerId,
+        shiftId: 's1' as ShiftId,
+        shiftRequirementId: 'sing' as ShiftRequirementId,
+        startTime: at('18', 9),
+        endTime: at('18', 11),
+        inCycle: true,
+      });
     const result = propose({
       shifts: [shift({ id: 's1', day: '18', hour: 9 })],
       needs: [need({ id: 'sing', shiftId: 's1', roleId: SINGER })],
@@ -391,14 +413,14 @@ describe('proposeAssignments', () => {
   it('skips started and cancelled Shifts entirely', () => {
     const result = propose({
       shifts: [
-        {
-          shiftId: 'started' as ShiftId,
+        testShift({
+          id: 'started',
           startTime: parseInstant({ value: '2026-10-01T11:00:00.000Z' }),
           endTime: parseInstant({ value: '2026-10-01T13:00:00.000Z' }),
-          cancelled: false,
-        },
-        shift({ id: 'cancelled', day: '18', hour: 9, cancelled: true }),
+        }),
+        shift({ id: 'cancelled', day: '18', hour: 9 }),
       ],
+      cancelledShiftIds: ['cancelled'],
       needs: [
         need({ id: 'started-sing', shiftId: 'started', roleId: SINGER }),
         need({ id: 'cancelled-sing', shiftId: 'cancelled', roleId: SINGER }),
@@ -449,8 +471,9 @@ describe('findStaleAdditions', () => {
   });
 
   interface StaleFixtureInput {
-    shifts?: ProposalShift[];
-    needs?: ProposalNeed[];
+    shifts?: Shift[];
+    cancelledShiftIds?: ShiftId[];
+    needs?: ShiftRequirement[];
     volunteers: ProposalVolunteer[];
     assignments?: ProposalAssignment[];
     additions: ReturnType<typeof pair>[];
@@ -458,13 +481,21 @@ describe('findStaleAdditions', () => {
 
   function stale({
     shifts = [S1, S2],
+    cancelledShiftIds = [],
     needs = [SING_S1, SING_S2],
     volunteers,
     assignments = [],
     additions,
   }: StaleFixtureInput) {
     return findStaleAdditions({
-      facts: { now: NOW, shifts, needs, volunteers, assignments },
+      facts: {
+        now: NOW,
+        shifts,
+        cancelledShiftIds,
+        needs,
+        volunteers,
+        assignments,
+      },
       additions,
     }).map(
       ({ volunteerId, shiftRequirementId }) =>
@@ -476,6 +507,7 @@ describe('findStaleAdditions', () => {
     const facts = {
       now: NOW,
       shifts: [S1, S2],
+      cancelledShiftIds: [],
       needs: [SING_S1, SING_S2],
       volunteers: [
         volunteer({ id: ANA, roleIds: [SINGER] }),
@@ -492,7 +524,8 @@ describe('findStaleAdditions', () => {
   it('flags every mandatory rule the facts no longer pass', () => {
     expect(
       stale({
-        shifts: [S1, shift({ id: 's2', day: '05', hour: 10, cancelled: true })],
+        shifts: [S1, shift({ id: 's2', day: '05', hour: 10 })],
+        cancelledShiftIds: ['s2' as ShiftId],
         volunteers: [
           volunteer({ id: ANA, roleIds: [SINGER], confirmed: false }),
           volunteer({ id: BRUNO, roleIds: [GUITAR] }),
@@ -530,13 +563,13 @@ describe('findStaleAdditions', () => {
           volunteer({ id: CARLA, roleIds: [SINGER] }),
         ],
         assignments: [
-          {
+          booked({
             volunteerId: CARLA,
             shiftId: 'other' as ShiftId,
             startTime: at('05', 10),
             endTime: at('05', 11),
             inCycle: true,
-          },
+          }),
         ],
         additions: [
           pair(ANA, 'sing-s1'),

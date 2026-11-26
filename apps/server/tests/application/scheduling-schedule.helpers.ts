@@ -4,7 +4,6 @@ import { fromDate } from '@church/time';
 import { and, eq } from 'drizzle-orm';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
-import { DbParticipationManager } from '@/application/db-participation-manager';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
 import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import type { IChurchNotifications } from '@/domain/contracts/application/church-notifications';
@@ -45,6 +44,10 @@ import {
 import { schedulingTestDb } from '@/tests/scheduling-reshape/setup';
 import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
+import {
+  buildParticipationModules,
+  type ParticipationModules,
+} from '@/tests/test-support/participation-modules';
 
 /**
  * The managers and seed steps the assign (phase 6) and live-change
@@ -53,7 +56,7 @@ import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifi
 
 export interface SchedulingManagers {
   assignmentManager: DbAssignmentManager;
-  participationManager: DbParticipationManager;
+  participationModules: ParticipationModules;
   volunteerManager: DbVolunteerManager;
   assignmentRepo: DrizzleAssignmentRepository;
   participationRepo: DrizzleMinistryParticipationRepository;
@@ -121,7 +124,7 @@ export function createSchedulingManagers({
       assignmentFactsReader,
       unitOfWork,
     }),
-    participationManager: new DbParticipationManager({
+    participationModules: buildParticipationModules({
       availabilityCheckRepository: availabilityCheckRepo,
       participationRepository: participationRepo,
       shiftRepository: shiftRepo,

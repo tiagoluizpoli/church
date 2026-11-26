@@ -2,7 +2,6 @@ import { appConfig } from '@church/app-config';
 import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
-import { DbParticipationManager } from '@/application/db-participation-manager';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
 import {
   AssignmentId,
@@ -29,6 +28,7 @@ import { ShiftRequirement } from '@/domain/entities/shift-requirement';
 import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 import { buildAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
+import { buildParticipationModules } from '@/tests/test-support/participation-modules';
 import {
   createAssignmentAuditRepositoryFake,
   createAssignmentRepositoryFake,
@@ -207,7 +207,7 @@ function createHarness() {
     unitOfWork,
   });
   const notifications = createChurchNotificationsSpy();
-  const participationManager = new DbParticipationManager({
+  const participationModules = buildParticipationModules({
     availabilityCheckRepository: availabilityCheckRepo,
     participationRepository,
     shiftRepository,
@@ -251,7 +251,7 @@ function createHarness() {
   return {
     manager,
     volunteerManager,
-    participationManager,
+    participationModules,
     requirement,
     notifications,
     assignmentRepo,
@@ -286,11 +286,13 @@ describe('live assignment changes', () => {
       .mockResolvedValueOnce([f.assignment])
       .mockResolvedValueOnce([]);
     const participationId = MinistryParticipationId.from('participation');
-    const before = await f.participationManager.getCompletion({
-      churchId,
-      participationId,
-    });
-    const after = await f.participationManager.getCompletion({
+    const before = await f.participationModules.scheduleReadModel.getCompletion(
+      {
+        churchId,
+        participationId,
+      },
+    );
+    const after = await f.participationModules.scheduleReadModel.getCompletion({
       churchId,
       participationId,
     });

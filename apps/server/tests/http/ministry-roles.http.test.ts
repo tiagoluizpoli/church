@@ -811,10 +811,10 @@ describe('archived Roles in fresh use', () => {
       start: '2026-11-22T12:00:00Z',
       end: '2026-11-22T14:00:00Z',
     });
-    const { participationManager } = createSchedulingManagers();
+    const { participationModules } = createSchedulingManagers();
 
     await expect(
-      participationManager.savePreparation({
+      participationModules.prepareManager.savePreparation({
         churchId: CHURCH_A as never,
         participationId: upcoming.participationId as never,
         eventTimeBlockId: upcoming.eventTimeBlockId as never,
@@ -831,7 +831,7 @@ describe('archived Roles in fresh use', () => {
       }),
     ).rejects.toMatchObject({ name: 'NotFoundError' });
     await expect(
-      participationManager.saveUsualSetupBlock({
+      participationModules.usualSetupManager.saveUsualSetupBlock({
         churchId: CHURCH_A as never,
         ministryId: fixture.worshipId as never,
         entry: {
@@ -900,10 +900,10 @@ describe('archive racing fresh use', () => {
       await paused.wait;
       return locked;
     };
-    const { participationManager } = createSchedulingManagers({
+    const { participationModules } = createSchedulingManagers({
       roleRepository: pausingRepository,
     });
-    const write = participationManager.savePreparation({
+    const write = participationModules.prepareManager.savePreparation({
       churchId: CHURCH_A as never,
       participationId: upcoming.participationId as never,
       eventTimeBlockId: upcoming.eventTimeBlockId as never,
@@ -955,9 +955,9 @@ describe('archive racing fresh use', () => {
       roleId: fixture.singerId as never,
     });
     await archiveLocked.wait;
-    const { participationManager } = createSchedulingManagers();
+    const { participationModules } = createSchedulingManagers();
 
-    const write = participationManager.savePreparation({
+    const write = participationModules.prepareManager.savePreparation({
       churchId: CHURCH_A as never,
       participationId: upcoming.participationId as never,
       eventTimeBlockId: upcoming.eventTimeBlockId as never,

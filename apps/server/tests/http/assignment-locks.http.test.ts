@@ -185,7 +185,7 @@ beforeAll(async () => {
     authorityGuard,
   });
   const controller = new AssignController({
-    participationManager: managers.participationManager,
+    ...managers.participationModules,
     assignmentManager: managers.assignmentManager,
     activeChurchResolver,
     authorityGuard,
@@ -1236,7 +1236,7 @@ interface MixedWriter {
 /** Lowers the reviewed requirement to what it already holds, in one same-spans Save. */
 function lowerReviewedHeadcount(seed: MixedSeed) {
   const reviewsSource = seed.pair.shiftRequirementId === seed.source.id;
-  return managers.participationManager.savePreparation({
+  return managers.participationModules.prepareManager.savePreparation({
     churchId: ChurchId.from(seed.churchAId),
     participationId: MinistryParticipationId.from(seed.graph.participation.id),
     eventTimeBlockId: EventTimeBlockId.from(seed.graph.eventTimeBlock.id),
@@ -1396,7 +1396,7 @@ const mixedWriters: Record<string, MixedWriter> = {
         ],
       ),
     run: (seed) =>
-      managers.participationManager.publishCycle({
+      managers.participationModules.schedulePublisher.publishCycle({
         churchId: ChurchId.from(seed.churchAId),
         cycleId: CycleId.from(seed.cycle.id),
         ministryId: MinistryId.from(seed.ministryAId),

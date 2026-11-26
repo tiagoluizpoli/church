@@ -72,7 +72,7 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   const assign = new AssignController({
-    participationManager: managers.participationManager,
+    ...managers.participationModules,
     assignmentManager: managers.assignmentManager,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: authorityGuard as never,
@@ -80,7 +80,7 @@ beforeAll(async () => {
   });
   const prepare = new PrepareController({
     config: appConfig,
-    participationManager: managers.participationManager,
+    ...managers.participationModules,
     availabilityCheckManager,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: authorityGuard as never,

@@ -3,6 +3,7 @@ import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
 import {
   DbActiveChurchSelectionManager,
   DbAssignmentManager,
+  DbAssignmentProposalManager,
   DbAvailabilityCheckManager,
   DbChurchAccessManager,
   DbChurchSettingsManager,
@@ -16,16 +17,22 @@ import {
   DbMinistryRoleManager,
   DbNotificationManager,
   DbOutboxDrainer,
-  DbParticipationManager,
+  DbParticipationReader,
   DbPeopleListManager,
   DbPlanningEventManager,
+  DbPrepareManager,
   DbPublicChurchProfileManager,
   DbPublicEventManager,
   DbRedemptionManager,
+  DbScheduleBuilderReader,
+  DbScheduleChangeReader,
+  DbSchedulePublisher,
+  DbScheduleReadModel,
   DbSectorManager,
   DbSetupProgressManager,
   DbSwapRequestListManager,
   DbSwapRequestManager,
+  DbUsualSetupManager,
   DbVolunteerManager,
   DbVolunteerTransferManager,
   InvitationVerificationCodeManager,
@@ -64,7 +71,12 @@ export type Managers = Pick<
   | 'volunteerManager'
   | 'swapRequestManager'
   | 'swapRequestListManager'
-  | 'participationManager'
+  | 'prepareManager'
+  | 'usualSetupManager'
+  | 'scheduleBuilderReader'
+  | 'assignmentProposalManager'
+  | 'scheduleReadModel'
+  | 'schedulePublisher'
   | 'availabilityCheckManager'
   | 'activeChurchSelectionManager'
   | 'notificationManager'
@@ -379,30 +391,102 @@ export function buildManagers({
       unitOfWork,
       config,
     });
-  const participationManager =
-    overrides.participationManager ??
-    new DbParticipationManager({
-      availabilityCheckRepository,
+  const scheduleChangeReader = new DbScheduleChangeReader({
+    assignmentRepository,
+    eventRepository: planningEventRepository,
+    participationRepository: ministryParticipationRepository,
+    roleRepository,
+    shiftRepository,
+  });
+  const participationReader = new DbParticipationReader({
+    assignmentRepository,
+    availabilityCheckRepository,
+    ministryRepository,
+    participationRepository: ministryParticipationRepository,
+    roleRepository,
+    sectorRepository,
+    shiftRepository,
+    unavailableShiftRepository,
+    volunteerRepository,
+  });
+  const prepareManager =
+    overrides.prepareManager ??
+    new DbPrepareManager({
+      assignmentRepository,
+      churchRepository,
+      cycleRepository,
+      eventRepository: planningEventRepository,
+      eventTimeBlockRepository,
+      ministryRepository,
       participationRepository: ministryParticipationRepository,
       shiftRepository,
-      eventRepository: planningEventRepository,
-      assignmentRepository,
-      assignmentLifecycle,
-      proposalApplicationRepository: assignmentProposalApplicationRepository,
-      unavailableShiftRepository,
-      eventTimeBlockRepository,
-      volunteerRepository,
-      ministryRepository,
-      usualSetupRepository: usualSetupRepository,
-      eventTemplateRepository,
-      cycleRepository,
-      roleRepository,
-      sectorRepository,
-      notifications,
-      churchRepository,
-      swapRequestRepo: swapRequestRepository,
       staffingSeeder,
+      unavailableShiftRepository,
       unitOfWork,
+      participationReader,
+    });
+  const usualSetupManager =
+    overrides.usualSetupManager ??
+    new DbUsualSetupManager({
+      eventTemplateRepository,
+      ministryRepository,
+      unitOfWork,
+      usualSetupRepository,
+      participationReader,
+    });
+  const scheduleBuilderReader =
+    overrides.scheduleBuilderReader ??
+    new DbScheduleBuilderReader({
+      assignmentRepository,
+      cycleRepository,
+      eventRepository: planningEventRepository,
+      ministryRepository,
+      participationRepository: ministryParticipationRepository,
+      roleRepository,
+      shiftRepository,
+      unavailableShiftRepository,
+      unitOfWork,
+      volunteerRepository,
+      scheduleChangeReader,
+      participationReader,
+    });
+  const assignmentProposalManager =
+    overrides.assignmentProposalManager ??
+    new DbAssignmentProposalManager({
+      assignmentRepository,
+      availabilityCheckRepository,
+      cycleRepository,
+      eventRepository: planningEventRepository,
+      assignmentLifecycle,
+      ministryRepository,
+      participationRepository: ministryParticipationRepository,
+      proposalApplicationRepository: assignmentProposalApplicationRepository,
+      shiftRepository,
+      unitOfWork,
+      participationReader,
+    });
+  const scheduleReadModel =
+    overrides.scheduleReadModel ??
+    new DbScheduleReadModel({
+      churchRepository,
+      ministryRepository,
+      participationRepository: ministryParticipationRepository,
+      unitOfWork,
+      scheduleChangeReader,
+    });
+  const schedulePublisher =
+    overrides.schedulePublisher ??
+    new DbSchedulePublisher({
+      churchRepository,
+      cycleRepository,
+      eventRepository: planningEventRepository,
+      ministryRepository,
+      notifications,
+      participationRepository: ministryParticipationRepository,
+      swapRequestRepo: swapRequestRepository,
+      unitOfWork,
+      volunteerRepository,
+      scheduleChangeReader,
     });
   const availabilityCheckManager =
     overrides.availabilityCheckManager ??
@@ -509,7 +593,12 @@ export function buildManagers({
     volunteerManager,
     swapRequestManager,
     swapRequestListManager,
-    participationManager,
+    prepareManager,
+    usualSetupManager,
+    scheduleBuilderReader,
+    assignmentProposalManager,
+    scheduleReadModel,
+    schedulePublisher,
     availabilityCheckManager,
     activeChurchSelectionManager,
     notificationManager,

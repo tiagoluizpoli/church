@@ -8,7 +8,6 @@ import { fromDate, parseInstant, setTestClock } from '@church/time';
 import { and, eq, sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
-import { DbParticipationManager } from '@/application/db-participation-manager';
 import {
   ChurchId,
   CycleId,
@@ -63,10 +62,14 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
+import {
+  buildParticipationModules,
+  type ParticipationModules,
+} from '@/tests/test-support/participation-modules';
 
-function createParticipationManager(): DbParticipationManager {
+function createParticipationModules(): ParticipationModules {
   const unitOfWork = new DrizzleUnitOfWork({ db: schedulingTestDb });
-  return new DbParticipationManager({
+  return buildParticipationModules({
     availabilityCheckRepository: new DrizzleAvailabilityCheckRepository({
       db: schedulingTestDb,
     }),
@@ -341,7 +344,7 @@ async function waitForAssignMembershipLock(
   );
 }
 
-describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
+describe('DbScheduleBuilderReader.getCycleBuilderData (R1 integration)', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
   });
@@ -377,8 +380,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       shiftId,
     });
 
-    const manager = createParticipationManager();
-    const view = await manager.getCycleBuilderData({
+    const manager = createParticipationModules();
+    const view = await manager.scheduleBuilderReader.getCycleBuilderData({
       churchId: ChurchId.from(seed.churchAId),
       cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
@@ -437,8 +440,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       roleId,
     });
 
-    const manager = createParticipationManager();
-    const view = await manager.getCycleBuilderData({
+    const manager = createParticipationModules();
+    const view = await manager.scheduleBuilderReader.getCycleBuilderData({
       churchId: ChurchId.from(seed.churchAId),
       cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
@@ -496,8 +499,8 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       state: 'published',
     });
 
-    const manager = createParticipationManager();
-    const view = await manager.getCycleBuilderData({
+    const manager = createParticipationModules();
+    const view = await manager.scheduleBuilderReader.getCycleBuilderData({
       churchId: ChurchId.from(seed.churchAId),
       cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
@@ -529,9 +532,9 @@ describe('DbParticipationManager.getCycleBuilderData (R1 integration)', () => {
       end: EVENT_END,
     });
 
-    const manager = createParticipationManager();
+    const manager = createParticipationModules();
     await expect(
-      manager.getCycleBuilderData({
+      manager.scheduleBuilderReader.getCycleBuilderData({
         churchId: ChurchId.from(seed.churchBId),
         cycleId: CycleId.from(cycle.id),
         ministryId: MinistryId.from(seed.ministryBId),
@@ -586,13 +589,14 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
       email: 'unqualified-h4@test.com',
     });
 
-    const participationManager = createParticipationManager();
-    const view = await participationManager.getCycleBuilderData({
-      churchId: ChurchId.from(seed.churchAId),
-      cycleId: CycleId.from(cycle.id),
-      ministryId: MinistryId.from(seed.ministryAId),
-      userId: UserId.from(seed.adminUserId),
-    });
+    const participationModules = createParticipationModules();
+    const view =
+      await participationModules.scheduleBuilderReader.getCycleBuilderData({
+        churchId: ChurchId.from(seed.churchAId),
+        cycleId: CycleId.from(cycle.id),
+        ministryId: MinistryId.from(seed.ministryAId),
+        userId: UserId.from(seed.adminUserId),
+      });
 
     const shiftView = view.events
       .flatMap((eventView) => eventView.eventTimeBlocks)
@@ -653,13 +657,14 @@ describe('Ministry-scoped role qualification gating (H4 regression)', () => {
       name: 'Role-less Member',
       email: 'role-less-731@test.com',
     });
-    const manager = createParticipationManager();
+    const manager = createParticipationModules();
 
-    const publicRead = await manager.listEligibleVolunteers({
-      churchId: ChurchId.from(seed.churchAId),
-      shiftId: ShiftId.from(shiftId),
-    });
-    const view = await manager.getCycleBuilderData({
+    const publicRead =
+      await manager.scheduleBuilderReader.listEligibleVolunteers({
+        churchId: ChurchId.from(seed.churchAId),
+        shiftId: ShiftId.from(shiftId),
+      });
+    const view = await manager.scheduleBuilderReader.getCycleBuilderData({
       churchId: ChurchId.from(seed.churchAId),
       cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
@@ -890,7 +895,7 @@ async function readParticipationState(
   return row?.state ?? 'missing';
 }
 
-describe('DbParticipationManager.publishCycle (R7 integration)', () => {
+describe('DbSchedulePublisher.publishCycle (R7 integration)', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();
   });
@@ -904,8 +909,8 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
       volunteerId: seed.adminVolunteerId,
     });
 
-    const manager = createParticipationManager();
-    const result = await manager.publishCycle({
+    const manager = createParticipationModules();
+    const result = await manager.schedulePublisher.publishCycle({
       churchId: ChurchId.from(seed.churchAId),
       cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
@@ -926,8 +931,8 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
       volunteerId: seed.adminVolunteerId,
     });
 
-    const manager = createParticipationManager();
-    const result = await manager.publishCycle({
+    const manager = createParticipationModules();
+    const result = await manager.schedulePublisher.publishCycle({
       churchId: ChurchId.from(seed.churchAId),
       cycleId: CycleId.from(cycle.id),
       ministryId: MinistryId.from(seed.ministryAId),
@@ -951,9 +956,9 @@ describe('DbParticipationManager.publishCycle (R7 integration)', () => {
       volunteerId: seed.adminVolunteerId,
     });
 
-    const manager = createParticipationManager();
+    const manager = createParticipationModules();
     await expect(
-      manager.publishCycle({
+      manager.schedulePublisher.publishCycle({
         churchId: ChurchId.from(seed.churchBId),
         cycleId: CycleId.from(cycle.id),
         ministryId: MinistryId.from(seed.ministryBId),

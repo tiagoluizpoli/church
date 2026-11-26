@@ -3,9 +3,9 @@ import { z } from 'zod';
 import type {
   AssignmentProposalOutcomeView,
   AssignmentProposalView,
-  EligibleVolunteerView,
-  ParticipationCompletionView,
-} from '../../domain/contracts/application/participation-manager';
+} from '../../domain/contracts/application/assignment-proposal-manager';
+import type { EligibleVolunteerView } from '../../domain/contracts/application/schedule-builder-reader';
+import type { ParticipationCompletionView } from '../../domain/contracts/application/schedule-read-model';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
 import {
   EMPTY_PROPOSAL_REASON_OPTIONS,

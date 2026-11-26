@@ -69,7 +69,7 @@ beforeAll(async () => {
   const ministryRepository = new DrizzleMinistryRepository({ db });
   const managers = createSchedulingManagers();
   const controller = new AssignController({
-    participationManager: managers.participationManager,
+    ...managers.participationModules,
     assignmentManager: managers.assignmentManager,
     activeChurchResolver: new DbActiveChurchResolver({
       actorRepository,

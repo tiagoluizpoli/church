@@ -2,7 +2,6 @@ import { appConfig } from '@church/app-config';
 import { parseCalendarDay, parseInstant, setTestClock } from '@church/time';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DbAssignmentManager } from '@/application/db-assignment-manager';
-import { DbParticipationManager } from '@/application/db-participation-manager';
 import { DbVolunteerManager } from '@/application/db-volunteer-manager';
 import {
   AssignmentId,
@@ -35,6 +34,7 @@ import { UnavailableShift } from '@/domain/entities/unavailable-shift';
 import { Volunteer } from '@/domain/entities/volunteer';
 import { buildAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
+import { buildParticipationModules } from '@/tests/test-support/participation-modules';
 import {
   createAssignmentAuditRepositoryFake,
   createAssignmentRepositoryFake,
@@ -215,7 +215,7 @@ function createHarness() {
       props: { churchId, eventId: event.id, startTime: start, endTime: end },
     }),
   );
-  const participationManager = new DbParticipationManager({
+  const participationModules = buildParticipationModules({
     availabilityCheckRepository,
     participationRepository: ministryParticipationRepository,
     shiftRepository,
@@ -276,7 +276,7 @@ function createHarness() {
     config: appConfig,
   });
   return {
-    participationManager,
+    participationModules,
     availabilityCheckRepository,
     assignmentManager,
     volunteerManager,
@@ -370,7 +370,10 @@ describe('Assignment and publication managers', () => {
       cancelled,
     ]);
     await expect(
-      f.participationManager.getCompletion({ churchId, participationId }),
+      f.participationModules.scheduleReadModel.getCompletion({
+        churchId,
+        participationId,
+      }),
     ).resolves.toMatchObject({
       peopleNeeded: 2,
       assignedCount: 2,
@@ -457,7 +460,7 @@ describe('Assignment and publication managers', () => {
     ]);
     const input = { churchId, cycleId, ministryId, userId: actorId };
     await expect(
-      f.participationManager.publishCycle(input),
+      f.participationModules.schedulePublisher.publishCycle(input),
     ).resolves.toMatchObject({ published: false, belowFull: true });
     expect(
       f.ministryParticipationRepository.updateState,
@@ -481,7 +484,10 @@ describe('Assignment and publication managers', () => {
       }),
     ]);
     await expect(
-      f.participationManager.publishCycle({ ...input, confirmBelowFull: true }),
+      f.participationModules.schedulePublisher.publishCycle({
+        ...input,
+        confirmBelowFull: true,
+      }),
     ).resolves.toMatchObject({ published: true, belowFull: true });
     expect(f.ministryParticipationRepository.updateState).toHaveBeenCalledWith({
       churchId,
@@ -681,10 +687,13 @@ describe('Assignment and publication managers', () => {
         },
       }),
     ]);
-    const eligible = await f.participationManager.listEligibleVolunteers({
-      churchId,
-      shiftId,
-    });
+    const eligible =
+      await f.participationModules.scheduleBuilderReader.listEligibleVolunteers(
+        {
+          churchId,
+          shiftId,
+        },
+      );
     expect(
       eligible.map((item) => [
         item.volunteerName,
@@ -840,10 +849,13 @@ describe('Assignment and publication managers', () => {
       props: { churchId, userId: UserId.from('amy-user'), name: 'Amy' },
     });
     f.volunteerRepository.listQualifiedForRole.mockResolvedValue([zoe, amy]);
-    const eligible = await f.participationManager.listEligibleVolunteers({
-      churchId,
-      shiftId,
-    });
+    const eligible =
+      await f.participationModules.scheduleBuilderReader.listEligibleVolunteers(
+        {
+          churchId,
+          shiftId,
+        },
+      );
     expect(eligible.map((item) => item.volunteerName)).toEqual(['Amy', 'Zoe']);
     const overlapShift = new Shift({
       id: ShiftId.from('overlap'),
@@ -876,10 +888,13 @@ describe('Assignment and publication managers', () => {
         eventTitle: 'Other service',
       },
     ]);
-    const conflicted = await f.participationManager.listEligibleVolunteers({
-      churchId,
-      shiftId,
-    });
+    const conflicted =
+      await f.participationModules.scheduleBuilderReader.listEligibleVolunteers(
+        {
+          churchId,
+          shiftId,
+        },
+      );
     expect(
       conflicted.find((item) => item.volunteerName === 'Amy'),
     ).toMatchObject({

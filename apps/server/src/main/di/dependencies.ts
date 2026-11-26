@@ -5,6 +5,7 @@ import type {
   IActiveChurchResolver,
   IActiveChurchSelectionManager,
   IAssignmentManager,
+  IAssignmentProposalManager,
   IAuthorityManager,
   IAvailabilityCheckManager,
   IChurchAccessManager,
@@ -20,15 +21,19 @@ import type {
   IMinistryRoleManager,
   INotificationManager,
   IOutboxDrainer,
-  IParticipationManager,
   IPeopleListManager,
   IPlanningEventManager,
+  IPrepareManager,
   IPublicChurchProfileManager,
   IPublicEventManager,
+  IScheduleBuilderReader,
+  ISchedulePublisher,
+  IScheduleReadModel,
   ISectorManager,
   ISetupProgressManager,
   ISwapRequestListManager,
   ISwapRequestManager,
+  IUsualSetupManager,
   IVolunteerManager,
   RedemptionManager,
   VolunteerTransferManager,
@@ -156,7 +161,12 @@ export interface CompositionRootDependencies {
   redemptionManager: RedemptionManager;
   volunteerTransferManager: VolunteerTransferManager;
   outboxDrainer: IOutboxDrainer;
-  participationManager: IParticipationManager;
+  prepareManager: IPrepareManager;
+  usualSetupManager: IUsualSetupManager;
+  scheduleBuilderReader: IScheduleBuilderReader;
+  assignmentProposalManager: IAssignmentProposalManager;
+  scheduleReadModel: IScheduleReadModel;
+  schedulePublisher: ISchedulePublisher;
   activeChurchSelectionManager: IActiveChurchSelectionManager;
   notificationManager: INotificationManager;
   invitationListManager: IInvitationListManager;

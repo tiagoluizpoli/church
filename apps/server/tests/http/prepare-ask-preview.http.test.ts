@@ -80,7 +80,8 @@ beforeAll(async () => {
   const ministryRepository = new DrizzleMinistryRepository({ db });
   const controller = new PrepareController({
     config: appConfig,
-    participationManager: {} as never,
+    prepareManager: {} as never,
+    scheduleReadModel: {} as never,
     availabilityCheckManager: new DbAvailabilityCheckManager({
       participationRepository: new DrizzleMinistryParticipationRepository({
         db,

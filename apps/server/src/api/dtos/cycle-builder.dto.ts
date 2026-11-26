@@ -1,8 +1,6 @@
 import { z } from 'zod';
-import type {
-  CycleBuilderView,
-  PublishCycleView,
-} from '../../domain/contracts/application/participation-manager';
+import type { CycleBuilderView } from '../../domain/contracts/application/schedule-builder-reader';
+import type { PublishCycleView } from '../../domain/contracts/application/schedule-publisher';
 import { assignMapper, eligibleVolunteerResponseSchema } from './assign.dto';
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
 import { eventMapper, eventResponseSchema } from './event.dto';

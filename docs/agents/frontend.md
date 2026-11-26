@@ -11,3 +11,12 @@ Load for frontend or UI work.
 - Gate parked UI at the mount point (do not render it), not with CSS.
 - Component tests flip parked switches by mocking `@church/app-config` with
   `withAllParkedOn`.
+- Component tests pick a Select option with
+  `await screen.findByRole('option', { name })`. Base UI mounts the options
+  while the list is still closed (`pointer-events: none`) and opens it a frame
+  later. A role query waits for the open list.
+- Interfaces and types: a large interface, or several that serve one file, get
+  their own file next to their domain concept. A single small one may stay at
+  the top of its file. A split must make sense to a human reader.
+  [Backend: Contracts and composition](backend.md#contracts-and-composition)
+  holds the server's stricter rule.

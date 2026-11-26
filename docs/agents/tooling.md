@@ -210,6 +210,12 @@ validate until the change carries one decision:
   `Seed-Impact: none - <reason>` (or `--no-seed-impact "<reason>"` for
   uncommitted work). A blank reason does not count.
 
+The trailer lookup reads the commits between the validate base and `HEAD`.
+On a branch stacked on another open PR, set `validateBase` to the branch below
+(see [Test loop and completion gate](#test-loop-and-completion-gate)).
+Otherwise the lower branch's trailer satisfies the local gate, and CI, which
+sees only the PR's own commits once the lower PR merges, refuses.
+
 `--dry-run` only reports the missing decision; the validating run fails.
 The rules live in `tooling/validation/seed-impact.ts`. A deleted file keeps
 its workspace in scope but selects no test file and, when no journey maps it,
@@ -254,6 +260,12 @@ completion primitive; do not wait with `sleep`, repeated status polling, or
 a monitoring tool your runtime does not provide. Starting the gate is not
 passing it: read its exit status and stage table, and fix every failure
 before handoff. `bun run validate` stays the final handoff or merge gate.
+
+A merge that brings in work which already passed its own gate is not a new
+change: rerun lint, typecheck and the focused suites, and run the gate once,
+after the last merge. Rewiring test constructors for a dependency-injection
+change is wiring, not a behaviour change. Route it through one builder in
+`tests/test-support/`.
 
 After a red gate, do not rerun it blind: iterate on the focused failing test
 (the focused-workspace command above), then run the gate once more. On a
@@ -349,6 +361,11 @@ the in-memory fake (`tests/test-support/in-memory-object-storage.ts`).
   may override a default, never a generated key. The file is optional: a
   worktree without it still boots. Seed it from the primary if you use Resend:
   `grep -E '^RESEND_[A-Z_]+=' .env > "$(git rev-parse --git-common-dir)/church-shared.env"`.
+- **Before the first commit**: the commit hooks run from `node_modules`, so a
+  worktree created without the hook (plain `git worktree add`, Orca)
+  bootstraps before it commits; otherwise `commit-msg` hangs on `npx`.
+- **Known transient**: under load the `@church/i18n` postinstall can fail with
+  `LixError: Lix open did not settle within 30000ms`. Rerun the bootstrap.
 - **Primary checkout**: run `bun run worktree:bootstrap` once, explicitly.
   `env:local` refuses to run while a package value file exists
   (`apps/{server,web}/.env[.local]`, `packages/{db,auth}/.env[.local]`):
@@ -585,11 +602,15 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | IV. Never commit secrets | Constitution | Judgement | — | Review: a secret is not a fixed pattern |
 | V. Biome lints and formats; it passes before every commit | Constitution | Mechanical | Biome rule | Enforced: Lefthook `pre-commit` runs Biome on staged files; `lint` in CI |
 | V. Conventional commits | Constitution | Mechanical | Validation guard | Enforced: commitlint in Lefthook `commit-msg` |
+| Commits run the Lefthook hooks (no `core.hooksPath` override, no `git commit --no-verify`) | Tooling | Mechanical | Claude hook | Enforced for agents: `tooling/claude/block-hook-bypass.sh`, a PreToolUse hook in `.claude/settings.json` |
 | Atomic commits are small and focused | Constitution | Judgement | — | Review: "focused" is a judgement about intent |
 | VI. Specifications traverse `specifications-list.md` | Constitution | Judgement | — | Review: a planning process, not repository content |
 | VII. Named object parameters: at most one parameter, named `interface`/`type` shapes, no inline object types | Constitution, backend, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:named-parameters`, part of `lint` ([#539](https://github.com/tiagoluizpoli/church/issues/539), turned on by [#547](https://github.com/tiagoluizpoli/church/issues/547)) |
 | Business logic is separated from framework code | Constitution, backend | Judgement | — | Review: what counts as business logic is a judgement; the import shape is the row below |
 | Server layers import inward only (`api`/`application`/`infrastructure` → `domain`) | Backend | Mechanical | Biome rule | Enforced: `noRestrictedImports` overrides in `biome.json` |
+| Server implementation files declare no `interface`/`type`; each lives in its contract | Backend | Mechanical | Validation guard | Follow-up [#1129](https://github.com/tiagoluizpoli/church/issues/1129) |
+| Server classes are built in `main/di/` and injected, never `new`-ed inside another class | Backend | Mechanical | Validation guard | Follow-up [#1129](https://github.com/tiagoluizpoli/church/issues/1129) |
+| Web interfaces get their own file when large or several | Frontend | Judgement | — | Review: "large" and whether a split makes sense are judgements |
 | Shared packages hold only generic code; application code lives in `apps/server` | Constitution, backend | Judgement | — | Review: "application-specific" is a judgement about meaning |
 | Only `apps/server` imports `@church/server`; clients use the orval functions | Constitution | Mechanical | Biome rule | Enforced: root `noRestrictedImports` options in `biome.json` (also bans the bare `server` name until [#549](https://github.com/tiagoluizpoli/church/issues/549)), locked by `tooling/tests/biome/server-import-ban.test.ts`; `apps/fumadocs` is not covered because Biome does not lint it. Relative imports: `packages/*` must name `apps/server`; the `apps/web`/`apps/desktop` override bans `../../server` and deeper. shortcut: a glob cannot see file depth, so a client root file (e.g. `vite.config.ts`) importing `../server` slips through and a future `server` folder two or more levels up inside a client would be flagged; move to a resolver-aware check if either happens |
 | `@church/app-config` is plain data with a Zod schema, no logic beyond `withAllParkedOn` | Constitution | Judgement | — | Review: the package is one file; "no logic" is easier to read than to pattern-match |

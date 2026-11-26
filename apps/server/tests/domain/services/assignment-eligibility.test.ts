@@ -2,15 +2,20 @@ import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import type { RoleId, ShiftId } from '@/domain/branded-ids';
 import {
-  ASSIGNMENT_REFUSAL_OPTIONS,
-  type AssignmentEligibilityFacts,
-  type AssignmentRefusal,
   ELIGIBILITY_CHECKS,
   findAssignmentRefusal,
-  hasShiftStarted,
   isMarkedUnavailable,
   isShiftOpen,
 } from '@/domain/services/assignment-eligibility';
+import {
+  ASSIGNMENT_REFUSAL_OPTIONS,
+  type AssignmentEligibility,
+  type AssignmentRefusal,
+} from '@/domain/services/assignment-eligibility.types';
+import {
+  testRequirement,
+  testShift,
+} from '@/tests/test-support/scheduling-entities';
 
 const at = (time: string) =>
   parseInstant({ value: `2026-10-04T${time}:00.000Z` });
@@ -19,82 +24,90 @@ const SHIFT = 'shift' as ShiftId;
 const OTHER = 'other-shift' as ShiftId;
 const GREETER = 'greeter' as RoleId;
 
+const TARGET = testShift({
+  id: SHIFT,
+  startTime: at('09:00'),
+  endTime: at('10:00'),
+});
+
 /** A confirmed, qualified member, free, before a 09:00–10:00 Shift with room. */
-function eligible(): AssignmentEligibilityFacts {
+function eligible(): AssignmentEligibility {
   return {
     now: at('08:00'),
-    shift: {
+    shift: TARGET,
+    requirement: testRequirement({
+      id: 'requirement',
       shiftId: SHIFT,
-      startTime: at('09:00'),
-      endTime: at('10:00'),
+      roleId: GREETER,
+      peopleNeeded: 2,
+    }),
+    bookings: [],
+    facts: {
       cancelledBy: null,
-    },
-    need: { roleId: GREETER, peopleNeeded: 2, filled: 1 },
-    volunteer: {
       isMember: true,
       roleIds: [GREETER],
       availability: 'confirmed',
       unavailableShiftIds: [],
-      bookings: [],
+      filled: 1,
     },
   };
 }
 
-type Breaker = (facts: AssignmentEligibilityFacts) => void;
+type Breaker = (eligibility: AssignmentEligibility) => void;
 
 /** One change per refusal that makes it, and only it, true. */
 const BREAKERS: Record<AssignmentRefusal, Breaker> = {
-  SHIFT_STARTED: (facts) => {
-    facts.now = at('09:00');
+  SHIFT_STARTED: (eligibility) => {
+    eligibility.now = at('09:00');
   },
-  EVENT_CANCELLED: (facts) => {
-    facts.shift.cancelledBy = 'event';
+  EVENT_CANCELLED: ({ facts }) => {
+    facts.cancelledBy = 'event';
   },
-  EVENT_TIME_BLOCK_CANCELLED: (facts) => {
-    facts.shift.cancelledBy = 'event_time_block';
+  EVENT_TIME_BLOCK_CANCELLED: ({ facts }) => {
+    facts.cancelledBy = 'event_time_block';
   },
-  REQUIREMENT_NOT_ON_SHIFT: (facts) => {
-    facts.need = null;
+  REQUIREMENT_NOT_ON_SHIFT: (eligibility) => {
+    eligibility.requirement = null;
   },
-  NOT_IN_MINISTRY: (facts) => {
-    facts.volunteer.isMember = false;
+  NOT_IN_MINISTRY: ({ facts }) => {
+    facts.isMember = false;
   },
-  AVAILABILITY_NOT_CONFIRMED: (facts) => {
-    facts.volunteer.availability = 'not_confirmed';
+  AVAILABILITY_NOT_CONFIRMED: ({ facts }) => {
+    facts.availability = 'not_confirmed';
   },
-  NOT_QUALIFIED: (facts) => {
-    facts.volunteer.roleIds = [];
+  NOT_QUALIFIED: ({ facts }) => {
+    facts.roleIds = [];
   },
-  ALREADY_ON_SHIFT: (facts) => {
-    facts.volunteer.bookings = [
-      { shiftId: SHIFT, startTime: at('09:00'), endTime: at('10:00') },
-    ];
+  ALREADY_ON_SHIFT: (eligibility) => {
+    eligibility.bookings = [TARGET];
   },
-  SHIFT_REQUIREMENT_FULL: (facts) => {
-    if (facts.need) facts.need.filled = 2;
+  SHIFT_REQUIREMENT_FULL: ({ facts }) => {
+    facts.filled = 2;
   },
-  UNAVAILABLE: (facts) => {
-    facts.volunteer.unavailableShiftIds = [SHIFT];
+  UNAVAILABLE: ({ facts }) => {
+    facts.unavailableShiftIds = [SHIFT];
   },
-  DOUBLE_BOOKED: (facts) => {
-    facts.volunteer.bookings = [
-      { shiftId: OTHER, startTime: at('09:30'), endTime: at('10:30') },
+  DOUBLE_BOOKED: (eligibility) => {
+    eligibility.bookings = [
+      testShift({ id: OTHER, startTime: at('09:30'), endTime: at('10:30') }),
     ];
   },
 };
 
 function factsBreaking(
   ...refusals: AssignmentRefusal[]
-): AssignmentEligibilityFacts {
-  const facts = eligible();
-  for (const refusal of refusals) BREAKERS[refusal](facts);
-  return facts;
+): AssignmentEligibility {
+  const eligibility = eligible();
+  for (const refusal of refusals) BREAKERS[refusal](eligibility);
+  return eligibility;
 }
 
 describe('findAssignmentRefusal', () => {
   it('admits an eligible Volunteer under every check', () => {
     for (const check of ['manual', 'move', 'proposal'] as const)
-      expect(findAssignmentRefusal({ check, facts: eligible() })).toBeNull();
+      expect(
+        findAssignmentRefusal({ check, eligibility: eligible() }),
+      ).toBeNull();
   });
 
   for (const refusal of ASSIGNMENT_REFUSAL_OPTIONS) {
@@ -106,7 +119,7 @@ describe('findAssignmentRefusal', () => {
         expect(
           findAssignmentRefusal({
             check: check as keyof typeof ELIGIBILITY_CHECKS,
-            facts: factsBreaking(refusal),
+            eligibility: factsBreaking(refusal),
           }),
         ).toBe(applies ? refusal : null);
       }
@@ -130,7 +143,7 @@ describe('findAssignmentRefusal', () => {
         expect(
           findAssignmentRefusal({
             check: 'proposal',
-            facts: factsBreaking(later, earlier),
+            eligibility: factsBreaking(later, earlier),
           }),
           `${earlier} before ${later}`,
         ).toBe(earlier);
@@ -158,21 +171,21 @@ describe('findAssignmentRefusal', () => {
   });
 
   it('admits a back-to-back booking in another Ministry', () => {
-    const facts = eligible();
-    facts.volunteer.bookings = [
-      { shiftId: OTHER, startTime: at('10:00'), endTime: at('11:00') },
-      { shiftId: OTHER, startTime: at('08:00'), endTime: at('09:00') },
+    const eligibility = eligible();
+    eligibility.bookings = [
+      testShift({ id: OTHER, startTime: at('10:00'), endTime: at('11:00') }),
+      testShift({ id: OTHER, startTime: at('08:00'), endTime: at('09:00') }),
     ];
-    expect(findAssignmentRefusal({ check: 'manual', facts })).toBeNull();
+    expect(findAssignmentRefusal({ check: 'manual', eligibility })).toBeNull();
   });
 
   it('never infers availability from a missing answer', () => {
-    const facts = eligible();
-    delete facts.volunteer.availability;
-    expect(findAssignmentRefusal({ check: 'proposal', facts })).toBe(
+    const eligibility = eligible();
+    delete eligibility.facts.availability;
+    expect(findAssignmentRefusal({ check: 'proposal', eligibility })).toBe(
       'AVAILABILITY_NOT_CONFIRMED',
     );
-    expect(findAssignmentRefusal({ check: 'manual', facts })).toBeNull();
+    expect(findAssignmentRefusal({ check: 'manual', eligibility })).toBeNull();
   });
 });
 
@@ -184,16 +197,19 @@ describe('shift and warning helpers', () => {
 
   it('closes a Shift at its start and when cancelled', () => {
     const { shift } = eligible();
-    expect(isShiftOpen({ shift, now: at('08:59') })).toBe(true);
-    expect(isShiftOpen({ shift, now: at('09:00') })).toBe(false);
+    expect(isShiftOpen({ shift, cancelledBy: null, now: at('08:59') })).toBe(
+      true,
+    );
+    expect(isShiftOpen({ shift, cancelledBy: null, now: at('09:00') })).toBe(
+      false,
+    );
     expect(
       isShiftOpen({
-        shift: { ...shift, cancelledBy: 'event_time_block' },
+        shift,
+        cancelledBy: 'event_time_block',
         now: at('08:00'),
       }),
     ).toBe(false);
-    expect(hasShiftStarted({ startTime: at('09:00'), now: at('09:00') })).toBe(
-      true,
-    );
+    expect(shift.hasStarted({ now: at('09:00') })).toBe(true);
   });
 });

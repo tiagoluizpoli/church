@@ -140,8 +140,6 @@ import {
   type AppliedProposalAddition,
   findStaleAdditions,
   type ProposalAssignment,
-  type ProposalNeed,
-  type ProposalShift,
   type ProposalVolunteer,
   type ProposeAssignmentsInput,
   proposalReviewTokenFor,
@@ -1529,10 +1527,7 @@ export class DbParticipationManager implements IParticipationManager {
 
       const shiftById = new Map(shifts.map((shift) => [shift.id, shift]));
       const shiftIdByNeed = new Map(
-        facts.needs.map(({ shiftRequirementId, shiftId }) => [
-          shiftRequirementId,
-          shiftId,
-        ]),
+        facts.needs.map(({ id, shiftId }) => [id, shiftId]),
       );
       const applied: AppliedProposalAddition[] = [];
       const touchedParticipationIds = new Set<string>();
@@ -1664,7 +1659,7 @@ export class DbParticipationManager implements IParticipationManager {
       });
 
     const shifts: Shift[] = [];
-    const needs: ProposalNeed[] = [];
+    const needs: ShiftRequirement[] = [];
     const scheduleAssignments: Assignment[] = [];
     for (const participation of proposable) {
       const [participationShifts, requirements, assignments] =
@@ -1689,15 +1684,7 @@ export class DbParticipationManager implements IParticipationManager {
       scheduleAssignments.push(
         ...assignments.filter(({ status }) => isActiveAssignmentStatus(status)),
       );
-      for (const { id, shiftId, roleId, peopleNeeded } of requirements) {
-        if (shiftId)
-          needs.push({
-            shiftRequirementId: id,
-            shiftId,
-            roleId,
-            peopleNeeded,
-          });
-      }
+      needs.push(...requirements.filter(({ shiftId }) => shiftId));
     }
 
     // Only Volunteers asked this Cycle are candidates; unconfirmed ones are counted.
@@ -1757,12 +1744,6 @@ export class DbParticipationManager implements IParticipationManager {
           .map(({ id }) => id),
       }),
     );
-    const proposalShifts: ProposalShift[] = shifts.map((shift) => ({
-      shiftId: shift.id,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      cancelled: cancelledBlockIds.has(shift.eventTimeBlockId as string),
-    }));
     const proposalAssignments = toProposalAssignments({
       scheduleAssignments,
       candidateAssignments: activeAssignments,
@@ -1776,7 +1757,12 @@ export class DbParticipationManager implements IParticipationManager {
     return {
       facts: {
         now: now(),
-        shifts: proposalShifts,
+        shifts,
+        cancelledShiftIds: shifts
+          .filter(({ eventTimeBlockId }) =>
+            cancelledBlockIds.has(eventTimeBlockId as string),
+          )
+          .map(({ id }) => id),
         needs,
         volunteers,
         assignments: proposalAssignments,
@@ -2766,26 +2752,20 @@ interface ToProposalAssignmentsInput {
   cycleBlockIds: Set<string>;
 }
 
-/** One entry per Assignment; only target-Schedule ones name a need. */
+/** One entry per Assignment, with its Shift. */
 function toProposalAssignments({
   scheduleAssignments,
   candidateAssignments,
   shiftsById,
   cycleBlockIds,
 }: ToProposalAssignmentsInput): ProposalAssignment[] {
-  const scheduleIds = new Set(scheduleAssignments.map(({ id }) => id));
   const byId = new Map<string, ProposalAssignment>();
   for (const assignment of [...scheduleAssignments, ...candidateAssignments]) {
     const shift = assignment.shiftId && shiftsById.get(assignment.shiftId);
     if (!shift || byId.has(assignment.id)) continue;
     byId.set(assignment.id, {
-      volunteerId: assignment.volunteerId,
-      shiftId: shift.id,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      shiftRequirementId: scheduleIds.has(assignment.id)
-        ? assignment.shiftRequirementId
-        : undefined,
+      assignment,
+      shift,
       inCycle: cycleBlockIds.has(assignment.eventTimeBlockId as string),
     });
   }

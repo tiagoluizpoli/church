@@ -17,10 +17,8 @@ import type {
   LoadAssignFactsInput,
   LoadMoveFactsInput,
   MoveAssignmentInput,
-  MoveFacts,
   RefuseInput,
   ReplaceAssignmentInput,
-  ShiftBookingInput,
   ShiftStartGuardInput,
   StartAssigningInput,
 } from '../domain/contracts/application/assignment-lifecycle';
@@ -38,6 +36,7 @@ import {
   type Assignment,
   isActiveAssignmentStatus,
 } from '../domain/entities/assignment';
+import type { Shift } from '../domain/entities/shift';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import {
   EventCancelledError,
@@ -47,11 +46,10 @@ import { ShiftRequirementFullError } from '../domain/errors/shift-requirement-fu
 import { ShiftStartedError } from '../domain/errors/shift-started';
 import { eventTimeBlockCancellation } from '../domain/event-time-block-cancellation';
 import {
-  type EligibilityBooking,
   findAssignmentRefusal,
-  hasShiftStarted,
   isMarkedUnavailable,
 } from '../domain/services/assignment-eligibility';
+import type { AssignmentEligibility } from '../domain/services/assignment-eligibility.types';
 
 /**
  * The Assignment lifecycle (#1122): every way an Assignment comes and goes,
@@ -117,14 +115,6 @@ function filledCount({
       other.shiftRequirementId === requirementId &&
       isActiveAssignmentStatus(other.status),
   ).length;
-}
-
-function bookingOn({ shift }: ShiftBookingInput): EligibilityBooking {
-  return {
-    shiftId: shift.id,
-    startTime: shift.startTime,
-    endTime: shift.endTime,
-  };
 }
 
 /** Loads, once and under the caller's locks, the facts eligibility reads. */
@@ -226,36 +216,33 @@ export class AssignmentFactsReader implements IAssignmentFactsReader {
       tx,
     });
     return {
-      shift,
-      requirement,
       requirementError,
-      facts: {
+      eligibility: {
         now: now(),
-        shift: {
-          ...bookingOn({ shift }),
+        shift,
+        requirement,
+        bookings: await this.bookingsOf({
+          churchId,
+          shift,
+          shiftAssignments,
+          volunteerId,
+          overlapping,
+          tx,
+        }),
+        facts: {
           cancelledBy: eventTimeBlockCancellation({ event, eventTimeBlock }),
-        },
-        need: requirement && {
-          roleId: requirement.roleId,
-          peopleNeeded: requirement.peopleNeeded,
-          filled: filledCount({
-            assignments: shiftAssignments,
-            requirementId: requirement.id,
-            excludeId: replacingId,
-          }),
-        },
-        volunteer: {
           isMember,
           roleIds: qualified && requirement ? [requirement.roleId] : [],
           unavailableShiftIds: unavailableShifts.map(
             (mark) => mark.shiftId as ShiftId,
           ),
-          bookings: bookingsOf({
-            shift,
-            shiftAssignments,
-            volunteerId,
-            overlapping,
-          }),
+          filled: requirement
+            ? filledCount({
+                assignments: shiftAssignments,
+                requirementId: requirement.id,
+                excludeId: replacingId,
+              })
+            : 0,
         },
       },
     };
@@ -267,7 +254,7 @@ export class AssignmentFactsReader implements IAssignmentFactsReader {
     current,
     shiftRequirementId,
     tx,
-  }: LoadMoveFactsInput): Promise<MoveFacts> {
+  }: LoadMoveFactsInput): Promise<AssignmentEligibility> {
     if (!current.participationId || !current.shiftId)
       throw new Error('Assignment is missing its schedule reference');
     const shift = await this.shiftRepository.getById({
@@ -294,63 +281,67 @@ export class AssignmentFactsReader implements IAssignmentFactsReader {
       tx,
     });
     return {
-      target,
+      now: now(),
+      shift,
+      requirement: target,
+      bookings: shiftAssignments
+        .filter(
+          (other) =>
+            other.id !== current.id &&
+            other.volunteerId === current.volunteerId &&
+            isActiveAssignmentStatus(other.status),
+        )
+        .map(() => shift),
+      // A move keeps its Volunteer, so only the place rules apply.
       facts: {
-        now: now(),
-        // A move keeps its Volunteer, so only the place rules apply.
-        shift: { ...bookingOn({ shift }), cancelledBy: null },
-        need: target && {
-          roleId: target.roleId,
-          peopleNeeded: target.peopleNeeded,
-          filled: filledCount({
-            assignments: shiftAssignments,
-            requirementId: target.id,
-            excludeId: current.id,
-          }),
-        },
-        volunteer: {
-          isMember: true,
-          roleIds: [current.roleId],
-          unavailableShiftIds: [],
-          bookings: shiftAssignments
-            .filter(
-              (other) =>
-                other.id !== current.id &&
-                other.volunteerId === current.volunteerId &&
-                isActiveAssignmentStatus(other.status),
-            )
-            .map(() => bookingOn({ shift })),
-        },
+        cancelledBy: null,
+        isMember: true,
+        roleIds: [current.roleId],
+        unavailableShiftIds: [],
+        filled: target
+          ? filledCount({
+              assignments: shiftAssignments,
+              requirementId: target.id,
+              excludeId: current.id,
+            })
+          : 0,
       },
     };
   }
-}
 
-/** The Volunteer's active Assignments on this Shift and on any overlapping one. */
-function bookingsOf({
-  shift,
-  shiftAssignments,
-  volunteerId,
-  overlapping,
-}: BookingsInput): EligibilityBooking[] {
-  const onShift = shiftAssignments.filter(
-    (assignment) =>
-      assignment.volunteerId === volunteerId &&
-      isActiveAssignmentStatus(assignment.status),
-  );
-  // The range read returns only overlapping Shifts, so each is booked over this one's bounds.
-  const elsewhere = overlapping.filter(
-    (assignment) =>
-      assignment.shiftId !== shift.id &&
-      isActiveAssignmentStatus(assignment.status),
-  );
-  return [
-    ...onShift.map(() => bookingOn({ shift })),
-    ...elsewhere.map((assignment) => ({
-      ...bookingOn({ shift }),
-      shiftId: assignment.shiftId as ShiftId,
-    })),
-  ];
+  /** The Shifts of the Volunteer's active Assignments on this Shift and on any overlapping one. */
+  private async bookingsOf({
+    churchId,
+    shift,
+    shiftAssignments,
+    volunteerId,
+    overlapping,
+    tx,
+  }: BookingsInput): Promise<Shift[]> {
+    const onShift = shiftAssignments
+      .filter(
+        (assignment) =>
+          assignment.volunteerId === volunteerId &&
+          isActiveAssignmentStatus(assignment.status),
+      )
+      .map(() => shift);
+    const otherShiftIds = new Set(
+      overlapping.flatMap((assignment) =>
+        assignment.shiftId &&
+        assignment.shiftId !== shift.id &&
+        isActiveAssignmentStatus(assignment.status)
+          ? [assignment.shiftId]
+          : [],
+      ),
+    );
+    // A Volunteer has at most a few Assignments overlapping one Shift.
+    const elsewhere: Shift[] = [];
+    for (const shiftId of otherShiftIds)
+      elsewhere.push(
+        await this.shiftRepository.getById({ churchId, shiftId, tx }),
+      );
+    return [...onShift, ...elsewhere];
+  }
 }
 
 // ── Writes ──────────────────────────────────────────────────────────────────
@@ -374,15 +365,14 @@ export class AssignmentLifecycle implements IAssignmentLifecycle {
   }
 
   /** Throws the entry point's error for the refusal that takes precedence. */
-  admit({ check, facts, notOnShift }: AdmitInput): void {
-    const refusal = findAssignmentRefusal({ check, facts });
+  admit({ check, eligibility, notOnShift }: AdmitInput): void {
+    const refusal = findAssignmentRefusal({ check, eligibility });
     if (refusal) throw refusalError({ refusal, notOnShift });
   }
 
   /** Refuses a change once the Shift has started; it is fixed from then on. */
-  assertNotStarted({ startTime }: ShiftStartGuardInput): void {
-    if (hasShiftStarted({ startTime, now: now() }))
-      throw new ShiftStartedError();
+  assertNotStarted({ shift }: ShiftStartGuardInput): void {
+    if (shift.hasStarted({ now: now() })) throw new ShiftStartedError();
   }
 
   /**
@@ -398,10 +388,11 @@ export class AssignmentLifecycle implements IAssignmentLifecycle {
     facts: loaded,
     tx,
   }: AssignInput): Promise<CreateParticipationAssignmentResult> {
-    const { facts, shift, requirement, requirementError } = loaded;
+    const { eligibility, requirementError } = loaded;
+    const { shift, requirement } = eligibility;
     this.admit({
       check: 'manual',
-      facts,
+      eligibility,
       notOnShift: () => requirementError ?? new Error('Missing requirement'),
     });
     if (!requirement) throw requirementError;
@@ -416,7 +407,7 @@ export class AssignmentLifecycle implements IAssignmentLifecycle {
     await this.startAssigning({ churchId, participation, tx });
     return {
       assignment,
-      warnings: isMarkedUnavailable(facts)
+      warnings: isMarkedUnavailable(eligibility)
         ? [
             {
               type: 'UNAVAILABLE' as const,

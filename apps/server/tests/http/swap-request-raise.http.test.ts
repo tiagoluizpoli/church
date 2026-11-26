@@ -375,6 +375,28 @@ describe('Raise a swap request', () => {
     expect(response.json().error).toBe('SWAP_REQUEST_SHIFT_STARTED');
   });
 
+  it('answers an unpublished Schedule before a started Shift, and a started Shift before an open request', async () => {
+    const { mine, graph, churchId, me } = await seedGraph({ year: 2020 });
+    await db.insert(swapRequest).values({
+      churchId,
+      assignmentId: mine.id,
+      status: 'open',
+      raisedBy: me.volunteer.userId,
+    });
+    const started = await raise(mine.id);
+    expect(started.statusCode).toBe(409);
+    expect(started.json().error).toBe('SWAP_REQUEST_SHIFT_STARTED');
+
+    await db
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.id, graph.participation.id));
+    const unpublished = await raise(mine.id);
+    expect(unpublished.statusCode).toBe(409);
+    expect(unpublished.json().error).toBe('SWAP_REQUEST_UNPUBLISHED');
+    expect(await db.select().from(swapRequest)).toHaveLength(1);
+  });
+
   it('is 409 SWAP_REQUEST_ALREADY_OPEN for a second request', async () => {
     const { mine } = await seedGraph();
     expect((await raise(mine.id)).statusCode).toBe(201);

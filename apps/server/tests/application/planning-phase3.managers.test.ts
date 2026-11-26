@@ -187,9 +187,7 @@ function createPlanningEventHarness() {
     } as never,
     eventTimeBlockRepository,
     // Move confirmation is covered by the HTTP suite on real PostgreSQL.
-    assignmentRepository: {} as never,
-    auditRepository: {} as never,
-    swapRequestRepository: {} as never,
+    assignmentLifecycle: {} as never,
     recipients: {
       ministryLeadersOrAdmins: vi.fn(),
       eventChangedRecipients: vi.fn().mockResolvedValue([]),

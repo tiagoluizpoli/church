@@ -43,6 +43,7 @@ import {
   buildVolunteerWithMembership,
 } from '@/seeds/builders/volunteer';
 import { schedulingTestDb } from '@/tests/scheduling-reshape/setup';
+import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 
 /**
@@ -106,20 +107,18 @@ export function createSchedulingManagers({
     db: schedulingTestDb,
   });
 
+  const { assignmentLifecycle, assignmentFactsReader } =
+    buildDrizzleAssignmentLifecycle({ db: schedulingTestDb });
+
   return {
     assignmentManager: new DbAssignmentManager({
       assignmentRepo,
       auditRepo: new DrizzleAssignmentAuditRepository({ db: schedulingTestDb }),
       shiftRepository: shiftRepo,
       participationRepository: participationRepo,
-      volunteerRepository: volunteerRepo,
-      unavailableShiftRepository: unavailableShiftRepo,
       cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
-      eventRepository: plainEventRepo,
-      eventTimeBlockRepository: eventTimeBlockRepo,
-      swapRequestRepo: new DrizzleSwapRequestRepository({
-        db: schedulingTestDb,
-      }),
+      assignmentLifecycle,
+      assignmentFactsReader,
       unitOfWork,
     }),
     participationManager: new DbParticipationManager({
@@ -128,9 +127,7 @@ export function createSchedulingManagers({
       shiftRepository: shiftRepo,
       eventRepository: eventRepo,
       assignmentRepository: assignmentRepo,
-      auditRepository: new DrizzleAssignmentAuditRepository({
-        db: schedulingTestDb,
-      }),
+      assignmentLifecycle,
       proposalApplicationRepository:
         new DrizzleAssignmentProposalApplicationRepository({
           db: schedulingTestDb,

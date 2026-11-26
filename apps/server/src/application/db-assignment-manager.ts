@@ -1,5 +1,9 @@
 import { HardConstraintError } from '../domain/conflict/errors/hard-constraint-error';
 import type {
+  IAssignmentFactsReader,
+  IAssignmentLifecycle,
+} from '../domain/contracts/application/assignment-lifecycle';
+import type {
   CreateParticipationAssignmentInput,
   CreateParticipationAssignmentResult,
   DeleteAssignmentInput,
@@ -12,22 +16,13 @@ import type {
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
-import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
-import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
-import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
-import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
 import type { AssignmentAudit } from '../domain/entities/assignment-audit';
 import type { MinistryParticipation } from '../domain/entities/ministry-participation';
-import {
-  AssignmentFactsReader,
-  AssignmentLifecycle,
-} from './assignment-lifecycle';
 
 interface CreateParticipationAssignmentTransactionInput {
   input: CreateParticipationAssignmentInput;
@@ -42,12 +37,9 @@ interface DbAssignmentManagerDependencies {
   auditRepo: AssignmentAuditRepository;
   shiftRepository: ShiftRepository;
   participationRepository: MinistryParticipationRepository;
-  volunteerRepository: VolunteerRepository;
-  unavailableShiftRepository: UnavailableShiftRepository;
   cycleRepository: CycleRepository;
-  eventRepository: EventRepository;
-  eventTimeBlockRepository: EventTimeBlockRepository;
-  swapRequestRepo: SwapRequestRepository;
+  assignmentLifecycle: IAssignmentLifecycle;
+  assignmentFactsReader: IAssignmentFactsReader;
   unitOfWork: UnitOfWork;
 }
 
@@ -58,20 +50,17 @@ export class DbAssignmentManager implements IAssignmentManager {
   private readonly participationRepository: MinistryParticipationRepository;
   private readonly cycleRepository: CycleRepository;
   private readonly unitOfWork: UnitOfWork;
-  private readonly lifecycle: AssignmentLifecycle;
-  private readonly factsReader: AssignmentFactsReader;
+  private readonly lifecycle: IAssignmentLifecycle;
+  private readonly factsReader: IAssignmentFactsReader;
 
   constructor({
     assignmentRepo,
     auditRepo,
     shiftRepository,
     participationRepository,
-    volunteerRepository,
-    unavailableShiftRepository,
     cycleRepository,
-    eventRepository,
-    eventTimeBlockRepository,
-    swapRequestRepo,
+    assignmentLifecycle,
+    assignmentFactsReader,
     unitOfWork,
   }: DbAssignmentManagerDependencies) {
     this.assignmentRepo = assignmentRepo;
@@ -80,20 +69,8 @@ export class DbAssignmentManager implements IAssignmentManager {
     this.participationRepository = participationRepository;
     this.cycleRepository = cycleRepository;
     this.unitOfWork = unitOfWork;
-    this.lifecycle = new AssignmentLifecycle({
-      assignmentRepository: assignmentRepo,
-      auditRepository: auditRepo,
-      swapRequestRepository: swapRequestRepo,
-      participationRepository,
-    });
-    this.factsReader = new AssignmentFactsReader({
-      assignmentRepository: assignmentRepo,
-      shiftRepository,
-      eventRepository,
-      eventTimeBlockRepository,
-      volunteerRepository,
-      unavailableShiftRepository,
-    });
+    this.lifecycle = assignmentLifecycle;
+    this.factsReader = assignmentFactsReader;
   }
 
   async getAssignment(input: GetAssignmentInput): Promise<Assignment> {

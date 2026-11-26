@@ -54,8 +54,6 @@ import { UpcomingAssignmentsError } from '@/domain/errors/upcoming-assignments';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
-import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleChurchAccessRepository } from '@/infrastructure/repositories/drizzle-church-access.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
@@ -68,7 +66,6 @@ import { DrizzleMinistryMembershipRepository } from '@/infrastructure/repositori
 import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-outbox.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
-import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
@@ -93,6 +90,7 @@ import {
   resetSchedulingPhase3Db,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
@@ -174,9 +172,8 @@ beforeAll(async () => {
       churchRepository: new DrizzleChurchRepository({ db }),
       unitOfWork,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
-      assignmentRepository: new DrizzleAssignmentRepository({ db }),
-      auditRepository: new DrizzleAssignmentAuditRepository({ db }),
-      swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+      assignmentLifecycle: buildDrizzleAssignmentLifecycle({ db })
+        .assignmentLifecycle,
       recipients: new ChurchRecipients({
         churchRepository: new DrizzleChurchRepository({ db }),
         volunteerRepository: new DrizzleVolunteerRepository({ db }),

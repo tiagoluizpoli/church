@@ -1,14 +1,29 @@
 import { NotFoundError } from '@church/core';
-import { type Instant, now, toDate } from '@church/time';
+import { now, toDate } from '@church/time';
 import type {
   AssignmentId,
-  ChurchId,
   ShiftId,
   ShiftRequirementId,
-  UserId,
   VolunteerId,
 } from '../domain/branded-ids';
 import { HardConstraintError } from '../domain/conflict/errors/hard-constraint-error';
+import type {
+  AddAssignmentInput,
+  AdmitInput,
+  AssignFacts,
+  AssignInput,
+  IAssignmentFactsReader,
+  IAssignmentLifecycle,
+  LifecycleExitInput,
+  LoadAssignFactsInput,
+  LoadMoveFactsInput,
+  MoveAssignmentInput,
+  MoveFacts,
+  RefuseInput,
+  ReplaceAssignmentInput,
+  ShiftStartGuardInput,
+  StartAssigningInput,
+} from '../domain/contracts/application/assignment-lifecycle';
 import type { CreateParticipationAssignmentResult } from '../domain/contracts/application/assignment-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
@@ -17,14 +32,12 @@ import type { EventTimeBlockRepository } from '../domain/contracts/infrastructur
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import {
   type Assignment,
   isActiveAssignmentStatus,
 } from '../domain/entities/assignment';
-import type { MinistryParticipation } from '../domain/entities/ministry-participation';
 import type { Shift } from '../domain/entities/shift';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import {
@@ -35,10 +48,7 @@ import { ShiftRequirementFullError } from '../domain/errors/shift-requirement-fu
 import { ShiftStartedError } from '../domain/errors/shift-started';
 import { eventTimeBlockCancellation } from '../domain/event-time-block-cancellation';
 import {
-  type AssignmentEligibilityFacts,
-  type AssignmentRefusal,
   type EligibilityBooking,
-  type EligibilityCheck,
   findAssignmentRefusal,
   hasShiftStarted,
   isMarkedUnavailable,
@@ -56,14 +66,8 @@ import {
 
 // ── Refusals ────────────────────────────────────────────────────────────────
 
-export interface RefuseInput {
-  refusal: AssignmentRefusal;
-  /** What a requirement outside the Shift answers; it differs per entry point. */
-  notOnShift: () => Error;
-}
-
 /** Today's error for each refusal. Proposal-only refusals answer stale at Apply instead. */
-export function refusalError({ refusal, notOnShift }: RefuseInput): Error {
+function refusalError({ refusal, notOnShift }: RefuseInput): Error {
   switch (refusal) {
     case 'SHIFT_STARTED':
       return new ShiftStartedError();
@@ -103,45 +107,13 @@ export function refusalError({ refusal, notOnShift }: RefuseInput): Error {
 
 // ── Facts ───────────────────────────────────────────────────────────────────
 
-export interface AssignmentFactsReaders {
+interface AssignmentFactsReaders {
   assignmentRepository: AssignmentRepository;
   shiftRepository: ShiftRepository;
   eventRepository: EventRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
   volunteerRepository: VolunteerRepository;
   unavailableShiftRepository: UnavailableShiftRepository;
-}
-
-export interface LoadAssignFactsInput {
-  churchId: ChurchId;
-  participation: MinistryParticipation;
-  shiftId: ShiftId;
-  shiftRequirementId: ShiftRequirementId;
-  volunteerId: VolunteerId;
-  /** The Assignment a reassignment replaces; it does not take a place. */
-  replacingId?: AssignmentId;
-  tx: TransactionContext;
-}
-
-export interface AssignFacts {
-  facts: AssignmentEligibilityFacts;
-  shift: Shift;
-  /** Null when the requirement is not one of the Shift's. */
-  requirement: ShiftRequirement | null;
-  /** The not-found error a missing requirement answers with. */
-  requirementError: Error | null;
-}
-
-export interface LoadMoveFactsInput {
-  churchId: ChurchId;
-  current: Assignment;
-  shiftRequirementId: ShiftRequirementId;
-  tx: TransactionContext;
-}
-
-export interface MoveFacts {
-  facts: AssignmentEligibilityFacts;
-  target: ShiftRequirement | null;
 }
 
 interface BookingsInput {
@@ -183,7 +155,7 @@ function bookingOn({ shift }: ShiftBookingInput): EligibilityBooking {
 }
 
 /** Loads, once and under the caller's locks, the facts eligibility reads. */
-export class AssignmentFactsReader {
+export class AssignmentFactsReader implements IAssignmentFactsReader {
   private readonly assignmentRepository: AssignmentRepository;
   private readonly shiftRepository: ShiftRepository;
   private readonly eventRepository: EventRepository;
@@ -410,149 +382,14 @@ function bookingsOf({
 
 // ── Writes ──────────────────────────────────────────────────────────────────
 
-export interface AssignmentLifecycleDependencies {
+interface AssignmentLifecycleDependencies {
   assignmentRepository: AssignmentRepository;
   auditRepository: AssignmentAuditRepository;
   swapRequestRepository: SwapRequestRepository;
   participationRepository: MinistryParticipationRepository;
 }
 
-export interface AssignmentExitInput {
-  churchId: ChurchId;
-  assignmentId: AssignmentId;
-  actorId: UserId;
-  tx: TransactionContext;
-  assignmentRepository: AssignmentRepository;
-  auditRepository: AssignmentAuditRepository;
-  swapRequestRepository: SwapRequestRepository;
-}
-
-/**
- * The established Assignment removal, shared by a leader's removal and a
- * move's clash withdrawal: audit it, close an open SwapRequest as `covered`,
- * then hard-delete it. The caller holds the Assignment's Participation lock.
- */
-export async function removeAssignment({
-  churchId,
-  assignmentId,
-  actorId,
-  tx,
-  assignmentRepository,
-  auditRepository,
-  swapRequestRepository,
-}: AssignmentExitInput): Promise<void> {
-  await auditRepository.create({
-    churchId,
-    input: { assignmentId, actorId, action: 'deleted' },
-    tx,
-  });
-  await swapRequestRepository.closeOpenByAssignment({
-    churchId,
-    assignmentId,
-    status: 'covered',
-    closedBy: actorId,
-    tx,
-  });
-  await assignmentRepository.deleteById({ churchId, assignmentId, tx });
-}
-
-/**
- * An Event or EventTimeBlock cancellation's Assignment write: keep the row as
- * `cancelled` for history (never Remove Assignment's hard delete), audit it as
- * `event_cancelled` by the acting User and close an open SwapRequest through
- * Spec 28's `covered` close, which sends no N8 (only a `kept` answer does).
- * The caller holds the Church and Participation locks. True when it closed a
- * request.
- */
-export async function cancelAssignment({
-  churchId,
-  assignmentId,
-  actorId,
-  tx,
-  assignmentRepository,
-  auditRepository,
-  swapRequestRepository,
-}: AssignmentExitInput): Promise<boolean> {
-  await assignmentRepository.updateStatus({
-    churchId,
-    assignmentId,
-    input: { status: 'cancelled' },
-    tx,
-  });
-  await auditRepository.create({
-    churchId,
-    input: { assignmentId, actorId, action: 'event_cancelled' },
-    tx,
-  });
-  return swapRequestRepository.closeOpenByAssignment({
-    churchId,
-    assignmentId,
-    status: 'covered',
-    closedBy: actorId,
-    tx,
-  });
-}
-
-export interface AdmitInput {
-  check: EligibilityCheck;
-  facts: AssignmentEligibilityFacts;
-  notOnShift: () => Error;
-}
-
-export interface AddAssignmentInput {
-  churchId: ChurchId;
-  shift: Shift;
-  shiftRequirementId: ShiftRequirementId;
-  volunteerId: VolunteerId;
-  actorId: UserId;
-  /** The wider act, such as an Apply's application key. */
-  correlationId?: string;
-  tx: TransactionContext;
-}
-
-export interface StartAssigningInput {
-  churchId: ChurchId;
-  participation: MinistryParticipation;
-  tx: TransactionContext;
-}
-
-export interface AssignInput {
-  churchId: ChurchId;
-  participation: MinistryParticipation;
-  volunteerId: VolunteerId;
-  actorId: UserId;
-  facts: AssignFacts;
-  tx: TransactionContext;
-}
-
-export interface ReplaceAssignmentInput {
-  churchId: ChurchId;
-  replacedId: AssignmentId;
-  replacement: Assignment;
-  actorId: UserId;
-  tx: TransactionContext;
-}
-
-export interface MoveAssignmentInput {
-  churchId: ChurchId;
-  assignmentId: AssignmentId;
-  shiftRequirementId: ShiftRequirementId;
-  actorId: UserId;
-  tx: TransactionContext;
-}
-
-export interface LifecycleExitInput {
-  churchId: ChurchId;
-  assignmentId: AssignmentId;
-  actorId: UserId;
-  tx: TransactionContext;
-}
-
-export interface ShiftStartGuardInput {
-  startTime: Instant;
-}
-
-export class AssignmentLifecycle {
+export class AssignmentLifecycle implements IAssignmentLifecycle {
   private readonly assignmentRepository: AssignmentRepository;
   private readonly auditRepository: AssignmentAuditRepository;
   private readonly swapRequestRepository: SwapRequestRepository;
@@ -732,19 +569,63 @@ export class AssignmentLifecycle {
     return moved;
   }
 
-  remove(input: LifecycleExitInput): Promise<void> {
-    return removeAssignment({ ...input, ...this.exitRepositories() });
+  /**
+   * The established Assignment removal, shared by a leader's removal and a
+   * move's clash withdrawal: audit it, close an open SwapRequest as `covered`,
+   * then hard-delete it. The caller holds the Assignment's Participation lock.
+   */
+  async remove({
+    churchId,
+    assignmentId,
+    actorId,
+    tx,
+  }: LifecycleExitInput): Promise<void> {
+    await this.auditRepository.create({
+      churchId,
+      input: { assignmentId, actorId, action: 'deleted' },
+      tx,
+    });
+    await this.swapRequestRepository.closeOpenByAssignment({
+      churchId,
+      assignmentId,
+      status: 'covered',
+      closedBy: actorId,
+      tx,
+    });
+    await this.assignmentRepository.deleteById({ churchId, assignmentId, tx });
   }
 
-  cancel(input: LifecycleExitInput): Promise<boolean> {
-    return cancelAssignment({ ...input, ...this.exitRepositories() });
-  }
-
-  private exitRepositories() {
-    return {
-      assignmentRepository: this.assignmentRepository,
-      auditRepository: this.auditRepository,
-      swapRequestRepository: this.swapRequestRepository,
-    };
+  /**
+   * An Event or EventTimeBlock cancellation's Assignment write: keep the row as
+   * `cancelled` for history (never Remove Assignment's hard delete), audit it as
+   * `event_cancelled` by the acting User and close an open SwapRequest through
+   * Spec 28's `covered` close, which sends no N8 (only a `kept` answer does).
+   * The caller holds the Church and Participation locks. True when it closed a
+   * request.
+   */
+  async cancel({
+    churchId,
+    assignmentId,
+    actorId,
+    tx,
+  }: LifecycleExitInput): Promise<boolean> {
+    await this.assignmentRepository.updateStatus({
+      churchId,
+      assignmentId,
+      input: { status: 'cancelled' },
+      tx,
+    });
+    await this.auditRepository.create({
+      churchId,
+      input: { assignmentId, actorId, action: 'event_cancelled' },
+      tx,
+    });
+    return this.swapRequestRepository.closeOpenByAssignment({
+      churchId,
+      assignmentId,
+      status: 'covered',
+      closedBy: actorId,
+      tx,
+    });
   }
 }

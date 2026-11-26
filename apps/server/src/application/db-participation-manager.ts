@@ -17,6 +17,7 @@ import type {
   SectorId,
   VolunteerId,
 } from '../domain/branded-ids';
+import type { IAssignmentLifecycle } from '../domain/contracts/application/assignment-lifecycle';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   ApplyAssignmentProposalInput,
@@ -60,7 +61,6 @@ import type {
   UsualSetupBlockView,
 } from '../domain/contracts/application/participation-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
-import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
 import type { AssignmentProposalApplicationRepository } from '../domain/contracts/infrastructure/assignment-proposal-application.repository';
 import type { AvailabilityCheckRepository } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
@@ -156,7 +156,6 @@ import {
   spansFitBlock,
   usualSetupNeedsReview,
 } from '../domain/services/usual-setup-planner';
-import { AssignmentLifecycle } from './assignment-lifecycle';
 import { filterCycleParticipation } from './participation-view-filter';
 import type { UsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
 
@@ -508,7 +507,7 @@ interface DbParticipationManagerDependencies {
   shiftRepository: ShiftRepository;
   eventRepository: PlanningEventRepository;
   assignmentRepository: AssignmentRepository;
-  auditRepository: AssignmentAuditRepository;
+  assignmentLifecycle: IAssignmentLifecycle;
   proposalApplicationRepository: AssignmentProposalApplicationRepository;
   unavailableShiftRepository: UnavailableShiftRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
@@ -561,7 +560,7 @@ export class DbParticipationManager implements IParticipationManager {
   private readonly staffingSeeder: UsualSetupStaffingSeeder;
   private readonly notifications: IChurchNotifications;
   private readonly unitOfWork: UnitOfWork;
-  private readonly lifecycle: AssignmentLifecycle;
+  private readonly lifecycle: IAssignmentLifecycle;
 
   constructor({
     availabilityCheckRepository,
@@ -569,7 +568,7 @@ export class DbParticipationManager implements IParticipationManager {
     shiftRepository,
     eventRepository,
     assignmentRepository,
-    auditRepository,
+    assignmentLifecycle,
     proposalApplicationRepository,
     unavailableShiftRepository,
     eventTimeBlockRepository,
@@ -606,12 +605,7 @@ export class DbParticipationManager implements IParticipationManager {
     this.staffingSeeder = staffingSeeder;
     this.notifications = notifications;
     this.unitOfWork = unitOfWork;
-    this.lifecycle = new AssignmentLifecycle({
-      assignmentRepository,
-      auditRepository,
-      swapRequestRepository: swapRequestRepo,
-      participationRepository,
-    });
+    this.lifecycle = assignmentLifecycle;
   }
 
   async getCycleParticipation(

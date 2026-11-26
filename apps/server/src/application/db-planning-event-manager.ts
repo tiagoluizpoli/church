@@ -15,6 +15,7 @@ import type {
   EventTimeBlockId,
   UserId,
 } from '../domain/branded-ids';
+import type { IAssignmentLifecycle } from '../domain/contracts/application/assignment-lifecycle';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type { IChurchRecipients } from '../domain/contracts/application/church-recipients';
 import type {
@@ -41,8 +42,6 @@ import type {
   UpdatePlanningEventManagerInput,
   UpdatePlanningEventTimeBlockManagerInput,
 } from '../domain/contracts/application/planning-event-manager';
-import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
-import type { AssignmentAuditRepository } from '../domain/contracts/infrastructure/assignment-audit.repository';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
@@ -51,7 +50,6 @@ import type {
   PlanningEventRepository,
   SeededMinistry,
 } from '../domain/contracts/infrastructure/planning-event.repository';
-import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
 import type { TemplatePrecedenceRepository } from '../domain/contracts/infrastructure/template-precedence.repository';
 import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -99,7 +97,6 @@ import {
   type PrecedencePair,
 } from '../domain/services/template-precedence-application';
 import type { TemplatePrecedence } from '../domain/template-precedence';
-import { cancelAssignment, removeAssignment } from './assignment-lifecycle';
 
 const sameBounds = ({ left, right }: BoundsPair) =>
   compareInstants({ left: left.start, right: right.start }) === 0 &&
@@ -255,9 +252,7 @@ interface DbPlanningEventManagerDependencies {
   churchRepository: ChurchRepository;
   unitOfWork: UnitOfWork;
   eventTimeBlockRepository: EventTimeBlockRepository;
-  assignmentRepository: AssignmentRepository;
-  auditRepository: AssignmentAuditRepository;
-  swapRequestRepository: SwapRequestRepository;
+  assignmentLifecycle: IAssignmentLifecycle;
   recipients: IChurchRecipients;
   notifications: IChurchNotifications;
 }
@@ -277,9 +272,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly churchRepository: ChurchRepository;
   private readonly unitOfWork: UnitOfWork;
   private readonly eventTimeBlockRepository: EventTimeBlockRepository;
-  private readonly assignmentRepository: AssignmentRepository;
-  private readonly auditRepository: AssignmentAuditRepository;
-  private readonly swapRequestRepository: SwapRequestRepository;
+  private readonly assignmentLifecycle: IAssignmentLifecycle;
   private readonly recipients: IChurchRecipients;
   private readonly notifications: IChurchNotifications;
 
@@ -291,9 +284,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     churchRepository,
     unitOfWork,
     eventTimeBlockRepository,
-    assignmentRepository,
-    auditRepository,
-    swapRequestRepository,
+    assignmentLifecycle,
     recipients,
     notifications,
   }: DbPlanningEventManagerDependencies) {
@@ -304,9 +295,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     this.churchRepository = churchRepository;
     this.unitOfWork = unitOfWork;
     this.eventTimeBlockRepository = eventTimeBlockRepository;
-    this.assignmentRepository = assignmentRepository;
-    this.auditRepository = auditRepository;
-    this.swapRequestRepository = swapRequestRepository;
+    this.assignmentLifecycle = assignmentLifecycle;
     this.recipients = recipients;
     this.notifications = notifications;
   }
@@ -1154,14 +1143,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       // Kept Assignments stay on their Shifts, so their identity,
       // UnavailableShifts and open SwapRequests move with them.
       for (const { assignmentId } of clashes) {
-        await removeAssignment({
+        await this.assignmentLifecycle.remove({
           churchId,
           assignmentId,
           actorId: actingUserId,
           tx,
-          assignmentRepository: this.assignmentRepository,
-          auditRepository: this.auditRepository,
-          swapRequestRepository: this.swapRequestRepository,
         });
       }
       const { start, end } = proposal.proposedEvent;
@@ -1414,14 +1400,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       // Kept Assignments stay on their Shifts, so their identity,
       // UnavailableShifts and open SwapRequests stay with them.
       for (const { assignmentId } of clashes) {
-        await removeAssignment({
+        await this.assignmentLifecycle.remove({
           churchId,
           assignmentId,
           actorId: actingUserId,
           tx,
-          assignmentRepository: this.assignmentRepository,
-          auditRepository: this.auditRepository,
-          swapRequestRepository: this.swapRequestRepository,
         });
       }
       const { previousEvent, proposedEvent } = proposal;
@@ -1672,14 +1655,11 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       // A request raised while confirm waited is closed too: count closures.
       let openSwapRequestCount = 0;
       for (const { assignmentId } of scopeAssignments) {
-        const closed = await cancelAssignment({
+        const closed = await this.assignmentLifecycle.cancel({
           churchId,
           assignmentId,
           actorId: actingUserId,
           tx,
-          assignmentRepository: this.assignmentRepository,
-          auditRepository: this.auditRepository,
-          swapRequestRepository: this.swapRequestRepository,
         });
         if (closed) openSwapRequestCount += 1;
       }

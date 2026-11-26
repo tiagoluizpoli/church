@@ -37,8 +37,6 @@ import { DbPlanningEventManager } from '@/application/db-planning-event-manager'
 import { DbSetupProgressManager } from '@/application/db-setup-progress-manager';
 import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import { ChurchId, MinistryId, UserId } from '@/domain/branded-ids';
-import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
-import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -49,7 +47,6 @@ import { DrizzleOutboxRepository } from '@/infrastructure/repositories/drizzle-o
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleSetupProgressRepository } from '@/infrastructure/repositories/drizzle-setup-progress.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
-import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleTemplatePrecedenceRepository } from '@/infrastructure/repositories/drizzle-template-precedence.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
@@ -75,6 +72,7 @@ import {
   schedulingTestDb,
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
+import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
@@ -143,9 +141,8 @@ beforeAll(async () => {
       churchRepository,
       unitOfWork,
       eventTimeBlockRepository: new DrizzleEventTimeBlockRepository({ db }),
-      assignmentRepository: new DrizzleAssignmentRepository({ db }),
-      auditRepository: new DrizzleAssignmentAuditRepository({ db }),
-      swapRequestRepository: new DrizzleSwapRequestRepository({ db }),
+      assignmentLifecycle: buildDrizzleAssignmentLifecycle({ db })
+        .assignmentLifecycle,
       recipients: new ChurchRecipients({
         churchRepository,
         volunteerRepository: new DrizzleVolunteerRepository({ db }),

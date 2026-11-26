@@ -43,7 +43,9 @@ describe('PrepareFilters (US3/T020, mode select + single start/end pair)', () =>
     );
 
     await user.click(screen.getByTestId('prepare-time-mode-filter'));
-    await user.click(await screen.findByText(m.prepare_filter_between()));
+    await user.click(
+      await screen.findByRole('option', { name: m.prepare_filter_between() }),
+    );
 
     expect(onTimeWindowFilterChange).toHaveBeenCalledWith({
       mode: 'within',

@@ -1,17 +1,16 @@
 import { NotFoundError } from '@church/core';
 import { now, toDate } from '@church/time';
-import type {
-  AssignmentId,
-  ShiftId,
-  ShiftRequirementId,
-  VolunteerId,
-} from '../domain/branded-ids';
+import type { ShiftId } from '../domain/branded-ids';
 import { HardConstraintError } from '../domain/conflict/errors/hard-constraint-error';
 import type {
   AddAssignmentInput,
   AdmitInput,
   AssignFacts,
   AssignInput,
+  AssignmentFactsReaderDependencies,
+  AssignmentLifecycleDependencies,
+  BookingsInput,
+  FilledInput,
   IAssignmentFactsReader,
   IAssignmentLifecycle,
   LifecycleExitInput,
@@ -21,6 +20,7 @@ import type {
   MoveFacts,
   RefuseInput,
   ReplaceAssignmentInput,
+  ShiftBookingInput,
   ShiftStartGuardInput,
   StartAssigningInput,
 } from '../domain/contracts/application/assignment-lifecycle';
@@ -38,7 +38,6 @@ import {
   type Assignment,
   isActiveAssignmentStatus,
 } from '../domain/entities/assignment';
-import type { Shift } from '../domain/entities/shift';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 import {
   EventCancelledError,
@@ -107,28 +106,6 @@ function refusalError({ refusal, notOnShift }: RefuseInput): Error {
 
 // ── Facts ───────────────────────────────────────────────────────────────────
 
-interface AssignmentFactsReaders {
-  assignmentRepository: AssignmentRepository;
-  shiftRepository: ShiftRepository;
-  eventRepository: EventRepository;
-  eventTimeBlockRepository: EventTimeBlockRepository;
-  volunteerRepository: VolunteerRepository;
-  unavailableShiftRepository: UnavailableShiftRepository;
-}
-
-interface BookingsInput {
-  shift: Shift;
-  shiftAssignments: Assignment[];
-  volunteerId: VolunteerId;
-  overlapping: Assignment[];
-}
-
-interface FilledInput {
-  assignments: Assignment[];
-  requirementId: ShiftRequirementId;
-  excludeId?: AssignmentId;
-}
-
 function filledCount({
   assignments,
   requirementId,
@@ -140,10 +117,6 @@ function filledCount({
       other.shiftRequirementId === requirementId &&
       isActiveAssignmentStatus(other.status),
   ).length;
-}
-
-interface ShiftBookingInput {
-  shift: Shift;
 }
 
 function bookingOn({ shift }: ShiftBookingInput): EligibilityBooking {
@@ -170,7 +143,7 @@ export class AssignmentFactsReader implements IAssignmentFactsReader {
     eventTimeBlockRepository,
     volunteerRepository,
     unavailableShiftRepository,
-  }: AssignmentFactsReaders) {
+  }: AssignmentFactsReaderDependencies) {
     this.assignmentRepository = assignmentRepository;
     this.shiftRepository = shiftRepository;
     this.eventRepository = eventRepository;
@@ -381,13 +354,6 @@ function bookingsOf({
 }
 
 // ── Writes ──────────────────────────────────────────────────────────────────
-
-interface AssignmentLifecycleDependencies {
-  assignmentRepository: AssignmentRepository;
-  auditRepository: AssignmentAuditRepository;
-  swapRequestRepository: SwapRequestRepository;
-  participationRepository: MinistryParticipationRepository;
-}
 
 export class AssignmentLifecycle implements IAssignmentLifecycle {
   private readonly assignmentRepository: AssignmentRepository;

@@ -17,7 +17,16 @@ import type {
   EligibilityCheck,
 } from '../../services/assignment-eligibility';
 import type { CreateParticipationAssignmentResult } from './assignment-manager';
+import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
+import type { AssignmentAuditRepository } from '@/domain/contracts/infrastructure/assignment-audit.repository';
+import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
+import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
+import type { MinistryParticipationRepository } from '@/domain/contracts/infrastructure/ministry-participation.repository';
+import type { ShiftRepository } from '@/domain/contracts/infrastructure/shift.repository';
+import type { SwapRequestRepository } from '@/domain/contracts/infrastructure/swap-request.repository';
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
+import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
 
 /**
  * The Assignment lifecycle (#1122): every way an Assignment comes and goes,
@@ -155,4 +164,37 @@ export interface IAssignmentLifecycle {
   remove(input: LifecycleExitInput): Promise<void>;
   /** Keeps the row as `cancelled`, audits `event_cancelled`, covers the open request; true when it closed one. */
   cancel(input: LifecycleExitInput): Promise<boolean>;
+}
+
+export interface AssignmentFactsReaderDependencies {
+  assignmentRepository: AssignmentRepository;
+  shiftRepository: ShiftRepository;
+  eventRepository: EventRepository;
+  eventTimeBlockRepository: EventTimeBlockRepository;
+  volunteerRepository: VolunteerRepository;
+  unavailableShiftRepository: UnavailableShiftRepository;
+}
+
+export interface BookingsInput {
+  shift: Shift;
+  shiftAssignments: Assignment[];
+  volunteerId: VolunteerId;
+  overlapping: Assignment[];
+}
+
+export interface FilledInput {
+  assignments: Assignment[];
+  requirementId: ShiftRequirementId;
+  excludeId?: AssignmentId;
+}
+
+export interface ShiftBookingInput {
+  shift: Shift;
+}
+
+export interface AssignmentLifecycleDependencies {
+  assignmentRepository: AssignmentRepository;
+  auditRepository: AssignmentAuditRepository;
+  swapRequestRepository: SwapRequestRepository;
+  participationRepository: MinistryParticipationRepository;
 }

@@ -1,3 +1,6 @@
+import { m } from '@church/i18n/messages';
+import { getLocale } from '@church/i18n/runtime';
+import { formatWeekdayOfIndex } from '@church/time';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
@@ -62,7 +65,11 @@ describe('RecurrenceEditor weekly', () => {
     const { user, onChange } = setup({ kind: 'weekly', weekdays: [0] });
 
     await user.click(screen.getByTestId('template-recurrence-kind'));
-    await user.click(screen.getByTestId('template-recurrence-kind-monthly'));
+    await user.click(
+      await screen.findByRole('option', {
+        name: m.event_templates_recurrence_kind_monthly(),
+      }),
+    );
 
     expect(lastCall(onChange)).toEqual({
       kind: 'monthly',
@@ -101,11 +108,15 @@ describe('RecurrenceEditor monthly', () => {
 
     await user.click(screen.getByTestId('template-recurrence-entry-0-ordinal'));
     await user.click(
-      screen.getByTestId('template-recurrence-entry-0-ordinal-last'),
+      await screen.findByRole('option', {
+        name: m.recurrence_ordinal_last_m(),
+      }),
     );
     await user.click(screen.getByTestId('template-recurrence-entry-0-weekday'));
     await user.click(
-      screen.getByTestId('template-recurrence-entry-0-weekday-6'),
+      await screen.findByRole('option', {
+        name: formatWeekdayOfIndex({ index: 6, locale: getLocale() }),
+      }),
     );
 
     expect(lastCall(onChange)).toEqual({
@@ -119,7 +130,9 @@ describe('RecurrenceEditor monthly', () => {
 
     await user.click(screen.getByTestId('template-recurrence-entry-0-type'));
     await user.click(
-      screen.getByTestId('template-recurrence-entry-0-type-dayOfMonth'),
+      await screen.findByRole('option', {
+        name: m.event_templates_recurrence_entry_day_of_month(),
+      }),
     );
     const day = screen.getByTestId('template-recurrence-entry-0-day');
     await user.clear(day);
@@ -136,7 +149,9 @@ describe('RecurrenceEditor monthly', () => {
 
     await user.click(screen.getByTestId('template-recurrence-entry-0-type'));
     await user.click(
-      screen.getByTestId('template-recurrence-entry-0-type-lastDayOfMonth'),
+      await screen.findByRole('option', {
+        name: m.event_templates_recurrence_entry_last_day(),
+      }),
     );
 
     expect(lastCall(onChange)).toEqual({

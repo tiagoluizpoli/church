@@ -177,6 +177,9 @@
         if (theme === "system") {
           theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
         }
+        // Stored text is not trusted: anything but dark paints light, and a
+        // value classList rejects (one with a space) cannot stop the shell.
+        if (theme !== "dark") theme = "light";
         root.classList.add(theme);
         root.style.colorScheme = theme;
 

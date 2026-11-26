@@ -252,6 +252,18 @@ test.describe('sign-in boot shell', () => {
     }
   });
 
+  test('a stored theme the app does not know still shows the boot shell', async ({
+    page,
+  }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem('vite-ui-theme', 'not a theme'),
+    );
+    // Only the boot script is under test: the app's own theme provider is not.
+    await page.goto('/login', { waitUntil: 'commit' });
+    await page.waitForFunction(() => window.bootShell !== undefined);
+    expect(await page.evaluate(() => window.bootShell?.shown)).toBe(true);
+  });
+
   test.describe('a failed start never leaves the boot shell over the page', () => {
     test('the entry fails to load', async ({ page }) => {
       await page.route(ENTRY, (route) => route.abort());

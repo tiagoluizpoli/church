@@ -174,8 +174,9 @@ body {
 .sanctuary-light-still {
   position: absolute;
   inset: 0;
-  background: rgb(7 5 4) url("/auth-scenes/sanctuary-light-1-1.webp") center /
-    auto 100% no-repeat;
+  background:
+    rgb(7 5 4) url("/auth-scenes/sanctuary-light-1-1.webp") center / auto 100%
+    no-repeat;
 }
 @container (aspect-ratio > 11 / 10) and (height > 0) {
   .sanctuary-light-still {

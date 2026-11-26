@@ -1,6 +1,5 @@
 import { appConfig } from '@church/app-config';
 import { env } from '@church/env/web';
-import * as Sentry from '@sentry/react';
 import { z } from 'zod';
 
 /** A reference code is this many leading characters of a trace id. */
@@ -13,6 +12,9 @@ export const REFERENCE_CODE_LENGTH = 8;
 export const ERROR_REPORT_TUNNEL_URL = `${env.VITE_SERVER_URL.replace(/\/$/, '')}${appConfig.errorReportTunnel.path}`;
 
 const settingsSchema = z.object({ dsn: z.string(), environment: z.string() });
+
+// Loaded only once reporting is on, so the SDK stays out of the first paint's bundle.
+let sentrySdk: typeof import('@sentry/react') | undefined;
 
 /**
  * Errors only (ADR 0014): no replay, tracing, sessions, breadcrumbs or client
@@ -34,6 +36,8 @@ export async function initErrorReporting(): Promise<void> {
   if (!settings.success) return;
   const { dsn, environment } = settings.data;
   const { VITE_APP_REVISION: revision } = env;
+  const Sentry = await import('@sentry/react');
+  sentrySdk = Sentry;
   Sentry.init({
     dsn,
     environment,
@@ -71,12 +75,13 @@ export interface ReportCrashInput {
  * undefined while reporting is off.
  */
 export function reportCrash({ error }: ReportCrashInput): string | undefined {
-  if (!Sentry.isEnabled()) return undefined;
+  const sentry = sentrySdk;
+  if (!sentry?.isEnabled()) return undefined;
   const traceId = crypto.randomUUID().replaceAll('-', '');
-  Sentry.withScope((scope) => {
+  sentry.withScope((scope) => {
     scope.setPropagationContext({ traceId, sampleRand: Math.random() });
     scope.setTag('trace_id', traceId);
-    Sentry.captureException(error, {
+    sentry.captureException(error, {
       mechanism: { type: 'crash_fallback', handled: true },
     });
   });

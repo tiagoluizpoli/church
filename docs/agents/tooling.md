@@ -29,6 +29,7 @@ and task ordering.
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
+| SQL on this worktree's development DB (Docker, no host `psql`) | `bun run db:sql -- -c 'select 1'` (psql arguments; none opens a prompt) |
 | Generate worktree `.env.local` | `bun run env:local` |
 | Revalidate its ports before launch | `bun run env:local -- --revalidate` |
 | Create + migrate its dev/int/E2E databases and its `church-<worktree>` storage bucket | `bun run db:bootstrap` |
@@ -108,6 +109,99 @@ one database script outside Varlock. Nothing else loads value files: no
 `--env-file`, no `dotenv`, and each package's `bunfig.toml` turns off Bun's
 automatic `.env` loading. Unit tests read no values at all; the server's
 unit project pins placeholders (`apps/server/vitest.config.ts`).
+
+## Screenshot a screen
+
+Drive the screen from a throwaway Playwright spec: the E2E config starts the
+server and Vite, and you own the data. The example loads the
+`cancelled-and-started` seed scenario (a Shift that started today at 00:00, and
+a cancelled EventTimeBlock a week later) and captures the ChurchAdmin's
+planning page and the leader's schedule builder. For another screen, load the
+journey recipe that owns the state (`apps/server/seeds/e2e/recipes/`).
+
+1. Save as `apps/web/tests/zz-screenshot.spec.ts`:
+
+   ```ts
+   import { expect, test } from '@playwright/test';
+   import { z } from 'zod';
+   import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
+   import {
+     ASSIGN_CYCLE_SCHEMA,
+     ASSIGN_JOURNEY_BASE_SCHEMA,
+     ASSIGN_PERSONA_SCHEMA,
+     assignBuilderPath,
+     assignMinistrySchema,
+     newPersonaContext,
+     signInPersonaPage,
+   } from '@/tests/fixtures/journeys/assign-church';
+
+   const SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
+     ministries: z.object({
+       worship: assignMinistrySchema({ roles: ['usher'], sectors: ['main'] }),
+     }),
+     personas: z.object({
+       admin: ASSIGN_PERSONA_SCHEMA,
+       leader: ASSIGN_PERSONA_SCHEMA,
+     }),
+     cycle: ASSIGN_CYCLE_SCHEMA,
+   });
+   const VIEWPORT = { width: 1600, height: 1000 };
+
+   test('screenshot', async ({ browser, page }, testInfo) => {
+     const scenario = loadJourneyRecipe({
+       recipeName: 'cancelled-and-started',
+       schema: SCHEMA,
+       testInfo,
+     });
+     const cycleId = scenario.cycle.id;
+
+     await page.setViewportSize(VIEWPORT);
+     await signInPersonaPage({ page, persona: scenario.personas.admin });
+     await page.goto(`/app/cycles/${cycleId}`);
+     await page.getByRole('button', { name: 'Expandir tudo' }).click();
+     await expect(page.getByText('Noite').filter({ visible: true })).toBeVisible();
+     await page.screenshot({ path: 'test-results/screens/planning.png' });
+
+     const leader = await newPersonaContext({
+       browser,
+       persona: scenario.personas.leader,
+     });
+     const board = await leader.newPage();
+     await board.setViewportSize(VIEWPORT);
+     const ministryId = scenario.ministries.worship.id;
+     await board.goto(assignBuilderPath({ ministryId, cycleId }));
+     await expect(board.getByTestId('cycle-builder')).toBeVisible();
+     await expect(board.getByText('Noite')).toBeVisible();
+     await board.screenshot({ path: 'test-results/screens/builder.png' });
+     await leader.close();
+   });
+   ```
+
+2. Add `'zz-screenshot.spec.ts',` to `ISOLATED_SPECS`
+   (`apps/web/tests/fixtures/e2e-lanes.ts`); the config refuses an unlisted
+   spec.
+3. Run `bun run test:e2e -- tests/zz-screenshot.spec.ts`. The images land in
+   `apps/web/test-results/screens/`, which the next E2E run empties. A
+   `[WebServer] … exit code 143` line after the run is Vite being stopped.
+4. Downscale before reading: `convert in.png -resize 800x out.png` (`magick`
+   on ImageMagick 7).
+5. Delete the spec and its `ISOLATED_SPECS` line.
+
+What the example already handles:
+
+- **Sign in and choose the church**: `signInPersonaPage` (the test's own
+  `page`) and `newPersonaContext` (each further persona) sign in over HTTP and
+  select the Active Church. Give each persona its own context: a second sign-in
+  on one fails with `MISSING_OR_NULL_ORIGIN`.
+- **Stable locators**: prefer `getByTestId`, then `getByRole` with the pt-BR
+  name (`m.<key>({}, { locale: 'pt-BR' })` from `@church/i18n/messages`).
+  Lists render a table and cards at once, one hidden by CSS, so a text locator
+  needs `.filter({ visible: true })`.
+- **Framing**: the app scrolls inside its shell, so `fullPage` stops at the
+  viewport. Enlarge the viewport instead.
+- **Fonts**: the E2E config blocks Google Fonts, so no web font ever loads and
+  the app renders in the system font. Wait for an element: a wait for a Google
+  font never succeeds.
 
 ## Test placement
 

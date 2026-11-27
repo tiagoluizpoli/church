@@ -15,6 +15,7 @@ import type {
   GetPublishedVolunteerScheduleParams,
   GetVolunteerDashboard200,
   ListAvailabilityChecks200,
+  ListAvailabilityChecksParams,
   RaiseSwapRequest201,
   RaiseSwapRequestBody,
   WithdrawSwapRequest204
@@ -65,14 +66,15 @@ const getMinistrySchedule = (
       );
     }
   /**
- * List the current Volunteer's AvailabilityChecks.
+ * List the current Volunteer's AvailabilityChecks. `state` narrows `checks` only: `counts` covers every state.
  * @summary List the caller's AvailabilityChecks
  */
 const listAvailabilityChecks = (
-
+    params?: ListAvailabilityChecksParams,
  ) => {
       return apiClient<ListAvailabilityChecks200>(
-      {url: `/api/v1/volunteer/availability-checks`, method: 'GET'
+      {url: `/api/v1/volunteer/availability-checks`, method: 'GET',
+        params
     },
       );
     }

@@ -1167,6 +1167,11 @@ describe('GET /admin/cycles/:cycleId', () => {
       { title: 'cancelled', status: 'cancelled', blocks },
       { title: 'scheduled', status: 'scheduled', blocks },
     ]);
+    // Only the scheduled Event and its active block are still planned.
+    expect(response.json().counts).toEqual({
+      eventCount: 1,
+      eventTimeBlockCount: 1,
+    });
   });
 });
 

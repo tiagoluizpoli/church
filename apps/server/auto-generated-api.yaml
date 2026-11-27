@@ -918,9 +918,25 @@ paths:
                         - event
                         - eventTimeBlocks
                       additionalProperties: false
+                  counts:
+                    type: object
+                    properties:
+                      eventCount:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      eventTimeBlockCount:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                    required:
+                      - eventCount
+                      - eventTimeBlockCount
+                    additionalProperties: false
                 required:
                   - cycle
                   - events
+                  - counts
                 additionalProperties: false
     patch:
       operationId: updateCycle

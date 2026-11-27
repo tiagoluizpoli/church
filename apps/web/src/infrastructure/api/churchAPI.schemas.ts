@@ -426,9 +426,23 @@ export type GetCycle200EventsItem = {
   eventTimeBlocks: GetCycle200EventsItemEventTimeBlocksItem[];
 };
 
+export type GetCycle200Counts = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  eventCount: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  eventTimeBlockCount: number;
+};
+
 export type GetCycle200 = {
   cycle: GetCycle200Cycle;
   events: GetCycle200EventsItem[];
+  counts: GetCycle200Counts;
 };
 
 export type UpdateCycleBody = {

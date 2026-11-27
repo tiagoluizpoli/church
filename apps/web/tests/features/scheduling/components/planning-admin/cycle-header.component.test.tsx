@@ -74,6 +74,7 @@ describe('CycleHeader (T058)', () => {
         state: 'sent',
       },
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
 
     const user = userEvent.setup();
@@ -116,6 +117,7 @@ describe('CycleHeader (T058)', () => {
         endDate: '2026-08-31T00:00:00.000Z',
         state: 'draft',
       },
+      counts: { eventCount: 2, eventTimeBlockCount: 3 },
       events: [
         {
           event: {
@@ -181,7 +183,11 @@ describe('CycleHeader (T058)', () => {
       state: 'draft' as const,
     };
     listCycles.mockResolvedValue({ cycles: [cycle] });
-    getCycle.mockResolvedValue({ cycle, events: [] });
+    getCycle.mockResolvedValue({
+      cycle,
+      events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
+    });
 
     render({ churchTimezone: 'UTC' });
     await selectTheOnlyCycle();

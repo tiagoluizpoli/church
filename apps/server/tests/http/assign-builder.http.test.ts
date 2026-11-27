@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { appConfig } from '@church/app-config';
-import { eventTimeBlock } from '@church/db';
+import { event, eventTimeBlock } from '@church/db';
 import { parseInstant } from '@church/time';
 import { eq } from 'drizzle-orm';
 import pg from 'pg';
@@ -249,6 +249,102 @@ describe('builder read', () => {
     ).toEqual({
       [graph.eventTimeBlock.id]: 'cancelled',
       [sibling.id]: 'active',
+    });
+  });
+
+  /** A live Event, a cancelled Event, and a scheduled one with a cancelled block. */
+  async function seedCancelledBoard() {
+    const seed = await seedSchedulingPhase3Base();
+    const cycle = await createSchedulingPhase3Cycle({
+      churchId: seed.churchAId,
+      name: 'August',
+      startDate: new Date('2026-08-01T00:00:00Z'),
+      endDate: new Date('2026-08-31T00:00:00Z'),
+      state: 'sent',
+    });
+    const graphOn = (title: string, day: string) =>
+      createSchedulingPhase3EventGraph({
+        churchId: seed.churchAId,
+        cycleId: cycle.id,
+        ministryId: seed.ministryAId,
+        title,
+        start: new Date(`${day}T09:00:00Z`),
+        end: new Date(`${day}T11:00:00Z`),
+        status: 'scheduled',
+      });
+    const live = await graphOn('Live', '2026-08-02');
+    const cancelledEvent = await graphOn('Cancelled Event', '2026-08-09');
+    const cancelledBlock = await graphOn('Cancelled Block', '2026-08-16');
+    const sibling = await buildEventTimeBlock({
+      db,
+      churchId: seed.churchAId,
+      eventId: cancelledBlock.event.id,
+      start: parseInstant({ value: '2026-08-16T11:00:00Z' }),
+      end: parseInstant({ value: '2026-08-16T12:00:00Z' }),
+      label: 'Sibling',
+    });
+    await db
+      .update(event)
+      .set({ status: 'cancelled' })
+      .where(eq(event.id, cancelledEvent.event.id));
+    await db
+      .update(eventTimeBlock)
+      .set({ status: 'cancelled' })
+      .where(eq(eventTimeBlock.id, cancelledBlock.eventTimeBlock.id));
+    const leader = await buildVolunteerWithMembership({
+      db,
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Leader',
+      email: `${randomUUID()}@test.com`,
+      roleIds: [],
+      ministryAccessLevel: 'leader',
+    });
+    await buildChurchMembership({
+      db,
+      churchId: seed.churchAId,
+      userId: leader.user.id,
+      accessLevel: 'member',
+    });
+    getSession.mockResolvedValue({
+      user: { id: leader.user.id },
+      session: { activeOrganizationId: seed.churchAId },
+    } as never);
+    /** Event title → its blocks as `[id, cancelled]`, in block order. */
+    const readBoard = async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/v1/assign/cycles/${cycle.id}/builder?ministryId=${seed.ministryAId}`,
+      });
+      expect(response.statusCode).toBe(200);
+      const events: {
+        event: { title: string };
+        eventTimeBlocks: {
+          eventTimeBlock: { id: string };
+          cancelled: boolean;
+        }[];
+      }[] = response.json().events;
+      return Object.fromEntries(
+        events.map((item) => [
+          item.event.title,
+          item.eventTimeBlocks.map((b) => [b.eventTimeBlock.id, b.cancelled]),
+        ]),
+      );
+    };
+    return { live, cancelledEvent, cancelledBlock, sibling, readBoard };
+  }
+
+  it('marks the blocks of a cancelled Event and a cancelled block as cancelled', async () => {
+    const { live, cancelledEvent, cancelledBlock, sibling, readBoard } =
+      await seedCancelledBoard();
+
+    expect(await readBoard()).toEqual({
+      Live: [[live.eventTimeBlock.id, false]],
+      'Cancelled Event': [[cancelledEvent.eventTimeBlock.id, true]],
+      'Cancelled Block': [
+        [cancelledBlock.eventTimeBlock.id, true],
+        [sibling.id, false],
+      ],
     });
   });
 

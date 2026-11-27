@@ -16,7 +16,7 @@ import { UsualSetupEmptyError } from '../errors/usual-setup-empty';
 import {
   splitFitsBlock,
   wallClockUtcBounds,
-} from '../services/usual-setup-planner';
+} from '../services/scheduling/usual-setup-planner';
 
 export interface UsualSetupEqualSplit {
   kind: 'equal';

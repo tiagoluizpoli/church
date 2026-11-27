@@ -118,7 +118,7 @@ const CHURCH_INVITATION_SOURCE_PREFIXES = [
   'apps/server/src/domain/contracts/application/redemption-manager.ts',
   'apps/server/src/domain/contracts/infrastructure/ministry-invitation.repository.ts',
   'apps/server/src/domain/entities/redemption-bundle.ts',
-  'apps/server/src/domain/services/redemption-review-token.ts',
+  'apps/server/src/domain/services/invitations/redemption-review-token.ts',
   'apps/server/src/infrastructure/repositories/drizzle-ministry-invitation.repository.ts',
   'apps/web/src/routeTree.gen.ts',
 ];
@@ -973,7 +973,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     'apps/web/src/features/scheduling/components/planning-admin/event-cancel-dialog.tsx',
     'apps/web/src/features/scheduling/components/planning-admin/event-edit-page.tsx',
     'apps/server/src/api/utils/cancel-confirmation.ts',
-    'apps/server/src/domain/services/event-cancellation.ts',
+    'apps/server/src/domain/services/planning/event-cancellation.ts',
     'apps/server/src/domain/errors/admin-cancellation-window-closed.ts',
     'apps/server/src/domain/errors/cancel-confirmation-mismatch.ts',
     'apps/server/src/domain/contracts/application/planning-event-manager.ts',
@@ -1084,8 +1084,8 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   }),
   ...mapEach({
     paths: [
-      'apps/server/src/domain/services/assignment-eligibility.ts',
-      'apps/server/src/domain/services/assignment-eligibility.types.ts',
+      'apps/server/src/domain/services/scheduling/assignment-eligibility.ts',
+      'apps/server/src/domain/services/scheduling/assignment-eligibility.types.ts',
       'apps/server/src/api/dtos/assign.dto.ts',
       'apps/server/src/api/dtos/cycle-builder.dto.ts',
       'apps/web/src/features/scheduling/utils/scheduling-rules.ts',
@@ -1109,7 +1109,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     paths: [
       'apps/server/src/application/db-assignment-proposal-manager.ts',
       'apps/server/src/domain/contracts/application/assignment-proposal-manager.ts',
-      'apps/server/src/domain/services/assignment-proposal.ts',
+      'apps/server/src/domain/services/scheduling/assignment-proposal.ts',
     ],
     specPaths: ['tests/scheduling/us4-schedule-publish.spec.ts'],
   }),

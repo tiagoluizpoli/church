@@ -16,7 +16,7 @@ import type { IActiveChurchResolver } from '../../domain/contracts/application/a
 import type { IAvailabilityCheckManager } from '../../domain/contracts/application/availability-check-manager';
 import type { IPrepareManager } from '../../domain/contracts/application/prepare-manager';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
-import type { ShiftSplitStrategy } from '../../domain/services/shift-splitter';
+import type { ShiftSplitStrategy } from '../../domain/services/scheduling/shift-splitter.types';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { AuthorityGuard } from '../auth/authority-guard';

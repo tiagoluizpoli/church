@@ -80,7 +80,7 @@ import type {
 } from '../../domain/entities/redemption-bundle';
 import { PendingChurchInvitationExistsError } from '../../domain/errors/pending-church-invitation-exists';
 import { PendingMinistryInvitationExistsError } from '../../domain/errors/pending-ministry-invitation-exists';
-import { resolveInvitationEmail } from '../../domain/services/resolve-invitation-email';
+import { resolveInvitationEmail } from '../../domain/services/invitations/resolve-invitation-email';
 import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
 import type { AnyDrizzleDb } from './drizzle-db.types';
 import type {

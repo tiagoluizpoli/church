@@ -84,12 +84,12 @@ import {
 import {
   groupCheckDays,
   isShiftAnswerable,
-} from '../domain/services/availability-check-days';
+} from '../domain/services/scheduling/availability-check-days';
 import {
   assertUnavailableShiftsWithinScope,
   expandWholeDayShiftIds,
   resolveShiftAvailability,
-} from '../domain/services/unavailable-shifts';
+} from '../domain/services/scheduling/unavailable-shifts';
 
 const NOTIFICATION_PREVIEW_LIMIT = 3;
 

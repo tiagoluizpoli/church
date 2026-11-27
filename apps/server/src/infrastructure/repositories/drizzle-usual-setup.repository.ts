@@ -9,11 +9,8 @@ import type {
 import type { UsualSetup } from '../../domain/entities/usual-setup';
 import { mapUsualSetup } from '../mappers/usual-setup.mapper';
 import type { AnyDrizzleDb } from './drizzle-db.types';
+import type { DrizzleUsualSetupRepositoryInput } from './drizzle-usual-setup.repository.types';
 import { getClient, withChurchIsolation } from './helpers';
-
-interface DrizzleUsualSetupRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 export class DrizzleUsualSetupRepository implements UsualSetupRepository {
   constructor({ db }: DrizzleUsualSetupRepositoryInput) {

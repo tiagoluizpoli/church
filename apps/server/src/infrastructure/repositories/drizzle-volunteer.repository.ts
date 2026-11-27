@@ -34,16 +34,17 @@ import type { MinistryAccessLevel } from '../../domain/entities/ministry-members
 import type { Volunteer } from '../../domain/entities/volunteer';
 import { mapVolunteer } from '../mappers/volunteer.mapper';
 import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  DrizzleVolunteerRepositoryInput,
+  GroupByMembershipInput,
+  MembershipScopedRow,
+} from './drizzle-volunteer.repository.types';
 import {
   getClient,
   isValidUuid,
   withActiveVolunteer,
   withChurchIsolation,
 } from './helpers';
-
-interface DrizzleVolunteerRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 export class DrizzleVolunteerRepository implements VolunteerRepository {
   constructor({ db }: DrizzleVolunteerRepositoryInput) {
@@ -462,15 +463,6 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
       ministryId: row.ministryId as MinistryId,
     }));
   }
-}
-
-interface MembershipScopedRow {
-  membershipId: string;
-}
-
-interface GroupByMembershipInput<TRow extends MembershipScopedRow, TValue> {
-  rows: TRow[];
-  select: (row: TRow) => TValue;
 }
 
 /** Collect junction-table rows into a `membershipId -> values` lookup. */

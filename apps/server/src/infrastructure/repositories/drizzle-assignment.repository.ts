@@ -16,7 +16,6 @@ import {
   lt,
   type SQL,
 } from 'drizzle-orm';
-import type { ChurchId, VolunteerId } from '../../domain/branded-ids';
 import type {
   AssignmentRepository,
   AssignmentsByEventInput,
@@ -34,28 +33,15 @@ import type {
   MoveAssignmentRepositoryInput,
   UpdateAssignmentStatusRepositoryInput,
 } from '../../domain/contracts/infrastructure/assignment.repository';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { Assignment } from '../../domain/entities/assignment';
 import { mapAssignment } from '../mappers/assignment.mapper';
+import type {
+  DrizzleAssignmentRepositoryInput,
+  ListRangeInput,
+  RowsInput,
+} from './drizzle-assignment.repository.types';
 import type { AnyDrizzleDb } from './drizzle-db.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-
-interface DrizzleAssignmentRepositoryInput {
-  db: AnyDrizzleDb;
-}
-
-interface ListRangeInput {
-  churchId: ChurchId;
-  timeCondition: SQL;
-  volunteerId?: VolunteerId;
-  tx?: TransactionContext;
-}
-
-interface RowsInput {
-  churchId: ChurchId;
-  conditions: SQL[];
-  tx?: TransactionContext;
-}
 
 export class DrizzleAssignmentRepository implements AssignmentRepository {
   constructor({ db }: DrizzleAssignmentRepositoryInput) {

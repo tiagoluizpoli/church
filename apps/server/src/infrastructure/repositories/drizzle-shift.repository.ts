@@ -32,11 +32,8 @@ import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
 import { mapShift } from '../mappers/shift.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
 import type { AnyDrizzleDb } from './drizzle-db.types';
+import type { DrizzleShiftRepositoryInput } from './drizzle-shift.repository.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-
-interface DrizzleShiftRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 export class DrizzleShiftRepository implements ShiftRepository {
   constructor({ db }: DrizzleShiftRepositoryInput) {

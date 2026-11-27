@@ -5,9 +5,7 @@ import {
   shift,
   unavailableShift,
 } from '@church/db';
-import { and, eq, inArray, notInArray, type SQL } from 'drizzle-orm';
-import type { ChurchId } from '../../domain/branded-ids';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
+import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import type {
   ListUnavailableShiftsByCheckInput,
   ListUnavailableShiftsByParticipationInput,
@@ -20,17 +18,11 @@ import type { UnavailableShift } from '../../domain/entities/unavailable-shift';
 import { mapUnavailableShift } from '../mappers/unavailable-shift.mapper';
 import { actionable } from './drizzle-availability-check.repository';
 import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  DrizzleUnavailableShiftRepositoryInput,
+  RowsInput,
+} from './drizzle-unavailable-shift.repository.types';
 import { getClient, withChurchIsolation } from './helpers';
-
-interface DrizzleUnavailableShiftRepositoryInput {
-  db: AnyDrizzleDb;
-}
-
-interface RowsInput {
-  churchId: ChurchId;
-  conditions: SQL[];
-  tx?: TransactionContext;
-}
 
 export class DrizzleUnavailableShiftRepository
   implements UnavailableShiftRepository

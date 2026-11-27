@@ -33,6 +33,7 @@ import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructu
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 import type { UsualSetupRepository } from '@/domain/contracts/infrastructure/usual-setup.repository';
 import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
+import { ShiftSplitter } from '@/domain/services/scheduling/shift-splitter';
 
 /**
  * The Prepare, Usual setup, builder, Proposal, Schedule read model and
@@ -94,6 +95,7 @@ export function buildParticipationModules(
     volunteerRepository: repositories.volunteerRepository,
   });
   const prepareManager = new DbPrepareManager({
+    shiftSplitter: new ShiftSplitter(),
     assignmentRepository: repositories.assignmentRepository,
     churchRepository: repositories.churchRepository,
     cycleRepository: repositories.cycleRepository,

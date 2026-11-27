@@ -36,6 +36,8 @@ import { DbEventTemplateManager } from '@/application/db-event-template-manager'
 import { DbMinistryManager } from '@/application/db-ministry-manager';
 import { DbPlanningEventManager } from '@/application/db-planning-event-manager';
 import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
+import { ProfileSeeder } from '@/domain/services/church-identity/profile-seeder';
+import { CycleEventGenerator } from '@/domain/services/planning/cycle-event-generator';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
@@ -105,6 +107,7 @@ function createManagers() {
   const ministryRepository = new DrizzleMinistryRepository({ db });
   const templateRepository = new DrizzleEventTemplateRepository({ db });
   const staffingSeeder = new UsualSetupStaffingSeeder({
+    profileSeeder: new ProfileSeeder(),
     participationRepository,
     shiftRepository,
     usualSetupRepository,
@@ -126,6 +129,7 @@ function createManagers() {
       }),
     }),
     planningEventManager: new DbPlanningEventManager({
+      cycleEventGenerator: new CycleEventGenerator(),
       cycleRepository,
       eventRepository,
       precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),

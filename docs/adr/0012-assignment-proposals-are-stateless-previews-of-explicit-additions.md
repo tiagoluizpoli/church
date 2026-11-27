@@ -10,7 +10,7 @@ A leader may ask for an Assignment proposal for one Schedule between asking for 
 
 ## Decision
 
-- **Computation.** `proposeAssignments` (`apps/server/src/domain/services/assignment-proposal.ts`) is a pure function over scheduling facts: named eligibility rules, then the `VOLUNTEER_RANKING` and `NEED_RANKING` lists, recomputed after every addition. Ids order ties by code unit, so the result does not depend on database row order.
+- **Computation.** `proposeAssignments` (`apps/server/src/domain/services/scheduling/assignment-proposal.ts`) is a pure function over scheduling facts: named eligibility rules, then the `VOLUNTEER_RANKING` and `NEED_RANKING` lists, recomputed after every addition. Ids order ties by code unit, so the result does not depend on database row order.
 - **Preview read.** `GET /assign/cycles/:cycleId/assignment-proposal?ministryId=` loads the facts, takes no locks, and stores nothing. It needs the builder's `decideManageMinistry` authority and refuses outside availability requested/assigning (`ILLEGAL_STATE_TRANSITION`, or `SCHEDULE_ALREADY_PUBLISHED`).
 - **Explicit additions.** The response lists every addition as a `(shiftRequirementId, volunteerId)` pair, plus `shiftId`, the volunteer's name and a reason. Reasons are counts and the name of the deciding ranking rule. They never name another Ministry, Event or Assignment, even though conflicts and Cycle workload use them.
 - **No stored proposal.** There is no proposal id or stored row. The response carries a `reviewToken` fingerprint of its pairs (ADR 0013). The web keeps the response in memory, and Discard drops it.

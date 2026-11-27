@@ -1,24 +1,18 @@
 import { now } from '@church/time';
-import type { ChurchId, MinistryId } from '../domain/branded-ids';
 import type {
   ArchiveSectorInput,
   CreateSectorInput,
+  DbSectorManagerDependencies,
   ISectorManager,
   ListActiveSectorsInput,
+  LockActiveMinistryInput,
   RenameSectorInput,
 } from '../domain/contracts/application/sector-manager';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { SectorRepository } from '../domain/contracts/infrastructure/sector.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { Sector } from '../domain/entities/sector';
 import { SectorInUseError } from '../domain/errors/sector-in-use';
-
-interface DbSectorManagerDependencies {
-  ministryRepository: MinistryRepository;
-  sectorRepository: SectorRepository;
-  unitOfWork: UnitOfWork;
-}
 
 export class DbSectorManager implements ISectorManager {
   private readonly ministryRepository: MinistryRepository;
@@ -82,10 +76,4 @@ export class DbSectorManager implements ISectorManager {
       tx,
     });
   }
-}
-
-interface LockActiveMinistryInput {
-  churchId: ChurchId;
-  ministryId: MinistryId;
-  tx: TransactionContext;
 }

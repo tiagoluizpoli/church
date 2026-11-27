@@ -32,7 +32,7 @@ import { schedulePublishedNotificationDataSchema } from '../../domain/notificati
 import {
   noticeScope,
   wordedForHiddenChoice,
-} from '../../domain/services/hidden-notice';
+} from '../../domain/services/notifications/hidden-notice';
 import { mapNotification } from '../mappers/notification.mapper';
 import type { AnyDrizzleDb } from './drizzle-db.types';
 import type {

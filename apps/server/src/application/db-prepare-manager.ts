@@ -59,8 +59,8 @@ import {
   assertEventTimeBlockNotCancelled,
   isEventTimeBlockCancelled,
 } from '../domain/event-time-block-cancellation';
-import { ShiftSplitter } from '../domain/services/shift-splitter';
-import { spansFitBlock } from '../domain/services/usual-setup-planner';
+import type { IShiftSplitter } from '../domain/services/scheduling/shift-splitter.types';
+import { spansFitBlock } from '../domain/services/scheduling/usual-setup-planner';
 import { filterCycleParticipation } from './participation-view-filter';
 
 /**
@@ -304,8 +304,6 @@ function groupBy<Item>({
 }
 
 export class DbPrepareManager implements IPrepareManager {
-  private readonly splitter = new ShiftSplitter();
-
   private readonly assignmentRepository: AssignmentRepository;
   private readonly churchRepository: ChurchRepository;
   private readonly cycleRepository: CycleRepository;
@@ -318,6 +316,7 @@ export class DbPrepareManager implements IPrepareManager {
   private readonly unavailableShiftRepository: UnavailableShiftRepository;
   private readonly unitOfWork: UnitOfWork;
   private readonly participationReader: IParticipationReader;
+  private readonly splitter: IShiftSplitter;
 
   constructor({
     assignmentRepository,
@@ -332,7 +331,9 @@ export class DbPrepareManager implements IPrepareManager {
     unavailableShiftRepository,
     unitOfWork,
     participationReader,
+    shiftSplitter,
   }: DbPrepareManagerDependencies) {
+    this.splitter = shiftSplitter;
     this.assignmentRepository = assignmentRepository;
     this.churchRepository = churchRepository;
     this.cycleRepository = cycleRepository;

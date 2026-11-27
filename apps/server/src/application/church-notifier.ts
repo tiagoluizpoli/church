@@ -30,7 +30,7 @@ import {
   swapRequestNotificationDataSchema,
   type TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
-import { recipientLocale } from '../domain/services/recipient-locale';
+import { recipientLocale } from '../domain/services/notifications/recipient-locale';
 import {
   EmailNotificationSink,
   type EmailRecipientAddress,

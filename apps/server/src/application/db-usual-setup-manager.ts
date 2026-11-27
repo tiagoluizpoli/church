@@ -17,7 +17,7 @@ import {
   assertValidUsualSetupProps,
   toSaveableUsualSetupEntry,
 } from '../domain/entities/usual-setup';
-import { usualSetupNeedsReview } from '../domain/services/usual-setup-planner';
+import { usualSetupNeedsReview } from '../domain/services/scheduling/usual-setup-planner';
 
 function toUsualSetupBlockView({
   template,

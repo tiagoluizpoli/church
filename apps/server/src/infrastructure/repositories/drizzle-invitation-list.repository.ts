@@ -42,7 +42,7 @@ import {
   decodeInvitationListCursor,
   encodeInvitationListCursor,
 } from '../../domain/invitation-list-cursor';
-import { projectInvitationEmailDelivery } from '../../domain/services/invitation-email-delivery';
+import { projectInvitationEmailDelivery } from '../../domain/services/invitations/invitation-email-delivery';
 import type { AnyDrizzleDb } from './drizzle-db.types';
 import type {
   AfterCursorInput,

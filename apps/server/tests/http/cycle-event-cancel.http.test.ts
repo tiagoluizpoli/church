@@ -41,6 +41,7 @@ import {
 } from '@/domain/branded-ids';
 import type { EnqueueNotificationInput } from '@/domain/contracts/application/church-notifications';
 import type { NotificationRequestKind } from '@/domain/notification-kinds';
+import { CycleEventGenerator } from '@/domain/services/planning/cycle-event-generator';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -115,6 +116,7 @@ beforeAll(async () => {
   const controller = new ChurchAdminController({
     cycleManager: {} as never,
     planningEventManager: new DbPlanningEventManager({
+      cycleEventGenerator: new CycleEventGenerator(),
       cycleRepository: new DrizzleCycleRepository({ db }),
       eventRepository: new DrizzlePlanningEventRepository({ db }),
       precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),

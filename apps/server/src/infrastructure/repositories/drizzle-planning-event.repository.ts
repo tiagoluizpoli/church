@@ -77,11 +77,11 @@ import type {
   EventWithEventTimeBlocks,
 } from '../../domain/entities/event';
 import { deriveScheduleParticipationState } from '../../domain/entities/ministry-participation';
-import type { CancellationScopeAssignment } from '../../domain/services/event-cancellation';
+import type { CancellationScopeAssignment } from '../../domain/services/planning/event-cancellation.types';
 import type {
   MoveClashCandidate,
   MoveScopeAssignment,
-} from '../../domain/services/event-move';
+} from '../../domain/services/planning/event-move.types';
 import { mapEvent } from '../mappers/event.mapper';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';

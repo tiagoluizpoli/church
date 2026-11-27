@@ -19,6 +19,7 @@ import type {
   CreateRoleRecordInput,
   GetRoleByIdInput,
   ListRoleArchiveBlockersInput,
+  ListRolesByIdsInput,
   ListRolesByMinistryInput,
   LockActiveRoleForArchiveInput,
   LockActiveRolesForUseInput,
@@ -81,6 +82,25 @@ export class DrizzleRoleRepository implements RoleRepository {
       );
     if (!row) throw new NotFoundError(`Role not found: ${id}`);
     return mapRole(row);
+  }
+
+  async listByIds({
+    churchId,
+    roleIds,
+    tx,
+  }: ListRolesByIdsInput): Promise<Role[]> {
+    if (roleIds.length === 0) return [];
+    const rows = await getClient({ db: this.db, tx })
+      .select()
+      .from(role)
+      .where(
+        and(
+          inArray(role.id, roleIds),
+          withChurchIsolation({ table: role, churchId }),
+        ),
+      )
+      .orderBy(asc(role.name), asc(role.id));
+    return rows.map(mapRole);
   }
 
   async listByMinistry({

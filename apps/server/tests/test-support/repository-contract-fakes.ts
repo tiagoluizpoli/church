@@ -132,6 +132,7 @@ export function createChurchRepositoryFake() {
 export function createCycleRepositoryFake() {
   return {
     create: vi.fn<CycleRepository['create']>(),
+    listByIds: vi.fn<CycleRepository['listByIds']>(),
     list: vi.fn<CycleRepository['list']>(),
     getById: vi.fn<CycleRepository['getById']>(),
     findOverlapping: vi.fn<CycleRepository['findOverlapping']>(),
@@ -150,6 +151,7 @@ export function createCycleRepositoryFake() {
 
 export function createEventRepositoryFake() {
   return {
+    listByIds: vi.fn<EventRepository['listByIds']>(),
     getMinistryId: vi.fn<EventRepository['getMinistryId']>(),
     getById: vi.fn<EventRepository['getById']>(),
     getWithEventTimeBlocks: vi.fn<EventRepository['getWithEventTimeBlocks']>(),
@@ -297,6 +299,7 @@ export function createPlanningEventRepositoryFake() {
 
 export function createRoleRepositoryFake() {
   return {
+    listByIds: vi.fn<RoleRepository['listByIds']>(),
     getById: vi.fn<RoleRepository['getById']>(),
     listByMinistry: vi.fn<RoleRepository['listByMinistry']>(),
     listActiveByMinistry: vi.fn<RoleRepository['listActiveByMinistry']>(),
@@ -329,6 +332,7 @@ export function createShiftRepositoryFake() {
     listConflictFacts: vi
       .fn<ShiftRepository['listConflictFacts']>()
       .mockResolvedValue([]),
+    listByIds: vi.fn<ShiftRepository['listByIds']>(),
     createMany: vi.fn<ShiftRepository['createMany']>(),
     getById: vi.fn<ShiftRepository['getById']>(),
     listByParticipation: vi.fn<ShiftRepository['listByParticipation']>(),

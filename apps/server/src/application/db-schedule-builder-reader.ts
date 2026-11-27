@@ -34,13 +34,9 @@ import type { UnavailableShiftRepository } from '../domain/contracts/infrastruct
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Assignment } from '../domain/entities/assignment';
-import type { EventWithEventTimeBlocks } from '../domain/entities/event';
 import type { Shift } from '../domain/entities/shift';
 import type { ShiftRequirement } from '../domain/entities/shift-requirement';
-import {
-  isEventTimeBlockCancelled,
-  isEventTimeBlockHidden,
-} from '../domain/event-time-block-cancellation';
+import { isEventTimeBlockCancelled } from '../domain/event-time-block-cancellation';
 
 function dedupeVolunteersById(
   volunteers: QualifiedVolunteerRef[],
@@ -50,20 +46,6 @@ function dedupeVolunteersById(
     byId.set(volunteer.id as string, volunteer);
   }
   return [...byId.values()];
-}
-
-/** A hidden Event is out of the builder; so is a hidden block of a shown one. */
-function leaveOutHidden(
-  eventGroups: EventWithEventTimeBlocks[],
-): EventWithEventTimeBlocks[] {
-  return eventGroups
-    .filter(({ event }) => !event.isHidden)
-    .map(({ event, eventTimeBlocks }) => ({
-      event,
-      eventTimeBlocks: eventTimeBlocks.filter(
-        (eventTimeBlock) => !isEventTimeBlockHidden({ event, eventTimeBlock }),
-      ),
-    }));
 }
 
 function buildBuilderEventView({
@@ -350,12 +332,12 @@ export class DbScheduleBuilderReader implements IScheduleBuilderReader {
           ...input,
           tx,
         });
-      const cycleEvents = await this.eventRepository.listCycleEvents({
+      const eventGroups = await this.eventRepository.listCycleEvents({
         churchId: input.churchId,
         cycleId: input.cycleId,
+        shownOnly: true,
         tx,
       });
-      const eventGroups = leaveOutHidden(cycleEvents);
       const roles = await this.roleRepository.listByMinistry({
         churchId: input.churchId,
         ministryId: input.ministryId,

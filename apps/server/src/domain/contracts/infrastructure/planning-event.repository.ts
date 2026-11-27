@@ -65,6 +65,8 @@ export interface DeletePlanningEventInput {
 export interface ListCycleEventsInput {
   churchId: ChurchId;
   cycleId: CycleId;
+  /** Leave out hidden Events and EventTimeBlocks, as every non-admin read does. */
+  shownOnly?: boolean;
   tx?: TransactionContext;
 }
 

@@ -25,6 +25,7 @@ import {
   asc,
   eq,
   exists,
+  getTableColumns,
   gt,
   inArray,
   isNull,
@@ -91,6 +92,7 @@ import {
   isValidUuid,
   withChurchIsolation,
 } from './helpers';
+import { shownEventTimeBlock } from './live-event-time-block';
 import type { AnyDrizzleDb } from './types';
 
 export class DrizzlePlanningEventRepository implements PlanningEventRepository {
@@ -212,6 +214,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         and(
           eq(event.cycleId, input.cycleId),
           withChurchIsolation({ table: event, churchId: input.churchId }),
+          input.shownOnly ? eq(event.isHidden, false) : undefined,
         ),
       )
       .orderBy(
@@ -224,8 +227,9 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     return Promise.all(
       eventRows.map(async (eventRow) => {
         const eventTimeBlockRows = await db
-          .select()
+          .select(getTableColumns(eventTimeBlock))
           .from(eventTimeBlock)
+          .innerJoin(event, eq(event.id, eventTimeBlock.eventId))
           .where(
             and(
               eq(eventTimeBlock.eventId, eventRow.id),
@@ -233,6 +237,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
                 table: eventTimeBlock,
                 churchId: input.churchId,
               }),
+              input.shownOnly ? shownEventTimeBlock() : undefined,
             ),
           )
           .orderBy(

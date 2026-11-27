@@ -221,7 +221,7 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
       this.shiftRepository.listRequirementsByParticipation({
         churchId,
         participationId,
-        liveOnly: true,
+        requirements: 'live',
         tx,
       }),
       this.assignmentRepository.listByParticipation({
@@ -345,7 +345,7 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
     const assignments = await this.assignmentRepository.listByParticipations({
       churchId,
       participationIds: participations.map(({ id }) => id),
-      activeOnly: true,
+      assignments: 'active',
       tx,
     });
     if (assignments.length === 0) return [];

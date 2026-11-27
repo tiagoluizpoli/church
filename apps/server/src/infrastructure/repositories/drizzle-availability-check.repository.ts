@@ -714,7 +714,7 @@ export class DrizzleAvailabilityCheckRepository
           inArray(availabilityCheck.id, input.checkIds),
           // Cancelled work leaves the check: no Shift of a cancelled Event or block.
           liveEventTimeBlock(),
-          input.heldRolesOnly
+          input.shifts === 'held-roles'
             ? exists(
                 db
                   .select({ id: shiftRequirement.id })

@@ -72,11 +72,20 @@ export interface ListAssignmentsByParticipationInput {
   tx?: TransactionContext;
 }
 
+/** `active` is the Assignments that hold a seat (`ACTIVE_ASSIGNMENT_STATUSES`). */
+export type AssignmentSelection = 'active' | 'all';
+
+/**
+ * What a listing does with work an Event or EventTimeBlock cancellation touched:
+ * `listed` keeps it, marked; `left-out` drops it.
+ */
+export type CancelledWork = 'listed' | 'left-out';
+
 export interface ListAssignmentsByParticipationsInput {
   churchId: ChurchId;
   participationIds: MinistryParticipationId[];
-  /** Only the Assignments that hold a seat (`ACTIVE_ASSIGNMENT_STATUSES`). */
-  activeOnly?: boolean;
+  /** Omitted: `all`. */
+  assignments?: AssignmentSelection;
   tx?: TransactionContext;
 }
 
@@ -89,8 +98,8 @@ export interface ListAssignmentsByShiftInput {
 export interface ListPublishedAssignmentsByVolunteerInput {
   churchId: ChurchId;
   volunteerId: VolunteerId;
-  /** Leaves out the work an Event or EventTimeBlock cancellation touched. */
-  liveOnly?: boolean;
+  /** Omitted: `listed`. */
+  cancelledWork?: CancelledWork;
   /** Only Shifts that end after this Instant. */
   endingAfter?: Instant;
   tx?: TransactionContext;

@@ -256,14 +256,14 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
   async listByParticipations({
     churchId,
     participationIds,
-    activeOnly,
+    assignments,
     tx,
   }: ListAssignmentsByParticipationsInput): Promise<Assignment[]> {
     if (participationIds.length === 0) return [];
     const conditions: SQL[] = [
       inArray(assignment.participationId, participationIds),
     ];
-    if (activeOnly)
+    if (assignments === 'active')
       conditions.push(inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES));
     const askedOrder = sql.join(
       participationIds.map((id) => sql`${id}::uuid`),
@@ -293,7 +293,7 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
   async listPublishedByVolunteer({
     churchId,
     volunteerId,
-    liveOnly,
+    cancelledWork,
     endingAfter,
     tx,
   }: ListPublishedAssignmentsByVolunteerInput): Promise<PublishedAssignment[]> {
@@ -307,9 +307,10 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       eq(assignment.status, 'cancelled'),
       or(isNull(assignment.reason), eq(assignment.reason, '')),
     );
-    const listed = liveOnly
-      ? and(published, liveEventTimeBlock())
-      : or(published, cancelledWithItsScope);
+    const listed =
+      cancelledWork === 'left-out'
+        ? and(published, liveEventTimeBlock())
+        : or(published, cancelledWithItsScope);
     const conditions = [
       withChurchIsolation({ table: assignment, churchId }),
       eq(assignment.volunteerId, volunteerId),

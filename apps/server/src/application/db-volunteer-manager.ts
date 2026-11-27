@@ -274,7 +274,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     const published = await this.assignmentRepo.listPublishedByVolunteer({
       churchId,
       volunteerId,
-      liveOnly: true,
+      cancelledWork: 'left-out',
       endingAfter: historyStart,
     });
     const allAssignments = published.map(({ assignment }) => assignment);
@@ -1078,7 +1078,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       this.availabilityCheckRepo.listCheckShifts({
         churchId: input.churchId,
         checkId: input.checkId,
-        heldRolesOnly: true,
+        shifts: 'held-roles',
       }),
       this.unavailableShiftRepo.listUnavailableShiftsByCheck({
         churchId: input.churchId,
@@ -1144,7 +1144,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       this.availabilityCheckRepo.listCheckShiftsByChecks({
         churchId: input.churchId,
         checkIds,
-        heldRolesOnly: true,
+        shifts: 'held-roles',
       }),
       this.unavailableShiftRepo.listUnavailableShiftsByChecks({
         churchId: input.churchId,
@@ -1230,7 +1230,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       const shifts = await this.availabilityCheckRepo.listCheckShifts({
         churchId: input.churchId,
         checkId: input.checkId,
-        heldRolesOnly: true,
+        shifts: 'held-roles',
         tx,
       });
 

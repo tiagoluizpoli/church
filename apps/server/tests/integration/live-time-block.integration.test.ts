@@ -740,7 +740,7 @@ describe('availability checks', () => {
     const checkShifts = await availabilityCheckRepo.listCheckShifts({
       churchId,
       checkId: anaCheckId,
-      heldRolesOnly: true,
+      shifts: 'held-roles',
     });
 
     expect(

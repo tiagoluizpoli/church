@@ -194,7 +194,7 @@ class MockAssignmentRepository implements AssignmentRepository {
   async listByParticipations({
     churchId,
     participationIds,
-    activeOnly,
+    assignments,
   }: ListAssignmentsByParticipationsInput): Promise<Assignment[]> {
     const participationIdSet = new Set(participationIds);
     return Array.from(this.assignments.values()).filter(
@@ -202,7 +202,7 @@ class MockAssignmentRepository implements AssignmentRepository {
         a.churchId === churchId &&
         a.participationId !== undefined &&
         participationIdSet.has(a.participationId) &&
-        (!activeOnly || isActiveAssignmentStatus(a.status)),
+        (assignments !== 'active' || isActiveAssignmentStatus(a.status)),
     );
   }
 

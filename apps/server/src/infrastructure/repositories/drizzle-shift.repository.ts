@@ -359,7 +359,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
             table: shiftRequirement,
             churchId: input.churchId,
           }),
-          input.liveOnly ? liveEventTimeBlock() : undefined,
+          input.requirements === 'live' ? liveEventTimeBlock() : undefined,
         ),
       )
       .orderBy(

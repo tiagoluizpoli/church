@@ -426,9 +426,23 @@ export type GetCycle200EventsItem = {
   eventTimeBlocks: GetCycle200EventsItemEventTimeBlocksItem[];
 };
 
+export type GetCycle200Counts = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  eventCount: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  eventTimeBlockCount: number;
+};
+
 export type GetCycle200 = {
   cycle: GetCycle200Cycle;
   events: GetCycle200EventsItem[];
+  counts: GetCycle200Counts;
 };
 
 export type UpdateCycleBody = {
@@ -9680,6 +9694,7 @@ export type GetMinistrySchedule200EventsItemRowsItem = {
   shiftEnd: string;
   sectorName: string;
   roleName: string;
+  cancelled: boolean;
   volunteerDisplayName?: string;
 };
 
@@ -9690,6 +9705,7 @@ export type GetMinistrySchedule200EventsItem = {
   start: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   end: string;
+  cancelled: boolean;
   assignmentCount: number;
   rows: GetMinistrySchedule200EventsItemRowsItem[];
 };
@@ -9957,6 +9973,7 @@ export type GetPublishedVolunteerSchedule200AssignmentsItem = {
   roleId: string;
   roleName: string;
   status: GetPublishedVolunteerSchedule200AssignmentsItemStatus;
+  cancelled: boolean;
   swapRequested: boolean;
 };
 
@@ -10010,6 +10027,7 @@ export type GetPublishedVolunteerSchedule200Next = {
   roleId: string;
   roleName: string;
   status: GetPublishedVolunteerSchedule200NextStatus;
+  cancelled: boolean;
   swapRequested: boolean;
 } | null;
 

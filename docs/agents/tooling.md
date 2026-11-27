@@ -10,7 +10,7 @@ and task ordering.
 | Intent | Command |
 | --- | --- |
 | Lint + format | `bun run lint:fix` |
-| Lint | `bun run lint` |
+| Lint (read-only: reports, never fixes) | `bun run lint` |
 | Typecheck | `bun run typecheck` |
 | Unit/component tests | `bun run test:unit` |
 | Integration tests | `bun run test:integration` |
@@ -23,10 +23,13 @@ and task ordering.
 | Server types report (types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
+| Sign-in load times and filmstrip ([harness](#sign-in-load-harness)) | `bun run perf:sign-in` |
+| Web bundle gzip budget (needs a built `apps/web/dist`) | `bun run validate:bundle-budget` |
 | Affected validation without Docker (pre-push) | `bun run validate:no-docker` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
+| SQL on this worktree's development DB (Docker, no host `psql`) | `bun run db:sql -- -c 'select 1'` (psql arguments; none opens a prompt) |
 | Generate worktree `.env.local` | `bun run env:local` |
 | Revalidate its ports before launch | `bun run env:local -- --revalidate` |
 | Create + migrate its dev/int/E2E databases and its `church-<worktree>` storage bucket | `bun run db:bootstrap` |
@@ -66,8 +69,8 @@ reuse nor record a pass.
 
 `validate:affected` runs lint, its guards and typecheck first and stops on a
 failure; then unit tests run concurrently with integration tests, then E2E
-only if both lanes pass. `validate` runs lint → typecheck → unit tests
-concurrently with integration tests, then E2E. Output
+only if both lanes pass. `validate` runs lint → typecheck → bundle budget →
+unit tests concurrently with integration tests, then E2E. Output
 lines carry a `[stage]` prefix and a final table reports each stage's status.
 
 ### How the affected gate's log ends
@@ -106,6 +109,99 @@ one database script outside Varlock. Nothing else loads value files: no
 `--env-file`, no `dotenv`, and each package's `bunfig.toml` turns off Bun's
 automatic `.env` loading. Unit tests read no values at all; the server's
 unit project pins placeholders (`apps/server/vitest.config.ts`).
+
+## Screenshot a screen
+
+Drive the screen from a throwaway Playwright spec: the E2E config starts the
+server and Vite, and you own the data. The example loads the
+`cancelled-and-started` seed scenario (a Shift that started today at 00:00, and
+a cancelled EventTimeBlock a week later) and captures the ChurchAdmin's
+planning page and the leader's schedule builder. For another screen, load the
+journey recipe that owns the state (`apps/server/seeds/e2e/recipes/`).
+
+1. Save as `apps/web/tests/zz-screenshot.spec.ts`:
+
+   ```ts
+   import { expect, test } from '@playwright/test';
+   import { z } from 'zod';
+   import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
+   import {
+     ASSIGN_CYCLE_SCHEMA,
+     ASSIGN_JOURNEY_BASE_SCHEMA,
+     ASSIGN_PERSONA_SCHEMA,
+     assignBuilderPath,
+     assignMinistrySchema,
+     newPersonaContext,
+     signInPersonaPage,
+   } from '@/tests/fixtures/journeys/assign-church';
+
+   const SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
+     ministries: z.object({
+       worship: assignMinistrySchema({ roles: ['usher'], sectors: ['main'] }),
+     }),
+     personas: z.object({
+       admin: ASSIGN_PERSONA_SCHEMA,
+       leader: ASSIGN_PERSONA_SCHEMA,
+     }),
+     cycle: ASSIGN_CYCLE_SCHEMA,
+   });
+   const VIEWPORT = { width: 1600, height: 1000 };
+
+   test('screenshot', async ({ browser, page }, testInfo) => {
+     const scenario = loadJourneyRecipe({
+       recipeName: 'cancelled-and-started',
+       schema: SCHEMA,
+       testInfo,
+     });
+     const cycleId = scenario.cycle.id;
+
+     await page.setViewportSize(VIEWPORT);
+     await signInPersonaPage({ page, persona: scenario.personas.admin });
+     await page.goto(`/app/cycles/${cycleId}`);
+     await page.getByRole('button', { name: 'Expandir tudo' }).click();
+     await expect(page.getByText('Noite').filter({ visible: true })).toBeVisible();
+     await page.screenshot({ path: 'test-results/screens/planning.png' });
+
+     const leader = await newPersonaContext({
+       browser,
+       persona: scenario.personas.leader,
+     });
+     const board = await leader.newPage();
+     await board.setViewportSize(VIEWPORT);
+     const ministryId = scenario.ministries.worship.id;
+     await board.goto(assignBuilderPath({ ministryId, cycleId }));
+     await expect(board.getByTestId('cycle-builder')).toBeVisible();
+     await expect(board.getByText('Noite')).toBeVisible();
+     await board.screenshot({ path: 'test-results/screens/builder.png' });
+     await leader.close();
+   });
+   ```
+
+2. Add `'zz-screenshot.spec.ts',` to `ISOLATED_SPECS`
+   (`apps/web/tests/fixtures/e2e-lanes.ts`); the config refuses an unlisted
+   spec.
+3. Run `bun run test:e2e -- tests/zz-screenshot.spec.ts`. The images land in
+   `apps/web/test-results/screens/`, which the next E2E run empties. A
+   `[WebServer] … exit code 143` line after the run is Vite being stopped.
+4. Downscale before reading: `convert in.png -resize 800x out.png` (`magick`
+   on ImageMagick 7).
+5. Delete the spec and its `ISOLATED_SPECS` line.
+
+What the example already handles:
+
+- **Sign in and choose the church**: `signInPersonaPage` (the test's own
+  `page`) and `newPersonaContext` (each further persona) sign in over HTTP and
+  select the Active Church. Give each persona its own context: a second sign-in
+  on one fails with `MISSING_OR_NULL_ORIGIN`.
+- **Stable locators**: prefer `getByTestId`, then `getByRole` with the pt-BR
+  name (`m.<key>({}, { locale: 'pt-BR' })` from `@church/i18n/messages`).
+  Lists render a table and cards at once, one hidden by CSS, so a text locator
+  needs `.filter({ visible: true })`.
+- **Framing**: the app scrolls inside its shell, so `fullPage` stops at the
+  viewport. Enlarge the viewport instead.
+- **Fonts**: the E2E config blocks Google Fonts, so no web font ever loads and
+  the app renders in the system font. Wait for an element: a wait for a Google
+  font never succeeds.
 
 ## Test placement
 
@@ -238,6 +334,20 @@ adds, renames or deletes a spec still fails on drift with the same
 diagnostics. It needs no browser, database or running application. Whether a
 mapping's source prefix is accurate stays a review decision
 ([ADR-0004](../adr/0004-test-strategy-and-ci-gate-policy.md)).
+
+## Bundle budget
+
+`bun run validate:bundle-budget` (`tooling/validation/bundle-budget.ts`)
+prints the gzip size of every JS and CSS chunk in `apps/web/dist/assets` and
+fails, naming the chunk, when the entry chunk, the entry CSS or a shared chunk
+(a `modulepreload` in `index.html`) is over its limit. Lazy chunks are printed
+only. It never builds: `validate` runs it right after the type check, which
+builds `dist`, and `validate:affected` and `validate:no-docker` do the same
+when `web` is affected. It is not part of `lint`. The limits are `LIMITS` in
+the script; raise one only on purpose and say why in the PR. `shared` is one
+limit for each shared chunk on its own, so a small chunk can grow up to it
+unnoticed. It does not name the module that grew: the build writes no stats
+file.
 
 ## Seed impact
 
@@ -413,9 +523,11 @@ the in-memory fake (`tests/test-support/in-memory-object-storage.ts`).
   `grep -E '^RESEND_[A-Z_]+=' .env > "$(git rev-parse --git-common-dir)/church-shared.env"`.
 - **Before the first commit**: the commit hooks run from `node_modules`, so a
   worktree created without the hook (plain `git worktree add`, Orca)
-  bootstraps before it commits; otherwise `commit-msg` hangs on `npx`.
-- **Known transient**: under load the `@church/i18n` postinstall can fail with
-  `LixError: Lix open did not settle within 30000ms`. Rerun the bootstrap.
+  bootstraps before it commits; otherwise `commit-msg` fails at once, naming
+  the bootstrap.
+- **Known transient**: under load the `@church/i18n` compile can hit
+  `LixError: Lix open did not settle within 30000ms`. It retries once by itself
+  (`tooling/i18n/compile.ts`); if the retry fails too, rerun the bootstrap.
 - **Primary checkout**: run `bun run worktree:bootstrap` once, explicitly.
   `env:local` refuses to run while a package value file exists
   (`apps/{server,web}/.env[.local]`, `packages/{db,auth}/.env[.local]`):
@@ -572,6 +684,48 @@ databases included, so a worktree that still exists is never touched; only
 other database outside that shape are never selected. Worktrunk asks to
 approve the hook once, as for `pre-start`.
 
+## Sign-in load harness
+
+`bun run perf:sign-in` (`tooling/perf/`) measures `/login` as a slow phone
+loads it from the deployment: use it before and after a change to what the
+sign-in page downloads or renders. It builds the web app with
+`VITE_SERVER_URL=/` (replacing `apps/web/dist`), serves it over HTTP/2 with the
+`deployment/Caddyfile`'s zstd/gzip and `/api` proxy, and loads it in system
+Chrome at 390x844 on Slow 4G (150 ms RTT, 1.6 Mbps) with 4x CPU slowdown. It
+prints first paint, LCP and form usable (the real submit button enabled, the
+boot shell gone) beside the
+[#1121](https://github.com/tiagoluizpoli/church/pull/1121) reference, and
+saves a filmstrip, `tmp/perf-sign-in/frame-<ms>ms.png`, 390 px wide, at most
+one frame per 200 ms. Tile the frames into one downscaled sheet before reading
+them.
+
+It needs Google Chrome, `openssl`, a bootstrapped worktree and a free
+`CHURCH_WEB_PORT` (stop `dev:web`). It uses the API already on
+`CHURCH_SERVER_PORT`, else starts `dev:server` and stops it afterwards. One run
+is one sample on this machine's CPU: compare runs from the same machine.
+
+Facts it encodes, for any other browser measurement:
+
+- **Open the app on the worktree's [dev hostname](#private-worktree-urls),
+  never `localhost`.** The API's CORS origin is that hostname on the web port:
+  `localhost` gets no CORS headers and its POSTs get 403. With
+  `CHURCH_DEV_DOMAIN` set, `bun run dns:start` makes the name resolve. The
+  harness's page is `https`, so it loads `/login` but cannot submit the form.
+- **Use system Chrome (`channel: 'chrome'`) for the WebGL2 scene.** Headless
+  Chrome draws it in software (SwiftShader), so the animation appears about 1 s
+  later than on a GPU, or never when it misses its 4 s ready timeout; the three
+  times come before it. `--headed` opens a window and draws on the GPU.
+  Playwright's default headless shell refuses WebGL2 under
+  `failIfMajorPerformanceCaveat`.
+- **A script outside the repository cannot import `@playwright/test` by name.**
+  Import it from
+  `<repo>/node_modules/.bun/@playwright+test@<version>/node_modules/@playwright/test`.
+- **The E2E config blocks Google Fonts** (`--host-resolver-rules` in
+  `apps/web/playwright.config.ts`). Under it no web font loads, so a wait for
+  one never ends. The harness loads them, as a visitor does.
+- **HTTP/2 matters.** Over HTTP/1.1 the same build measured LCP ~2.3 s instead
+  of ~1.4 s.
+
 ## Failure bundles
 
 A failed `env:local`, `db:bootstrap`, `db:prune`, or `worktree:bootstrap`
@@ -652,6 +806,9 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | IV. Never commit secrets | Constitution | Judgement | — | Review: a secret is not a fixed pattern |
 | V. Biome lints and formats; it passes before every commit | Constitution | Mechanical | Biome rule | Enforced: Lefthook `pre-commit` runs Biome on staged files; `lint` in CI |
 | V. Conventional commits | Constitution | Mechanical | Validation guard | Enforced: commitlint in Lefthook `commit-msg` |
+| `commit-msg` fails at once without `node_modules`; it never waits on an install prompt | Tooling | Mechanical | Validation guard | Enforced: `tooling/tests/validation/commit-time-tooling.test.ts` (`test:validation`) |
+| `lint` writes nothing; fixing stays in `lint:fix` and the pre-commit Biome job | Tooling | Mechanical | Validation guard | Enforced: `tooling/tests/validation/commit-time-tooling.test.ts` (`test:validation`) |
+| The `@church/i18n` compile retries once on the Lix open timeout, and on no other error | Tooling | Mechanical | Validation guard | Enforced: `tooling/tests/validation/i18n-compile.test.ts` (`test:validation`) |
 | Commits run the Lefthook hooks (no `core.hooksPath` override, no `git commit --no-verify`) | Tooling | Mechanical | Claude hook | Enforced for agents: `tooling/claude/block-hook-bypass.sh`, a PreToolUse hook in `.claude/settings.json` |
 | develop is PR-only: no tracked edits left uncommitted on a develop checkout | Tooling | Mechanical | Claude hook | Enforced for agents: `tooling/claude/flag-dirty-develop.sh`, a Stop hook in `.claude/settings.json` that stops the agent once to branch and PR them |
 | Atomic commits are small and focused | Constitution | Judgement | — | Review: "focused" is a judgement about intent |

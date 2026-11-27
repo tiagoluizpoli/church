@@ -1,6 +1,7 @@
+import type { Instant } from '@church/time';
 import type { CycleBuilderData } from '../../hooks/use-cycle-builder';
 import { isActiveAssignment } from '../scheduling-rules';
-import { isStaffedEventTimeBlock } from '../shift-verdict';
+import { isStaffedEventTimeBlock, shiftVerdict } from '../shift-verdict';
 
 interface RequirementCoverage {
   id: string;
@@ -50,6 +51,8 @@ export interface CycleStaffingSummary {
 
 interface SummarizeCycleStaffingInput {
   data: CycleBuilderData;
+  /** Count only the Shifts not yet started at this instant. */
+  openAt?: Instant;
 }
 
 /**
@@ -60,6 +63,7 @@ interface SummarizeCycleStaffingInput {
  */
 export function summarizeCycleStaffing({
   data,
+  openAt,
 }: SummarizeCycleStaffingInput): CycleStaffingSummary {
   let filled = 0;
   let covered = 0;
@@ -69,6 +73,11 @@ export function summarizeCycleStaffing({
     for (const eventTimeBlock of event.eventTimeBlocks) {
       if (!isStaffedEventTimeBlock(eventTimeBlock)) continue;
       for (const shift of eventTimeBlock.shifts) {
+        if (
+          openAt &&
+          shiftVerdict({ shift, currentInstant: openAt }) === 'started'
+        )
+          continue;
         const coveredPlaces = countCoveredPlaces(shift);
         covered += coveredPlaces;
         filled += shift.assignedCount;

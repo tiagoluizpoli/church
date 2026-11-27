@@ -126,6 +126,11 @@ describe('buildValidationSteps', () => {
         command: 'bunx',
         label: 'typecheck',
       },
+      {
+        args: ['run', 'validate:bundle-budget'],
+        command: 'bun',
+        label: 'bundle-budget',
+      },
     ]);
   });
 

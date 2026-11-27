@@ -22,6 +22,7 @@ import {
 } from '../../domain/services/event-time-block-move-path';
 import type { DrizzlePublicEventRepositoryInput } from './drizzle-public-event.repository.types';
 import { withChurchIsolation } from './helpers';
+import { shownEventTimeBlock } from './live-event-time-block';
 import { resolvedPlace } from './time-block-place';
 import type { AnyDrizzleDb } from './types';
 
@@ -72,6 +73,8 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
           // A draft Event is never shown publicly.
           ne(event.status, 'draft'),
           eq(eventTimeBlock.isPublic, true),
+          // What is hidden never counts, so it keeps no Event on view.
+          shownEventTimeBlock(),
         ),
       )
       .groupBy(event.id, event.title, event.status)
@@ -94,6 +97,7 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
         status: eventTimeBlock.status,
       })
       .from(eventTimeBlock)
+      .innerJoin(event, eq(eventTimeBlock.eventId, event.id))
       .leftJoin(
         churchAddress,
         eq(churchAddress.id, eventTimeBlock.placeAddressId),
@@ -103,6 +107,7 @@ export class DrizzlePublicEventRepository implements PublicEventRepository {
           withChurchIsolation({ table: eventTimeBlock, churchId }),
           inArray(eventTimeBlock.eventId, eventIds),
           eq(eventTimeBlock.isPublic, true),
+          shownEventTimeBlock(),
         ),
       )
       .orderBy(asc(eventTimeBlock.startTime), asc(eventTimeBlock.id));

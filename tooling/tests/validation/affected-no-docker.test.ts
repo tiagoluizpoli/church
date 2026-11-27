@@ -59,6 +59,7 @@ describe('the no-docker tier', () => {
       'journey-map',
       'presentation-text',
       'date-time-seam',
+      'bun-version',
       'typecheck',
     ]);
     expect(steps.unitLane).toEqual([

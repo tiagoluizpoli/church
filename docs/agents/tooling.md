@@ -1,7 +1,8 @@
 # Church Tooling
 
 Bun and Node versions are pinned in `mise.toml` (`mise install`); `packageManager`
-in `package.json` must name the same Bun.
+in `package.json` must name the same Bun (`bun run validate:bun-version`, part of
+`lint` and `validate:affected`).
 
 Run commands from the repository root through existing Bun scripts. Do not
 invoke package tools directly: root scripts carry required environment, filters,
@@ -19,6 +20,7 @@ and task ordering.
 | Seed contracts (every recipe, refusals) | `bun run test:seeds` |
 | Test placement guard | `bun run validate:test-placement` |
 | Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
+| Bun pin guard (`mise.toml` = `packageManager`) | `bun run validate:bun-version` |
 | Presentation-text guard (no hard-coded copy) | `bun run validate:presentation-text` (`-- <path>…` for files) |
 | Server types guard (no types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
@@ -949,7 +951,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Documentation first: significant changes are planned in `planning/` | Constitution | Judgement | — | Review: "significant" is a judgement |
 | A constitution amendment bumps its version | Constitution | Mechanical | Validation guard | Follow-up [#550](https://github.com/tiagoluizpoli/church/issues/550) |
 | A constitution amendment updates its dependent templates | Constitution | Judgement | — | Review: which templates depend on a change is a judgement |
-| `mise.toml` and `packageManager` pin the same Bun | Tooling | Mechanical | Validation guard | Follow-up [#551](https://github.com/tiagoluizpoli/church/issues/551) |
+| `mise.toml` and `packageManager` pin the same Bun | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:bun-version`, part of `lint` and `validate:affected` |
 | Run commands through root Bun scripts | Tooling | Judgement | — | Review: governs how an agent works, leaves nothing in the repository to check |
 | Tests live in the owning project's `tests/` and import by alias | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:test-placement`, part of `lint` |
 | User-facing copy comes from the `@church/i18n` catalog, never a literal | Spec #837, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:presentation-text`, part of `lint` and `validate:affected`. Copy reached only through calls or unrelated names stays with review (see Presentation text) |

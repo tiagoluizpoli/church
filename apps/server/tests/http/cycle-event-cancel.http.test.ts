@@ -457,6 +457,16 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
     });
   });
 
+  it('cancels the Event without changing the status of its EventTimeBlocks', async () => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+
+    await confirm(sunday);
+
+    const blocks = await db.select().from(eventTimeBlock);
+    expect(blocks.map(({ status }) => status)).toEqual(['active', 'active']);
+  });
+
   it('recalculates over a stale preview: a Volunteer published after it is told too', async () => {
     const sunday = await seedSentSunday();
     signIn({ sunday });
@@ -891,5 +901,235 @@ describe('POST …/event-time-blocks/:eventTimeBlockId/cancel(/preview)', () => 
         end: at('12:00'),
       });
     }
+  });
+});
+
+/** The stored hidden flags: the Event's, and each block's by id. */
+async function hiddenFlags() {
+  const [eventRow] = await db.select().from(event);
+  const blocks = await db.select().from(eventTimeBlock);
+  return {
+    event: eventRow?.isHidden,
+    blocks: Object.fromEntries(blocks.map((row) => [row.id, row.isHidden])),
+  };
+}
+
+describe('cancelling with the hidden option', () => {
+  it.each([
+    [{ confirmation: 'cancel' }, false],
+    [{ confirmation: 'cancel', hidden: false }, false],
+    [{ confirmation: 'cancel', hidden: true }, true],
+  ])('cancels the Event with %j, storing hidden %s on the Event only', async (payload, hidden) => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+
+    const response = await confirm({ ...sunday, payload });
+
+    expect(response.statusCode).toBe(200);
+    expect(await hiddenFlags()).toEqual({
+      event: hidden,
+      blocks: { [sunday.welcomeId]: false, [sunday.serviceId]: false },
+    });
+  });
+
+  it.each([
+    [{ confirmation: 'cancel' }, false],
+    [{ confirmation: 'cancel', hidden: true }, true],
+  ])('cancels one block with %j, storing hidden %s on that block only', async (payload, hidden) => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+
+    const response = await confirmBlock({
+      ...sunday,
+      blockId: sunday.serviceId,
+      payload,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(await hiddenFlags()).toEqual({
+      event: false,
+      blocks: { [sunday.welcomeId]: false, [sunday.serviceId]: hidden },
+    });
+  });
+
+  it('stores nothing hidden when the cancellation rolls back', async () => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+    notifications.failKind = 'event_changed';
+    const before = await writeSnapshot();
+
+    const response = await confirm({
+      ...sunday,
+      payload: { confirmation: 'cancel', hidden: true },
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(await writeSnapshot()).toEqual(before);
+  });
+});
+
+interface SetHiddenInput {
+  cycleId: string;
+  eventId: string;
+  /** Present for the EventTimeBlock endpoint. */
+  blockId?: string;
+  hidden: boolean;
+}
+
+function setHidden({ cycleId, eventId, blockId, hidden }: SetHiddenInput) {
+  const block = blockId ? `/event-time-blocks/${blockId}` : '';
+  return app.inject({
+    method: 'PUT',
+    url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}${block}/hidden`,
+    payload: { hidden },
+  });
+}
+
+/** A seeded Sunday whose Event, or Service block, is already cancelled. */
+async function cancelledSunday(scope: 'event' | 'block') {
+  const sunday = await seedSentSunday();
+  signIn({ sunday });
+  const blockId = scope === 'block' ? sunday.serviceId : undefined;
+  const cancelled = blockId
+    ? await confirmBlock({ ...sunday, blockId })
+    : await confirm(sunday);
+  expect(cancelled.statusCode).toBe(200);
+  return { sunday, target: { ...sunday, blockId } };
+}
+
+describe('PUT …/events/:eventId[/event-time-blocks/:eventTimeBlockId]/hidden', () => {
+  it.each([
+    'event',
+    'block',
+  ] as const)('hides and shows a cancelled %s after its start, queueing nothing', async (scope) => {
+    const { sunday, target } = await cancelledSunday(scope);
+    setTestClock({ instant: at('13:00') });
+    const queued = await outboxPayloads();
+    const flags = (hidden: boolean) => ({
+      event: scope === 'event' && hidden,
+      blocks: {
+        [sunday.welcomeId]: false,
+        [sunday.serviceId]: scope === 'block' && hidden,
+      },
+    });
+
+    const hid = await setHidden({ ...target, hidden: true });
+    expect(hid.statusCode).toBe(204);
+    expect(await hiddenFlags()).toEqual(flags(true));
+
+    const shown = await setHidden({ ...target, hidden: false });
+    expect(shown.statusCode).toBe(204);
+    expect(await hiddenFlags()).toEqual(flags(false));
+    expect(await outboxPayloads()).toEqual(queued);
+  });
+
+  it('still hides once the Cycle is past', async () => {
+    const { sunday, target } = await cancelledSunday('event');
+    await db
+      .update(cycle)
+      .set({ state: 'past' })
+      .where(eq(cycle.id, sunday.cycleId));
+
+    const response = await setHidden({ ...target, hidden: true });
+
+    expect(response.statusCode).toBe(204);
+    expect((await hiddenFlags()).event).toBe(true);
+  });
+
+  it.each([
+    ['a scheduled Event', undefined, true],
+    ['a scheduled Event', undefined, false],
+    ['an active block', 'serviceId', true],
+    ['an active block', 'serviceId', false],
+  ] as const)('answers 409 to %s (%s, hidden %s) and writes nothing', async (_name, block, hidden) => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+    const before = await writeSnapshot();
+
+    const response = await setHidden({
+      ...sunday,
+      blockId: block && sunday[block],
+      hidden,
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      error: 'ILLEGAL_STATE_TRANSITION',
+    });
+    expect(await writeSnapshot()).toEqual(before);
+  });
+
+  it('answers 409 to a still-active block of a cancelled Event', async () => {
+    const { sunday, target } = await cancelledSunday('event');
+
+    const response = await setHidden({
+      ...target,
+      blockId: sunday.serviceId,
+      hidden: true,
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect((await hiddenFlags()).blocks[sunday.serviceId]).toBe(false);
+  });
+
+  it('answers 404 to an unknown, foreign or wrong-Cycle item and writes nothing', async () => {
+    const { sunday } = await cancelledSunday('block');
+    const otherCycle = await buildCycle({
+      db,
+      churchId: sunday.churchId,
+      name: 'Other',
+      state: 'sent',
+      startDate: parseCalendarDay({ value: '2026-10-26' }),
+      endDate: parseCalendarDay({ value: '2026-10-31' }),
+    });
+    const foreignCycle = await buildCycle({
+      db,
+      churchId: sunday.seed.churchBId,
+      name: 'Foreign',
+      state: 'sent',
+      startDate: parseCalendarDay({ value: '2026-10-12' }),
+      endDate: parseCalendarDay({ value: '2026-10-25' }),
+    });
+    const otherEvent = await buildEvent({
+      db,
+      churchId: sunday.churchId,
+      cycleId: sunday.cycleId,
+      title: 'Other',
+      start: at('14:00'),
+      end: at('15:00'),
+      status: 'cancelled',
+    });
+    const before = await writeSnapshot();
+    const { cycleId, eventId, serviceId: blockId } = sunday;
+
+    for (const target of [
+      { cycleId, eventId: crypto.randomUUID() },
+      { cycleId: otherCycle.id, eventId },
+      { cycleId: foreignCycle.id, eventId },
+      { cycleId, eventId, blockId: crypto.randomUUID() },
+      { cycleId, eventId: otherEvent.id, blockId },
+      { cycleId: otherCycle.id, eventId, blockId },
+      { cycleId: foreignCycle.id, eventId, blockId },
+    ]) {
+      const response = await setHidden({ ...target, hidden: true });
+      expect(response.statusCode).toBe(404);
+    }
+    expect(await writeSnapshot()).toEqual(before);
+  });
+
+  it.each([
+    ['anonymous', 401],
+    ['member', 403],
+    ['leader', 403],
+  ] as const)('answers %s with %i on both routes', async (persona, status) => {
+    const { sunday, target } = await cancelledSunday('block');
+    signIn({ sunday, persona });
+    const before = await writeSnapshot();
+
+    for (const blockId of [undefined, target.blockId]) {
+      const response = await setHidden({ ...sunday, blockId, hidden: true });
+      expect(response.statusCode).toBe(status);
+    }
+    expect(await writeSnapshot()).toEqual(before);
   });
 });

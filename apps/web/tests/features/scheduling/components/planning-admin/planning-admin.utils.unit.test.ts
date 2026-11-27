@@ -323,6 +323,7 @@ describe('groupRowsByWeek', () => {
     start,
     end,
     status: 'scheduled' as const,
+    isHidden: false,
     eventTimeBlocks: [],
   });
 

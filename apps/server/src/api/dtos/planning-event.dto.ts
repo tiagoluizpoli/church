@@ -244,11 +244,17 @@ export const eventEditPreviewMapper = {
 /** The typed gate: the locale's fixed word, trimmed and case-insensitive. */
 export const cancelPlanningEventBodySchema = z.object({
   confirmation: z.string(),
+  /** Also hide the cancelled scope; absent means shown. */
+  hidden: z.boolean().optional(),
 });
 
 export type CancelPlanningEventBody = z.infer<
   typeof cancelPlanningEventBodySchema
 >;
+
+export const setPlanningHiddenBodySchema = z.object({ hidden: z.boolean() });
+
+export type SetPlanningHiddenBody = z.infer<typeof setPlanningHiddenBodySchema>;
 
 /** What a cancellation affects: preview and confirm both return it. */
 export const cancellationImpactResponseSchema = z.object({

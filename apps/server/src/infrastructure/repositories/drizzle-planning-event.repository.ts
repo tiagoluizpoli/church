@@ -64,6 +64,7 @@ import type {
   ScopeParticipatingMinistry,
   SeededMinistry,
   SeedPlanningParticipationsInput,
+  SetEventTimeBlockHiddenInput,
   UpdatePlanningEventInput,
 } from '../../domain/contracts/infrastructure/planning-event.repository';
 import {
@@ -138,6 +139,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         ...(input.start !== undefined ? { start: input.start } : {}),
         ...(input.end !== undefined ? { end: input.end } : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.isHidden !== undefined ? { isHidden: input.isHidden } : {}),
         updatedAt: nowAsDate(),
       })
       .where(
@@ -794,11 +796,29 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
   async cancelEventTimeBlock({
     churchId,
     eventTimeBlockId,
+    isHidden = false,
     tx,
   }: CancelEventTimeBlockInput): Promise<void> {
     await getClient({ db: this.db, tx })
       .update(eventTimeBlock)
-      .set({ status: 'cancelled' })
+      .set({ status: 'cancelled', isHidden })
+      .where(
+        and(
+          withChurchIsolation({ table: eventTimeBlock, churchId }),
+          eq(eventTimeBlock.id, eventTimeBlockId),
+        ),
+      );
+  }
+
+  async setEventTimeBlockHidden({
+    churchId,
+    eventTimeBlockId,
+    isHidden,
+    tx,
+  }: SetEventTimeBlockHiddenInput): Promise<void> {
+    await getClient({ db: this.db, tx })
+      .update(eventTimeBlock)
+      .set({ isHidden })
       .where(
         and(
           withChurchIsolation({ table: eventTimeBlock, churchId }),

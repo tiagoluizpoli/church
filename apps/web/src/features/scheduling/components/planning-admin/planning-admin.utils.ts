@@ -559,6 +559,7 @@ export function toCycleCalendarTableRow({
     start: eventGroup.event.start,
     end: eventGroup.event.end,
     status: eventGroup.event.status,
+    isHidden: eventGroup.event.isHidden,
     eventTimeBlocks: eventGroup.eventTimeBlocks.map(
       (eventTimeBlock): CycleCalendarEventTimeBlockRow => ({
         eventTimeBlockId: eventTimeBlock.id,
@@ -566,6 +567,7 @@ export function toCycleCalendarTableRow({
         startTime: eventTimeBlock.startTime,
         endTime: eventTimeBlock.endTime,
         status: eventTimeBlock.status,
+        isHidden: eventTimeBlock.isHidden,
         isOnlyEventTimeBlockInEvent,
       }),
     ),

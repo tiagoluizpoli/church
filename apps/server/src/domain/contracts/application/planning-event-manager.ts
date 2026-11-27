@@ -235,6 +235,13 @@ export interface ConfirmPlanningCancellationManagerInput
   extends PlanningCancellationManagerInput {
   /** The session's ChurchAdmin: audits the Assignments, closes the requests. */
   actingUserId: UserId;
+  /** Hide the cancelled scope in the same transaction; absent: shown. */
+  hidden?: boolean;
+}
+
+export interface SetPlanningHiddenManagerInput
+  extends PlanningCancellationManagerInput {
+  hidden: boolean;
 }
 
 export interface IPlanningEventManager {
@@ -301,6 +308,12 @@ export interface IPlanningEventManager {
   confirmCancellation(
     input: ConfirmPlanningCancellationManagerInput,
   ): Promise<CancellationImpact>;
+  /**
+   * Hides or shows a cancelled Event or EventTimeBlock, in any Cycle state and
+   * at any time; enqueues nothing. Refuses a scope that is not itself
+   * cancelled (ILLEGAL_STATE_TRANSITION).
+   */
+  setHidden(input: SetPlanningHiddenManagerInput): Promise<void>;
 }
 
 export interface ComputeMoveInput {

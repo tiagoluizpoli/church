@@ -35,6 +35,7 @@ export function mapEventTimeBlock({
     place: row.place ?? undefined,
     placeAddressId: row.placeAddressId ?? undefined,
     status: row.status,
+    isHidden: row.isHidden,
     requirements,
   };
 

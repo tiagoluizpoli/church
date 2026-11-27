@@ -384,6 +384,7 @@ export type GetCycle200EventsItemEvent = {
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+  isHidden: boolean;
 };
 
 export type GetCycle200EventsItemEventTimeBlocksItemStatus = typeof GetCycle200EventsItemEventTimeBlocksItemStatus[keyof typeof GetCycle200EventsItemEventTimeBlocksItemStatus];
@@ -419,6 +420,7 @@ export type GetCycle200EventsItemEventTimeBlocksItem = {
   placeAddressId: string | null;
   status: GetCycle200EventsItemEventTimeBlocksItemStatus;
   requirements: GetCycle200EventsItemEventTimeBlocksItemRequirementsItem[];
+  isHidden: boolean;
 };
 
 export type GetCycle200EventsItem = {
@@ -1612,6 +1614,7 @@ export type PreviewPlanningEventCancellation422 = {
 
 export type CancelPlanningEventBody = {
   confirmation: string;
+  hidden?: boolean;
 };
 
 export type CancelPlanningEvent200Scope = {
@@ -1689,6 +1692,114 @@ export type CancelPlanningEvent422 = {
   error: CancelPlanningEvent422Error;
   message: string;
   reason?: CancelPlanningEvent422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type SetPlanningEventHiddenBody = {
+  hidden: boolean;
+};
+
+/**
+ * @nullable
+ */
+export type SetPlanningEventHidden204 = typeof SetPlanningEventHidden204[keyof typeof SetPlanningEventHidden204] | null;
+
+
+export const SetPlanningEventHidden204 = {
+} as const;
+
+export type SetPlanningEventHidden404 = {
+  error: string;
+  message: string;
+};
+
+export type SetPlanningEventHidden422Error = typeof SetPlanningEventHidden422Error[keyof typeof SetPlanningEventHidden422Error];
+
+
+export const SetPlanningEventHidden422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type SetPlanningEventHidden422Reason = typeof SetPlanningEventHidden422Reason[keyof typeof SetPlanningEventHidden422Reason];
+
+
+export const SetPlanningEventHidden422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
+} as const;
+
+export type SetPlanningEventHidden422 = {
+  error: SetPlanningEventHidden422Error;
+  message: string;
+  reason?: SetPlanningEventHidden422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type SetPlanningEventTimeBlockHiddenBody = {
+  hidden: boolean;
+};
+
+/**
+ * @nullable
+ */
+export type SetPlanningEventTimeBlockHidden204 = typeof SetPlanningEventTimeBlockHidden204[keyof typeof SetPlanningEventTimeBlockHidden204] | null;
+
+
+export const SetPlanningEventTimeBlockHidden204 = {
+} as const;
+
+export type SetPlanningEventTimeBlockHidden404 = {
+  error: string;
+  message: string;
+};
+
+export type SetPlanningEventTimeBlockHidden422Error = typeof SetPlanningEventTimeBlockHidden422Error[keyof typeof SetPlanningEventTimeBlockHidden422Error];
+
+
+export const SetPlanningEventTimeBlockHidden422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type SetPlanningEventTimeBlockHidden422Reason = typeof SetPlanningEventTimeBlockHidden422Reason[keyof typeof SetPlanningEventTimeBlockHidden422Reason];
+
+
+export const SetPlanningEventTimeBlockHidden422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
+} as const;
+
+export type SetPlanningEventTimeBlockHidden422 = {
+  error: SetPlanningEventTimeBlockHidden422Error;
+  message: string;
+  reason?: SetPlanningEventTimeBlockHidden422Reason;
   field?: string;
   issues?: unknown[];
 };
@@ -2658,6 +2769,7 @@ export type PreviewPlanningEventTimeBlockCancellation422 = {
 
 export type CancelPlanningEventTimeBlockBody = {
   confirmation: string;
+  hidden?: boolean;
 };
 
 export type CancelPlanningEventTimeBlock200Scope = {

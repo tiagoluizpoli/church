@@ -28,6 +28,8 @@ export interface EventProps {
   start: Instant;
   end: Instant;
   status: EventStatus;
+  /** Only ever true on a cancelled Event. */
+  isHidden: boolean;
 }
 
 export interface EventWithEventTimeBlocks {
@@ -37,14 +39,14 @@ export interface EventWithEventTimeBlocks {
 
 export interface EventInput {
   props:
-    | (Omit<LooseProps<EventProps>, 'status'> &
-        Partial<Pick<LooseProps<EventProps>, 'status'>>)
+    | (Omit<LooseProps<EventProps>, 'status' | 'isHidden'> &
+        Partial<Pick<LooseProps<EventProps>, 'status' | 'isHidden'>>)
     | (Omit<
         LooseProps<EventProps>,
-        'cycleId' | 'sourceTemplateId' | 'status'
+        'cycleId' | 'sourceTemplateId' | 'status' | 'isHidden'
       > & {
         ministryId: MinistryId | string;
-      } & Partial<Pick<LooseProps<EventProps>, 'status'>>);
+      } & Partial<Pick<LooseProps<EventProps>, 'status' | 'isHidden'>>);
   id?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -72,6 +74,7 @@ export class Event extends Entity<EventProps, EventId> {
       props: {
         ...normalizedProps,
         status: props.status ?? 'draft',
+        isHidden: props.isHidden ?? false,
       } as EventProps,
       id: id as EventId,
       createdAt,
@@ -113,6 +116,10 @@ export class Event extends Entity<EventProps, EventId> {
 
   get status(): EventStatus {
     return this._props.status;
+  }
+
+  get isHidden(): boolean {
+    return this._props.isHidden;
   }
 
   public markScheduled(): void {

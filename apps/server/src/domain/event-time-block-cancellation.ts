@@ -19,6 +19,23 @@ export function isEventTimeBlockCancelled({
   return event.status === 'cancelled' || eventTimeBlock.status === 'cancelled';
 }
 
+interface EventTimeBlockHiddenInput {
+  event: { isHidden: boolean };
+  eventTimeBlock: { isHidden: boolean };
+}
+
+/**
+ * The one answer to "is this cancelled block hidden": an Event's choice covers
+ * all its blocks. Hidden is only ever set on something cancelled. The query
+ * twin is `shownEventTimeBlock` (infrastructure live-event-time-block.ts).
+ */
+export function isEventTimeBlockHidden({
+  event,
+  eventTimeBlock,
+}: EventTimeBlockHiddenInput): boolean {
+  return event.isHidden || eventTimeBlock.isHidden;
+}
+
 /** Which of the two cancelled the block, the Event first; null when neither. */
 export function eventTimeBlockCancellation({
   event,

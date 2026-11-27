@@ -1173,6 +1173,89 @@ describe('GET /admin/cycles/:cycleId', () => {
       eventTimeBlockCount: 1,
     });
   });
+
+  it('marks hidden Events and blocks, a block also through its Event, counting only planned ones', async () => {
+    const seed = await signIn();
+    const sent = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+      state: 'sent',
+    });
+    for (const [title, status, isHidden] of [
+      ['hidden', 'cancelled', true],
+      ['scheduled', 'scheduled', false],
+      ['shown', 'cancelled', false],
+    ] as const) {
+      const seeded = await buildEvent({
+        db,
+        churchId: seed.churchAId,
+        cycleId: sent.id,
+        title,
+        start: START,
+        end: END,
+        status,
+      });
+      await db.update(event).set({ isHidden }).where(eq(event.id, seeded.id));
+      for (const [label, blockStatus, blockHidden] of [
+        ['active', 'active', false],
+        ['hidden', 'cancelled', true],
+        ['shown', 'cancelled', false],
+      ] as const) {
+        const block = await buildEventTimeBlock({
+          db,
+          churchId: seed.churchAId,
+          eventId: seeded.id,
+          label,
+          start: START,
+          end: END,
+        });
+        await db
+          .update(eventTimeBlock)
+          .set({ status: blockStatus, isHidden: blockHidden })
+          .where(eq(eventTimeBlock.id, block.id));
+      }
+    }
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/admin/cycles/${sent.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const read = Object.fromEntries(
+      response
+        .json()
+        .events.map(
+          (graph: {
+            event: { title: string; isHidden: boolean };
+            eventTimeBlocks: { label: string; isHidden: boolean }[];
+          }) => [
+            graph.event.title,
+            {
+              isHidden: graph.event.isHidden,
+              blocks: Object.fromEntries(
+                graph.eventTimeBlocks.map((b) => [b.label, b.isHidden]),
+              ),
+            },
+          ],
+        ),
+    );
+    const ownChoices = { active: false, hidden: true, shown: false };
+    expect(read).toEqual({
+      hidden: {
+        isHidden: true,
+        blocks: { active: true, hidden: true, shown: true },
+      },
+      scheduled: { isHidden: false, blocks: ownChoices },
+      shown: { isHidden: false, blocks: ownChoices },
+    });
+    // Only the scheduled Event and its active block are still planned.
+    expect(response.json().counts).toEqual({
+      eventCount: 1,
+      eventTimeBlockCount: 1,
+    });
+  });
 });
 
 describe('DELETE /admin/cycles/:cycleId', () => {

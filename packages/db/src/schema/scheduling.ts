@@ -43,6 +43,8 @@ export const event = pgTable(
       mode: 'date',
     }).notNull(),
     status: eventStatusEnum('status').default('draft').notNull(),
+    // Qualifies a cancelled Event: out of sight for all but ChurchAdmins.
+    isHidden: boolean('is_hidden').default(false).notNull(),
     createdAt: timestamp('created_at', {
       withTimezone: true,
       mode: 'date',
@@ -95,6 +97,8 @@ export const eventTimeBlock = pgTable(
     ),
     // Cancelling one block; its Shifts are cancelled through it (no Shift status).
     status: eventTimeBlockStatusEnum('status').default('active').notNull(),
+    // The block's own choice; its Event's hides it too (isEventTimeBlockHidden).
+    isHidden: boolean('is_hidden').default(false).notNull(),
     createdAt: timestamp('created_at', {
       withTimezone: true,
       mode: 'date',

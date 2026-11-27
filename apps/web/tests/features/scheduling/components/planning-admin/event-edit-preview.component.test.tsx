@@ -31,6 +31,7 @@ const BLOCKS = [
     startTime: START,
     endTime: BLOCK_END,
     status: 'active' as const,
+    isHidden: false,
     isOnlyEventTimeBlockInEvent: false,
   },
   {
@@ -39,6 +40,7 @@ const BLOCKS = [
     startTime: START,
     endTime: BLOCK_END,
     status: 'cancelled' as const,
+    isHidden: false,
     isOnlyEventTimeBlockInEvent: false,
   },
 ];

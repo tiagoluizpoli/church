@@ -241,6 +241,7 @@ export class DbEventManager implements IEventManager {
           endTime: eventTimeBlock.endTime,
           label: eventTimeBlock.label,
           status: eventTimeBlock.status,
+          isHidden: eventTimeBlock.isHidden,
           requirements: visibleRequirements,
         },
         id: eventTimeBlock.id,

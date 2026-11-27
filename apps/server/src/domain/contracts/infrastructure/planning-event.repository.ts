@@ -46,6 +46,7 @@ export interface UpdatePlanningEventInput {
   start?: Date;
   end?: Date;
   status?: EventStatus;
+  isHidden?: boolean;
   tx?: TransactionContext;
 }
 
@@ -181,6 +182,15 @@ export interface ListCancellationScopeAssignmentsInput {
 export interface CancelEventTimeBlockInput {
   churchId: ChurchId;
   eventTimeBlockId: EventTimeBlockId;
+  /** Absent: shown. */
+  isHidden?: boolean;
+  tx: TransactionContext;
+}
+
+export interface SetEventTimeBlockHiddenInput {
+  churchId: ChurchId;
+  eventTimeBlockId: EventTimeBlockId;
+  isHidden: boolean;
   tx: TransactionContext;
 }
 
@@ -261,6 +271,8 @@ export interface PlanningEventRepository {
   ): Promise<CancellationScopeAssignment[]>;
   /** Sets one EventTimeBlock `cancelled`; its siblings stay as they are. */
   cancelEventTimeBlock(input: CancelEventTimeBlockInput): Promise<void>;
+  /** Sets one block's own hidden choice; the caller checks it is cancelled. */
+  setEventTimeBlockHidden(input: SetEventTimeBlockHiddenInput): Promise<void>;
   /** Deletes the UnavailableShifts on the blocks' Shifts; returns how many. */
   deleteScopeUnavailableShifts(
     input: DeleteScopeUnavailableShiftsInput,

@@ -13,6 +13,7 @@ import {
   ISOLATED_SPECS,
   laneTestMatch,
 } from './tests/fixtures/e2e-lanes';
+import { e2eReporters } from './tests/fixtures/e2e-reporters';
 
 // One URL set for the whole run (ADR-0005): pinned into process.env before
 // Playwright spawns global setup or any worker, so setup, the provisioning
@@ -45,9 +46,7 @@ export default defineConfig({
   // In-run workers share this run's one server, Vite and E2E database
   // (ADR-0005); every spec owns the data it mutates (tests/fixtures/e2e-lanes.ts).
   workers: process.env.CI ? 2 : 3,
-  // The outcome reporter lets global teardown keep a failed run's E2E
-  // database state for diagnosis instead of cleaning it.
-  reporter: [['list'], ['./tests/fixtures/e2e-run-outcome.ts']],
+  reporter: e2eReporters({ env: process.env }),
   use: {
     baseURL: WEB_URL,
     // Every failure keeps a trace for its failure bundle (ADR-0005), which

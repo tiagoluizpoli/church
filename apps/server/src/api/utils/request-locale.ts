@@ -1,10 +1,5 @@
 import { isLocale, type Locale } from '@church/i18n/runtime';
-
-interface RequestLocaleInput {
-  cookieHeader: string | undefined;
-  localeCookieName: string;
-  defaultLocale: Locale;
-}
+import type { RequestLocaleInput } from './request-locale.types';
 
 /** The locale cookie's valid value, else the default locale. */
 export function requestLocale({

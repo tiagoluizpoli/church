@@ -1,107 +1,10 @@
 import { m } from '@church/i18n/messages';
-import type { Locale } from '@church/i18n/runtime';
-
-interface ErrorMessageOptions {
-  locale: Locale;
-}
-
-// named-parameters-ignore: Paraglide generated message signature (inputs, options)
-export type ErrorMessage = (
-  inputs: Record<string, never>,
-  options: ErrorMessageOptions,
-) => string;
-
-interface ErrorEntry {
-  status: number;
-  message: ErrorMessage;
-}
-
-/** Codes a controller refuses with; 401/403/404 meaning is ADR-0009's. */
-export type RefusalCode =
-  | 'UNAUTHORIZED'
-  | 'FORBIDDEN'
-  | 'NOT_FOUND'
-  | 'ACTIVE_CHURCH_SELECTION_REQUIRED'
-  | 'RATE_LIMITED'
-  | 'INVITATION_UNAVAILABLE'
-  | 'LAST_CHURCH_ADMIN';
-
-/** Domain codes that become an HTTP response. */
-export type MappedDomainCode =
-  | 'INVALID_DATE_RANGE'
-  | 'INVALID_TIME_RANGE'
-  | 'INVALID_REQUIRED_COUNT'
-  | 'INVALID_SHIFT_SPLIT'
-  | 'INVALID_RECURRENCE'
-  | 'MINISTRY_NOT_FOUND'
-  | 'MINISTRY_NAME_IN_USE'
-  | 'MINISTRY_IN_USE'
-  | 'ROLE_NAME_IN_USE'
-  | 'ROLE_IN_USE'
-  | 'SECTOR_NAME_IN_USE'
-  | 'SECTOR_IN_USE'
-  | 'CHECK_ACCESS_DENIED'
-  | 'ASSIGNMENT_ACCESS_DENIED'
-  | 'ASSIGN_ACTION_NOT_AVAILABLE'
-  | 'INSUFFICIENT_INVITATION_AUTHORITY'
-  | 'ISOLATION_BREACH'
-  | 'CROSS_MINISTRY_SCOPE'
-  | 'OVERLAPPING_CYCLE'
-  | 'UNANSWERED_TEMPLATE_COLLISIONS'
-  | 'ILLEGAL_STATE_TRANSITION'
-  | 'DRAFT_STAFFING_RECONCILIATION_REQUIRED'
-  | 'EVENT_OUTSIDE_CYCLE'
-  | 'EVENT_CANCELLED'
-  | 'EVENT_TIME_BLOCK_CANCELLED'
-  | 'MOVE_WINDOW_CLOSED'
-  | 'EDIT_WINDOW_CLOSED'
-  | 'STAFFED_EVENT_TIME_BLOCK_DROP'
-  | 'PUBLIC_INFO_LOCKED'
-  | 'ADMIN_CANCELLATION_WINDOW_CLOSED'
-  | 'EMPTY_CYCLE'
-  | 'INVALID_CYCLE_EVENTS'
-  | 'LAST_REMAINING_EVENT_TIME_BLOCK'
-  | 'SHIFT_OUT_OF_BOUNDS'
-  | 'HARD_CONSTRAINT_VIOLATION'
-  | 'BELOW_FULL_PUBLISH'
-  | 'INVITEE_ALREADY_CHURCH_MEMBER'
-  | 'INVITEE_ALREADY_MINISTRY_MEMBER'
-  | 'PENDING_CHURCH_INVITATION_EXISTS'
-  | 'PENDING_MINISTRY_INVITATION_EXISTS'
-  | 'RESEND_COOLDOWN_ACTIVE'
-  | 'RESEND_DAILY_CAP_EXCEEDED'
-  | 'INVITATION_NOT_PENDING'
-  | 'INVALID_INVITATION_ROLE'
-  | 'INVALID_MINISTRY_ROLE'
-  | 'MINISTRY_ROLE_REQUIRED'
-  | 'MINISTRY_MEMBERSHIP_INACTIVE'
-  | 'UPCOMING_ASSIGNMENTS'
-  | 'HEADCOUNT_BELOW_ASSIGNED'
-  | 'SHIFT_REQUIREMENT_FULL'
-  | 'SCHEDULE_HAS_NO_ASSIGNMENTS'
-  | 'SCHEDULE_ALREADY_PUBLISHED'
-  | 'ASSIGNMENT_PROPOSAL_CHANGED'
-  | 'ASSIGNMENT_PROPOSAL_EXCLUSION_INVALID'
-  | 'ASSIGNMENT_PROPOSAL_STALE'
-  | 'NO_UNSENT_CHANGES'
-  | 'SHIFT_STARTED'
-  | 'SWAP_REQUEST_UNPUBLISHED'
-  | 'SWAP_REQUEST_SHIFT_STARTED'
-  | 'SWAP_REQUEST_ALREADY_OPEN'
-  | 'SWAP_REQUEST_NOT_OPEN'
-  | 'SWAP_REQUEST_NOTE_TOO_LONG'
-  | 'SHIFT_PUBLISHED'
-  | 'SHIFT_HAS_RESPONSES'
-  | 'ASK_BLOCKED_FLAGGED_SHIFTS'
-  | 'REMIND_ON_COOLDOWN'
-  | 'LOGO_TOO_LARGE'
-  | 'LOGO_TOO_SMALL'
-  | 'LOGO_BAD_ASPECT_RATIO'
-  | 'LOGO_UNSUPPORTED_TYPE'
-  | 'LOGO_KEY_INVALID'
-  | 'VALIDATION_ERROR';
-
-export type ErrorCode = RefusalCode | MappedDomainCode;
+import type {
+  ErrorCode,
+  ErrorEntry,
+  ErrorMessageInput,
+  ErrorStatusInput,
+} from './error-table.types';
 
 /** The one table of HTTP error codes: status and catalog message each. */
 export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
@@ -323,18 +226,9 @@ export function isErrorCode(code: string): code is ErrorCode {
   return Object.hasOwn(ERROR_TABLE, code);
 }
 
-interface ErrorStatusInput {
-  code: string;
-}
-
 /** The HTTP status for a code, or undefined when the code has no entry. */
 export function errorStatus({ code }: ErrorStatusInput): number | undefined {
   return isErrorCode(code) ? ERROR_TABLE[code].status : undefined;
-}
-
-interface ErrorMessageInput {
-  code: string;
-  locale: Locale;
 }
 
 /** The catalog text for a code in a locale, or undefined when it has no entry. */

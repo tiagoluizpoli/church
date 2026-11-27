@@ -1,6 +1,6 @@
 import { appConfig } from '@church/app-config';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import type { RefusalCode } from '@/api/utils/error-table';
+import type { RefusalCode } from '@/api/utils/error-table.types';
 import { refuse } from '@/api/utils/refuse';
 import { createFastify } from '@/main/fastify/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';

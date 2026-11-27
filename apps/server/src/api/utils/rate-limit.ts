@@ -1,12 +1,5 @@
 import { nowAsDate } from '@church/time';
-
-export interface RateLimitInput {
-  /** Callers prefix their keys so their windows never share a bucket. */
-  key: string;
-  windowMs: number;
-  maxRequests: number;
-  now?: number;
-}
+import type { RateLimitInput } from './rate-limit.types';
 
 // shortcut: in-process sliding window, per server instance; move to a shared store if the API scales out.
 const attemptsByKey = new Map<string, number[]>();

@@ -1,5 +1,7 @@
+import { member } from '@church/db';
 import { env } from '@church/env/server';
 import { hashPassword } from 'better-auth/crypto';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -31,6 +33,11 @@ interface CreatePersonInput {
   key: string;
   churchId: string;
   accessLevel: 'admin' | 'member';
+}
+
+interface MembershipRow {
+  userId: string;
+  role: string;
 }
 
 interface SessionUserBody {
@@ -102,6 +109,14 @@ beforeAll(async () => {
   };
 });
 
+async function churchMemberships(): Promise<MembershipRow[]> {
+  return await testDb
+    .select({ userId: member.userId, role: member.role })
+    .from(member)
+    .where(eq(member.organizationId, fixture.churchId))
+    .orderBy(member.role);
+}
+
 afterAll(async () => {
   await app.close();
 });
@@ -116,5 +131,66 @@ describe('Better Auth session routes the web app calls', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json<SessionBody>().user.email).toBe(fixture.member.email);
+  });
+});
+
+// ADR 0009: AuthorityService is the only gatekeeper, so membership data and
+// membership changes go through the app's own API, never Better Auth's routes.
+describe('Better Auth organization routes', () => {
+  it('refuses the member list to a signed-in Church Member', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/auth/organization/list-members?organizationId=${fixture.churchId}`,
+      headers: { cookie: fixture.member.cookie },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.body).toBe('Not Found');
+  });
+
+  it('refuses the full Church, with its members, to a signed-in Church Member', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/auth/organization/get-full-organization?organizationId=${fixture.churchId}`,
+      headers: { cookie: fixture.member.cookie },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.body).toBe('Not Found');
+  });
+
+  it('refuses a Church Member leaving around the app, so the Church Membership stays', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/organization/leave',
+      headers: { cookie: fixture.member.cookie, origin: env.CORS_ORIGIN },
+      payload: { organizationId: fixture.churchId },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.body).toBe('Not Found');
+    expect(await churchMemberships()).toEqual([
+      { userId: fixture.admin.userId, role: 'admin' },
+      { userId: fixture.member.userId, role: 'member' },
+    ]);
+  });
+
+  it('refuses a ChurchAdmin removing a member around the app, so the Church Membership stays', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/organization/remove-member',
+      headers: { cookie: fixture.admin.cookie, origin: env.CORS_ORIGIN },
+      payload: {
+        memberIdOrEmail: fixture.member.email,
+        organizationId: fixture.churchId,
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.body).toBe('Not Found');
+    expect(await churchMemberships()).toEqual([
+      { userId: fixture.admin.userId, role: 'admin' },
+      { userId: fixture.member.userId, role: 'member' },
+    ]);
   });
 });

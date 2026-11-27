@@ -1,5 +1,10 @@
 import { appConfig } from '@church/app-config';
-import { churchAddress, churchSlugHistory, eventTimeBlock } from '@church/db';
+import {
+  churchAddress,
+  churchSlugHistory,
+  event,
+  eventTimeBlock,
+} from '@church/db';
 import { parseInstant } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -154,6 +159,58 @@ function readEvents({ slug, cursor }: { slug: string; cursor?: string }) {
     query: cursor ? { cursor } : undefined,
     remoteAddress,
   });
+}
+
+interface CancelInput {
+  id: string;
+}
+
+async function cancelEvent({ id }: CancelInput) {
+  await db.update(event).set({ status: 'cancelled' }).where(eq(event.id, id));
+}
+
+async function cancelBlock({ id }: CancelInput) {
+  await db
+    .update(eventTimeBlock)
+    .set({ status: 'cancelled' })
+    .where(eq(eventTimeBlock.id, id));
+}
+
+interface AddBlockInput {
+  eventId: string;
+  label: string;
+  start: string;
+}
+
+function addPublicBlock({ eventId, label, start }: AddBlockInput) {
+  return buildEventTimeBlock({
+    db,
+    churchId: CHURCH_A,
+    eventId,
+    start: at(start),
+    end: at(`${start.slice(0, 11)}23:00`),
+    label,
+    isPublic: true,
+    place: 'Templo',
+  });
+}
+
+interface ShownEvent {
+  title: string;
+  cancelled: boolean;
+  blocks: { label: string; cancelled: boolean }[];
+}
+
+/** What a visitor sees: each Event and block with its cancelled mark. */
+async function readShown() {
+  const response = await readEvents({ slug: 'ib-esperanca' });
+  expect(response.statusCode).toBe(200);
+  const { items } = response.json<{ items: ShownEvent[] }>();
+  return items.map((item) => ({
+    title: item.title,
+    cancelled: item.cancelled,
+    blocks: item.blocks.map(({ label, cancelled }) => ({ label, cancelled })),
+  }));
 }
 
 describe('GET /public/churches/:slug/events', () => {
@@ -348,6 +405,61 @@ describe('GET /public/churches/:slug/events', () => {
     expect(old.statusCode).toBe(200);
     expect(old.json().items).toHaveLength(1);
     expect(unknown.statusCode).toBe(404);
+  });
+
+  it('shows a cancelled Event as cancelled until its start passes', async () => {
+    const upcoming = await seedEvent({
+      title: 'Futuro',
+      start: '2099-03-01T13:00',
+    });
+    const started = await seedEvent({
+      title: 'Passado',
+      start: '2020-03-01T13:00',
+    });
+    await cancelEvent({ id: upcoming.event.id });
+    await cancelEvent({ id: started.event.id });
+
+    expect(await readShown()).toEqual([
+      {
+        title: 'Futuro',
+        cancelled: true,
+        blocks: [{ label: 'Culto', cancelled: true }],
+      },
+    ]);
+  });
+
+  it('marks the Event cancelled only once every public block is', async () => {
+    const partly = await seedEvent({
+      title: 'Parcial',
+      start: '2099-03-01T13:00',
+    });
+    await addPublicBlock({
+      eventId: partly.event.id,
+      label: 'Noite',
+      start: '2099-03-01T20:00',
+    });
+    const whole = await seedEvent({
+      title: 'Inteiro',
+      start: '2099-03-02T13:00',
+    });
+    await cancelBlock({ id: partly.block.id });
+    await cancelBlock({ id: whole.block.id });
+
+    expect(await readShown()).toEqual([
+      {
+        title: 'Parcial',
+        cancelled: false,
+        blocks: [
+          { label: 'Culto', cancelled: true },
+          { label: 'Noite', cancelled: false },
+        ],
+      },
+      {
+        title: 'Inteiro',
+        cancelled: true,
+        blocks: [{ label: 'Culto', cancelled: true }],
+      },
+    ]);
   });
 
   it('rejects a malformed cursor', async () => {

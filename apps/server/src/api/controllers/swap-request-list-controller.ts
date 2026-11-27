@@ -1,12 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { z } from 'zod';
-import {
-  ChurchId,
-  CycleId,
-  MinistryId,
-  SwapRequestId,
-  UserId,
-} from '../../domain/branded-ids';
+import { CycleId, MinistryId, SwapRequestId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { ISwapRequestListManager } from '../../domain/contracts/application/swap-request-list-manager';
@@ -20,6 +14,7 @@ import {
   leaderSwapRequestsResponseSchema,
 } from '../dtos/swap-request.dto';
 import { refuse } from '../utils/refuse';
+import { requestCaller } from '../utils/request-caller';
 import type {
   KeepRouteParams,
   LeaderSwapRequestsQuery,
@@ -85,12 +80,11 @@ export class SwapRequestListController implements FastifyController {
       async (request, reply) => {
         const { ministryId } = request.params as MinistryRouteParams;
         const { cycleId } = request.query as LeaderSwapRequestsQuery;
-        const churchId = ChurchId.from(request.churchId);
+        const caller = requestCaller({ request });
+        const { churchId } = caller;
         const decision = await this.authorityGuard.decideManageMinistry({
-          actor: request.actor,
-          churchId,
+          ...caller,
           ministryId: MinistryId.from(ministryId),
-          userId: UserId.from(request.userId),
         });
         // Concealed: the caller cannot tell a foreign Ministry from a missing one.
         if (!decision.allowed) {
@@ -128,13 +122,11 @@ export class SwapRequestListController implements FastifyController {
       async (request, reply) => {
         const { ministryId, swapRequestId } = request.params as KeepRouteParams;
         const body = request.body as z.infer<typeof keepSwapRequestBodySchema>;
-        const churchId = ChurchId.from(request.churchId);
-        const userId = UserId.from(request.userId);
+        const caller = requestCaller({ request });
+        const { churchId, userId } = caller;
         const decision = await this.authorityGuard.decideManageMinistry({
-          actor: request.actor,
-          churchId,
+          ...caller,
           ministryId: MinistryId.from(ministryId),
-          userId,
         });
         if (!decision.allowed) {
           return refuse({ reply, request, code: 'NOT_FOUND' });

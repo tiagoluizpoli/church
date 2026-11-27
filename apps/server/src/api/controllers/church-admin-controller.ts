@@ -88,6 +88,7 @@ import {
 import { validationErrorResponseSchema } from '../dtos/validation-error.dto';
 import { assertCancelConfirmation } from '../utils/cancel-confirmation';
 import { refuse } from '../utils/refuse';
+import { requestCaller } from '../utils/request-caller';
 import {
   dateFromCalendarDayString,
   dateFromInstantString,
@@ -184,11 +185,9 @@ export class ChurchAdminController implements FastifyController {
     );
 
     app.addHook('preValidation', async (request, reply) => {
-      const authorized = await this.authorityGuard.canManageChurch({
-        actor: request.actor,
-        churchId: ChurchId.from(request.churchId),
-        userId: UserId.from(request.userId),
-      });
+      const authorized = await this.authorityGuard.canManageChurch(
+        requestCaller({ request }),
+      );
       if (!authorized) {
         return refuse({ reply, request, code: 'FORBIDDEN' });
       }

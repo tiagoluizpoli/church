@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { ChurchId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import { requestCaller } from '../utils/request-caller';
 import type { CallerCapabilitiesControllerDependencies } from './caller-capabilities-controller.types';
 
 const errorResponseSchema = z.object({
@@ -61,11 +61,9 @@ export class CallerCapabilitiesController implements FastifyController {
       },
       async (request, reply) => {
         const capabilities =
-          await this.authorityGuard.resolveCallerCapabilities({
-            actor: request.actor,
-            churchId: ChurchId.from(request.churchId),
-            userId: UserId.from(request.userId),
-          });
+          await this.authorityGuard.resolveCallerCapabilities(
+            requestCaller({ request }),
+          );
         return reply.send(capabilities);
       },
     );

@@ -20,6 +20,7 @@ import {
   scheduleBuilderDataResponseSchema,
 } from '../dtos/event.dto';
 import { refuse } from '../utils/refuse';
+import { requestCaller } from '../utils/request-caller';
 import type {
   DenyMinistryObjectInput,
   DenySchedulingFunctionInput,
@@ -163,11 +164,9 @@ export class EventController implements FastifyController {
     request,
     reply,
   }: DenySchedulingFunctionInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageAnyMinistry({
-      actor: request.actor,
-      churchId: ChurchId.from(request.churchId),
-      userId: UserId.from(request.userId),
-    });
+    const decision = await this.authorityGuard.decideManageAnyMinistry(
+      requestCaller({ request }),
+    );
     if (decision.allowed) return false;
 
     refuse({ reply, request, code: 'FORBIDDEN' });
@@ -180,10 +179,8 @@ export class EventController implements FastifyController {
     ministryId,
   }: DenyMinistryObjectInput): Promise<boolean> {
     const decision = await this.authorityGuard.decideManageMinistry({
-      actor: request.actor,
-      churchId: ChurchId.from(request.churchId),
+      ...requestCaller({ request }),
       ministryId: MinistryId.from(ministryId),
-      userId: UserId.from(request.userId),
     });
     if (decision.allowed) return false;
 

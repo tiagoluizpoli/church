@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ChurchId, MinistryId, UserId } from '../../domain/branded-ids';
+import { MinistryId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IInvitationListManager } from '../../domain/contracts/application/invitation-list-manager';
@@ -25,6 +25,7 @@ import {
 } from '../dtos/invitation-list.dto';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import { refuse } from '../utils/refuse';
+import { requestCaller } from '../utils/request-caller';
 import type {
   ChurchInvitationParams,
   InvitationControllerDependencies,
@@ -93,13 +94,9 @@ export class InvitationController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const churchId = ChurchId.from(request.churchId);
+        const caller = requestCaller({ request });
         const { isChurchAdmin, ledMinistries } =
-          await this.authorityGuard.resolveCallerCapabilities({
-            actor: request.actor,
-            churchId,
-            userId: UserId.from(request.userId),
-          });
+          await this.authorityGuard.resolveCallerCapabilities(caller);
         if (!isChurchAdmin && ledMinistries.length === 0) {
           return refuse({ reply, request, code: 'FORBIDDEN' });
         }
@@ -117,9 +114,7 @@ export class InvitationController implements FastifyController {
         > &
           ListLimitQuery;
         const page = await this.invitationListManager.list({
-          churchId,
-          userId: UserId.from(request.userId),
-          actor: request.actor,
+          ...caller,
           scope,
           filters,
           cursor,
@@ -149,13 +144,10 @@ export class InvitationController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const churchId = ChurchId.from(request.churchId);
-        const inviterId = UserId.from(request.userId);
-        const canManageChurch = await this.authorityGuard.canManageChurch({
-          actor: request.actor,
-          churchId,
-          userId: inviterId,
-        });
+        const caller = requestCaller({ request });
+        const { churchId, userId: inviterId } = caller;
+        const canManageChurch =
+          await this.authorityGuard.canManageChurch(caller);
         if (!canManageChurch) {
           return refuse({ reply, request, code: 'FORBIDDEN' });
         }
@@ -194,12 +186,10 @@ export class InvitationController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const churchId = ChurchId.from(request.churchId);
-        const canManageChurch = await this.authorityGuard.canManageChurch({
-          actor: request.actor,
-          churchId,
-          userId: UserId.from(request.userId),
-        });
+        const caller = requestCaller({ request });
+        const { churchId } = caller;
+        const canManageChurch =
+          await this.authorityGuard.canManageChurch(caller);
         if (!canManageChurch) {
           return refuse({ reply, request, code: 'FORBIDDEN' });
         }
@@ -233,13 +223,10 @@ export class InvitationController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const churchId = ChurchId.from(request.churchId);
-        const callerId = UserId.from(request.userId);
-        const canManageChurch = await this.authorityGuard.canManageChurch({
-          actor: request.actor,
-          churchId,
-          userId: callerId,
-        });
+        const caller = requestCaller({ request });
+        const { churchId, userId: callerId } = caller;
+        const canManageChurch =
+          await this.authorityGuard.canManageChurch(caller);
         if (!canManageChurch) {
           return refuse({ reply, request, code: 'FORBIDDEN' });
         }

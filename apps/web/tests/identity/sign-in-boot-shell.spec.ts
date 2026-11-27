@@ -33,7 +33,7 @@ declare global {
   interface Window {
     lineBoxes: (node: Node) => Box[];
     bootShellRemovedWithAuthShell?: boolean;
-    bootShell?: { html: string; shown: boolean; lang: string };
+    bootShell?: { html: string; shown: boolean; lang: string; theme: string };
   }
 }
 
@@ -140,6 +140,7 @@ test.describe('sign-in boot shell', () => {
           html: shell.outerHTML,
           shown: getComputedStyle(shell).display !== 'none',
           lang: document.documentElement.lang,
+          theme: document.documentElement.className,
         };
       });
     });
@@ -233,6 +234,31 @@ test.describe('sign-in boot shell', () => {
       ).toEqual([expected, expected]);
     }
   });
+
+  for (const { stored, scheme, expected } of [
+    { stored: null, scheme: 'dark', expected: 'light' },
+    { stored: 'light', scheme: 'dark', expected: 'light' },
+    { stored: 'dark', scheme: 'light', expected: 'dark' },
+    { stored: 'system', scheme: 'dark', expected: 'dark' },
+    { stored: 'system', scheme: 'light', expected: 'light' },
+  ] as const) {
+    test(`a stored theme of ${stored} on a ${scheme} system: boot shell and app paint ${expected}`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      if (stored) {
+        await page.addInitScript(
+          (value) => localStorage.setItem('vite-ui-theme', value),
+          stored,
+        );
+      }
+      await page.goto('/login');
+      await expect(page.locator('main button[type=submit]')).toBeVisible();
+      await expect(page.locator('#boot-shell')).toHaveCount(0);
+      expect(await page.evaluate(() => window.bootShell?.theme)).toBe(expected);
+      await expect(page.locator('html')).toHaveAttribute('class', expected);
+    });
+  }
 
   test('states a fresh load does not show skip the boot shell', async ({
     page,

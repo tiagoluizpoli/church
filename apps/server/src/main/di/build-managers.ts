@@ -42,13 +42,13 @@ import {
   AssignmentLifecycle,
 } from '../../application/assignment-lifecycle';
 import { ChurchNotifications } from '../../application/church-notifications';
-import { buildChurchNotifier } from '../../application/church-notifier';
 import { ChurchRecipients } from '../../application/church-recipients';
 import { DbChurchIdentitySnapshotter } from '../../application/db-church-identity-snapshotter';
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
 import { UsualSetupStaffingSeeder } from '../../application/usual-setup-staffing-seeder';
 import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
 import type { Auth } from './build-auth';
+import { buildChurchNotifier } from './build-church-notifier';
 import type { Repositories } from './build-repositories';
 import type { Services } from './build-services';
 import type { CompositionRootDependencies } from './dependencies';

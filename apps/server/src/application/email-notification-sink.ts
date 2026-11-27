@@ -1,12 +1,16 @@
 import { millisecondsBetween, now } from '@church/time';
 import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
 import type {
-  NotificationSink,
+  EmailNotificationSinkDependencies,
+  EmailRecipientAddress,
+  IEmailNotificationSink,
+  PrepareInput,
+} from '../domain/contracts/application/email-notification-sink';
+import type {
   SinkDeliverInput,
   SinkOutcome,
 } from '../domain/contracts/application/notifier';
 import type {
-  EmailLocale,
   EmailPayload,
   EmailSender,
 } from '../domain/contracts/infrastructure/email-sender';
@@ -18,31 +22,13 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import { EmailSendError } from '../domain/errors/email-send-error';
 import { emailRoutingFor } from './email-routing';
 
-/** A Church Member's email address, in the language they read. */
-export interface EmailRecipientAddress {
-  email: string;
-  /** First word of the member's name; empty when they have none. */
-  firstName: string;
-  locale: EmailLocale;
-}
-
-interface EmailNotificationSinkDependencies {
-  emailSender: EmailSender;
-  outboxRepository: OutboxRepository;
-  unitOfWork: UnitOfWork;
-  emailIdempotencyRetentionMs: number;
-}
-
 /**
  * Delivers through the prepared-request boundary (ticket 09.1): the request,
  * the delivery-derived key and the first-attempt Instant are persisted before
  * the first provider call and resent unchanged; a confirmed receipt
  * suppresses any replay.
  */
-export class EmailNotificationSink
-  implements
-    NotificationSink<ChurchRecipient, EmailRecipientAddress, EmailPayload>
-{
+export class EmailNotificationSink implements IEmailNotificationSink {
   private readonly emailSender: EmailSender;
   private readonly outboxRepository: OutboxRepository;
   private readonly unitOfWork: UnitOfWork;
@@ -131,10 +117,4 @@ export class EmailNotificationSink
       }),
     );
   }
-}
-
-interface PrepareInput {
-  deliveryId: string;
-  payload: EmailPayload;
-  address: EmailRecipientAddress;
 }

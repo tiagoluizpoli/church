@@ -3,6 +3,8 @@ import type {
   NotificationEnqueueDataOf,
   NotificationRequestKind,
 } from '../../notification-kinds';
+import type { ChurchIdentitySnapshotter } from '@/domain/contracts/application/church-identity-snapshotter';
+import type { OutboxRepository } from '@/domain/contracts/infrastructure/outbox.repository';
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 
 /** A Notification's addressee: a User within one Church. Later fields stay optional. */
@@ -28,4 +30,9 @@ export interface IChurchNotifications {
   enqueue<K extends NotificationRequestKind>(
     input: EnqueueNotificationInput<K>,
   ): Promise<void>;
+}
+
+export interface ChurchNotificationsDependencies {
+  outboxRepository: OutboxRepository;
+  churchIdentity: ChurchIdentitySnapshotter;
 }

@@ -28,15 +28,16 @@ import type {
 import type { Sector } from '../../domain/entities/sector';
 import { SectorNameInUseError } from '../../domain/errors/sector-name-in-use';
 import { mapSector } from '../mappers/sector.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  ActiveSectorInput,
+  DrizzleSectorRepositoryInput,
+  RefuseNameInUseInput,
+} from './drizzle-sector.repository.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
 const ACTIVE_NAME_CONSTRAINT = 'sector_ministry_active_name_idx';
-
-interface RefuseNameInUseInput<T> {
-  write: Promise<T>;
-}
 
 /** The active-name index refusal, including races, as the domain conflict. */
 async function refuseNameInUse<T>({
@@ -52,12 +53,6 @@ async function refuseNameInUse<T>({
   }
 }
 
-interface ActiveSectorInput {
-  churchId: string;
-  ministryId: string;
-  sectorId: string;
-}
-
 function activeSector({ churchId, ministryId, sectorId }: ActiveSectorInput) {
   return and(
     eq(sector.id, sectorId),
@@ -65,10 +60,6 @@ function activeSector({ churchId, ministryId, sectorId }: ActiveSectorInput) {
     eq(sector.ministryId, ministryId),
     isNull(sector.archivedAt),
   );
-}
-
-interface DrizzleSectorRepositoryInput {
-  db: AnyDrizzleDb;
 }
 
 export class DrizzleSectorRepository implements SectorRepository {

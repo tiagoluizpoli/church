@@ -75,9 +75,9 @@ import type {
   SelectActiveMembershipsInput,
   ShareLockMembershipsInput,
 } from './drizzle-availability-check.repository.types';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import { getClient, withChurchIsolation } from './helpers';
 import { liveEventTimeBlock } from './live-event-time-block';
-import type { AnyDrizzleDb } from './types';
 
 /** A check that can still be answered: not withdrawn, on an active Ministry Membership (joined by the caller). */
 export const actionable = () =>

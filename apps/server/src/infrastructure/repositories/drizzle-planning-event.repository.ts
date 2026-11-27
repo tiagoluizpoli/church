@@ -85,6 +85,7 @@ import type {
 import { mapEvent } from '../mappers/event.mapper';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import type { DrizzlePlanningEventRepositoryInput } from './drizzle-planning-event.repository.types';
 import {
   assertPlaceAddresses,
@@ -93,7 +94,6 @@ import {
   withChurchIsolation,
 } from './helpers';
 import { shownEventTimeBlock } from './live-event-time-block';
-import type { AnyDrizzleDb } from './types';
 
 export class DrizzlePlanningEventRepository implements PlanningEventRepository {
   constructor({ db }: DrizzlePlanningEventRepositoryInput) {

@@ -40,8 +40,8 @@ import type {
   ListRangeInput,
   RowsInput,
 } from './drizzle-assignment.repository.types';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
 
 export class DrizzleAssignmentRepository implements AssignmentRepository {
   constructor({ db }: DrizzleAssignmentRepositoryInput) {

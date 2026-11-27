@@ -26,6 +26,7 @@ import type {
 import { DuplicateTemplateBlockLabelError } from '../../domain/errors/duplicate-template-block-label';
 import { DuplicateTemplateNameError } from '../../domain/errors/duplicate-template-name';
 import { mapEventTemplate } from '../mappers/event-template.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import type {
   DrizzleEventTemplateRepositoryInput,
   MapTemplateGraphsInput,
@@ -36,7 +37,6 @@ import {
   isValidUuid,
   withChurchIsolation,
 } from './helpers';
-import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
 const NAME_UNIQUE_CONSTRAINT = 'event_template_church_name_idx';

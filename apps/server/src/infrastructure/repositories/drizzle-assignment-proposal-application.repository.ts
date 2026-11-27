@@ -18,8 +18,8 @@ import type {
   ApplicationRow,
   DrizzleAssignmentProposalApplicationRepositoryInput,
 } from './drizzle-assignment-proposal-application.repository.types';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import { getClient, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
 
 function toApplication(row: ApplicationRow): AssignmentProposalApplication {
   return {

@@ -42,6 +42,7 @@ import type {
   VolunteerTransferResult,
 } from '../../domain/contracts/infrastructure/volunteer-transfer.repository';
 import { ACTIVE_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import type {
   DrizzleVolunteerTransferRepositoryInput,
   FindExistingTransferInput,
@@ -54,7 +55,6 @@ import {
   grantMinistryMembershipRoles,
   insertMinistryMembership,
 } from './ministry-grant';
-import type { AnyDrizzleDb } from './types';
 
 /**
  * Every step of spec §8.5, inside the caller's transaction. The old

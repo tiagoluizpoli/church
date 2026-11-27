@@ -17,12 +17,12 @@ import type {
 import type { UnavailableShift } from '../../domain/entities/unavailable-shift';
 import { mapUnavailableShift } from '../mappers/unavailable-shift.mapper';
 import { actionable } from './drizzle-availability-check.repository';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import type {
   DrizzleUnavailableShiftRepositoryInput,
   RowsInput,
 } from './drizzle-unavailable-shift.repository.types';
 import { getClient, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
 
 export class DrizzleUnavailableShiftRepository
   implements UnavailableShiftRepository

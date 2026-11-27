@@ -1,4 +1,4 @@
-import type { AnyDrizzleDb } from './types';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 
 export interface DrizzlePublicEventRepositoryInput {
   db: AnyDrizzleDb;

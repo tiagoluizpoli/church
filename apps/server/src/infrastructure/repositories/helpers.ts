@@ -1,22 +1,15 @@
 import { churchAddress } from '@church/db';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import { PlaceAddressNotFoundError } from '../../domain/errors/place-address-not-found';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import { DrizzleTransactionContext } from './drizzle-transaction-context';
-import type { AnyDrizzleDb } from './types';
-
-// biome-ignore lint/suspicious/noExplicitAny: table shape is intentionally loose
-type ChurchScopedTable = { churchId: any };
-
-export interface WithChurchIsolationInput<T extends ChurchScopedTable> {
-  table: T;
-  churchId: string;
-}
-
-export interface GetClientInput {
-  db: AnyDrizzleDb;
-  tx?: TransactionContext;
-}
+import type {
+  AssertPlaceAddressesInput,
+  ChurchScopedTable,
+  ContainsPatternInput,
+  GetClientInput,
+  WithChurchIsolationInput,
+} from './helpers.types';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -57,19 +50,9 @@ export function getClient({ db, tx }: GetClientInput): AnyDrizzleDb {
   return db;
 }
 
-export interface ContainsPatternInput {
-  value: string;
-}
-
 /** ILIKE pattern matching the value literally anywhere: `%`, `_` and `\` are escaped. */
 export function containsPattern({ value }: ContainsPatternInput): string {
   return `%${value.replace(/[\\%_]/g, '\\$&')}%`;
-}
-
-export interface AssertPlaceAddressesInput {
-  db: AnyDrizzleDb;
-  churchId: string;
-  addressIds: readonly (string | null | undefined)[];
 }
 
 /** Refuses a time-block place naming an address another Church (or nobody) has. */

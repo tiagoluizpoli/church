@@ -19,8 +19,8 @@ import type {
   ResolveAuthorityActorInput,
 } from '../../domain/contracts/infrastructure/authority-actor.repository';
 import type { MinistryAccessLevel } from '../../domain/entities/ministry-membership';
+import type { AnyDrizzleDb } from '../repositories/drizzle-db.types';
 import { getClient, withActiveVolunteer } from '../repositories/helpers';
-import type { AnyDrizzleDb } from '../repositories/types';
 import type {
   ChurchScopedLookupInput,
   DrizzleAuthorityActorResolverInput,

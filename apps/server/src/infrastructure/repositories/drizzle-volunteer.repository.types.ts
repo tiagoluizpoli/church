@@ -1,4 +1,4 @@
-import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
+import type { AnyDrizzleDb } from '@/infrastructure/repositories/drizzle-db.types';
 
 export interface DrizzleVolunteerRepositoryInput {
   db: AnyDrizzleDb;

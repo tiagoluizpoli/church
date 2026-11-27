@@ -36,12 +36,9 @@ import type {
 import { ACTIVE_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
 import type { PersonDetailRole } from '../../domain/entities/people-list-item';
 import type { UpcomingMembershipAssignment } from '../../domain/upcoming-membership-assignments';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type { DrizzleMinistryMembershipRepositoryInput } from './drizzle-ministry-membership.repository.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleMinistryMembershipRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 /** The ids every Ministry Membership audit starts with. */
 function membershipFacts({ target }: Pick<SaveMembershipRolesInput, 'target'>) {

@@ -1,6 +1,6 @@
 import type { ChurchId } from '@/domain/branded-ids';
 import type { ExecuteVolunteerTransferInput } from '@/domain/contracts/infrastructure/volunteer-transfer.repository';
-import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
+import type { AnyDrizzleDb } from '@/infrastructure/repositories/drizzle-db.types';
 
 export interface DrizzleVolunteerTransferRepositoryInput {
   db: AnyDrizzleDb;

@@ -33,6 +33,7 @@ import type {
 import type { MinistryAccessLevel } from '../../domain/entities/ministry-membership';
 import type { Volunteer } from '../../domain/entities/volunteer';
 import { mapVolunteer } from '../mappers/volunteer.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import type {
   DrizzleVolunteerRepositoryInput,
   GroupByMembershipInput,
@@ -44,7 +45,6 @@ import {
   withActiveVolunteer,
   withChurchIsolation,
 } from './helpers';
-import type { AnyDrizzleDb } from './types';
 
 export class DrizzleVolunteerRepository implements VolunteerRepository {
   constructor({ db }: DrizzleVolunteerRepositoryInput) {

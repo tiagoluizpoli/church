@@ -18,11 +18,11 @@ import type {
 import { isEventTimeBlockCancelled } from '../../domain/event-time-block-cancellation';
 import { eventTimeBlockMovePath } from '../../domain/services/planning/event-time-block-move-path';
 import type { EventTimeBlockMove } from '../../domain/services/planning/event-time-block-move-path.types';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import type { DrizzlePublicEventRepositoryInput } from './drizzle-public-event.repository.types';
 import { withChurchIsolation } from './helpers';
 import { shownEventTimeBlock } from './live-event-time-block';
 import { resolvedPlace } from './time-block-place';
-import type { AnyDrizzleDb } from './types';
 
 export class DrizzlePublicEventRepository implements PublicEventRepository {
   private readonly db: AnyDrizzleDb;

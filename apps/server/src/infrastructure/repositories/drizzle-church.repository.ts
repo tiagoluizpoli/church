@@ -32,7 +32,6 @@ import {
 import { union } from 'drizzle-orm/pg-core';
 import { ChurchId, type UserId } from '../../domain/branded-ids';
 import {
-  type AddressReplacement,
   type ChurchAddress,
   ChurchAddressesRefused,
   type ChurchAddressRefusal,
@@ -71,106 +70,38 @@ import type {
   SaveChurchSettingsInput,
   SlugAvailabilityInput,
 } from '../../domain/contracts/infrastructure/church.repository';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { Church } from '../../domain/entities/church';
 import { ChurchLegalDocumentTakenError } from '../../domain/errors/church-legal-document-taken';
 import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
-import type {
-  ChurchSocialLink,
-  SocialLinkChange,
-} from '../../domain/social-link';
+import type { ChurchSocialLink } from '../../domain/social-link';
 import { mapChurch } from '../mappers/church.mapper';
+import type {
+  AddressesInUseInput,
+  ChangeSlugInput,
+  CreatedGroup,
+  DeleteUnusedGroupsInput,
+  DrizzleChurchRepositoryInput,
+  FindLegalProfileInput,
+  FindSlugAvailabilityInput,
+  FreezeStartedBlockPlacesInput,
+  GroupedRow,
+  ListAddressesInput,
+  ListContactsInput,
+  ReplaceDeletedAddressUsageInput,
+  ReplaceGroupsInput,
+  ReplaceLegalProfileInput,
+  ReplaceSocialLinksInput,
+} from './drizzle-church.repository.types';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import { getClient, isValidUuid } from './helpers';
 import { resolvedPlace } from './time-block-place';
-import type { AnyDrizzleDb } from './types';
 import { isChurchSlugConflict, isUniqueViolation } from './unique-violation';
 
 // Church identity lives on the `organization` row and the rest on the `church`
 // extension row keyed by the same id, so every read joins the two.
 const churchJoinShape = { church, organization };
 
-interface FreezeStartedBlockPlacesInput {
-  client: AnyDrizzleDb;
-  id: ChurchId;
-}
-
-interface AddressesInUseInput extends FreezeStartedBlockPlacesInput {
-  addressIds: readonly string[];
-}
-
-interface ReplaceDeletedAddressUsageInput {
-  client: AnyDrizzleDb;
-  id: ChurchId;
-  stored: readonly ChurchAddress[];
-  kept: readonly string[];
-  replacements: readonly AddressReplacement[];
-}
-
-interface FindLegalProfileInput extends ListAddressesInput {
-  onlyPublic?: boolean;
-}
-
-interface ListContactsInput extends ListAddressesInput {
-  onlyPublic?: boolean;
-}
-
-interface ListAddressesInput {
-  id: string;
-  tx?: TransactionContext;
-}
-
 const LEGAL_DOCUMENT_UNIQUE = 'church_legal_profile_document_idx';
-
-type DrizzleClient = ReturnType<typeof getClient>;
-
-interface FindSlugAvailabilityInput {
-  client: DrizzleClient;
-  id: string;
-  slug: string;
-}
-
-/** A Social Link row with its Contact Group resolved to an id. */
-interface GroupedSocialLinkRow extends Omit<SocialLinkChange, 'group'> {
-  groupId: string | null;
-}
-
-interface ReplaceSocialLinksInput {
-  client: DrizzleClient;
-  id: string;
-  links: readonly GroupedSocialLinkRow[];
-}
-
-interface GroupedRow {
-  group: string | null;
-}
-
-interface CreatedGroup {
-  id: string;
-}
-
-interface ReplaceGroupsInput {
-  client: DrizzleClient;
-  id: string;
-  requested: readonly string[];
-  members: readonly (string | null)[];
-}
-
-interface DeleteUnusedGroupsInput {
-  client: DrizzleClient;
-  id: string;
-}
-
-interface ReplaceLegalProfileInput {
-  client: DrizzleClient;
-  id: string;
-  profile: ChurchLegalProfile | null;
-}
-
-type ChangeSlugInput = FindSlugAvailabilityInput;
-
-interface DrizzleChurchRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 export class DrizzleChurchRepository implements ChurchRepository {
   constructor({ db }: DrizzleChurchRepositoryInput) {

@@ -1,4 +1,3 @@
-import type { AppConfig } from '@church/app-config';
 import {
   church,
   invitation as churchInvitation,
@@ -71,7 +70,6 @@ import type {
   SupersedeUnsentChainedOutboxInput,
   UpgradeChurchInvitationToAdminInput,
 } from '../../domain/contracts/infrastructure/ministry-invitation.repository';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type {
   PublicRedemptionMinistry,
   PublicRedemptionPreview,
@@ -84,9 +82,14 @@ import { PendingChurchInvitationExistsError } from '../../domain/errors/pending-
 import { PendingMinistryInvitationExistsError } from '../../domain/errors/pending-ministry-invitation-exists';
 import { resolveInvitationEmail } from '../../domain/services/invitations/resolve-invitation-email';
 import { mapMinistryInvitation } from '../mappers/ministry-invitation.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  ChurchAccessLevelOfInput,
+  DrizzleMinistryInvitationRepositoryInput,
+  HydrateMinistryInvitationInput,
+} from './drizzle-ministry-invitation.repository.types';
 import { currentEmailDeliveryMode } from './drizzle-runtime-configuration.repository';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
 /** The database backstops behind the locked duplicate recheck. */
@@ -95,25 +98,11 @@ const PENDING_HALF_CONSTRAINTS = [
   'ministry_invitation_ministry_church_invitation_pending_idx',
 ];
 
-interface ChurchAccessLevelOfInput {
-  role: string | null;
-}
-
 /** The Church Access Level a stored Church Invitation role grants. */
 function churchAccessLevelOf({
   role,
 }: ChurchAccessLevelOfInput): ChurchInvitationAccessLevel {
   return role === 'admin' ? 'admin' : 'member';
-}
-
-interface HydrateMinistryInvitationInput {
-  row: typeof ministryInvitation.$inferSelect;
-  tx?: TransactionContext;
-}
-
-interface DrizzleMinistryInvitationRepositoryInput {
-  db: AnyDrizzleDb;
-  config: AppConfig;
 }
 
 export class DrizzleMinistryInvitationRepository

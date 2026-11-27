@@ -29,10 +29,8 @@ import type {
 } from '../../domain/contracts/infrastructure/people-list.repository';
 import type {
   PeopleListCounts,
-  PeopleListFilters,
   PeopleListMinistry,
   PeopleListPage,
-  PeopleListScope,
   PersonDetailMinistry,
   PersonDetailRecord,
 } from '../../domain/entities/people-list-item';
@@ -41,35 +39,15 @@ import {
   decodePeopleListCursor,
   encodePeopleListCursor,
 } from '../../domain/people-list-cursor';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  DrizzlePeopleListRepositoryInput,
+  MemberFilterInput,
+  MinistriesOfInput,
+  VisibleMembershipInput,
+  VisibleScopeInput,
+} from './drizzle-people-list.repository.types';
 import { containsPattern, getClient } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzlePeopleListRepositoryInput {
-  db: AnyDrizzleDb;
-}
-
-interface VisibleScopeInput {
-  churchId: string;
-  scope: PeopleListScope;
-}
-
-interface VisibleMembershipInput extends VisibleScopeInput {
-  /** Narrows to one visible Ministry and/or Ministry Access Level on the same membership. */
-  ministryId?: string;
-  level?: 'leader' | 'volunteer';
-}
-
-interface MemberFilterInput {
-  churchId: string;
-  scope: PeopleListScope;
-  filters: PeopleListFilters;
-}
-
-interface MinistriesOfInput {
-  churchId: string;
-  scope: PeopleListScope;
-  userIds: string[];
-}
 
 const NO_PEOPLE: PeopleListCounts = {
   total: 0,

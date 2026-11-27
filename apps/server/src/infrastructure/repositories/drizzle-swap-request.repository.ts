@@ -31,12 +31,12 @@ import type {
 import type { SwapRequest } from '../../domain/entities/swap-request';
 import { SwapRequestAlreadyOpenError } from '../../domain/errors/swap-request';
 import { mapSwapRequest } from '../mappers/swap-request.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import type {
   CloseOpenWhereInput,
   DrizzleSwapRequestRepositoryInput,
 } from './drizzle-swap-request.repository.types';
 import { getClient, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
 const OPEN_INDEX = 'swap_request_open_assignment_idx';

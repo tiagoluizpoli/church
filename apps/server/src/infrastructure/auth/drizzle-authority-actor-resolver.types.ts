@@ -1,5 +1,5 @@
 import type { ChurchId, UserId, VolunteerId } from '../../domain/branded-ids';
-import type { AnyDrizzleDb } from '../repositories/types';
+import type { AnyDrizzleDb } from '../repositories/drizzle-db.types';
 
 export interface ChurchScopedLookupInput {
   db: AnyDrizzleDb;

@@ -1412,6 +1412,12 @@ describe('Assignment proposal preview', () => {
     );
     renderBuilder({ data: twoDayBoard() });
     const preview = await openPreview();
+    // The dialog opens on its title a frame later; wait so it can't pull focus back.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: m.builder_proposal_title() }),
+      ).toHaveFocus(),
+    );
     const boxes = within(preview).getAllByRole('checkbox');
     expect(boxes.filter((box) => box.tabIndex === 0)).toHaveLength(0);
     const whys = within(preview).getAllByRole('button', { name: /^Why / });

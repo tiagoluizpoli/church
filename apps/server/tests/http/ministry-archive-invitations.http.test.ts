@@ -87,8 +87,6 @@ async function buildApp({ wrapRepo = (repo) => repo }: BuildAppInput = {}) {
       unitOfWork: harness.unitOfWork,
       sectorRepo: {} as never,
       roleRepo: {} as never,
-      usualSetupRepo: {} as never,
-      templateRepo: {} as never,
     }),
     ministryInvitationManager: harness.manager,
     activeChurchResolver: activeChurchResolver as never,

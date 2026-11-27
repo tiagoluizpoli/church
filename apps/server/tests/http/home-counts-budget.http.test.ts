@@ -21,13 +21,11 @@ import type { UsualSetupShiftSplit } from '@/domain/entities/usual-setup';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
-import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzlePeopleListRepository } from '@/infrastructure/repositories/drizzle-people-list.repository';
 import { DrizzleRoleRepository } from '@/infrastructure/repositories/drizzle-role.repository';
 import { DrizzleSectorRepository } from '@/infrastructure/repositories/drizzle-sector.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
-import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -93,8 +91,6 @@ beforeAll(async () => {
         unitOfWork,
         sectorRepo: new DrizzleSectorRepository({ db }),
         roleRepo: new DrizzleRoleRepository({ db }),
-        usualSetupRepo: new DrizzleUsualSetupRepository({ db }),
-        templateRepo: new DrizzleEventTemplateRepository({ db }),
       }),
       ministryInvitationManager: {} as never,
       activeChurchResolver,
@@ -277,8 +273,8 @@ describe('Home counters statement budget', () => {
       large: large.map(({ statements }) => statements),
     }).toEqual(
       userId === ADMIN
-        ? { small: [8, 9, 9, 9], large: [8, 9, 9, 9] }
-        : { small: [11, 11, 11, 11], large: [11, 11, 11, 11] },
+        ? { small: [6, 7, 7, 7], large: [6, 7, 7, 7] }
+        : { small: [9, 9, 9, 9], large: [9, 9, 9, 9] },
     );
   });
 

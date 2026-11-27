@@ -86,8 +86,6 @@ beforeAll(async () => {
       unitOfWork: new DrizzleUnitOfWork({ db }),
       sectorRepo: {} as never,
       roleRepo: {} as never,
-      usualSetupRepo: {} as never,
-      templateRepo: {} as never,
     }),
     ...createSchedulingManagers().participationModules,
     activeChurchResolver: activeChurchResolver as never,

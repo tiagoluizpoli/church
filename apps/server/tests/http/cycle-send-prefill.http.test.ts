@@ -181,8 +181,6 @@ beforeAll(async () => {
     unitOfWork: new DrizzleUnitOfWork({ db }),
     sectorRepo: {} as never,
     roleRepo: {} as never,
-    usualSetupRepo: {} as never,
-    templateRepo: {} as never,
   });
   const admin = new ChurchAdminController({
     cycleManager: managers.cycleManager,

@@ -141,8 +141,6 @@ beforeAll(async () => {
     unitOfWork,
     sectorRepo: {} as never,
     roleRepo: {} as never,
-    usualSetupRepo: {} as never,
-    templateRepo: {} as never,
   });
   const activeChurchResolver = new DbActiveChurchResolver({
     actorRepository,

@@ -28,6 +28,14 @@ export interface MinistryRepository {
    */
   listPage(input: ListMinistryPageInput): Promise<MinistryPageRecord>;
 
+  /**
+   * Which of these Ministries have a Usual setup block needing review, by the
+   * rule of `usualSetupNeedsReview`, in no particular order.
+   */
+  listNeedingReviewIds(
+    input: ListMinistriesNeedingReviewInput,
+  ): Promise<MinistryId[]>;
+
   /** Throws `MinistryNameInUseError` when an active Ministry has the name, ignoring case. */
   create(input: CreateMinistryRecordInput): Promise<Ministry>;
 
@@ -69,6 +77,11 @@ export interface ListMinistriesByChurchInput {
   tx?: TransactionContext;
 }
 
+export interface ListMinistriesNeedingReviewInput {
+  churchId: ChurchId;
+  ministryIds: MinistryId[];
+}
+
 export interface ListMinistryPageInput {
   churchId: ChurchId;
   /** Narrows the scope to these Ministries (a leader's); the whole Church when absent. */
@@ -76,8 +89,6 @@ export interface ListMinistryPageInput {
   /** Case-insensitive literal substring of the name. */
   search?: string;
   status: MinistryListStatus;
-  /** Ministries whose Usual setup needs review, decided by the domain rule. */
-  reviewIds: MinistryId[];
   cursor?: string;
   limit: number;
 }

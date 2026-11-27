@@ -23,6 +23,7 @@ and task ordering.
 | Server types report (types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
+| Sign-in load times and filmstrip ([harness](#sign-in-load-harness)) | `bun run perf:sign-in` |
 | Affected validation without Docker (pre-push) | `bun run validate:no-docker` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
@@ -571,6 +572,48 @@ databases included, so a worktree that still exists is never touched; only
 `bun run db:prune -- --apply` drops them. `church`, `church_test`, and every
 other database outside that shape are never selected. Worktrunk asks to
 approve the hook once, as for `pre-start`.
+
+## Sign-in load harness
+
+`bun run perf:sign-in` (`tooling/perf/`) measures `/login` as a slow phone
+loads it from the deployment: use it before and after a change to what the
+sign-in page downloads or renders. It builds the web app with
+`VITE_SERVER_URL=/` (replacing `apps/web/dist`), serves it over HTTP/2 with the
+`deployment/Caddyfile`'s zstd/gzip and `/api` proxy, and loads it in system
+Chrome at 390x844 on Slow 4G (150 ms RTT, 1.6 Mbps) with 4x CPU slowdown. It
+prints first paint, LCP and form usable (the real submit button enabled, the
+boot shell gone) beside the
+[#1121](https://github.com/tiagoluizpoli/church/pull/1121) reference, and
+saves a filmstrip, `tmp/perf-sign-in/frame-<ms>ms.png`, 390 px wide, at most
+one frame per 200 ms. Tile the frames into one downscaled sheet before reading
+them.
+
+It needs Google Chrome, `openssl`, a bootstrapped worktree and a free
+`CHURCH_WEB_PORT` (stop `dev:web`). It uses the API already on
+`CHURCH_SERVER_PORT`, else starts `dev:server` and stops it afterwards. One run
+is one sample on this machine's CPU: compare runs from the same machine.
+
+Facts it encodes, for any other browser measurement:
+
+- **Open the app on the worktree's [dev hostname](#private-worktree-urls),
+  never `localhost`.** The API's CORS origin is that hostname on the web port:
+  `localhost` gets no CORS headers and its POSTs get 403. With
+  `CHURCH_DEV_DOMAIN` set, `bun run dns:start` makes the name resolve. The
+  harness's page is `https`, so it loads `/login` but cannot submit the form.
+- **Use system Chrome (`channel: 'chrome'`) for the WebGL2 scene.** Headless
+  Chrome draws it in software (SwiftShader), so the animation appears about 1 s
+  later than on a GPU, or never when it misses its 4 s ready timeout; the three
+  times come before it. `--headed` opens a window and draws on the GPU.
+  Playwright's default headless shell refuses WebGL2 under
+  `failIfMajorPerformanceCaveat`.
+- **A script outside the repository cannot import `@playwright/test` by name.**
+  Import it from
+  `<repo>/node_modules/.bun/@playwright+test@<version>/node_modules/@playwright/test`.
+- **The E2E config blocks Google Fonts** (`--host-resolver-rules` in
+  `apps/web/playwright.config.ts`). Under it no web font loads, so a wait for
+  one never ends. The harness loads them, as a visitor does.
+- **HTTP/2 matters.** Over HTTP/1.1 the same build measured LCP ~2.3 s instead
+  of ~1.4 s.
 
 ## Failure bundles
 

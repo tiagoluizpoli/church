@@ -1,3 +1,4 @@
+import type { Instant } from '@church/time';
 import type {
   AssignmentId,
   ChurchId,
@@ -85,6 +86,22 @@ export interface ListAssignmentsByVolunteerInput {
   tx?: TransactionContext;
 }
 
+export interface ListPublishedAssignmentsByVolunteerInput {
+  churchId: ChurchId;
+  volunteerId: VolunteerId;
+  /** Leaves out the work an Event or EventTimeBlock cancellation touched. */
+  liveOnly?: boolean;
+  /** Only Shifts that end after this Instant. */
+  endingAfter?: Instant;
+  tx?: TransactionContext;
+}
+
+export interface PublishedAssignment {
+  assignment: Assignment;
+  /** Its Event or EventTimeBlock is cancelled. */
+  cancelled: boolean;
+}
+
 export interface ListAssignmentsByVolunteersInput {
   churchId: ChurchId;
   volunteerIds: VolunteerId[];
@@ -139,6 +156,15 @@ export interface AssignmentRepository {
   listByVolunteer(
     input: ListAssignmentsByVolunteerInput,
   ): Promise<Assignment[]>;
+  /**
+   * The Volunteer's Assignments on published participations, hidden work left
+   * out: the published ones, plus what an Event or EventTimeBlock cancellation
+   * cancelled (a Volunteer Transfer's own cancellation, which has a `reason`,
+   * stays out). Earliest Shift first.
+   */
+  listPublishedByVolunteer(
+    input: ListPublishedAssignmentsByVolunteerInput,
+  ): Promise<PublishedAssignment[]>;
   listByVolunteers(
     input: ListAssignmentsByVolunteersInput,
   ): Promise<Assignment[]>;

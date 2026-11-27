@@ -137,7 +137,7 @@ describe('affected gate fail-fast, executed', () => {
       onlyE2e: false,
       plan: makePlan({
         testLayers: ['test:integration'],
-        workspaceNames: ['server'],
+        workspaceNames: ['@church/server'],
       }),
       skipE2e: true,
     });

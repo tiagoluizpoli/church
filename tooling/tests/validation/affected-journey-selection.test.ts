@@ -87,7 +87,7 @@ describe('Journey-Impact acknowledgement', () => {
     expect(explainPlan({ baseRef: BASE_REF, plan })).toContain(
       'Journey impact: acknowledged, journeys skipped\n  acknowledged: pure rename',
     );
-    expect(plan.workspaceNames).toEqual(['server', 'web']);
+    expect(plan.workspaceNames).toEqual(['@church/server', '@church/web']);
   });
 
   it('keeps explicitly requested specs', () => {

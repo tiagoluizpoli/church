@@ -16,7 +16,7 @@ const GUARD_LABELS = [
 const webSteps = () =>
   buildValidationSteps({
     onlyE2e: false,
-    plan: makePlan({ workspaceNames: ['web'] }),
+    plan: makePlan({ workspaceNames: ['@church/web'] }),
     skipE2e: false,
   });
 
@@ -41,7 +41,7 @@ describe('gate step order', () => {
   it('plans no bundle budget when web is not affected', () => {
     const { checkLane } = buildValidationSteps({
       onlyE2e: false,
-      plan: makePlan({ workspaceNames: ['server'] }),
+      plan: makePlan({ workspaceNames: ['@church/server'] }),
       skipE2e: false,
     });
 

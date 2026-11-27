@@ -70,7 +70,7 @@ describe('the no-docker tier', () => {
           '--filter',
           '@church/core',
           '--filter',
-          'server',
+          '@church/server',
           '--only',
           '--',
         ],
@@ -133,7 +133,7 @@ describe('no-docker unit tests picked by import graph', () => {
     });
 
     expect(unitStepsOf(steps)).toEqual([
-      relatedStep('server', [
+      relatedStep('@church/server', [
         'src/domain/services/resend-throttle.ts',
         'src/domain/services/shift-splitter.ts',
       ]),
@@ -147,7 +147,7 @@ describe('no-docker unit tests picked by import graph', () => {
 
     expect(unitStepsOf(steps)).toEqual([
       relatedStep('@church/core', ['src/entity.ts']),
-      relatedStep('server', ['../../packages/core/src/entity.ts']),
+      relatedStep('@church/server', ['../../packages/core/src/entity.ts']),
     ]);
   });
 
@@ -177,7 +177,7 @@ describe('no-docker unit tests picked by import graph', () => {
     });
 
     expect(unitStepsOf(steps)).toEqual([
-      relatedStep('web', ['tests/lib/auth-error-message.unit.test.ts']),
+      relatedStep('@church/web', ['tests/lib/auth-error-message.unit.test.ts']),
     ]);
   });
 
@@ -196,7 +196,7 @@ describe('no-docker unit tests picked by import graph', () => {
       ],
     });
 
-    expect(unitStepsOf(steps)).toEqual([wholeSuiteStep(['server'])]);
+    expect(unitStepsOf(steps)).toEqual([wholeSuiteStep(['@church/server'])]);
   });
 
   it.each([
@@ -212,9 +212,9 @@ describe('no-docker unit tests picked by import graph', () => {
         '@church/core',
         '@church/db',
         '@church/env',
+        '@church/server',
         '@church/time',
-        'server',
-        'web',
+        '@church/web',
       ]),
     ]);
   });
@@ -226,7 +226,7 @@ describe('no-docker unit tests picked by import graph', () => {
     });
 
     expect(unitStepsOf(steps)).toEqual([
-      wholeSuiteStep(['@church/core', 'server']),
+      wholeSuiteStep(['@church/core', '@church/server']),
     ]);
   });
 });

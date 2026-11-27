@@ -156,6 +156,7 @@ describe('lint scripts', () => {
   it('lint runs the read-only check, then each guard', () => {
     expect(scripts.lint?.split(' && ')).toEqual([
       'bun run lint:files -- .',
+      'bun run validate:workspace-scope',
       'bun run validate:test-placement',
       'bun run validate:i18n-parity',
       'bun run validate:named-parameters',

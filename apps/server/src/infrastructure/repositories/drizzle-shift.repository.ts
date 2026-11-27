@@ -35,7 +35,10 @@ import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
 import type { AnyDrizzleDb } from './drizzle-db.types';
 import type { DrizzleShiftRepositoryInput } from './drizzle-shift.repository.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { shownEventTimeBlock } from './live-event-time-block';
+import {
+  liveEventTimeBlock,
+  shownEventTimeBlock,
+} from './live-event-time-block';
 
 export class DrizzleShiftRepository implements ShiftRepository {
   constructor({ db }: DrizzleShiftRepositoryInput) {
@@ -326,6 +329,9 @@ export class DrizzleShiftRepository implements ShiftRepository {
       .from(shiftRequirement)
       .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
       .innerJoin(role, eq(role.id, shiftRequirement.roleId))
+      .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .innerJoin(event, eq(event.id, eventTimeBlock.eventId))
       .where(
         and(
           eq(shiftRequirement.participationId, input.participationId),
@@ -333,6 +339,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
             table: shiftRequirement,
             churchId: input.churchId,
           }),
+          input.liveOnly ? liveEventTimeBlock() : undefined,
         ),
       )
       .orderBy(

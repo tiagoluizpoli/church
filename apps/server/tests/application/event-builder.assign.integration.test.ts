@@ -45,6 +45,7 @@ import { buildRole, buildSector } from '@/seeds/builders/ministry';
 import {
   buildAssignment,
   buildAssignmentAudit,
+  buildEventTimeBlock,
   buildShift,
   buildShiftRequirement,
 } from '@/seeds/builders/scheduling';
@@ -1173,6 +1174,55 @@ describe('Schedule completion and publish (integration)', () => {
       );
 
     expect(result).toStrictEqual({
+      published: true,
+      belowFull: false,
+      participations: [
+        {
+          participationId: graph.participation.id,
+          state: 'published',
+          peopleNeeded: 1,
+          assignedCount: 1,
+        },
+      ],
+    });
+  });
+
+  it('publishes without confirmation when only a cancelled time block is unstaffed', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { graph, shiftBase, publishInput, completionInput } =
+      await seedCompletionSchedule({ seed });
+    await seedStaffedShift({
+      ...shiftBase,
+      peopleNeeded: 1,
+      volunteerIds: [seed.adminVolunteerId],
+    });
+    const cancelledBlock = await buildEventTimeBlock({
+      db: schedulingTestDb,
+      churchId: seed.churchAId,
+      eventId: graph.event.id,
+      start: fromDate({ date: EVENT_START }),
+      end: fromDate({ date: EVENT_END }),
+      label: 'Cancelled block',
+      status: 'cancelled',
+    });
+    await seedStaffedShift({
+      ...shiftBase,
+      eventTimeBlockId: cancelledBlock.id,
+      peopleNeeded: 3,
+      volunteerIds: [],
+    });
+    const { scheduleReadModel, schedulePublisher } =
+      createParticipationModules();
+
+    expect(
+      await scheduleReadModel.getCompletion(completionInput),
+    ).toStrictEqual({
+      participationId: graph.participation.id,
+      peopleNeeded: 1,
+      assignedCount: 1,
+      completionPercent: 100,
+    });
+    expect(await schedulePublisher.publishCycle(publishInput)).toStrictEqual({
       published: true,
       belowFull: false,
       participations: [

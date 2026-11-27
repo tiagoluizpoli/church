@@ -159,6 +159,7 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
       this.shiftRepository.listRequirementsByParticipation({
         churchId,
         participationId,
+        liveOnly: true,
         tx,
       }),
       this.assignmentRepository.listByParticipation({

@@ -227,6 +227,8 @@ export function createMinistryParticipationRepositoryFake() {
     hasCycleStaffing:
       vi.fn<MinistryParticipationRepository['hasCycleStaffing']>(),
     listByMinistry: vi.fn<MinistryParticipationRepository['listByMinistry']>(),
+    listByMinistries:
+      vi.fn<MinistryParticipationRepository['listByMinistries']>(),
     listByIds: vi.fn<MinistryParticipationRepository['listByIds']>(),
     updateState: vi.fn<MinistryParticipationRepository['updateState']>(),
     listInclusions: vi.fn<MinistryParticipationRepository['listInclusions']>(),

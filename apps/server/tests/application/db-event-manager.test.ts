@@ -233,6 +233,7 @@ function createRepos(): Repos {
     listByEvent: vi.fn(async () => [buildParticipation()]),
     hasCycleStaffing: vi.fn(),
     listByMinistry: vi.fn(),
+    listByMinistries: vi.fn(),
     listByIds: vi.fn(),
     updateState: vi.fn(),
     listInclusions: vi.fn(),

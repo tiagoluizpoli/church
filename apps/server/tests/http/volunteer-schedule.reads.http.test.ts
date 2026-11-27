@@ -393,7 +393,7 @@ describe('GET /volunteer/schedule reads (database-backed)', () => {
     });
   });
 
-  it('pins the statement count for little and long history', async () => {
+  it('costs the same statements for little and long history', async () => {
     const { ministryId, cycle, serve } = await seedWorld();
     const yearId = await cycle(YEAR);
     const mine = { ministryId, cycleId: yearId };
@@ -430,10 +430,10 @@ describe('GET /volunteer/schedule reads (database-backed)', () => {
     });
 
     expect(large[0]?.response.json().assignments).toHaveLength(3);
-    expect([small[0]?.statements, large[0]?.statements]).toEqual([16, 57]);
+    expect([small[0]?.statements, large[0]?.statements]).toEqual([16, 16]);
   });
 
-  it('pins the statement count for one and several member Ministries', async () => {
+  it('costs the same statements for one and several member Ministries', async () => {
     const { ministryId, joinMinistry, cycle, serve } = await seedWorld();
     const yearId = await cycle(YEAR);
     await serve({
@@ -465,6 +465,6 @@ describe('GET /volunteer/schedule reads (database-backed)', () => {
     });
 
     expect(large[0]?.response.json().schedules).toHaveLength(4);
-    expect([small[0]?.statements, large[0]?.statements]).toEqual([16, 34]);
+    expect([small[0]?.statements, large[0]?.statements]).toEqual([16, 16]);
   });
 });

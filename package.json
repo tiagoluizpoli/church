@@ -60,7 +60,7 @@
     "test:e2e:ui": "turbo test:e2e:ui --filter=web --",
     "test:seeds": "bun tooling/validation/seed-contracts.ts",
     "test": "bun run test:unit && bun run test:integration && bun run test:e2e",
-    "test:validation": "bun test tooling",
+    "test:validation": "bun tooling/ci/bun-test.ts tooling",
     "env:check": "bun tooling/env/check.ts",
     "env:local": "bun tooling/diagnostics/run-managed.ts env:local -- bun tooling/worktree/local-env.ts",
     "db:bootstrap": "bun tooling/diagnostics/run-managed.ts db:bootstrap -- bun tooling/worktree/bootstrap-databases.ts",

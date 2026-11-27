@@ -261,7 +261,7 @@ describe('buildValidationSteps', () => {
     });
 
     expect(unitLane).toContainEqual({
-      args: ['test', 'tooling'],
+      args: ['run', 'test:validation'],
       command: 'bun',
       label: 'test:tooling',
     });
@@ -276,7 +276,7 @@ describe('buildValidationSteps', () => {
     });
 
     expect(unitLane).not.toContainEqual({
-      args: ['test', 'tooling'],
+      args: ['run', 'test:validation'],
       command: 'bun',
       label: 'test:tooling',
     });

@@ -8,9 +8,6 @@ pre-commit:
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
       run: bun run lint:fix:files -- {staged_files}
       stage_fixed: true
-    - name: typecheck
-      glob: "*.{ts,tsx}"
-      run: bun run validate:staged-types -- {staged_files}
     - name: css
       glob: "*.css"
       run: bun run lint:files -- {staged_files}

@@ -22,6 +22,7 @@ interface LefthookJob {
 
 interface LefthookConfig {
   'pre-commit': { jobs: LefthookJob[] };
+  'pre-push': { jobs: LefthookJob[] };
   'commit-msg': { commands: { commitlint: LefthookJob } };
 }
 
@@ -109,12 +110,12 @@ describe('pre-commit checks', () => {
     lefthook['pre-commit'].jobs.map((job) => [job.name, job]),
   );
 
-  it('type-checks the staged TypeScript', () => {
-    expect(jobs.get('typecheck')).toEqual({
-      name: 'typecheck',
-      glob: '*.{ts,tsx}',
-      run: 'bun run validate:staged-types -- {staged_files}',
-    });
+  // Type errors are caught at pre-push (validate:no-docker runs typecheck), keeping commits fast.
+  it('leaves type checking to pre-push and keeps the staged check on demand', () => {
+    expect(jobs.has('typecheck')).toBe(false);
+    expect(lefthook['pre-push'].jobs.map((job) => job.run)).toEqual([
+      'bun run validate:no-docker',
+    ]);
     expect(scripts['validate:staged-types']).toBe(
       'bun tooling/validation/staged-typecheck.ts',
     );

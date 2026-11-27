@@ -27,9 +27,9 @@ import type { TransactionContext } from '@/domain/contracts/infrastructure/trans
 /**
  * Who asks. `actor` is the caller Active Church resolution already read for
  * this request: it is reused instead of read again whenever it names the same
- * User in the same Church, even beside a `tx`. A check that must re-read the
- * caller's authority under its own locks omits it. Nothing keeps it beyond
- * the request.
+ * User in the same Church and the check passes no `tx`. A check inside a
+ * transaction always re-reads, so it sees the facts under its own locks.
+ * Nothing keeps the actor beyond the request.
  */
 export interface AuthorityCaller {
   churchId: ChurchId;

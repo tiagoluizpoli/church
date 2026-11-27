@@ -144,6 +144,21 @@ describe('DbAuthorityManager', () => {
     });
   });
 
+  it("reads the actor again for a check inside a transaction, ignoring the request's caller", async () => {
+    const manager = createManager();
+    const tx = {} as never;
+    actorRepository.resolveActor.mockResolvedValueOnce(memberActor());
+
+    await expect(
+      manager.canManageChurch({ churchId, userId, actor: adminActor(), tx }),
+    ).resolves.toBe(false);
+    expect(actorRepository.resolveActor).toHaveBeenCalledExactlyOnceWith({
+      userId,
+      activeChurchId: churchId,
+      tx,
+    });
+  });
+
   it('decideManageAnyMinistry admits ChurchAdmins and actual leaders, but not plain members', async () => {
     const manager = createManager();
 

@@ -347,14 +347,17 @@ export class DbAuthorityManager implements IAuthorityManager {
       .map(({ churchId }) => churchId);
   }
 
-  /** The request's own caller when it is this User in this Church; otherwise a fresh read. */
+  /**
+   * The request's own caller when it is this User in this Church; otherwise, and
+   * always inside a `tx` (a check under the caller's locks), a fresh read.
+   */
   private async resolveActor({
     churchId,
     userId,
     actor,
     tx,
   }: ResolveActorInput): Promise<AuthorityActor> {
-    if (actor?.userId === userId && actor.activeChurchId === churchId) {
+    if (!tx && actor?.userId === userId && actor.activeChurchId === churchId) {
       return actor;
     }
     return this.actorRepository.resolveActor({

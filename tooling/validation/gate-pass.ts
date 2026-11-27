@@ -46,6 +46,14 @@ export function readCleanTree({ cwd }: CwdInput): string | null {
   return gitOutput({ args: ['rev-parse', 'HEAD^{tree}'], cwd });
 }
 
+/** The tree a run judges, for its result line: HEAD's, marked when work is uncommitted. */
+export function readJudgedTree({ cwd }: CwdInput): string {
+  const clean = readCleanTree({ cwd });
+  if (clean) return clean;
+  const head = gitOutput({ args: ['rev-parse', 'HEAD^{tree}'], cwd });
+  return head ? `${head}+uncommitted` : 'unknown';
+}
+
 export function readMergeBase({
   baseRef,
   cwd,

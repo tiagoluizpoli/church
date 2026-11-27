@@ -246,6 +246,9 @@ export interface EventChangedEmail {
   churchTimezone: string;
   ministryNames: string[];
   change: NotificationDataOf<'event_changed'>['change'];
+  /** Queued while hidden: the title is never written. */
+  hidden?: boolean;
+  eventTimeBlockId?: string;
   actionUrl: string;
 }
 
@@ -263,7 +266,10 @@ export interface EventCancelledEmail {
   /** The cancelled scope's start; its day names the message. */
   start: Instant;
   churchTimezone: string;
-  shifts: SchedulePublishedEmailShift[];
+  shifts: NotificationDataOf<'event_cancelled'>['shifts'];
+  /** Queued while hidden: the title is never written. */
+  hidden?: boolean;
+  eventTimeBlockId?: string;
   actionUrl: string;
 }
 

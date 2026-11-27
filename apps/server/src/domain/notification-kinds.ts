@@ -205,6 +205,17 @@ export const eventChangedChangeSchema = z.discriminatedUnion('kind', [
 ]);
 
 /**
+ * What lets N9 and N10 drop a hidden Event's title. Stored rows keep it; the
+ * bell sets `hidden` at read time and an email queued while hidden carries it.
+ */
+const hideableNoticeShape = {
+  /** Present when the notice is about this one block, not the whole Event. */
+  eventTimeBlockId: z.uuid().optional(),
+  /** True means: name the day and start time only, never the title. */
+  hidden: z.boolean().optional(),
+};
+
+/**
  * N10: an admin changed a Sent Cycle's Event. One message per recipient; the
  * Ministries are those the recipient leads (or covers as fallback) that the
  * change affects, merged into one line each. Frozen when enqueued.
@@ -219,6 +230,7 @@ export const eventChangedNotificationDataSchema = z.object({
   churchTimezone: z.string(),
   ministries: z.array(z.object({ id: z.uuid(), name: z.string() })).min(1),
   change: eventChangedChangeSchema,
+  ...hideableNoticeShape,
 });
 
 /**
@@ -233,7 +245,15 @@ export const eventCancelledNotificationDataSchema = z.object({
   /** The cancelled scope's start: its day names the message. */
   start: instantSchema,
   churchTimezone: z.string(),
-  shifts: z.array(schedulePublishedShiftSchema).min(1),
+  shifts: z
+    .array(
+      schedulePublishedShiftSchema.extend({
+        /** The Volunteer's own Ministry; absent on rows queued before it. */
+        ministryName: z.string().optional(),
+      }),
+    )
+    .min(1),
+  ...hideableNoticeShape,
 });
 
 export const notificationKindDataSchemas = {

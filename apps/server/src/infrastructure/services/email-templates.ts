@@ -3,8 +3,12 @@ import { m } from '@church/i18n/messages';
 import {
   formatCalendarDay,
   formatDayLabel,
+  formatDayMonthShort,
   formatInstant,
+  formatTimeOfDay,
+  formatWeekday,
   today,
+  toTimeOfDay,
 } from '@church/time';
 import type {
   AvailabilityEmail,
@@ -516,7 +520,7 @@ function eventChangedContent({
 }: EventChangedContentInput): EmailContent {
   const options = { locale };
   const { change, cycleName, eventTitle, ministryNames, churchName } = payload;
-  const { adminName, churchTimezone } = payload;
+  const { adminName, churchTimezone, hidden, eventTimeBlockId } = payload;
   const firstName = payload.recipientFirstName.trim();
   const when = formatEventWhen({
     start: change.start,
@@ -531,6 +535,8 @@ function eventChangedContent({
   if (change.kind === 'cancel') {
     title = eventCancelledTitle({
       eventTitle,
+      hidden,
+      eventTimeBlockId,
       start: change.start,
       churchTimezone,
       locale,
@@ -634,19 +640,45 @@ function eventMoveImpactLine({
 
 interface EventCancelledTitleInput {
   eventTitle: string;
+  hidden?: boolean;
+  eventTimeBlockId?: string;
   start: EventCancelledEmail['start'];
   churchTimezone: string;
   locale: EmailLocale;
 }
 
-/** N9 and N10 cancel share it: `Cancelado: {event} · {day}`, the scope's Church-Timezone day. */
+/**
+ * N9 and N10 cancel share it: `Cancelado: {event} · {day}`, the scope's
+ * Church-Timezone day. Hidden names the weekday and start time instead.
+ */
 function eventCancelledTitle({
   eventTitle,
+  hidden,
+  eventTimeBlockId,
   start,
   churchTimezone: timeZone,
   locale,
 }: EventCancelledTitleInput): string {
   const startDay = today({ instant: start, timeZone });
+  if (hidden) {
+    const weekdayName = formatWeekday({ day: startDay, locale });
+    // Mid-sentence: pt-BR writes weekdays in lower case.
+    const weekday =
+      locale === 'pt-BR' ? weekdayName.toLowerCase() : weekdayName;
+    const startTime = toTimeOfDay({ instant: start, timeZone });
+    const time = formatTimeOfDay({ time: startTime });
+    if (eventTimeBlockId) {
+      return m.notification_hidden_time_block_cancelled_title(
+        { weekday, time },
+        { locale },
+      );
+    }
+    const date = formatDayMonthShort({ day: startDay, locale });
+    return m.notification_hidden_event_cancelled_title(
+      { weekday, date, time },
+      { locale },
+    );
+  }
   const day = formatDayLabel({ day: startDay, locale });
   return m.notification_event_cancelled_title({ eventTitle, day }, { locale });
 }
@@ -672,9 +704,17 @@ function eventCancelledContent({
       : m.email_greeting_transactional({}, options),
     heading: title,
     facts: [m.notification_event_cancelled_body({}, options)],
-    list: payload.shifts.map((shift) =>
-      formatShiftLine({ ...shift, churchTimezone, locale }),
-    ),
+    list: payload.shifts.map((shift) => {
+      const line = { ...shift, churchTimezone, locale };
+      // Hidden: the Volunteer's own Ministry and Role, nothing of the Event.
+      return payload.hidden
+        ? formatShiftLine({
+            ...line,
+            eventTitle: shift.ministryName,
+            sectorName: undefined,
+          })
+        : formatShiftLine(line);
+    }),
     action: {
       label: m.notification_event_cancelled_action({}, options),
       url: payload.actionUrl,

@@ -1,5 +1,5 @@
 import { type AppConfig, appConfig } from '@church/app-config';
-import { event } from '@church/db';
+import { event, outboxMessage } from '@church/db';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
 import {
   afterAll,
@@ -168,12 +168,10 @@ async function cancel({ sunday, scope, hidden }: CancelInput) {
       scope === 'event'
         ? { kind: 'event' }
         : {
-            kind: 'event_time_block',
+            kind: 'eventTimeBlock',
             eventTimeBlockId: EventTimeBlockId.from(sunday.serviceId),
           },
     actingUserId: UserId.from(sunday.seed.adminUserId),
-    confirmation: 'cancel',
-    locale: 'en',
     hidden,
   });
 }
@@ -288,5 +286,139 @@ describe('notices about a cancelled Event that is shown', () => {
 
     expect(emails.length).toBeGreaterThan(0);
     for (const { subject } of emails) expect(subject).toBe(SUBJECTS[locale]);
+  });
+});
+
+interface SetHiddenInput extends CancelInput {
+  hidden: boolean;
+}
+
+async function setHidden({ sunday, scope, hidden }: SetHiddenInput) {
+  await planningEventManager.setHidden({
+    churchId: ChurchId.from(sunday.churchId),
+    cycleId: CycleId.from(sunday.cycleId),
+    eventId: EventId.from(sunday.eventId),
+    scope:
+      scope === 'event'
+        ? { kind: 'event' }
+        : {
+            kind: 'eventTimeBlock',
+            eventTimeBlockId: EventTimeBlockId.from(sunday.serviceId),
+          },
+    hidden,
+  });
+}
+
+/** Bia's N9 line and the admin's N10, as the bell lists them. */
+async function bells(sunday: Sunday) {
+  const [volunteer] = await bell({ sunday, userId: sunday.bia.userId });
+  const [leader] = await bell({ sunday, userId: sunday.seed.adminUserId });
+  return { volunteer: volunteer.data, leader: leader.data };
+}
+
+describe('notices about a hidden cancelled Event', () => {
+  it.each([
+    'event',
+    'block',
+  ] as const)('drops the title from the bell while the %s is hidden, and brings it back', async (scope) => {
+    const sunday = await seedSunday();
+    await cancel({ sunday, scope });
+    await drain();
+    const queued = await db.select().from(outboxMessage);
+    const shown = await bells(sunday);
+    expect(JSON.stringify(shown)).toContain(TITLE);
+
+    await setHidden({ sunday, scope, hidden: true });
+    const hidden = await bells(sunday);
+
+    const blockScope =
+      scope === 'block' ? { eventTimeBlockId: sunday.serviceId } : {};
+    expect(hidden.volunteer).toEqual({
+      ...shown.volunteer,
+      ...blockScope,
+      eventTitle: '',
+      hidden: true,
+      shifts: [
+        {
+          eventTitle: '',
+          ministryName: 'Scheduling Ministry A',
+          roleName: 'Usher',
+          sectorName: 'Lobby',
+          startsAt: at('10:00'),
+          endsAt: at('12:00'),
+        },
+      ],
+    });
+    expect(hidden.leader).toEqual({
+      ...shown.leader,
+      eventTitle: '',
+      hidden: true,
+    });
+    expect(JSON.stringify(hidden)).not.toContain(TITLE);
+
+    await setHidden({ sunday, scope, hidden: false });
+
+    expect(await bells(sunday)).toEqual(shown);
+    // Hiding and showing send nothing new.
+    expect(await db.select().from(outboxMessage)).toHaveLength(queued.length);
+  });
+
+  it('drops the title from older add and move notices of the Event', async () => {
+    const sunday = await seedSunday();
+    const { churchId, eventId, cycleId, seed } = sunday;
+    const times = { start: at('09:00'), end: at('12:00') };
+    await unitOfWork.run((tx) =>
+      harness.notifications.enqueue({
+        tx,
+        kind: 'event_changed',
+        to: [
+          {
+            userId: UserId.from(seed.adminUserId),
+            churchId: ChurchId.from(churchId),
+          },
+        ],
+        data: {
+          cycleId,
+          cycleName: 'October',
+          eventId,
+          eventTitle: TITLE,
+          adminName: 'Scheduling Admin',
+          churchName: 'Scheduling Church A',
+          churchTimezone: 'America/Sao_Paulo',
+          ministries: [{ id: seed.ministryAId, name: 'Scheduling Ministry A' }],
+          change: { kind: 'add', ...times },
+        },
+      }),
+    );
+    await drain();
+    await cancel({ sunday, scope: 'event', hidden: true });
+
+    expect(await bell({ sunday, userId: seed.adminUserId })).toMatchObject([
+      { data: { eventTitle: '', hidden: true, change: { kind: 'add' } } },
+    ]);
+  });
+
+  it.each([
+    ['event', 'en', 'The Sunday event on 18 Oct at 09:00 was cancelled'],
+    ['block', 'en', 'The Sunday 10:00 time block was cancelled'],
+    ['event', 'pt-BR', 'O evento de domingo, 18 out, às 09:00, foi cancelado'],
+    ['block', 'pt-BR', 'O horário de domingo às 10:00 foi cancelado'],
+  ] as const)('queues titleless N9 and N10 emails for a %s cancelled hidden (%s)', async (scope, locale, title) => {
+    const sunday = await seedSunday();
+    await cancel({ sunday, scope, hidden: true });
+
+    const emails = await drain(locale);
+
+    // N9 to Bia and N10 to the admin; Ana holds no Church Membership here.
+    expect(emails).toHaveLength(2);
+    for (const { subject, text, html } of emails) {
+      expect(subject).toBe(title);
+      expect(`${text}${html}`).not.toContain(TITLE);
+    }
+    const day = locale === 'en' ? 'Sun 18 Oct' : 'dom 18 out';
+    const line = `${day} · 10:00–12:00 · Scheduling Ministry A · Usher`;
+    const [volunteerEmail] = emails.filter(({ text }) => text?.includes(line));
+    expect(volunteerEmail).toBeDefined();
+    expect(volunteerEmail?.text).not.toContain('Lobby');
   });
 });

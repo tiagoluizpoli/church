@@ -257,6 +257,8 @@ export function buildChurchNotifier({
         churchTimezone: data.churchTimezone,
         ministryNames: data.ministries.map((ministry) => ministry.name),
         change: data.change,
+        hidden: data.hidden,
+        eventTimeBlockId: data.eventTimeBlockId,
         actionUrl: data.actionUrl,
       }),
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case
@@ -271,6 +273,8 @@ export function buildChurchNotifier({
         start: data.start,
         churchTimezone: data.churchTimezone,
         shifts: data.shifts,
+        hidden: data.hidden,
+        eventTimeBlockId: data.eventTimeBlockId,
         actionUrl: data.actionUrl,
       }),
       // biome-ignore lint/style/useNamingConvention: the persisted kind value is snake_case

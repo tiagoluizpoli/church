@@ -412,6 +412,7 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
       shifts: [
         {
           eventTitle: 'Sunday',
+          ministryName: 'Scheduling Ministry A',
           roleName: 'Usher',
           sectorName: 'Lobby',
           startsAt: at('09:00'),

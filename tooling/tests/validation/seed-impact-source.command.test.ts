@@ -55,7 +55,11 @@ const dryRun = ({ args = [] }: { args?: string[] } = {}) => {
   const stderr = result.stderr.toString();
   if (result.exitCode !== 0) throw new Error(stderr);
   const plan = JSON.parse(result.stdout.toString());
-  return { decision: plan.seedImpact.decision as string, stderr };
+  return {
+    decision: plan.seedImpact.decision as string,
+    journeyReasons: plan.journeyImpactAcknowledgements as string[],
+    stderr,
+  };
 };
 
 beforeEach(() => {
@@ -204,5 +208,46 @@ describe('seed impact acknowledgement source', () => {
     stubGh({ script: `echo '{"baseRefName":"spec/gone","state":"OPEN"}'` });
 
     expect(() => dryRun()).toThrow('git fetch origin spec/gone');
+  });
+});
+
+describe('journey impact acknowledgement source', () => {
+  /** feature/upper, stacked on feature/lower, with an open PR onto it. */
+  const stackOnLower = () => {
+    const lowerSha = commit({
+      file: 'drizzle-a.ts',
+      message: 'refactor: a\n\nJourney-Impact: none - lower rename',
+    });
+    git('checkout', '-q', '-b', 'feature/upper');
+    stubGh({
+      script: `echo '{"baseRefName":"feature/lower","state":"OPEN"}'`,
+    });
+    return { lowerSha };
+  };
+
+  it('names the branch’s own commit behind the acknowledgement', () => {
+    stackOnLower();
+    const sha = commit({
+      file: 'drizzle-b.ts',
+      message: 'refactor: b\n\nJourney-Impact: none - upper rename',
+    });
+
+    const { journeyReasons, stderr } = dryRun();
+
+    expect(journeyReasons).toEqual(['upper rename']);
+    expect(stderr).toContain(`  acknowledged: upper rename (commit ${sha})`);
+    expect(stderr).not.toContain('lower rename (commit');
+  });
+
+  it('refuses a trailer borrowed from the branch below the open PR', () => {
+    const { lowerSha } = stackOnLower();
+    commit({ file: 'drizzle-b.ts', message: 'feat: b' });
+
+    const { journeyReasons, stderr } = dryRun();
+
+    expect(journeyReasons).toEqual([]);
+    expect(stderr).toContain(
+      `Journey impact: trailer refused, journeys run\n  refused: lower rename (commit ${lowerSha}) is not one of this branch's own commits (above feature/lower).`,
+    );
   });
 });

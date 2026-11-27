@@ -8,6 +8,16 @@ pre-commit:
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
       run: bun run lint:fix:files -- {staged_files}
       stage_fixed: true
+    - name: css
+      glob: "*.css"
+      run: bun run lint:files -- {staged_files}
+      fail_text: "Unformatted or invalid CSS: run `bun run lint:fix`, then stage the result."
+    - name: spec-registration
+      glob:
+        - "apps/web/tests/**.spec.ts"
+        - "apps/web/tests/fixtures/e2e-lanes.ts"
+        - "tooling/validation/journey-map.ts"
+      run: bun run validate:e2e-lanes && bun run validate:journey-map
 
 post-merge:
   jobs:

@@ -36,12 +36,16 @@ runs:
       shell: bash
       run: bun install --frozen-lockfile
 
-    - name: Keep failure bundles in runner-temporary storage
+    - name: Keep failure bundles and test output in runner-temporary storage
       id: failure-bundles
       # ADR-0005: CI has no shared Git directory to keep bundles in; the
-      # calling job uploads this directory only when it fails.
+      # calling job uploads this directory only when it fails. Test steps
+      # copy their output to the log (tooling/ci/record-test-output.sh), where
+      # a failed job's report finds its failed tests (#1162).
       shell: bash
-      run: echo "CHURCH_FAILURE_BUNDLES_DIR=$RUNNER_TEMP/church-failure-bundles" >> "$GITHUB_ENV"
+      run: |
+        echo "CHURCH_FAILURE_BUNDLES_DIR=$RUNNER_TEMP/church-failure-bundles" >> "$GITHUB_ENV"
+        echo "CHURCH_TEST_OUTPUT_LOG=$RUNNER_TEMP/church-test-output.log" >> "$GITHUB_ENV"
 
     - name: Run database migrations
       id: migrate

@@ -62,6 +62,11 @@ interface PumpStreamInput {
   write: (input: WriteTextInput) => void;
 }
 
+interface LabelledInput {
+  label: string;
+  line: string;
+}
+
 interface FormatStepTableInput {
   results: StepResult[];
 }
@@ -87,6 +92,16 @@ export const PROCESS_OUTPUT: OutputSink = {
  * the tail of the output, then stop reading.
  */
 const DRAIN_GRACE_MS = 2000;
+
+/**
+ * A GitHub workflow command (`::error file=…::…`, an annotation) counts only
+ * at the start of its line, so it is never prefixed (#1162).
+ */
+const WORKFLOW_COMMAND = /^::[a-z][\w-]*(?: |::)/;
+
+function labelled({ label, line }: LabelledInput): string {
+  return WORKFLOW_COMMAND.test(line) ? `${line}\n` : `[${label}] ${line}\n`;
+}
 
 const liveChildren = new Set<Subprocess>();
 let interruptedBy: NodeJS.Signals | undefined;
@@ -125,7 +140,7 @@ function installSignalForwarding(): void {
 
 /**
  * Prefix every line with its step label so interleaved lane output stays
- * attributable. Partial lines are buffered until their newline arrives, and
+ * attributable, except a workflow command. Partial lines are buffered until their newline arrives, and
  * flushed when the stream ends or is stopped, so a prefix never lands
  * mid-line.
  */
@@ -149,11 +164,11 @@ async function pumpStream({
     pending += decoder.decode(value, { stream: true });
     const lines = pending.split('\n');
     pending = lines.pop() ?? '';
-    for (const line of lines) write({ text: `[${label}] ${line}\n` });
+    for (const line of lines) write({ text: labelled({ label, line }) });
   }
 
   pending += decoder.decode();
-  if (pending.length > 0) write({ text: `[${label}] ${pending}\n` });
+  if (pending.length > 0) write({ text: labelled({ label, line: pending }) });
 }
 
 async function runStep({

@@ -23,3 +23,5 @@ Load for frontend or UI work.
   the top of its file. A split must make sense to a human reader.
   [Backend: Contracts and composition](backend.md#contracts-and-composition)
   holds the server's stricter rule.
+- A script that runs before the app (`apps/web/index.html`) reads each stored
+  value as the app does, and the tests of both cover an invalid stored value.

@@ -6,6 +6,7 @@ import {
   JOURNEY_MAP,
   type JourneyMapping,
 } from './journey-map';
+import { isProductionSourcePath } from './production-path';
 
 const REPO_ROOT = resolve(import.meta.dir, '../..');
 const WEB_ROOT = join(REPO_ROOT, 'apps/web');
@@ -14,7 +15,8 @@ const NO_SUCH_SPEC = 'no such Playwright spec under apps/web/tests/';
 
 // Every Playwright spec must be referenced by the union of JOURNEY_MAP and
 // CRITICAL_SMOKE_SPEC_PATHS (#557), and every reference must name a spec that
-// exists. Whether a mapping's sourcePathPrefix is accurate stays a review call.
+// exists. Whether a live sourcePathPrefix maps the right specs stays a review
+// call.
 export function getJourneyMapFailures({
   specPaths,
   journeyMap,
@@ -97,6 +99,54 @@ export function getDeliberateFallbackFailures({
   });
 }
 
+// A mapping whose prefix matches no production path can never select a
+// journey: its file moved, was deleted, or is not one the plan maps.
+export function getDeadMappingFailures({
+  journeyMap,
+  paths,
+}: {
+  journeyMap: JourneyMapping[];
+  paths: string[];
+}): string[] {
+  const productionPaths = paths.filter((changedPath) =>
+    isProductionSourcePath({ changedPath }),
+  );
+  return [
+    ...new Set(journeyMap.map(({ sourcePathPrefix }) => sourcePathPrefix)),
+  ]
+    .filter(
+      (prefix) => !productionPaths.some((path) => path.startsWith(prefix)),
+    )
+    .sort((a, b) => a.localeCompare(b))
+    .map(
+      (prefix) =>
+        `${prefix}: dead JOURNEY_MAP sourcePathPrefix: no production path matches it`,
+    );
+}
+
+// The files a mapping may name, repo-root-relative: each app's source and
+// seeds, plus the web page.
+export function discoverProductionPaths(): string[] {
+  const sourceRoots = ['apps/web/src', 'apps/server/src', 'apps/server/seeds'];
+  const sources = sourceRoots
+    .filter((root) => existsSync(join(REPO_ROOT, root)))
+    .flatMap((root) =>
+      readdirSync(join(REPO_ROOT, root), {
+        recursive: true,
+        withFileTypes: true,
+      })
+        .filter((entry) => entry.isFile())
+        .map((entry) =>
+          relative(REPO_ROOT, join(entry.parentPath, entry.name))
+            .split(sep)
+            .join('/'),
+        ),
+    );
+  return [...sources, 'apps/web/index.html'].filter((changedPath) =>
+    isProductionSourcePath({ changedPath }),
+  );
+}
+
 // Paths come back relative to the web root with a tests/ prefix, matching the
 // metadata convention. A missing or unreadable tests root throws.
 export function discoverPlaywrightSpecPaths({
@@ -142,6 +192,10 @@ if (import.meta.main) {
       specPaths,
       journeyMap: JOURNEY_MAP,
       criticalSmokeSpecPaths: CRITICAL_SMOKE_SPEC_PATHS,
+    }),
+    ...getDeadMappingFailures({
+      journeyMap: JOURNEY_MAP,
+      paths: discoverProductionPaths(),
     }),
     ...getDeliberateFallbackFailures({
       fallbackPaths: DELIBERATE_SMOKE_FALLBACK_PATHS.map(({ path }) => path),

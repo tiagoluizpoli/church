@@ -1,7 +1,8 @@
-import type { Auth, CreateAuthInput } from '@church/auth';
+import type { Auth } from '@church/auth';
 import { UserId } from '../../domain/branded-ids';
 import type {
   AcceptChurchInvitationInput,
+  AuthForInput,
   CreateRedemptionAccountInput,
   CreateRedemptionAccountOutput,
   IsEmailRegisteredInput,
@@ -10,25 +11,11 @@ import type {
   SetActiveRedemptionChurchInput,
   VerifyPasswordInput,
 } from '../../domain/contracts/infrastructure/redemption-identity-gateway';
-import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import { DrizzleTransactionContext } from '../repositories/drizzle-transaction-context';
-
-export type TransactionAuthFactoryInput = Pick<CreateAuthInput, 'database'>;
-
-export type TransactionAuthFactory = (
-  input: TransactionAuthFactoryInput,
-) => Auth;
-
-interface BetterAuthRedemptionIdentityGatewayInput {
-  /** The request-serving instance. */
-  auth: Auth;
-  /** Builds the same configuration over a transaction. */
-  createTransactionAuth: TransactionAuthFactory;
-}
-
-interface AuthForInput {
-  tx?: TransactionContext;
-}
+import type {
+  BetterAuthRedemptionIdentityGatewayInput,
+  TransactionAuthFactory,
+} from './better-auth-redemption-identity-gateway.types';
 
 export class BetterAuthRedemptionIdentityGateway
   implements RedemptionIdentityGateway

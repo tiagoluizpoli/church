@@ -1,11 +1,8 @@
-import type { event } from '@church/db';
 import { fromDate } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type { ChurchId, EventId } from '../../domain/branded-ids';
 import type { EventProps } from '../../domain/entities/event';
 import { Event } from '../../domain/entities/event';
-
-type EventRow = InferSelectModel<typeof event>;
+import type { EventRow } from './event.mapper.types';
 
 export function mapEvent(row: EventRow): Event {
   const props: EventProps = {

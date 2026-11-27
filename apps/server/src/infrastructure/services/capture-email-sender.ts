@@ -1,4 +1,5 @@
 import type {
+  CaptureEmailSenderOptions,
   DeliverEmailInput,
   EmailPayload,
   EmailSender,
@@ -8,12 +9,13 @@ import type {
   SendEmailInput,
   SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
+import type { PlatformBranding } from '../../domain/contracts/infrastructure/email-templates';
 import type {
   LastInvitationLinkForInput,
   LastVerificationCodeForInput,
   VerificationCodeInspector,
 } from '../../domain/contracts/infrastructure/verification-code-inspector';
-import { type PlatformBranding, prepareEmail } from './email-templates';
+import { prepareEmail } from './email-templates';
 
 const CAPTURE_FROM = 'Church <capture@church.test>';
 
@@ -23,11 +25,6 @@ const CAPTURE_FROM = 'Church <capture@church.test>';
  * Like the provider, a repeated idempotency key is deduplicated: it records
  * nothing new, so a replay is observable as one captured email.
  */
-export interface CaptureEmailSenderOptions {
-  appName: string;
-  platform?: PlatformBranding;
-}
-
 export class CaptureEmailSender
   implements EmailSender, VerificationCodeInspector
 {

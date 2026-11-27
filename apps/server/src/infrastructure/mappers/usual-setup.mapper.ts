@@ -1,6 +1,4 @@
-import type { usualSetup } from '@church/db';
 import { parseTimeOfDay } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
   MinistryId,
@@ -15,8 +13,7 @@ import type {
   UsualSetupShiftSplit,
 } from '../../domain/entities/usual-setup';
 import { UsualSetup } from '../../domain/entities/usual-setup';
-
-type UsualSetupRow = InferSelectModel<typeof usualSetup>;
+import type { UsualSetupRow } from './usual-setup.mapper.types';
 
 export function mapUsualSetup(row: UsualSetupRow): UsualSetup {
   const props: UsualSetupProps = {

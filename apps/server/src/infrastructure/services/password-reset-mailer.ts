@@ -1,25 +1,13 @@
 import type { AppConfig } from '@church/app-config';
 import type {
   EmailDuration,
-  EmailSender,
+  PasswordResetMailInput,
 } from '../../domain/contracts/infrastructure/email-sender';
 import { recipientLocale } from '../../domain/services/notifications/recipient-locale';
+import type { PasswordResetMailerInput } from './password-reset-mailer.types';
 
 const MS_PER_MINUTE = 60_000;
 const MINUTES_PER_HOUR = 60;
-
-export interface PasswordResetMailerInput {
-  emailSender: Pick<EmailSender, 'send'>;
-  config: Pick<AppConfig, 'passwordReset' | 'defaultLocale'>;
-  /** The web origin the emailed `/reset-password` link points at. */
-  webOrigin: string;
-  onSendError: (error: unknown) => void;
-}
-
-export interface PasswordResetMailInput {
-  user: { email: string };
-  token: string;
-}
 
 /** Whole hours when the policy is a whole number of them, else whole minutes
  * (rounded down, so the email never promises longer than the policy). */

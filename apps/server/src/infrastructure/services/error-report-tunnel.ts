@@ -1,26 +1,12 @@
 // biome-ignore-all lint/style/useNamingConvention: Sentry envelope fields are snake_case on the wire
+import type {
+  EnvelopeRefusal,
+  EnvelopeUrlInput,
+  ErrorEnvelopeOutcome,
+  ForwardEnvelopeInput,
+  ParseErrorEnvelopeInput,
+} from '../../domain/contracts/infrastructure/error-report-tunnel';
 import { scrubEvent } from '../privacy/privacy';
-
-export type EnvelopeRefusal = 'malformed' | 'foreignDsn' | 'notError';
-
-/** The scrubbed envelope to forward. */
-export interface AcceptedEnvelope {
-  accepted: true;
-  envelope: string;
-}
-
-export interface RefusedEnvelope {
-  accepted: false;
-  refusal: EnvelopeRefusal;
-}
-
-export type ErrorEnvelopeOutcome = AcceptedEnvelope | RefusedEnvelope;
-
-export interface ParseErrorEnvelopeInput {
-  body: unknown;
-  /** Our own DSN; an envelope addressed to any other is refused. */
-  dsn: string;
-}
 
 function parseJson(text: string | undefined): unknown {
   try {
@@ -79,10 +65,6 @@ export function parseErrorEnvelope({
   return { accepted: true, envelope };
 }
 
-export interface EnvelopeUrlInput {
-  dsn: string;
-}
-
 /** The tracker's envelope endpoint for a DSN `scheme://key@host[/path]/project`. */
 export function envelopeUrl({ dsn }: EnvelopeUrlInput): string {
   const { protocol, host, pathname, username } = new URL(dsn);
@@ -90,13 +72,6 @@ export function envelopeUrl({ dsn }: EnvelopeUrlInput): string {
   const projectId = segments.pop();
   const prefix = segments.map((segment) => `/${segment}`).join('');
   return `${protocol}//${host}${prefix}/api/${projectId}/envelope/?sentry_key=${username}`;
-}
-
-export interface ForwardEnvelopeInput {
-  url: string;
-  envelope: string;
-  timeoutMs: number;
-  onFailure: (error: unknown) => void;
 }
 
 /** Fire-and-forget: never awaited by the caller, aborted after `timeoutMs`. */

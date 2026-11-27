@@ -13,12 +13,10 @@ import type {
   TransferDigestEmail,
   TransferMinistryDigestEmail,
 } from '@/domain/contracts/infrastructure/email-sender';
+import type { PlatformBranding } from '@/domain/contracts/infrastructure/email-templates';
 import { escapeHtml } from '@/infrastructure/services/email-layout';
 import { formatShiftLine } from '@/infrastructure/services/email-shift-line';
-import {
-  type PlatformBranding,
-  prepareEmail,
-} from '@/infrastructure/services/email-templates';
+import { prepareEmail } from '@/infrastructure/services/email-templates';
 
 const memberInvitation: MinistryInvitationEmail = {
   kind: 'invitation.ministry',

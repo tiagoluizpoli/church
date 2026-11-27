@@ -52,6 +52,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { compareStatementCounts } from '@/tests/test-support/statement-count';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn(), setActiveOrganization: vi.fn() } },
@@ -146,6 +147,92 @@ async function seedCheck() {
     session: { activeOrganizationId: churchId },
   } as never);
   return { base, churchId, ministryId, period, member, role, check };
+}
+
+interface ServedShiftInput {
+  churchId: string;
+  ministryId: string;
+  cycleId: string;
+  role: { id: string };
+  month?: string;
+}
+
+/** One answerable Shift of the Cycle needing the Role the Volunteer holds. */
+async function seedServedShift({
+  churchId,
+  ministryId,
+  cycleId,
+  role,
+  month = '09',
+}: ServedShiftInput) {
+  const start = new Date(`2026-${month}-06T12:00:00Z`);
+  const end = new Date(`2026-${month}-06T14:00:00Z`);
+  const graph = await createSchedulingPhase3EventGraph({
+    churchId,
+    ministryId,
+    cycleId,
+    title: `Service ${month}`,
+    start,
+    end,
+    status: 'scheduled',
+  });
+  const served = await seedShift({
+    churchId,
+    participationId: graph.participation.id,
+    eventTimeBlockId: graph.eventTimeBlock.id,
+    startTime: start,
+    endTime: end,
+    label: 'Morning',
+  });
+  await seedRequirement({
+    churchId,
+    participationId: graph.participation.id,
+    shiftId: served.id,
+    roleId: role.id,
+    peopleNeeded: 1,
+  });
+  return served;
+}
+
+type FurtherCheckInput = Awaited<ReturnType<typeof seedCheck>> & {
+  month: string;
+};
+
+/** A pending check of a later Cycle with its one Shift marked unavailable. */
+async function seedFurtherCheck({
+  churchId,
+  ministryId,
+  member,
+  role,
+  month,
+}: FurtherCheckInput) {
+  const period = await createSchedulingPhase3Cycle({
+    churchId,
+    name: `Month ${month}`,
+    startDate: new Date(`2026-${month}-01`),
+    endDate: new Date(`2026-${month}-28`),
+    state: 'sent',
+  });
+  const check = await buildAvailabilityCheck({
+    db,
+    churchId,
+    cycleId: period.id,
+    ministryMembershipId: member.membership.id,
+    state: 'pending',
+  });
+  const served = await seedServedShift({
+    churchId,
+    ministryId,
+    cycleId: period.id,
+    role,
+    month,
+  });
+  await buildUnavailableShift({
+    db,
+    churchId,
+    availabilityCheckId: check.id,
+    shiftId: served.id,
+  });
 }
 
 describe('Volunteer availability reads through PostgreSQL', () => {
@@ -510,6 +597,42 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       latestConfirmed.id,
       confirmed.id,
     ]);
+  });
+
+  it('summarises each check from its own Ministry, Cycle and marks, whatever the number of checks', async () => {
+    const seeded = await seedCheck();
+    await seedServedShift({ ...seeded, cycleId: seeded.period.id });
+
+    const { small, large } = await compareStatementCounts({
+      app,
+      requests: [{ method: 'GET', url: ROOT }],
+      grow: async () => {
+        for (const month of ['10', '11', '12']) {
+          await seedFurtherCheck({ ...seeded, month });
+        }
+      },
+    });
+
+    expect(small[0]?.response.json().checks).toHaveLength(1);
+    expect(
+      large[0]?.response
+        .json()
+        .checks.map(
+          (row: {
+            cycleName: string;
+            totalShiftCount: number;
+            unavailableShiftCount: number;
+          }) => [row.cycleName, row.totalShiftCount, row.unavailableShiftCount],
+        ),
+    ).toEqual([
+      ['September', 1, 0],
+      ['Month 10', 1, 1],
+      ['Month 11', 1, 1],
+      ['Month 12', 1, 1],
+    ]);
+    // Two reads per check on top of the request's own.
+    expect(small[0]?.statements).toBe(7);
+    expect(large[0]?.statements).toBe(13);
   });
 
   it('keeps Deadlines scoped to each Ministry of the Cycle and hides another Church’s checks', async () => {

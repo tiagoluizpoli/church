@@ -65,7 +65,6 @@ import type {
   ScopeParticipatingMinistry,
   SeededMinistry,
   SeedPlanningParticipationsInput,
-  SetEventTimeBlockHiddenInput,
   UpdatePlanningEventInput,
 } from '../../domain/contracts/infrastructure/planning-event.repository';
 import {
@@ -807,23 +806,6 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     await getClient({ db: this.db, tx })
       .update(eventTimeBlock)
       .set({ status: 'cancelled', isHidden })
-      .where(
-        and(
-          withChurchIsolation({ table: eventTimeBlock, churchId }),
-          eq(eventTimeBlock.id, eventTimeBlockId),
-        ),
-      );
-  }
-
-  async setEventTimeBlockHidden({
-    churchId,
-    eventTimeBlockId,
-    isHidden,
-    tx,
-  }: SetEventTimeBlockHiddenInput): Promise<void> {
-    await getClient({ db: this.db, tx })
-      .update(eventTimeBlock)
-      .set({ isHidden })
       .where(
         and(
           withChurchIsolation({ table: eventTimeBlock, churchId }),

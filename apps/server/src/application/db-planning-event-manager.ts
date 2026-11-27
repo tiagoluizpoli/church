@@ -1563,7 +1563,6 @@ export class DbPlanningEventManager implements IPlanningEventManager {
 
   async setHidden(input: SetPlanningHiddenManagerInput): Promise<void> {
     const { churchId, eventId, scope, hidden } = input;
-    const action = hidden ? 'hide' : 'show';
 
     // A cancellation is final, so a scope read as cancelled stays so: no lock.
     await this.unitOfWork.run(async (tx) => {
@@ -1571,38 +1570,35 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       await this.cycleRepository.getById({ ...input, tx });
       const event = await this.getCycleEvent({ input, tx });
       if (scope.kind === 'event') {
-        const { status } = event;
-        if (status !== 'cancelled') {
-          throw new IllegalStateTransitionError({ from: status, to: action });
-        }
+        if (hidden) event.hide();
+        else event.show();
+        const { isHidden } = event;
         await this.eventRepository.updateEvent({
           churchId,
           eventId,
-          isHidden: hidden,
+          isHidden,
           tx,
         });
         return;
       }
       const { eventTimeBlockId } = scope;
-      const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent({
+      const block = await this.eventTimeBlockRepository.getById({
         churchId,
-        eventId,
+        eventTimeBlockId,
         tx,
       });
-      const block = eventTimeBlocks.find(({ id }) => id === eventTimeBlockId);
-      if (!block) {
+      if (block.eventId !== eventId) {
         throw new NotFoundError(
           `EventTimeBlock not found: ${eventTimeBlockId}`,
         );
       }
-      const { status } = block;
-      if (status !== 'cancelled') {
-        throw new IllegalStateTransitionError({ from: status, to: action });
-      }
-      await this.eventRepository.setEventTimeBlockHidden({
+      if (hidden) block.hide();
+      else block.show();
+      const { isHidden } = block;
+      await this.eventTimeBlockRepository.update({
         churchId,
         eventTimeBlockId,
-        isHidden: hidden,
+        input: { isHidden },
         tx,
       });
     });

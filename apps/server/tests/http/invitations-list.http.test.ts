@@ -41,6 +41,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { compareStatementCounts } from '@/tests/test-support/statement-count';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -826,6 +827,142 @@ describe('GET /api/v1/invitations — email delivery', () => {
     signIn('admin');
     const { items } = await list();
     expect(items[0]?.emailDelivery).toEqual({ state: 'unavailable' });
+  });
+});
+
+describe('GET /api/v1/invitations — resends', () => {
+  const at = (minute: number) => new Date(Date.UTC(2026, 10, 1, 11, minute, 0));
+
+  interface ResendInput {
+    ministryInvitationId: string;
+    minute: number;
+    status: OutboxInput['status'];
+  }
+  async function resend({ ministryInvitationId, minute, status }: ResendInput) {
+    await outbox({
+      kind: 'invitation.chained',
+      payload: { ministryInvitationId },
+      status,
+      sentAt: status === 'sent' ? at(minute) : undefined,
+      createdAt: at(minute),
+    });
+  }
+
+  it('shows the latest attempt and the latest confirmed send after several resends', async () => {
+    const chained = await ministryOffer({
+      ministryId: fx.worshipId,
+      churchInvitationId: await seedChurch('c-resent'),
+    });
+    await resend({ ministryInvitationId: chained, minute: 1, status: 'sent' });
+    await resend({ ministryInvitationId: chained, minute: 2, status: 'sent' });
+    await resend({
+      ministryInvitationId: chained,
+      minute: 3,
+      status: 'failed',
+    });
+    const notified = await ministryOffer({
+      ministryId: fx.kidsId,
+      inviteeUserId: fx.userIds.member,
+    });
+    const payload = {
+      kind: 'ministry_invitation',
+      data: { ministryInvitationId: notified },
+    };
+    await outbox({
+      kind: 'notification',
+      payload,
+      status: 'sent',
+      channelOutcomes: { email: 'delivered' },
+      sentAt: at(1),
+      createdAt: at(1),
+    });
+    // Settled `sent` without an email sink outcome proves nothing was emailed.
+    await outbox({
+      kind: 'notification',
+      payload,
+      status: 'sent',
+      sentAt: at(2),
+      createdAt: at(2),
+    });
+    await churchOffer({ id: 'ci-admin', email: 'a@inv.test', role: 'admin' });
+    for (const minute of [1, 2]) {
+      await outbox({
+        kind: 'invitation.church-bootstrap',
+        payload: { churchInvitationId: 'ci-admin' },
+        status: 'sent',
+        sentAt: at(minute),
+        createdAt: at(minute),
+      });
+    }
+    await outbox({
+      kind: 'invitation.church-bootstrap',
+      payload: { churchInvitationId: 'ci-admin' },
+      status: 'pending',
+      createdAt: at(3),
+    });
+
+    signIn('admin');
+    const { items } = await list();
+    const deliveries = new Map(
+      items.map(({ id, emailDelivery, lastSentAt }) => [
+        id,
+        { emailDelivery, lastSentAt },
+      ]),
+    );
+
+    expect(deliveries.get(chained)).toEqual({
+      emailDelivery: { state: 'failed' },
+      lastSentAt: at(2).toISOString(),
+    });
+    expect(deliveries.get(notified)).toEqual({
+      emailDelivery: { state: 'unavailable' },
+      lastSentAt: at(1).toISOString(),
+    });
+    expect(deliveries.get('ci-admin')).toEqual({
+      emailDelivery: { state: 'pending' },
+      lastSentAt: at(2).toISOString(),
+    });
+  });
+
+  it('costs the same statements with and without many resends and offers', async () => {
+    const id = await ministryOffer({
+      ministryId: fx.worshipId,
+      churchInvitationId: await seedChurch('c-budget'),
+    });
+    await resend({ ministryInvitationId: id, minute: 1, status: 'sent' });
+    signIn('admin');
+    const { small, large } = await compareStatementCounts({
+      app,
+      requests: ['/api/v1/invitations', '/api/v1/invitations?limit=1'].map(
+        (url) => ({ method: 'GET' as const, url }),
+      ),
+      grow: async () => {
+        for (let minute = 2; minute < 30; minute++) {
+          await resend({
+            ministryInvitationId: id,
+            minute,
+            status: 'failed',
+          });
+        }
+        for (const n of [1, 2, 3, 4]) {
+          await ministryOffer({
+            ministryId: fx.kidsId,
+            churchInvitationId: await seedChurch(`c-more-${n}`),
+            roleIds: [fx.singerId],
+          });
+        }
+      },
+    });
+
+    for (const { response } of [...small, ...large]) {
+      expect(response.statusCode).toBe(200);
+    }
+    expect(large[0]?.response.json().items).toHaveLength(5);
+    expect(large[1]?.response.json().items).toHaveLength(1);
+    expect({
+      small: small.map(({ statements }) => statements),
+      large: large.map(({ statements }) => statements),
+    }).toEqual({ small: [11, 11], large: [11, 11] });
   });
 });
 

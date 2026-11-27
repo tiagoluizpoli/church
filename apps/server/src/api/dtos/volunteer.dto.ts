@@ -428,21 +428,11 @@ function ministryScheduleToResponse(
 export const volunteerMapper = {
   dashboardToResponse,
   ministryScheduleToResponse,
-  /** These `counts` describe `summaries`; the list route sends its own. */
+  /** The rows only: `counts` cover every state, so the route reads them. */
   availabilityCheckListToResponse(
     summaries: VolunteerAvailabilityCheckSummary[],
   ) {
-    const pending = summaries.filter(
-      (summary) => summary.state === 'pending',
-    ).length;
-    return {
-      checks: summaries.map(availabilityCheckSummaryToResponse),
-      counts: {
-        total: summaries.length,
-        pending,
-        confirmed: summaries.length - pending,
-      },
-    };
+    return { checks: summaries.map(availabilityCheckSummaryToResponse) };
   },
   availabilityCheckDetailToResponse,
   assignmentToResponse,

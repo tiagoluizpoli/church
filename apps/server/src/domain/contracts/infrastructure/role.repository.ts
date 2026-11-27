@@ -9,7 +9,16 @@ import type { TransactionContext } from './transaction-context';
  * Roles too. Fresh use goes through `listActiveByMinistry` or
  * `lockActiveForUse`.
  */
+export interface ListRolesByIdsInput {
+  churchId: ChurchId;
+  roleIds: RoleId[];
+  tx?: TransactionContext;
+}
+
 export interface RoleRepository {
+  /** The Church's Roles among the ids, in one read, by name; archived included. */
+  listByIds(input: ListRolesByIdsInput): Promise<Role[]>;
+
   getById(input: GetRoleByIdInput): Promise<Role>;
 
   listByMinistry(input: ListRolesByMinistryInput): Promise<Role[]>;

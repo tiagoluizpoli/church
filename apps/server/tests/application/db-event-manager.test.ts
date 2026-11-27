@@ -118,6 +118,7 @@ function createRepos(): Repos {
   const eventRepo: EventRepository = {
     getMinistryId: vi.fn(async () => ministryId),
     getById: vi.fn(async () => buildEvent()),
+    listByIds: vi.fn(),
     getWithEventTimeBlocks: vi.fn(),
     listByMinistry: vi.fn(async () => []),
     create: vi.fn(),

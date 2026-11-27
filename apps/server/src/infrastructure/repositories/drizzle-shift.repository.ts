@@ -22,6 +22,7 @@ import type {
   ListRequirementsByParticipationInput,
   ListShiftConflictFactsInput,
   ListShiftsByEventTimeBlockInput,
+  ListShiftsByIdsInput,
   ListShiftsByParticipationInput,
   SaveShiftRequirementInput,
   ShiftConflictFacts,
@@ -123,6 +124,25 @@ export class DrizzleShiftRepository implements ShiftRepository {
     }
 
     return mapShift(row);
+  }
+
+  async listByIds({
+    churchId,
+    shiftIds,
+    tx,
+  }: ListShiftsByIdsInput): Promise<Shift[]> {
+    if (shiftIds.length === 0) return [];
+    const rows = await getClient({ db: this.db, tx })
+      .select()
+      .from(shift)
+      .where(
+        and(
+          inArray(shift.id, shiftIds),
+          withChurchIsolation({ table: shift, churchId }),
+        ),
+      )
+      .orderBy(asc(shift.startTime), asc(shift.id));
+    return rows.map(mapShift);
   }
 
   async listByParticipation(

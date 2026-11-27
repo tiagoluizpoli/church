@@ -508,7 +508,7 @@ export function buildValidationSteps({
         label: 'typecheck',
       });
     }
-    if (plan.workspaceNames.includes('web')) {
+    if (plan.workspaceNames.includes('@church/web')) {
       checkLane.push(BUNDLE_BUDGET_STEP);
     }
 

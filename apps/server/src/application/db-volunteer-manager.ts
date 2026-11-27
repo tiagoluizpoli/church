@@ -77,10 +77,7 @@ import { CheckAccessDeniedError } from '../domain/errors/check-access-denied';
 import { IllegalStateTransitionError } from '../domain/errors/illegal-state-transition';
 import { IsolationBreachError } from '../domain/errors/isolation-breach-error';
 import { ShiftPublishedError } from '../domain/errors/shift-published';
-import {
-  isEventTimeBlockCancelled,
-  isEventTimeBlockHidden,
-} from '../domain/event-time-block-cancellation';
+import { isEventTimeBlockCancelled } from '../domain/event-time-block-cancellation';
 import {
   groupCheckDays,
   isShiftAnswerable,
@@ -105,20 +102,6 @@ function inCancelledScope({
   );
   if (!eventTimeBlock) return event.status === 'cancelled';
   return isEventTimeBlockCancelled({ event, eventTimeBlock });
-}
-
-/** Hidden cancelled work is out of every Volunteer read. */
-function inHiddenScope({
-  group,
-  eventTimeBlockId,
-}: InCancelledScopeInput): boolean {
-  if (!group) return false;
-  const { event, eventTimeBlocks } = group;
-  const eventTimeBlock = eventTimeBlocks.find(
-    ({ id }) => id === eventTimeBlockId,
-  );
-  if (!eventTimeBlock) return event.isHidden;
-  return isEventTimeBlockHidden({ event, eventTimeBlock });
 }
 
 /** Byte-order text comparison, so tie-breaks don't depend on the runtime locale. */
@@ -766,7 +749,12 @@ export class DbVolunteerManager implements IVolunteerManager {
         const { id: participationId, eventId } = participation;
         const [group, shifts, requirements, assignments] = await Promise.all([
           this.eventRepo.getWithEventTimeBlocks({ churchId, eventId }),
-          this.shiftRepo.listByParticipation({ churchId, participationId }),
+          // Hidden cancelled work is out of every Volunteer read.
+          this.shiftRepo.listByParticipation({
+            churchId,
+            participationId,
+            shownOnly: true,
+          }),
           this.shiftRepo.listRequirementsByParticipation({
             churchId,
             participationId,
@@ -785,10 +773,9 @@ export class DbVolunteerManager implements IVolunteerManager {
             .map(({ id }) => id as string),
         );
         const shownShifts = shifts.filter(
-          ({ id, eventTimeBlockId, startTime }) =>
-            !inHiddenScope({ group, eventTimeBlockId }) &&
-            (!cancelledShiftIds.has(id as string) ||
-              !hasStarted({ startTime, at: now })),
+          ({ id, startTime }) =>
+            !cancelledShiftIds.has(id as string) ||
+            !hasStarted({ startTime, at: now }),
         );
         const shownIds = new Set(shownShifts.map(({ id }) => id as string));
         return {
@@ -1320,9 +1307,11 @@ export class DbVolunteerManager implements IVolunteerManager {
     volunteerId,
     churchId,
   }: GetPublishedScheduleInput): Promise<ListedVolunteerAssignment[]> {
+    // Hidden cancelled work is out of every Volunteer read.
     const assignments = await this.assignmentRepo.listByVolunteer({
       churchId,
       volunteerId,
+      shownOnly: true,
     });
     const participationIds = [
       ...new Set(
@@ -1367,7 +1356,6 @@ export class DbVolunteerManager implements IVolunteerManager {
       const { participationId, eventTimeBlockId } = assignment;
       if (!groupsByParticipation.has(participationId as string)) return [];
       const group = groupsByParticipation.get(participationId as string);
-      if (inHiddenScope({ group, eventTimeBlockId })) return [];
       const cancelled = inCancelledScope({ group, eventTimeBlockId });
       return isListedAssignment({ assignment, cancelled })
         ? [{ assignment, cancelled }]

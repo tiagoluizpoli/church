@@ -1,6 +1,7 @@
 import { NotFoundError } from '@church/core';
 import {
   event,
+  eventTimeBlock,
   ministry,
   ministryParticipation,
   role,
@@ -34,6 +35,7 @@ import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
 import type { AnyDrizzleDb } from './drizzle-db.types';
 import type { DrizzleShiftRepositoryInput } from './drizzle-shift.repository.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import { shownEventTimeBlock } from './live-event-time-block';
 
 export class DrizzleShiftRepository implements ShiftRepository {
   constructor({ db }: DrizzleShiftRepositoryInput) {
@@ -128,17 +130,20 @@ export class DrizzleShiftRepository implements ShiftRepository {
   ): Promise<Shift[]> {
     const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
-      .select()
+      .select({ shift })
       .from(shift)
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .innerJoin(event, eq(event.id, eventTimeBlock.eventId))
       .where(
         and(
           eq(shift.participationId, input.participationId),
           withChurchIsolation({ table: shift, churchId: input.churchId }),
+          input.shownOnly ? shownEventTimeBlock() : undefined,
         ),
       )
       .orderBy(asc(shift.startTime), asc(shift.id));
 
-    return rows.map(mapShift);
+    return rows.map((row) => mapShift(row.shift));
   }
 
   async listByEventTimeBlock(

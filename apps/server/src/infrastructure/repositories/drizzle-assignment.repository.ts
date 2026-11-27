@@ -1,6 +1,7 @@
 import { NotFoundError } from '@church/core';
 import {
   assignment,
+  event,
   eventTimeBlock,
   shift,
   shiftRequirement,
@@ -42,6 +43,7 @@ import type {
 } from './drizzle-assignment.repository.types';
 import type { AnyDrizzleDb } from './drizzle-db.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import { shownEventTimeBlock } from './live-event-time-block';
 
 export class DrizzleAssignmentRepository implements AssignmentRepository {
   constructor({ db }: DrizzleAssignmentRepositoryInput) {
@@ -59,6 +61,8 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       .select({ assignment, eventTimeBlockId: shift.eventTimeBlockId })
       .from(assignment)
       .innerJoin(shift, eq(shift.id, assignment.shiftId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .innerJoin(event, eq(event.id, eventTimeBlock.eventId))
       .where(
         and(
           withChurchIsolation({ table: assignment, churchId }),
@@ -247,11 +251,14 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
   listByVolunteer({
     churchId,
     volunteerId,
+    shownOnly,
     tx,
   }: ListAssignmentsByVolunteerInput): Promise<Assignment[]> {
+    const conditions: SQL[] = [eq(assignment.volunteerId, volunteerId)];
+    if (shownOnly) conditions.push(shownEventTimeBlock());
     return this.rows({
       churchId,
-      conditions: [eq(assignment.volunteerId, volunteerId)],
+      conditions,
       tx,
     });
   }

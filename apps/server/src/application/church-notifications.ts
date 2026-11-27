@@ -4,6 +4,7 @@ import type {
   ChurchIdentitySnapshotter,
 } from '../domain/contracts/application/church-identity-snapshotter';
 import type {
+  ChurchNotificationsDependencies,
   EnqueueNotificationInput,
   IChurchNotifications,
 } from '../domain/contracts/application/church-notifications';
@@ -13,11 +14,6 @@ import {
   type NotificationRequestKind,
   notificationRequestDataSchemas,
 } from '../domain/notification-kinds';
-
-interface ChurchNotificationsDependencies {
-  outboxRepository: OutboxRepository;
-  churchIdentity: ChurchIdentitySnapshotter;
-}
 
 export class ChurchNotifications implements IChurchNotifications {
   private readonly outboxRepository: OutboxRepository;

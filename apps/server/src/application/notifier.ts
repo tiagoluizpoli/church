@@ -1,18 +1,12 @@
 import type {
   INotifier,
+  NotifierInput,
   NotifierSendInput,
   NotifierSendResult,
+  RegisteredSink,
   SinkOutcome,
   SinkRegistration,
 } from '../domain/contracts/application/notifier';
-
-/** A registration with its address and content types closed over. */
-export interface RegisteredSink<TRecipient, TKind extends string, TData> {
-  name: string;
-  attempt(
-    input: NotifierSendInput<TRecipient, TKind, TData>,
-  ): Promise<SinkOutcome>;
-}
 
 export function registerSink<
   TRecipient,
@@ -50,10 +44,6 @@ export function registerSink<
       });
     },
   };
-}
-
-interface NotifierInput<TRecipient, TKind extends string, TData> {
-  sinks: RegisteredSink<TRecipient, TKind, TData>[];
 }
 
 export class Notifier<TRecipient, TKind extends string, TData>

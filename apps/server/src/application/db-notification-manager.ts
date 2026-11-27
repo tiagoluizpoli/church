@@ -1,5 +1,6 @@
 import { NotFoundError } from '@church/core';
 import type {
+  DbNotificationManagerDependencies,
   INotificationManager,
   ListMemberNotificationsInput,
   MarkMemberNotificationReadInput,
@@ -7,12 +8,6 @@ import type {
 } from '../domain/contracts/application/notification-manager';
 import type { NotificationRepository } from '../domain/contracts/infrastructure/notification.repository';
 import type { NotificationOwner } from '../domain/entities/notification';
-
-interface DbNotificationManagerDependencies {
-  notificationRepository: NotificationRepository;
-  /** Page size when the caller names none (validated central config). */
-  defaultPageSize: number;
-}
 
 export class DbNotificationManager implements INotificationManager {
   private readonly notificationRepository: NotificationRepository;

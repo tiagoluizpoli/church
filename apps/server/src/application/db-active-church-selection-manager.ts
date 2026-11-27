@@ -1,4 +1,3 @@
-import type { ChurchId } from '../domain/branded-ids';
 import { formatChurchLocality } from '../domain/church-locality';
 import type {
   ActiveChurchResolution,
@@ -7,25 +6,19 @@ import type {
 import type {
   ApplicationArea,
   ChurchSelectionOption,
+  DbActiveChurchSelectionManagerDependencies,
   GetChurchTimezoneInput,
   IActiveChurchSelectionManager,
   ListSelectableChurchesInput,
+  ResolveAvailableAreasInput,
   SelectActiveChurchInput,
+  ToSelectionOptionInput,
 } from '../domain/contracts/application/active-church-selection-manager';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
-import type {
-  ChurchMembershipComparison,
-  ChurchMembershipRepository,
-} from '../domain/contracts/infrastructure/church-membership.repository';
+import type { ChurchMembershipRepository } from '../domain/contracts/infrastructure/church-membership.repository';
 import type { ObjectStorage } from '../domain/contracts/infrastructure/object-storage';
 import { churchLogoUrl } from './church-logo-url';
-
-interface ToSelectionOptionInput {
-  comparison: ChurchMembershipComparison;
-  objectStorage: Pick<ObjectStorage, 'publicUrl'>;
-  availableAreas: ApplicationArea[];
-}
 
 function toSelectionOption({
   comparison,
@@ -43,19 +36,6 @@ function toSelectionOption({
     lastOpenedAt: comparison.lastOpenedAt,
     locality: formatChurchLocality(comparison.mainAddress),
   };
-}
-
-interface ResolveAvailableAreasInput {
-  userId: ListSelectableChurchesInput['userId'];
-  churchId: ChurchId;
-}
-
-interface DbActiveChurchSelectionManagerDependencies {
-  membershipRepository: ChurchMembershipRepository;
-  authorityManager: IAuthorityManager;
-  activeChurchResolver: IActiveChurchResolver;
-  churchRepository: ChurchRepository;
-  objectStorage: Pick<ObjectStorage, 'publicUrl'>;
 }
 
 export class DbActiveChurchSelectionManager

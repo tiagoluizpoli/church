@@ -5,6 +5,9 @@ import type {
   ChurchSettingsChanges,
   ChurchSlugAvailability,
 } from '../../church-settings';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type { ObjectStorage } from '@/domain/contracts/infrastructure/object-storage';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
 /** Church Settings plus the web origin the public `…/slug` address is shown under. */
 export interface ChurchSettingsView extends ChurchSettings {
@@ -64,4 +67,12 @@ export interface IChurchSettingsManager {
   removeLogo(input: GetChurchSettingsInput): Promise<ChurchSettingsView>;
   /** Re-applies one of the Church's earlier logo keys (*Desfazer*). */
   restoreLogo(input: RestoreChurchLogoInput): Promise<ChurchSettingsView>;
+}
+
+export interface DbChurchSettingsManagerDependencies {
+  churchRepository: ChurchRepository;
+  unitOfWork: UnitOfWork;
+  objectStorage: ObjectStorage;
+  /** The web app's origin, under which the public Church page lives. */
+  publicOrigin: string;
 }

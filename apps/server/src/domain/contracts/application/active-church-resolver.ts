@@ -1,4 +1,9 @@
 import type { ChurchId, UserId, VolunteerId } from '../../branded-ids';
+import type { AuthorityActorRepository } from '@/domain/contracts/infrastructure/authority-actor.repository';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type { ChurchMembershipRepository } from '@/domain/contracts/infrastructure/church-membership.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
 export interface ResolveActiveChurchInput {
   userId: UserId;
@@ -61,4 +66,34 @@ export type ActiveChurchResolution =
  */
 export interface IActiveChurchResolver {
   resolve(input: ResolveActiveChurchInput): Promise<ActiveChurchResolution>;
+}
+
+export interface ResolveAgainstChurchInput {
+  userId: UserId;
+  churchId: ChurchId;
+  autoSelected: boolean;
+  tx?: TransactionContext;
+}
+
+export interface ResolveWithNoActiveOrganizationInput {
+  userId: UserId;
+  tx: TransactionContext;
+}
+
+export interface ResolveAfterMembershipRemovedInput {
+  userId: UserId;
+  formerChurchId: ChurchId;
+}
+
+/** Only the silent auto-select touches "last opened": a request against an
+ * already-active Church must not bump it on every call. */
+export interface AutoSelectChurchInput {
+  userId: UserId;
+}
+
+export interface DbActiveChurchResolverDependencies {
+  actorRepository: AuthorityActorRepository;
+  membershipRepository: ChurchMembershipRepository;
+  churchRepository: ChurchRepository;
+  unitOfWork: UnitOfWork;
 }

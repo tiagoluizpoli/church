@@ -16,6 +16,11 @@ import type {
   ShiftId,
   UserId,
 } from '../../branded-ids';
+import type { AuthorityActorRepository } from '@/domain/contracts/infrastructure/authority-actor.repository';
+import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
+import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
+import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
+import type { SchedulingScopeRepository } from '@/domain/contracts/infrastructure/scheduling-scope.repository';
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 
 /** Target facts must come from a Church-scoped repository; null is a missing target. */
@@ -179,4 +184,23 @@ export interface IAuthorityManager {
    * selector. It delegates to the caller-capabilities projection.
    */
   hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean>;
+}
+
+export interface MinistryMembershipHintInput {
+  target: MinistryMembershipHintTarget;
+  operation: MinistryMembershipOperation;
+}
+
+export interface ResolveActorInput {
+  churchId: ChurchId;
+  userId: UserId;
+  tx?: TransactionContext;
+}
+
+export interface DbAuthorityManagerDependencies {
+  actorRepository: AuthorityActorRepository;
+  scopeRepository: SchedulingScopeRepository;
+  eventRepository: EventRepository;
+  eventTimeBlockRepository: EventTimeBlockRepository;
+  ministryRepository: MinistryRepository;
 }

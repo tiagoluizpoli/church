@@ -1,17 +1,14 @@
 import { NotFoundError } from '@church/core';
-import type {
-  ChurchId,
-  EventId,
-  MinistryId,
-  MinistryParticipationId,
-  UserId,
-} from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
+  DbEventManagerDependencies,
   GetScheduleBuilderDataInput,
   IEventManager,
   ListEventsInput,
+  ResolveScheduleBuilderScopeInput,
   ScheduleBuilderData,
+  ScheduleBuilderScope,
+  ScopeEventTimeBlocksInput,
 } from '../domain/contracts/application/event-manager';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { EventRepository } from '../domain/contracts/infrastructure/event.repository';
@@ -24,40 +21,9 @@ import type { UnavailableShiftRepository } from '../domain/contracts/infrastruct
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Event } from '../domain/entities/event';
 import { EventTimeBlock } from '../domain/entities/event-time-block';
-import type { ShiftRequirement } from '../domain/entities/shift-requirement';
 
 const SCHEDULE_BUILDER_NOT_FOUND_MESSAGE =
   'Schedule builder resource not found';
-
-interface DbEventManagerDependencies {
-  eventRepo: EventRepository;
-  eventTimeBlockRepo: EventTimeBlockRepository;
-  assignmentRepo: AssignmentRepository;
-  unavailableShiftRepo: UnavailableShiftRepository;
-  volunteerRepo: VolunteerRepository;
-  roleRepo: RoleRepository;
-  sectorRepo: SectorRepository;
-  ministryParticipationRepo: MinistryParticipationRepository;
-  authorityManager: IAuthorityManager;
-  shiftRepo: ShiftRepository;
-}
-
-interface ResolveScheduleBuilderScopeInput {
-  churchId: ChurchId;
-  eventId: EventId;
-  userId: UserId;
-  ministryId?: MinistryId;
-}
-
-interface ScheduleBuilderScope {
-  ministryId: MinistryId;
-  participationId: MinistryParticipationId;
-}
-
-interface ScopeEventTimeBlocksInput {
-  eventTimeBlocks: EventTimeBlock[];
-  requirements: ShiftRequirement[];
-}
 
 export class DbEventManager implements IEventManager {
   private readonly eventRepo: EventRepository;

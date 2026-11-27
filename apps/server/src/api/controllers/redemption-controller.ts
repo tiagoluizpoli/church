@@ -11,7 +11,7 @@ import type {
   IRedemptionManager,
   PublicRedemptionPreview,
 } from '../../domain/contracts/application/redemption-manager';
-import type { VolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
+import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import type { RedemptionBundleMinistry } from '../../domain/entities/redemption-bundle';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
 import { auth } from '../../main/di/server-auth';
@@ -72,7 +72,7 @@ interface InvitationPreviewFields {
 
 interface RedemptionControllerDependencies {
   redemptionManager: IRedemptionManager;
-  volunteerTransferManager: VolunteerTransferManager;
+  volunteerTransferManager: IVolunteerTransferManager;
   config: AppConfig;
 }
 
@@ -86,7 +86,7 @@ export class RedemptionController implements FastifyController {
   readonly prefix = '/redemption';
 
   private readonly redemptionManager: IRedemptionManager;
-  private readonly volunteerTransferManager: VolunteerTransferManager;
+  private readonly volunteerTransferManager: IVolunteerTransferManager;
   private readonly rateLimit: AppConfig['redemptionRateLimit'];
 
   constructor({

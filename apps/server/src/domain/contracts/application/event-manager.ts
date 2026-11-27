@@ -2,6 +2,7 @@ import type {
   ChurchId,
   EventId,
   MinistryId,
+  MinistryParticipationId,
   RoleId,
   SectorId,
   UserId,
@@ -11,7 +12,18 @@ import type { Assignment } from '../../entities/assignment';
 import type { Event, EventStatus } from '../../entities/event';
 import type { EventTimeBlock } from '../../entities/event-time-block';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
+import type { ShiftRequirement } from '../../entities/shift-requirement';
 import type { UnavailableShift } from '../../entities/unavailable-shift';
+import type { IAuthorityManager } from '@/domain/contracts/application/authority-manager';
+import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
+import type { EventRepository } from '@/domain/contracts/infrastructure/event.repository';
+import type { EventTimeBlockRepository } from '@/domain/contracts/infrastructure/event-time-block.repository';
+import type { MinistryParticipationRepository } from '@/domain/contracts/infrastructure/ministry-participation.repository';
+import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import type { SectorRepository } from '@/domain/contracts/infrastructure/sector.repository';
+import type { ShiftRepository } from '@/domain/contracts/infrastructure/shift.repository';
+import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructure/unavailable-shift.repository';
+import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
 
 export interface ListEventsInput {
   churchId: ChurchId;
@@ -71,4 +83,34 @@ export interface IEventManager {
     input: GetScheduleBuilderDataInput,
   ): Promise<ScheduleBuilderData>;
   listEvents(input: ListEventsInput): Promise<Event[]>;
+}
+
+export interface DbEventManagerDependencies {
+  eventRepo: EventRepository;
+  eventTimeBlockRepo: EventTimeBlockRepository;
+  assignmentRepo: AssignmentRepository;
+  unavailableShiftRepo: UnavailableShiftRepository;
+  volunteerRepo: VolunteerRepository;
+  roleRepo: RoleRepository;
+  sectorRepo: SectorRepository;
+  ministryParticipationRepo: MinistryParticipationRepository;
+  authorityManager: IAuthorityManager;
+  shiftRepo: ShiftRepository;
+}
+
+export interface ResolveScheduleBuilderScopeInput {
+  churchId: ChurchId;
+  eventId: EventId;
+  userId: UserId;
+  ministryId?: MinistryId;
+}
+
+export interface ScheduleBuilderScope {
+  ministryId: MinistryId;
+  participationId: MinistryParticipationId;
+}
+
+export interface ScopeEventTimeBlocksInput {
+  eventTimeBlocks: EventTimeBlock[];
+  requirements: ShiftRequirement[];
 }

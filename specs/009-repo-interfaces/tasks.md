@@ -111,8 +111,8 @@
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [x] T034 Run full test suite: `pnpm --filter server test` — verify zero failures
-- [x] T035 Verify TypeScript strict compilation: `pnpm --filter server exec tsc --noEmit` — verify zero errors
+- [x] T034 Run full test suite: `pnpm --filter @church/server test` — verify zero failures
+- [x] T035 Verify TypeScript strict compilation: `pnpm --filter @church/server exec tsc --noEmit` — verify zero errors
 - [x] T036 Review `find*`/`get*`/`has*` naming convention consistency across all 9 interfaces
 - [x] T037 Verify all interfaces use Domain Entity types (not Drizzle schema types) in return positions
 - [x] T038 Verify all branded ID types are used consistently (no bare `string` for entity IDs)

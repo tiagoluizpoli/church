@@ -54,7 +54,7 @@ describe('classifyChanges', () => {
       changedPaths: ['apps/web/src/utils/format-volunteer-initials.ts'],
     });
 
-    expect(plan.workspaceNames).toEqual(['web']);
+    expect(plan.workspaceNames).toEqual(['@church/web']);
     expect(plan.testLayers).toEqual(['test:unit']);
     expect(plan.requiresFullE2e).toBe(false);
   });
@@ -64,7 +64,7 @@ describe('classifyChanges', () => {
       changedPaths: ['packages/core/src/entity.ts'],
     });
 
-    expect(plan.workspaceNames).toEqual(['@church/core', 'server']);
+    expect(plan.workspaceNames).toEqual(['@church/core', '@church/server']);
     expect(plan.testLayers).toEqual(['test:unit', 'test:integration']);
   });
 
@@ -77,9 +77,9 @@ describe('classifyChanges', () => {
     expect(plan.workspaceNames).toEqual([
       '@church/auth',
       '@church/db',
+      '@church/server',
       '@church/time',
-      'server',
-      'web',
+      '@church/web',
     ]);
   });
 
@@ -825,7 +825,7 @@ describe('classifyChanges', () => {
       {
         testLayer: 'test:unit',
         testPath: 'src/utils/format-volunteer-initials.unit.test.ts',
-        workspaceName: 'web',
+        workspaceName: '@church/web',
       },
     ]);
   });
@@ -841,7 +841,7 @@ describe('classifyChanges', () => {
       {
         testLayer: 'test:integration',
         testPath: 'tests/application/planning-phase3.managers.test.ts',
-        workspaceName: 'server',
+        workspaceName: '@church/server',
       },
     ]);
   });
@@ -911,7 +911,7 @@ describe('classifyChanges', () => {
     expect(plan.workspaceSelectionReasons).toContainEqual({
       changedPath: 'packages/core/src/entity.ts',
       detail: 'dependent-of:@church/core',
-      workspaceName: 'server',
+      workspaceName: '@church/server',
     });
   });
 
@@ -930,13 +930,13 @@ describe('classifyChanges', () => {
       changedPath: 'packages/core/src/entity.ts',
       detail: 'dependent-of:@church/core',
       testLayer: 'test:unit',
-      workspaceName: 'server',
+      workspaceName: '@church/server',
     });
     expect(plan.testLayerSelectionReasons).toContainEqual({
       changedPath: 'packages/core/src/entity.ts',
       detail: 'dependent-of:@church/core',
       testLayer: 'test:integration',
-      workspaceName: 'server',
+      workspaceName: '@church/server',
     });
   });
 
@@ -1061,14 +1061,14 @@ describe('explainPlan', () => {
     const explanation = explainPlan({ baseRef: 'develop', plan });
 
     expect(explanation).toContain('Base ref: develop');
-    expect(explanation).toContain('web');
+    expect(explanation).toContain('@church/web');
     expect(explanation).toContain(
       'direct <- apps/web/src/shared/utils/active-church-switch.ts',
     );
     expect(explanation).toContain('Test layers selected:');
     expect(explanation).toContain('  - test:unit');
     expect(explanation).toContain(
-      'direct <- apps/web/src/shared/utils/active-church-switch.ts (web)',
+      'direct <- apps/web/src/shared/utils/active-church-switch.ts (@church/web)',
     );
     expect(explanation).toContain(
       'tests/identity/active-church-switching.spec.ts',
@@ -1143,12 +1143,12 @@ describe('server test routing', () => {
     expect(plan.testTargets).toContainEqual({
       testLayer,
       testPath: changedPath.replace('apps/server/', ''),
-      workspaceName: 'server',
+      workspaceName: '@church/server',
     });
     expect(plan.testTargets.at(0)).toEqual({
       testLayer,
       testPath: changedPath.replace('apps/server/', ''),
-      workspaceName: 'server',
+      workspaceName: '@church/server',
     });
   });
 });
@@ -1160,7 +1160,7 @@ describe('deleted paths', () => {
       deletedPaths: ['apps/server/tests/seeds/retired.integration.test.ts'],
     });
 
-    expect(plan.workspaceNames).toContain('server');
+    expect(plan.workspaceNames).toContain('@church/server');
     expect(plan.testTargets).toEqual([]);
   });
 
@@ -1170,7 +1170,7 @@ describe('deleted paths', () => {
       deletedPaths: ['apps/server/src/scripts/seed-dev-users.ts'],
     });
 
-    expect(plan.workspaceNames).toContain('server');
+    expect(plan.workspaceNames).toContain('@church/server');
     expect(plan.missingJourneyMappings).toEqual([]);
     expect(plan.e2eSpecPaths).toEqual([]);
   });
@@ -1383,7 +1383,9 @@ describe('init-system journey mapping', () => {
 describe('classifyChanges test narrowing', () => {
   const webTest = 'apps/web/tests/components/foo.component.test.tsx';
   const webTargets = (plan: ReturnType<typeof classifyChanges>) =>
-    plan.testTargets.filter(({ workspaceName }) => workspaceName === 'web');
+    plan.testTargets.filter(
+      ({ workspaceName }) => workspaceName === '@church/web',
+    );
 
   it('runs the whole web layer when a dependency source changes with a web test', () => {
     const plan = classifyChanges({
@@ -1411,7 +1413,7 @@ describe('classifyChanges test narrowing', () => {
       {
         testLayer: 'test:unit',
         testPath: 'tests/components/foo.component.test.tsx',
-        workspaceName: 'web',
+        workspaceName: '@church/web',
       },
     ]);
   });
@@ -1433,7 +1435,7 @@ describe('classifyChanges test narrowing', () => {
     });
 
     expect(plan.testTargets.map(({ workspaceName }) => workspaceName)).toEqual([
-      'server',
+      '@church/server',
     ]);
   });
 });
@@ -1491,7 +1493,7 @@ describe('package.json scripts-only addition', () => {
   it('keeps the full workspace selection for any other package.json change', () => {
     const plan = classifyChanges({ changedPaths: ['package.json'] });
 
-    expect(plan.workspaceNames).toContain('server');
+    expect(plan.workspaceNames).toContain('@church/server');
     expect(plan.testLayers).toEqual(['test:unit', 'test:integration']);
   });
 });

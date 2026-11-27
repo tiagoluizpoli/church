@@ -95,7 +95,7 @@ describe('affected.ts --dry-run against a temporary Git history', () => {
 
     const { plan } = runAffected();
 
-    expect(plan.workspaceNames).toContain('web');
+    expect(plan.workspaceNames).toContain('@church/web');
     expect(plan.e2eSpecPaths).toContain(
       'tests/identity/active-church-switching.spec.ts',
     );
@@ -123,7 +123,7 @@ describe('affected.ts --dry-run against a temporary Git history', () => {
 
     const { plan } = runAffected();
 
-    expect(plan.workspaceNames).toContain('web');
+    expect(plan.workspaceNames).toContain('@church/web');
     expect(plan.missingJourneyMappings).toContain(
       'apps/web/src/routes/dashboard.tsx',
     );
@@ -141,7 +141,7 @@ describe('affected.ts --dry-run against a temporary Git history', () => {
 
     const { plan } = runAffected();
 
-    expect(plan.workspaceNames).toContain('web');
+    expect(plan.workspaceNames).toContain('@church/web');
   });
 
   it('honors an explicit --base override instead of the default develop merge base', () => {

@@ -17,9 +17,9 @@ const EVERY_WORKSPACE = [
   '@church/core',
   '@church/db',
   '@church/env',
+  '@church/server',
   '@church/time',
-  'server',
-  'web',
+  '@church/web',
 ];
 
 interface TurboFixture {
@@ -31,8 +31,8 @@ const BASE_TURBO: TurboFixture = {
   globalEnv: ['TZ'],
   tasks: {
     build: { outputs: ['dist/**'] },
-    'web#build': { cache: false },
-    'server#build': { cache: false },
+    '@church/web#build': { cache: false },
+    '@church/server#build': { cache: false },
   },
 };
 
@@ -109,15 +109,15 @@ describe('a turbo.json change that reaches beyond one package', () => {
       'two packages',
       withTasks({
         tasks: {
-          'web#build': { cache: true },
-          'server#build': { cache: true },
+          '@church/web#build': { cache: true },
+          '@church/server#build': { cache: true },
         },
       }),
     ],
     [
       'a package task and a generic task',
       withTasks({
-        tasks: { 'web#build': { cache: true }, build: { cache: true } },
+        tasks: { '@church/web#build': { cache: true }, build: { cache: true } },
       }),
     ],
     [
@@ -135,7 +135,7 @@ describe('a turbo.json change that reaches beyond one package', () => {
     expect(plan.testLayers).toEqual(['test:unit', 'test:integration']);
     expect(plan.toolingTestPaths).toEqual(['turbo.json']);
     expect(explanation).toContain(
-      '  - web\n      root-infrastructure <- turbo.json\n',
+      '  - @church/web\n      root-infrastructure <- turbo.json\n',
     );
     expect(explanation).not.toContain('narrowed');
   });
@@ -145,10 +145,10 @@ describe('a turbo.json change that reaches beyond one package', () => {
     git(['rm', '--quiet', 'turbo.json']);
     git(['commit', '--quiet', '-m', 'chore: no turbo.json']);
     git(['checkout', '--quiet', '-B', 'feature/x']);
-    writeTurbo(withTasks({ tasks: { 'web#build': { cache: true } } }));
+    writeTurbo(withTasks({ tasks: { '@church/web#build': { cache: true } } }));
     git(['add', '-A']);
     git(['commit', '--quiet', '-m', 'chore: add turbo.json']);
-    writeTurbo(withTasks({ tasks: { 'web#build': { cache: false } } }));
+    writeTurbo(withTasks({ tasks: { '@church/web#build': { cache: false } } }));
 
     expect(dryRun().plan.workspaceNames).toEqual(EVERY_WORKSPACE);
   });
@@ -159,45 +159,45 @@ describe('a turbo.json change confined to one package', () => {
     writeTurbo(
       withTasks({
         tasks: {
-          'web#build': { cache: true },
-          'web#test:unit': { cache: false },
+          '@church/web#build': { cache: true },
+          '@church/web#test:unit': { cache: false },
         },
       }),
     );
 
     const { explanation, plan } = dryRun();
 
-    expect(plan.workspaceNames).toEqual(['web']);
+    expect(plan.workspaceNames).toEqual(['@church/web']);
     expect(plan.workspaceSelectionReasons).toEqual([
       {
         changedPath: 'turbo.json',
         detail: 'turbo-package-task',
-        workspaceName: 'web',
+        workspaceName: '@church/web',
       },
     ]);
     expect(plan.testLayers).toEqual(['test:unit']);
     expect(plan.toolingTestPaths).toEqual(['turbo.json']);
     expect(explanation).toContain(
-      '  - web\n      turbo-package-task <- turbo.json\n',
+      '  - @church/web\n      turbo-package-task <- turbo.json\n',
     );
-    expect(explanation).toContain('  - web: whole suite (');
+    expect(explanation).toContain('  - @church/web: whole suite (');
     expect(explanation).toContain(
-      'turbo.json narrowed to web: only its own task entries differ (web#build, web#test:unit)',
+      'turbo.json narrowed to @church/web: only its own task entries differ (@church/web#build, @church/web#test:unit)',
     );
   });
 
   it('narrows a removed package task entry, without the package dependents', () => {
-    const { 'server#build': _removed, ...tasks } = BASE_TURBO.tasks;
+    const { '@church/server#build': _removed, ...tasks } = BASE_TURBO.tasks;
     writeTurbo(JSON.stringify({ ...BASE_TURBO, tasks }));
 
     const { plan } = dryRun();
 
-    expect(plan.workspaceNames).toEqual(['server']);
+    expect(plan.workspaceNames).toEqual(['@church/server']);
     expect(plan.testLayers).toEqual(['test:unit', 'test:integration']);
   });
 
   it('still selects every workspace beside another root infrastructure change', () => {
-    writeTurbo(withTasks({ tasks: { 'web#build': { cache: true } } }));
+    writeTurbo(withTasks({ tasks: { '@church/web#build': { cache: true } } }));
     writeFileSync(join(repoDir, 'bun.lock'), '{}\n');
     git(['add', 'bun.lock']);
 

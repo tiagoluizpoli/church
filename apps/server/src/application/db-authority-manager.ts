@@ -18,7 +18,6 @@ import type {
   DbAuthorityManagerDependencies,
   DecideAuthorityInput,
   DecideManageMinistryMembershipInput,
-  HasSchedulingAccessInput,
   IAuthorityManager,
   LedMinistryCapability,
   ListSchedulingChurchIdsInput,
@@ -316,12 +315,6 @@ export class DbAuthorityManager implements IAuthorityManager {
       ledMinistries: [...ledMinistries.values()],
       hasVolunteerMembership: servingDecision.allowed,
     };
-  }
-
-  async hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean> {
-    const { isChurchAdmin, ledMinistries } =
-      await this.resolveCallerCapabilities(input);
-    return isChurchAdmin || ledMinistries.length > 0;
   }
 
   async listSchedulingChurchIds(

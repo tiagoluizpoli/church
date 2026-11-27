@@ -308,7 +308,7 @@ function scheduleRequests(ministryId: string, cycleId: string) {
 }
 
 describe('Schedules list, single Schedule and insights statement budgets', () => {
-  it('pins the statements for one published Schedule and for six sharing its Cycle', async () => {
+  it('costs the same for one published Schedule and for six sharing its Cycle', async () => {
     const { churchAId: churchId } = await seedSchedulingPhase3Base();
     signInAdmin(churchId);
     const cycle = await seedSentCycle(churchId);
@@ -343,13 +343,11 @@ describe('Schedules list, single Schedule and insights statement budgets', () =>
     ]);
     expect(small[2]?.response.json().affectedVolunteerCount).toBe(1);
     expect(large[2]?.response.json().affectedVolunteerCount).toBe(1);
-    expect(small.map(({ statements }) => statements)).toEqual([33, 12, 25, 13]);
-    expect(large.map(({ statements }) => statements)).toEqual([
-      193, 12, 40, 13,
-    ]);
+    expect(small.map(({ statements }) => statements)).toEqual([23, 12, 21, 13]);
+    expect(large.map(({ statements }) => statements)).toEqual([23, 12, 21, 13]);
   });
 
-  it('pins the statements for a small and a large Assignment history', async () => {
+  it('costs the same for a small and a large Assignment history', async () => {
     const { churchAId: churchId } = await seedSchedulingPhase3Base();
     signInAdmin(churchId);
     const cycle = await seedSentCycle(churchId);
@@ -389,11 +387,11 @@ describe('Schedules list, single Schedule and insights statement budgets', () =>
       expect(response.statusCode).toBe(200);
     expect(small[2]?.response.json().affectedVolunteerCount).toBe(1);
     expect(large[2]?.response.json().affectedVolunteerCount).toBe(5);
-    expect(small.map(({ statements }) => statements)).toEqual([33, 12, 25, 13]);
-    expect(large.map(({ statements }) => statements)).toEqual([37, 12, 29, 13]);
+    expect(small.map(({ statements }) => statements)).toEqual([23, 12, 21, 13]);
+    expect(large.map(({ statements }) => statements)).toEqual([23, 12, 21, 13]);
   });
 
-  it('pins the statements of an unpublished Schedule, however many Events its Cycle holds', async () => {
+  it('runs no schedule-change count for an unpublished Schedule, however many Events its Cycle holds', async () => {
     const { churchAId: churchId, ministryAId } =
       await seedSchedulingPhase3Base();
     signInAdmin(churchId);
@@ -440,8 +438,9 @@ describe('Schedules list, single Schedule and insights statement budgets', () =>
       stage: 'assigning',
       affectedVolunteerCount: 0,
     });
-    expect(small.map(({ statements }) => statements)).toEqual([22, 22, 20]);
-    expect(large.map(({ statements }) => statements)).toEqual([34, 34, 32]);
+    // One read finds no published participation; the published single read costs 21.
+    expect(small.map(({ statements }) => statements)).toEqual([17, 17, 15]);
+    expect(large.map(({ statements }) => statements)).toEqual([17, 17, 15]);
   });
 });
 

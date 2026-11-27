@@ -8,7 +8,10 @@ import type {
 import type { Cycle } from '../../entities/cycle';
 import type { Ministry } from '../../entities/ministry';
 import type { ScheduleStage } from '../../entities/ministry-participation';
-import type { IScheduleChangeReader } from './schedule-change-reader';
+import type {
+  IScheduleChangeReader,
+  ScheduleKey,
+} from './schedule-change-reader';
 import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
 import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
 import type {
@@ -173,10 +176,16 @@ export interface ScheduleListFacts {
   lateMarksBySchedule: Map<string, number>;
   swapCountBySchedule: Map<string, number>;
   gapCountBySchedule: Map<string, number>;
+  /** Volunteers with untold changes, for published Schedules only. */
+  changeCountBySchedule: Map<string, number>;
+}
+
+export interface LoadScheduleListFactsInput {
+  churchId: ChurchId;
+  schedules: ScheduleKey[];
 }
 
 export interface ToScheduleViewInput extends ScheduleListRow {
-  churchId: ChurchId;
   facts: ScheduleListFacts;
 }
 

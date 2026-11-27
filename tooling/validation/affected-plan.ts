@@ -664,7 +664,7 @@ function pushTestLayerSelectionReasons({
 function getTestLayersForWorkspace({
   workspaceName,
 }: GetTestLayersForWorkspaceInput): TestLayer[] {
-  if (workspaceName === '@church/core' || workspaceName === 'web') {
+  if (workspaceName === '@church/core' || workspaceName === '@church/web') {
     return ['test:unit'];
   }
 

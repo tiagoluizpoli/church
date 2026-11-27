@@ -174,6 +174,12 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
       .from(ministryMembershipRole)
       .where(
         inArray(ministryMembershipRole.ministryMembershipId, membershipIds),
+      )
+      // No caller shows an order: natural key, then id.
+      .orderBy(
+        asc(ministryMembershipRole.ministryMembershipId),
+        asc(ministryMembershipRole.roleId),
+        asc(ministryMembershipRole.id),
       );
 
     const rolesByMembership = groupByMembership<MembershipRoleRow>(roleRows);

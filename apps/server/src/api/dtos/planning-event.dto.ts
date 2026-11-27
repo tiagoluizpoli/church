@@ -6,7 +6,7 @@ import type {
   PlanningMovePreview,
   PlanningMoveResult,
 } from '../../domain/contracts/application/planning-event-manager';
-import type { MoveClash } from '../../domain/services/event-move';
+import type { MoveClash } from '../../domain/services/planning/event-move.types';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
   eventTimeBlockMapper,

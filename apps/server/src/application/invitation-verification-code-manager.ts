@@ -22,7 +22,7 @@ import type { EmailSender } from '../domain/contracts/infrastructure/email-sende
 import type { InvitationVerificationCodeRepository } from '../domain/contracts/infrastructure/invitation-verification-code.repository';
 import { validateVerificationCode } from '../domain/entities/invitation-verification-code';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
-import { recipientLocale } from '../domain/services/recipient-locale';
+import { recipientLocale } from '../domain/services/notifications/recipient-locale';
 
 const MS_PER_MINUTE = 60_000;
 

@@ -10,7 +10,7 @@ import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-me
 import {
   EMPTY_PROPOSAL_REASON_OPTIONS,
   VOLUNTEER_DECIDING_RULE_OPTIONS,
-} from '../../domain/services/assignment-proposal';
+} from '../../domain/services/scheduling/assignment-proposal';
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
 
 interface AssignmentWarningResponseInput {

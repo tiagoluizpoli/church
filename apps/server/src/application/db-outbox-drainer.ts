@@ -47,13 +47,13 @@ import {
   notificationRequestDataSchemas,
   type TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
-import { redemptionPathFor } from '../domain/services/ministry-invitation-redemption-path';
+import { redemptionPathFor } from '../domain/services/invitations/ministry-invitation-redemption-path';
 import {
   hasExhaustedRetries,
   nextRetryAt,
-} from '../domain/services/outbox-retry-policy';
-import { recipientLocale } from '../domain/services/recipient-locale';
-import { webLink } from '../domain/services/web-link';
+} from '../domain/services/notifications/outbox-retry-policy';
+import { recipientLocale } from '../domain/services/notifications/recipient-locale';
+import { webLink } from '../domain/services/notifications/web-link';
 import { CHURCH_SINK_NAMES, type ChurchNotifier } from './church-notifier';
 import { emailRoutingFor } from './email-routing';
 import type { SchedulingNotificationFacts } from './scheduling-notification-facts';

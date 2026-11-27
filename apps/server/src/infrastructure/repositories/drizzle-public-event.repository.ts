@@ -16,10 +16,8 @@ import type {
   PublicEventPage,
 } from '../../domain/entities/public-event';
 import { isEventTimeBlockCancelled } from '../../domain/event-time-block-cancellation';
-import {
-  type EventTimeBlockMove,
-  eventTimeBlockMovePath,
-} from '../../domain/services/event-time-block-move-path';
+import { eventTimeBlockMovePath } from '../../domain/services/planning/event-time-block-move-path';
+import type { EventTimeBlockMove } from '../../domain/services/planning/event-time-block-move-path.types';
 import type { DrizzlePublicEventRepositoryInput } from './drizzle-public-event.repository.types';
 import { withChurchIsolation } from './helpers';
 import { shownEventTimeBlock } from './live-event-time-block';

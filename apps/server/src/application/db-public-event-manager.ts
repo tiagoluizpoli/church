@@ -1,5 +1,6 @@
 import { now } from '@church/time';
 import type {
+  DbPublicEventManagerDependencies,
   IPublicEventManager,
   ListPublicEventsBySlugInput,
   ListPublicEventsInput,
@@ -10,11 +11,6 @@ import type { PublicEventRepository } from '../domain/contracts/infrastructure/p
 import type { PublicEventPage } from '../domain/entities/public-event';
 
 const PUBLIC_EVENTS_PAGE_SIZE = 20;
-
-interface DbPublicEventManagerDependencies {
-  publicEventRepository: PublicEventRepository;
-  churchRepository: ChurchRepository;
-}
 
 /** Public Events: public blocks of sent-Cycle Events, readable without a session. */
 export class DbPublicEventManager implements IPublicEventManager {

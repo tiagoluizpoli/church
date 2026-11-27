@@ -1,9 +1,4 @@
-import type { ObjectStorage } from '../domain/contracts/infrastructure/object-storage';
-
-export interface ChurchLogoUrlInput {
-  objectStorage: Pick<ObjectStorage, 'publicUrl'>;
-  logoKey: string | null;
-}
+import type { ChurchLogoUrlInput } from '../domain/contracts/application/church-logo-url';
 
 /** The public URL of a Church's logo; null without one. */
 export function churchLogoUrl({

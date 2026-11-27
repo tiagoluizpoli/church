@@ -47,6 +47,9 @@ import { ChurchRecipients } from '../../application/church-recipients';
 import { DbChurchIdentitySnapshotter } from '../../application/db-church-identity-snapshotter';
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
 import { UsualSetupStaffingSeeder } from '../../application/usual-setup-staffing-seeder';
+import { ProfileSeeder } from '../../domain/services/church-identity/profile-seeder';
+import { CycleEventGenerator } from '../../domain/services/planning/cycle-event-generator';
+import { ShiftSplitter } from '../../domain/services/scheduling/shift-splitter';
 import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
 import type { BuildManagersInput, Managers } from './build-managers.types';
 
@@ -265,6 +268,7 @@ export function buildManagers({
       tracing,
     });
   const staffingSeeder = new UsualSetupStaffingSeeder({
+    profileSeeder: new ProfileSeeder(),
     participationRepository: ministryParticipationRepository,
     shiftRepository,
     usualSetupRepository,
@@ -285,6 +289,7 @@ export function buildManagers({
   const planningEventManager =
     overrides.planningEventManager ??
     new DbPlanningEventManager({
+      cycleEventGenerator: new CycleEventGenerator(),
       cycleRepository: cycleRepository,
       eventRepository: planningEventRepository,
       templateRepository: eventTemplateRepository,
@@ -364,6 +369,7 @@ export function buildManagers({
   const prepareManager =
     overrides.prepareManager ??
     new DbPrepareManager({
+      shiftSplitter: new ShiftSplitter(),
       assignmentRepository,
       churchRepository,
       cycleRepository,

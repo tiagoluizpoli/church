@@ -15,12 +15,12 @@ import type {
   EventStatus,
   EventWithEventTimeBlocks,
 } from '../../entities/event';
-import type { CancellationScopeAssignment } from '../../services/event-cancellation';
+import type { CancellationScopeAssignment } from '../../services/planning/event-cancellation.types';
 import type {
   InstantBounds,
   MoveClashCandidate,
   MoveScopeAssignment,
-} from '../../services/event-move';
+} from '../../services/planning/event-move.types';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreatePlanningEventInput {

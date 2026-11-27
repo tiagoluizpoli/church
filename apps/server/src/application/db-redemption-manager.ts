@@ -58,8 +58,8 @@ import { CrossChurchVolunteerConflictError } from '../domain/errors/cross-church
 import { InvitationNotPendingError } from '../domain/errors/invitation-not-pending';
 import { PendingMinistryInvitationNotFoundError } from '../domain/errors/pending-ministry-invitation-not-found';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
-import { maskEmail } from '../domain/services/mask-email';
-import { reviewTokenFor } from '../domain/services/redemption-review-token';
+import { maskEmail } from '../domain/services/invitations/mask-email';
+import { reviewTokenFor } from '../domain/services/invitations/redemption-review-token';
 import type { StoredRedemption } from '../domain/stored-redemption';
 
 /** Marks a throw from the Ministry grant step, so the rollback reports it as such. */

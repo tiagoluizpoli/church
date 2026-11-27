@@ -59,11 +59,14 @@ const CASES: [paths: string[], expected: string[]][] = [
     unique(...ASSIGNMENT, J10),
   ],
   [bothApplication('assignment-proposal-manager'), specs(PUBLISH)],
-  [[`${SERVER}domain/services/assignment-proposal.ts`], specs(PUBLISH)],
+  [
+    [`${SERVER}domain/services/scheduling/assignment-proposal.ts`],
+    specs(PUBLISH),
+  ],
   [
     [
-      `${SERVER}domain/services/assignment-eligibility.ts`,
-      `${SERVER}domain/services/assignment-eligibility.types.ts`,
+      `${SERVER}domain/services/scheduling/assignment-eligibility.ts`,
+      `${SERVER}domain/services/scheduling/assignment-eligibility.types.ts`,
     ],
     unique(...ASSIGNMENT, ...BUILDER),
   ],

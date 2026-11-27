@@ -1,0 +1,15 @@
+import type { MinistryInvitationRedemptionPathInput } from './ministry-invitation-redemption-path.types';
+
+/**
+ * Relative path only — never an absolute URL (spec §6.2). Shared by the API
+ * response mapper and the outbox drainer's email composition. A paired
+ * invitation links to its Church Invitation; the server resolves the
+ * Ministry half from it.
+ */
+export function redemptionPathFor(
+  invitation: MinistryInvitationRedemptionPathInput,
+): string {
+  return invitation.churchInvitationId
+    ? `/invitations/church/${invitation.churchInvitationId}`
+    : `/app/invitations/ministry/${invitation.id}`;
+}

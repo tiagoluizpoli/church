@@ -9,7 +9,7 @@ import type {
 } from '../../branded-ids';
 import type { MinistryInvitation } from '../../entities/ministry-invitation';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
-import type { ResendThrottleState } from '../../services/resend-throttle';
+import type { ResendThrottleState } from '../../services/invitations/resend-throttle.types';
 import type { IAuthorityManager } from './authority-manager';
 import type { ChurchIdentitySnapshotter } from './church-identity-snapshotter';
 import type { IChurchNotifications } from './church-notifications';

@@ -25,6 +25,7 @@ import {
   EventTimeBlockId,
   UserId,
 } from '@/domain/branded-ids';
+import { CycleEventGenerator } from '@/domain/services/planning/cycle-event-generator';
 import {
   DrizzleCycleRepository,
   DrizzleEventTemplateRepository,
@@ -64,6 +65,7 @@ const harness = createMinistryInvitationTestHarness({ db });
 const { churchRepository, unitOfWork, notificationRepository } = harness;
 
 const planningEventManager = new DbPlanningEventManager({
+  cycleEventGenerator: new CycleEventGenerator(),
   cycleRepository: new DrizzleCycleRepository({ db }),
   eventRepository: new DrizzlePlanningEventRepository({ db }),
   precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),

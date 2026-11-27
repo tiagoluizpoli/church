@@ -4,6 +4,8 @@ import {
   availabilityAsk,
   availabilityCheck,
   cycle,
+  event,
+  eventTimeBlock,
   ministry,
   ministryMembership,
   ministryParticipation,
@@ -12,7 +14,7 @@ import {
   shiftRequirement,
 } from '@church/db';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
   afterAll,
   afterEach,
@@ -695,14 +697,129 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
     await expectNothingWritten({ ministryId });
   });
 
-  it('refuses a Ministry serving nothing in the Cycle as zero eligible', async () => {
+  it('refuses a Ministry serving nothing in the Cycle', async () => {
     const { churchId, cycleId } = await seedAskable();
     const idle = await buildMinistry({ db, churchId, name: 'Idle' });
 
     const response = await ask({ cycleId, ministryId: idle.id });
 
     expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      reason: 'ASK_NO_LIVE_SHIFTS',
+    });
+    expect(await listChecks()).toEqual([]);
     expect(await listAskRecords()).toEqual([]);
+    expect(await listOutbox()).toEqual([]);
+  });
+
+  type Schedule = Awaited<ReturnType<typeof seedAskable>>;
+
+  function eventIds({ first, second }: Schedule) {
+    return [first.event.id, second.event.id];
+  }
+
+  function blockIds({ first, second }: Schedule) {
+    return [first.eventTimeBlock.id, second.eventTimeBlock.id];
+  }
+
+  it.each([
+    [
+      'only Events are cancelled',
+      (schedule: Schedule) =>
+        db
+          .update(event)
+          .set({ status: 'cancelled' })
+          .where(inArray(event.id, eventIds(schedule))),
+    ],
+    [
+      'only Events are cancelled and hidden',
+      (schedule: Schedule) =>
+        db
+          .update(event)
+          .set({ status: 'cancelled', isHidden: true })
+          .where(inArray(event.id, eventIds(schedule))),
+    ],
+    [
+      'served EventTimeBlocks are all cancelled under live Events',
+      (schedule: Schedule) =>
+        db
+          .update(eventTimeBlock)
+          .set({ status: 'cancelled' })
+          .where(inArray(eventTimeBlock.id, blockIds(schedule))),
+    ],
+  ])('refuses a Schedule whose %s', async (_label, cancel) => {
+    const schedule = await seedAskable();
+    const { ministryId, cycleId } = schedule;
+    await cancel(schedule);
+
+    const response = await ask({ cycleId, ministryId });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      reason: 'ASK_NO_LIVE_SHIFTS',
+    });
+    await expectNothingWritten({ ministryId });
+  });
+
+  it('keeps the repeat Ask refusal once every Event is cancelled', async () => {
+    const schedule = await seedAskable();
+    const asked = await ask(schedule);
+    expect(asked.statusCode).toBe(200);
+    await db
+      .update(event)
+      .set({ status: 'cancelled' })
+      .where(inArray(event.id, eventIds(schedule)));
+
+    const repeat = await ask(schedule);
+
+    expect(repeat.statusCode).toBe(409);
+    expect(repeat.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+    expect(await listAskRecords()).toHaveLength(1);
+  });
+
+  it('keeps the unaskable Cycle refusal for a Schedule with no live Shifts', async () => {
+    const schedule = await seedAskable();
+    const { ministryId, cycleId } = schedule;
+    await db
+      .update(event)
+      .set({ status: 'cancelled' })
+      .where(inArray(event.id, eventIds(schedule)));
+    setTestClock({ instant: parseInstant({ value: AFTER_CYCLE }) });
+
+    const response = await ask({ cycleId, ministryId });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+    await expectNothingWritten({ ministryId });
+  });
+
+  it('asks a partially cancelled Schedule only for its live Shifts', async () => {
+    const { churchId, ministryId, cycleId, usher, holder } =
+      await seedAskable();
+    const cancelled = await seedServedEvent({
+      churchId,
+      cycleId,
+      ministryId,
+      start: new Date('2026-09-20T12:00:00.000Z'),
+      end: new Date('2026-09-20T14:00:00.000Z'),
+      roleIds: [usher.id],
+    });
+    await db
+      .update(eventTimeBlock)
+      .set({ status: 'cancelled' })
+      .where(eq(eventTimeBlock.id, cancelled.eventTimeBlock.id));
+    // Needed only by the cancelled Shift, so never asked.
+    await seedServingPerson({ churchId, ministryId, roleIds: [usher.id] });
+
+    const response = await ask({ cycleId, ministryId });
+
+    expect(response.statusCode).toBe(200);
+    const checks = await listChecks();
+    expect(checks.map((check) => check.ministryMembershipId)).toEqual([
+      holder.membershipId,
+    ]);
   });
 
   it('never re-creates or notifies a membership holding a withdrawn check', async () => {

@@ -69,6 +69,7 @@ export const VALIDATION_REASON_MESSAGES: Record<
   DUPLICATE_EVENT_TIME_BLOCK_ID:
     m.error_validation_duplicate_event_time_block_id,
   ASK_NO_ELIGIBLE_VOLUNTEERS: m.error_validation_ask_no_eligible_volunteers,
+  ASK_NO_LIVE_SHIFTS: m.error_validation_ask_no_live_shifts,
   CANCEL_CONFIRMATION: m.error_validation_cancel_confirmation,
   PLACE_ADDRESS_NOT_FOUND: m.error_validation_place_address_not_found,
 };

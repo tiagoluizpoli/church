@@ -4,7 +4,7 @@ import type {
   AuthorityActor,
   AuthorityDecision,
 } from '../domain/authority/types';
-import type { MinistryId } from '../domain/branded-ids';
+import type { ChurchId, MinistryId } from '../domain/branded-ids';
 import type {
   CallerCapabilitiesProjection,
   CanManageChurchInput,
@@ -21,6 +21,7 @@ import type {
   HasSchedulingAccessInput,
   IAuthorityManager,
   LedMinistryCapability,
+  ListSchedulingChurchIdsInput,
   MinistryMembershipHintInput,
   MinistryMembershipHints,
   ResolveActorInput,
@@ -321,6 +322,29 @@ export class DbAuthorityManager implements IAuthorityManager {
     const { isChurchAdmin, ledMinistries } =
       await this.resolveCallerCapabilities(input);
     return isChurchAdmin || ledMinistries.length > 0;
+  }
+
+  async listSchedulingChurchIds(
+    input: ListSchedulingChurchIdsInput,
+  ): Promise<ChurchId[]> {
+    const { userId } = input;
+    const scopes = await this.scopeRepository.listSchedulingScopes(input);
+    return scopes
+      .filter(({ churchId, churchAccessLevel, leadsMinistry }) => {
+        const churchDecision = AuthorityService.authorize({
+          actor: {
+            userId,
+            volunteerId: null,
+            activeChurchId: churchId,
+            churchMembership: { churchId, accessLevel: churchAccessLevel },
+            ministryMemberships: [],
+          },
+          action: 'manage',
+          resource: { type: 'church', churchId },
+        });
+        return churchDecision.allowed || leadsMinistry;
+      })
+      .map(({ churchId }) => churchId);
   }
 
   /** The request's own caller when it is this User in this Church; otherwise a fresh read. */

@@ -10,7 +10,6 @@ import type {
   GetChurchTimezoneInput,
   IActiveChurchSelectionManager,
   ListSelectableChurchesInput,
-  ResolveAvailableAreasInput,
   SelectActiveChurchInput,
   ToSelectionOptionInput,
 } from '../domain/contracts/application/active-church-selection-manager';
@@ -68,19 +67,29 @@ export class DbActiveChurchSelectionManager
       { userId: input.userId },
     );
 
-    return Promise.all(
-      comparisons.map(async (comparison) => {
-        const availableAreas = await this.resolveAvailableAreas({
-          userId: input.userId,
-          churchId: comparison.churchId,
-        });
-        return toSelectionOption({
-          comparison,
-          objectStorage: this.objectStorage,
-          availableAreas,
-        });
-      }),
-    );
+    if (comparisons.length === 0) return [];
+    const churchIds = comparisons.map(({ churchId }) => churchId);
+    // `dashboard` is granted to every Church Member; `scheduling` mirrors the
+    // signal the app-shell nav gates on (`useCallerRoles`), asked here for all
+    // candidate Churches at once rather than only the active one.
+    const schedulingIds = await this.authorityManager.listSchedulingChurchIds({
+      userId: input.userId,
+      churchIds,
+    });
+    const schedulingChurchIds = new Set(schedulingIds);
+
+    return comparisons.map((comparison) => {
+      const availableAreas: ApplicationArea[] = schedulingChurchIds.has(
+        comparison.churchId,
+      )
+        ? ['dashboard', 'scheduling']
+        : ['dashboard'];
+      return toSelectionOption({
+        comparison,
+        objectStorage: this.objectStorage,
+        availableAreas,
+      });
+    });
   }
 
   async selectActiveChurch(
@@ -110,19 +119,5 @@ export class DbActiveChurchSelectionManager
   async getChurchTimezone(input: GetChurchTimezoneInput): Promise<string> {
     const church = await this.churchRepository.getById({ id: input.churchId });
     return church.timezone;
-  }
-
-  /**
-   * `dashboard` is granted to every Church Member; `scheduling` mirrors the
-   * same `hasSchedulingAccess` signal the app-shell nav already gates on
-   * (`useCallerRoles`), computed here per candidate Church rather than only
-   * the currently-active one.
-   */
-  private async resolveAvailableAreas(
-    input: ResolveAvailableAreasInput,
-  ): Promise<ApplicationArea[]> {
-    const hasSchedulingAccess =
-      await this.authorityManager.hasSchedulingAccess(input);
-    return hasSchedulingAccess ? ['dashboard', 'scheduling'] : ['dashboard'];
   }
 }

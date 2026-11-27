@@ -272,8 +272,8 @@ describe('GET /api/v1/active-church/options reads', () => {
       Fourth: DASHBOARD,
     });
     expect({ small: before?.statements, large: after?.statements }).toEqual({
-      small: 5,
-      large: 11,
+      small: 2,
+      large: 2,
     });
   });
 });

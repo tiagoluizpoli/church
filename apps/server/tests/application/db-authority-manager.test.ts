@@ -62,6 +62,7 @@ const actorRepository = { resolveActor: vi.fn() };
 const scopeRepository = {
   resolveParticipationMinistry: vi.fn(),
   resolveShiftMinistry: vi.fn(),
+  listSchedulingScopes: vi.fn(),
 };
 const eventRepository = { getMinistryId: vi.fn() };
 const eventTimeBlockRepository = { getById: vi.fn() };
@@ -82,6 +83,25 @@ beforeEach(() => {
 });
 
 describe('DbAuthorityManager', () => {
+  it('lists the Churches the User administers or leads in, from one scope read', async () => {
+    const adminOf = 'chu_admin_of' as ChurchId;
+    const leaderIn = 'chu_leader_in' as ChurchId;
+    const memberOf = 'chu_member_of' as ChurchId;
+    const churchIds = [adminOf, leaderIn, memberOf];
+    scopeRepository.listSchedulingScopes.mockResolvedValueOnce([
+      { churchId: adminOf, churchAccessLevel: 'admin', leadsMinistry: false },
+      { churchId: leaderIn, churchAccessLevel: 'member', leadsMinistry: true },
+      { churchId: memberOf, churchAccessLevel: 'member', leadsMinistry: false },
+    ]);
+
+    await expect(
+      createManager().listSchedulingChurchIds({ userId, churchIds }),
+    ).resolves.toEqual([adminOf, leaderIn]);
+    expect(
+      scopeRepository.listSchedulingScopes,
+    ).toHaveBeenCalledExactlyOnceWith({ userId, churchIds });
+  });
+
   it('canManageChurch allows a Church admin and denies a plain member', async () => {
     const manager = createManager();
 

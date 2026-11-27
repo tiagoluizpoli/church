@@ -113,6 +113,11 @@ export interface CanManageEventTimeBlockInput extends AuthorityCaller {
 
 export interface HasSchedulingAccessInput extends AuthorityCaller {}
 
+export interface ListSchedulingChurchIdsInput {
+  userId: UserId;
+  churchIds: ChurchId[];
+}
+
 export interface ResolveCallerCapabilitiesInput extends AuthorityCaller {}
 
 export interface LedMinistryCapability {
@@ -168,10 +173,17 @@ export interface IAuthorityManager {
     input: ResolveCallerCapabilitiesInput,
   ): Promise<CallerCapabilitiesProjection>;
   /**
-   * Compatibility boolean for server-only callers such as the active-Church
-   * selector. It delegates to the caller-capabilities projection.
+   * Compatibility boolean for server-only callers about one Church. It
+   * delegates to the caller-capabilities projection.
    */
   hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean>;
+  /**
+   * Which of these Churches give the User scheduling access (ChurchAdmin or a
+   * led Ministry), at one read however many Churches are asked about.
+   */
+  listSchedulingChurchIds(
+    input: ListSchedulingChurchIdsInput,
+  ): Promise<ChurchId[]>;
 }
 
 export interface MinistryMembershipHintInput {

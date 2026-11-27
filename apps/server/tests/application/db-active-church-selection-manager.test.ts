@@ -6,16 +6,12 @@ const userId = 'usr_1' as UserId;
 const churchAId = 'chu_a' as ChurchId;
 const churchBId = 'chu_b' as ChurchId;
 
-interface SchedulingAccessQuery {
-  churchId: ChurchId;
-}
-
 const membershipRepository = {
   listByUserId: vi.fn(),
   listComparisonsByUserId: vi.fn(),
   touchOpened: vi.fn(),
 };
-const authorityManager = { hasSchedulingAccess: vi.fn() };
+const authorityManager = { listSchedulingChurchIds: vi.fn() };
 const activeChurchResolver = { resolve: vi.fn() };
 const churchRepository = { getById: vi.fn() };
 
@@ -60,9 +56,9 @@ describe('DbActiveChurchSelectionManager', () => {
           mainAddress: null,
         },
       ]);
-      authorityManager.hasSchedulingAccess.mockImplementation(
-        async ({ churchId }: SchedulingAccessQuery) => churchId === churchAId,
-      );
+      authorityManager.listSchedulingChurchIds.mockResolvedValueOnce([
+        churchAId,
+      ]);
       const manager = createManager();
 
       const options = await manager.listSelectableChurches({ userId });
@@ -91,13 +87,11 @@ describe('DbActiveChurchSelectionManager', () => {
           locality: null,
         },
       ]);
-      expect(authorityManager.hasSchedulingAccess).toHaveBeenCalledWith({
+      expect(
+        authorityManager.listSchedulingChurchIds,
+      ).toHaveBeenCalledExactlyOnceWith({
         userId,
-        churchId: churchAId,
-      });
-      expect(authorityManager.hasSchedulingAccess).toHaveBeenCalledWith({
-        userId,
-        churchId: churchBId,
+        churchIds: [churchAId, churchBId],
       });
     });
 
@@ -108,7 +102,7 @@ describe('DbActiveChurchSelectionManager', () => {
       const options = await manager.listSelectableChurches({ userId });
 
       expect(options).toEqual([]);
-      expect(authorityManager.hasSchedulingAccess).not.toHaveBeenCalled();
+      expect(authorityManager.listSchedulingChurchIds).not.toHaveBeenCalled();
     });
   });
 

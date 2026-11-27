@@ -9,20 +9,29 @@ import {
   now as nowInstant,
   toDate,
 } from '@church/time';
-import type { ChurchId, MinistryId, UserId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type { ChurchIdentitySnapshotter } from '../domain/contracts/application/church-identity-snapshotter';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   AdminInvitation,
   ChurchInvitationResend,
+  DbMinistryInvitationManagerDependencies,
+  EnqueueMemberNotificationInput,
+  EnsureMintableScopeInput,
+  EnsureOfferAuthorityInput,
+  EnsureResendAllowedInput,
+  ExpiryFromInput,
   GetMinistryInvitationDeliveryStatusInput,
   IMinistryInvitationManager,
+  LockActiveMinistryForMintInput,
   MinistryInvitationDeliveryStatus,
   MintAdminInvitationInput,
+  MintChainedInput,
+  MintForExistingMemberInput,
   MintMinistryInvitationInput,
   ResendChurchInvitationInput,
   ResendMinistryInvitationInput,
+  ResolveChainedChurchInvitationInput,
   RevokeChurchInvitationInput,
   RevokeMinistryInvitationInput,
 } from '../domain/contracts/application/ministry-invitation-manager';
@@ -35,10 +44,8 @@ import type {
 } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { OutboxRepository } from '../domain/contracts/infrastructure/outbox.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
-import type { MinistryAccessLevel } from '../domain/entities/ministry-membership';
 import { InsufficientInvitationAuthorityError } from '../domain/errors/insufficient-invitation-authority';
 import { InvalidInvitationRoleError } from '../domain/errors/invalid-invitation-role';
 import { InvitationNotPendingError } from '../domain/errors/invitation-not-pending';
@@ -59,72 +66,6 @@ import {
   type ResendThrottleState,
 } from '../domain/services/resend-throttle';
 import { revokeChurchOffer, revokeMinistryHalf } from './invitation-revocation';
-
-interface ExpiryFromInput {
-  milliseconds: number;
-  from?: Instant;
-}
-
-interface EnsureMintableScopeInput {
-  churchId: ChurchId;
-  ministryId: MinistryId;
-  callerId: UserId;
-}
-
-interface EnsureOfferAuthorityInput {
-  churchId: ChurchId;
-  ministryId: MinistryId;
-  callerId: UserId;
-  /** The offer's stored (or, on mint, requested) Ministry Access Level. */
-  ministryAccessLevel: MinistryAccessLevel;
-  tx?: TransactionContext;
-}
-
-interface MintForExistingMemberInput extends MintMinistryInvitationInput {
-  inviteeUserId: UserId;
-  tx: TransactionContext;
-}
-
-interface MintChainedInput extends MintMinistryInvitationInput {
-  tx: TransactionContext;
-}
-
-interface ResolveChainedChurchInvitationInput {
-  churchId: MintMinistryInvitationInput['churchId'];
-  email: string;
-  inviterId: UserId;
-  tx: TransactionContext;
-}
-
-interface EnqueueMemberNotificationInput {
-  churchId: ChurchId;
-  userId: UserId;
-  ministryInvitationId: string;
-  tx: TransactionContext;
-}
-
-interface EnsureResendAllowedInput {
-  throttleState: ResendThrottleState;
-  now: Instant;
-}
-
-interface LockActiveMinistryForMintInput {
-  churchId: ChurchId;
-  ministryId: MinistryId;
-  tx: TransactionContext;
-}
-
-interface DbMinistryInvitationManagerDependencies {
-  repo: MinistryInvitationRepository;
-  roleRepository: RoleRepository;
-  ministryRepository: MinistryRepository;
-  authorityManager: IAuthorityManager;
-  unitOfWork: UnitOfWork;
-  outboxRepository: OutboxRepository;
-  notifications: IChurchNotifications;
-  churchIdentity: ChurchIdentitySnapshotter;
-  config: AppConfig;
-}
 
 export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   private readonly repo: MinistryInvitationRepository;

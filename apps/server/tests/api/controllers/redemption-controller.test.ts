@@ -17,7 +17,7 @@ import {
   RoleId,
   VolunteerId,
 } from '@/domain/branded-ids';
-import type { RedemptionManager } from '@/domain/contracts/application/redemption-manager';
+import type { IRedemptionManager } from '@/domain/contracts/application/redemption-manager';
 import type { VolunteerTransferManager } from '@/domain/contracts/application/volunteer-transfer-manager';
 import { VerificationCodeError } from '@/domain/errors/verification-code-error';
 import { createFastify } from '@/main/fastify/setup';
@@ -40,7 +40,7 @@ const ROLE_ID = '44444444-4444-4444-8444-444444444444';
 const AUTH_COOKIE = 'better-auth.session_token=session-token';
 const USER_ID = 'usr_1';
 
-const redemptionManager: RedemptionManager = {
+const redemptionManager: IRedemptionManager = {
   getPublicPreview: vi.fn(),
   requestVerificationCode: vi.fn(),
   redeemNewUser: vi.fn(),

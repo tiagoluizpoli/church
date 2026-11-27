@@ -1,7 +1,7 @@
-import type { AppConfig } from '@church/app-config';
 import { MinistryId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
+  DbPeopleListManagerDependencies,
   GetPersonRequest,
   IPeopleListManager,
   ListPeopleRequest,
@@ -9,12 +9,6 @@ import type {
 } from '../domain/contracts/application/people-list-manager';
 import type { PeopleListRepository } from '../domain/contracts/infrastructure/people-list.repository';
 import type { PeopleListPage } from '../domain/entities/people-list-item';
-
-interface DbPeopleListManagerDependencies {
-  peopleListRepository: PeopleListRepository;
-  authorityManager: IAuthorityManager;
-  config: Pick<AppConfig, 'people'>;
-}
 
 export class DbPeopleListManager implements IPeopleListManager {
   private readonly peopleListRepository: PeopleListRepository;

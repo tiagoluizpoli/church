@@ -1,72 +1,28 @@
-import { type Instant, now, toDate } from '@church/time';
-import type { MinistryMembershipOperation } from '../domain/authority/types';
-import { type ChurchId, RoleId, type UserId } from '../domain/branded-ids';
+import { now, toDate } from '@church/time';
+import { RoleId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
   ChangeMinistryAccessRequest,
+  DbMinistryMembershipManagerDependencies,
   EndMinistryMembershipOutcome,
   EndMinistryMembershipRequest,
+  GuardUpcomingAssignmentsInput,
   IMinistryMembershipManager,
+  LockAndAuthorizeInput,
+  LockAndAuthorizeResult,
+  LockGrantableRolesInput,
   MinistryMembershipOutcome,
+  RoleDifferenceInput,
   SetMinistryRolesRequest,
 } from '../domain/contracts/application/ministry-membership-manager';
 import type { ChurchAccessRepository } from '../domain/contracts/infrastructure/church-access.repository';
-import type {
-  MembershipTarget,
-  MinistryMembershipRepository,
-  UpcomingAssignmentScope,
-} from '../domain/contracts/infrastructure/ministry-membership.repository';
+import type { MinistryMembershipRepository } from '../domain/contracts/infrastructure/ministry-membership.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import { InvalidMinistryRoleError } from '../domain/errors/invalid-ministry-role';
 import { MinistryMembershipInactiveError } from '../domain/errors/ministry-membership-inactive';
 import { MinistryRoleRequiredError } from '../domain/errors/ministry-role-required';
 import { UpcomingAssignmentsError } from '../domain/errors/upcoming-assignments';
-
-interface DbMinistryMembershipManagerDependencies {
-  authorityManager: IAuthorityManager;
-  churchAccessRepository: ChurchAccessRepository;
-  membershipRepository: MinistryMembershipRepository;
-  roleRepository: RoleRepository;
-  unitOfWork: UnitOfWork;
-}
-
-interface LockAndAuthorizeInput {
-  churchId: ChurchId;
-  actorId: UserId;
-  memberId: string;
-  membershipId: string;
-  operation: MinistryMembershipOperation;
-  tx: TransactionContext;
-}
-
-type LockAndAuthorizeResult =
-  | { kind: 'forbidden' }
-  | { kind: 'not-found' }
-  | { kind: 'authorized'; target: MembershipTarget };
-
-interface GuardUpcomingAssignmentsInput {
-  churchId: ChurchId;
-  target: MembershipTarget;
-  /** Removed Roles, or the whole membership when it ends. */
-  scope: UpcomingAssignmentScope;
-  /** The operation's one Instant, also its write and audit time. */
-  at: Instant;
-  tx: TransactionContext;
-}
-
-interface LockGrantableRolesInput {
-  churchId: ChurchId;
-  target: MembershipTarget;
-  addedRoleIds: RoleId[];
-  tx: TransactionContext;
-}
-
-interface RoleDifferenceInput {
-  held: RoleId[];
-  requested: ReadonlySet<RoleId>;
-}
 
 /** Compares sets: order and duplicate ids never make a change. */
 function roleDifference({ held, requested }: RoleDifferenceInput) {

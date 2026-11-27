@@ -164,6 +164,7 @@ describe('lint scripts', () => {
       'bun run validate:e2e-lanes',
       'bun run validate:presentation-text',
       'bun run validate:date-time-seam',
+      'bun run validate:bun-version',
     ]);
   });
 

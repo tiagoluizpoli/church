@@ -11,6 +11,7 @@ const GUARD_LABELS = [
   'journey-map',
   'presentation-text',
   'date-time-seam',
+  'bun-version',
 ];
 
 const webSteps = () =>

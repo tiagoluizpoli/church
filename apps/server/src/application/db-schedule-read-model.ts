@@ -10,6 +10,7 @@ import type {
   IScheduleReadModel,
   ListScheduleSummariesInput,
   ListSchedulesInput,
+  LoadScheduleListFactsInput,
   ParticipationCompletionView,
   ScheduleInsightsView,
   ScheduleKeyInput,
@@ -24,7 +25,6 @@ import type {
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type {
-  ListSchedulesFactsInput,
   MinistryParticipationRepository,
   ScheduleCountRow,
 } from '../domain/contracts/infrastructure/ministry-participation.repository';
@@ -146,14 +146,16 @@ export class DbScheduleReadModel implements IScheduleReadModel {
     };
     for (const { stage, count } of stageCounts) counts[stage] = count;
 
-    // Only the page's rows pay for their facts and the per-Schedule change count.
+    // Only the page's rows pay for their facts and change counts, once per page.
     const facts = await this.loadScheduleListFacts({
       churchId,
-      ministryIds: page.rows.map(({ ministry }) => ministry.id),
-      cycleIds: page.rows.map(({ cycle }) => cycle.id),
+      schedules: page.rows.map(({ ministry, cycle }) => ({
+        ministryId: ministry.id,
+        cycleId: cycle.id,
+      })),
     });
-    const schedules = await Promise.all(
-      page.rows.map((row) => this.toScheduleView({ churchId, ...row, facts })),
+    const schedules = page.rows.map((row) =>
+      this.toScheduleView({ ...row, facts }),
     );
 
     return {
@@ -221,28 +223,18 @@ export class DbScheduleReadModel implements IScheduleReadModel {
     if (!row) throw new NotFoundError('Schedule not found');
     const facts = await this.loadScheduleListFacts({
       churchId,
-      ministryIds: [ministryId],
-      cycleIds: [cycleId],
+      schedules: [{ ministryId, cycleId }],
     });
-    return this.toScheduleView({ churchId, ...row, facts });
+    return this.toScheduleView({ ...row, facts });
   }
 
-  private async toScheduleView({
-    churchId,
+  private toScheduleView({
     ministry,
     cycle,
     stage,
     facts,
-  }: ToScheduleViewInput): Promise<ScheduleView> {
+  }: ToScheduleViewInput): ScheduleView {
     const key = scheduleKey({ ministryId: ministry.id, cycleId: cycle.id });
-    const affectedVolunteerCount = await this.unitOfWork.run((tx) =>
-      this.scheduleChangeReader.countScheduleChanges({
-        churchId,
-        ministryId: ministry.id,
-        cycleId: cycle.id,
-        tx,
-      }),
-    );
     const view: ScheduleView = {
       ministry,
       cycle,
@@ -250,7 +242,7 @@ export class DbScheduleReadModel implements IScheduleReadModel {
       lateMarkCount: facts.lateMarksBySchedule.get(key) ?? 0,
       openSwapRequestCount: facts.swapCountBySchedule.get(key) ?? 0,
       gapCount: facts.gapCountBySchedule.get(key) ?? 0,
-      affectedVolunteerCount,
+      affectedVolunteerCount: facts.changeCountBySchedule.get(key) ?? 0,
     };
     if (stage !== 'asking') return view;
     const { confirmed = 0, asked = 0 } =
@@ -258,18 +250,28 @@ export class DbScheduleReadModel implements IScheduleReadModel {
     return { ...view, asking: { confirmed, asked } };
   }
 
-  private async loadScheduleListFacts(
-    scope: ListSchedulesFactsInput,
-  ): Promise<ScheduleListFacts> {
-    const hasScope = scope.ministryIds.length > 0 && scope.cycleIds.length > 0;
-    const [checkCounts, lateMarkCounts, swapCounts, gapCounts] = hasScope
-      ? await Promise.all([
-          this.participationRepository.countScheduleChecks(scope),
-          this.participationRepository.countScheduleLateMarks(scope),
-          this.participationRepository.countScheduleOpenSwapRequests(scope),
-          this.participationRepository.countScheduleGaps(scope),
-        ])
-      : [[], [], [], []];
+  private async loadScheduleListFacts({
+    churchId,
+    schedules,
+  }: LoadScheduleListFactsInput): Promise<ScheduleListFacts> {
+    const scope = {
+      churchId,
+      ministryIds: schedules.map(({ ministryId }) => ministryId),
+      cycleIds: schedules.map(({ cycleId }) => cycleId),
+    };
+    const [checkCounts, lateMarkCounts, swapCounts, gapCounts, changeCounts] =
+      schedules.length > 0
+        ? await Promise.all([
+            this.participationRepository.countScheduleChecks(scope),
+            this.participationRepository.countScheduleLateMarks(scope),
+            this.participationRepository.countScheduleOpenSwapRequests(scope),
+            this.participationRepository.countScheduleGaps(scope),
+            this.scheduleChangeReader.countScheduleChangesBySchedules({
+              churchId,
+              schedules,
+            }),
+          ])
+        : [[], [], [], [], []];
     const countEntry = (row: ScheduleCountRow): [string, number] => [
       scheduleKey(row),
       row.count,
@@ -281,6 +283,7 @@ export class DbScheduleReadModel implements IScheduleReadModel {
       lateMarksBySchedule: new Map(lateMarkCounts.map(countEntry)),
       swapCountBySchedule: new Map(swapCounts.map(countEntry)),
       gapCountBySchedule: new Map(gapCounts.map(countEntry)),
+      changeCountBySchedule: new Map(changeCounts.map(countEntry)),
     };
   }
 }

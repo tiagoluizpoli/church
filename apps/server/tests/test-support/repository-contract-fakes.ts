@@ -54,6 +54,7 @@ export function createAssignmentRepositoryFake() {
     listByEventTimeBlock: vi.fn<AssignmentRepository['listByEventTimeBlock']>(),
     listByEvent: vi.fn<AssignmentRepository['listByEvent']>(),
     listByParticipation: vi.fn<AssignmentRepository['listByParticipation']>(),
+    listByParticipations: vi.fn<AssignmentRepository['listByParticipations']>(),
     listByShift: vi.fn<AssignmentRepository['listByShift']>(),
     listByVolunteer: vi.fn<AssignmentRepository['listByVolunteer']>(),
     listPublishedByVolunteer:
@@ -215,6 +216,14 @@ export function createMinistryParticipationRepositoryFake() {
     listScheduleLastTold: vi
       .fn<MinistryParticipationRepository['listScheduleLastTold']>()
       .mockResolvedValue([]),
+    listScheduleLastToldBySchedules:
+      vi.fn<
+        MinistryParticipationRepository['listScheduleLastToldBySchedules']
+      >(),
+    listPublishedScheduleParticipations:
+      vi.fn<
+        MinistryParticipationRepository['listPublishedScheduleParticipations']
+      >(),
     saveScheduleLastTold:
       vi.fn<MinistryParticipationRepository['saveScheduleLastTold']>(),
     getById: vi.fn<MinistryParticipationRepository['getById']>(),
@@ -278,6 +287,8 @@ export function createPlanningEventRepositoryFake() {
     getEvent: vi.fn<PlanningEventRepository['getEvent']>(),
     deleteEvent: vi.fn<PlanningEventRepository['deleteEvent']>(),
     listCycleEvents: vi.fn<PlanningEventRepository['listCycleEvents']>(),
+    listCycleCancellations:
+      vi.fn<PlanningEventRepository['listCycleCancellations']>(),
     createEventTimeBlock:
       vi.fn<PlanningEventRepository['createEventTimeBlock']>(),
     seedParticipations: vi.fn<PlanningEventRepository['seedParticipations']>(),

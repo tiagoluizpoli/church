@@ -1,6 +1,6 @@
 import type { SQLWrapper } from 'drizzle-orm';
 import type { ScheduleStage } from '../../domain/entities/ministry-participation';
-import type { AnyDrizzleDb } from './types';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 
 export interface StepCaseInput {
   step: SQLWrapper;

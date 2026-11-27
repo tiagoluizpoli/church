@@ -37,8 +37,8 @@ import type {
 import type { TransactionContext } from '../../domain/contracts/infrastructure/transaction-context';
 import type { Assignment } from '../../domain/entities/assignment';
 import { mapAssignment } from '../mappers/assignment.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
 
 interface DrizzleAssignmentRepositoryInput {
   db: AnyDrizzleDb;

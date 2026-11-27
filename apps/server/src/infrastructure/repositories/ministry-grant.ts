@@ -1,13 +1,8 @@
 import { ministryMembership, ministryMembershipRole } from '@church/db';
-import type { AnyDrizzleDb } from './types';
-
-export interface InsertMinistryMembershipInput {
-  db: AnyDrizzleDb;
-  churchId: string;
-  ministryId: string;
-  volunteerId: string;
-  ministryAccessLevel: 'leader' | 'volunteer';
-}
+import type {
+  GrantMinistryMembershipRolesInput,
+  InsertMinistryMembershipInput,
+} from './ministry-grant.types';
 
 /**
  * Shared by checkpoint-three redemption (`DrizzleRedemptionRepository`) and
@@ -27,13 +22,6 @@ export async function insertMinistryMembership({
     .returning({ id: ministryMembership.id });
   if (!membership) throw new Error('Ministry membership insert failed');
   return membership.id;
-}
-
-export interface GrantMinistryMembershipRolesInput {
-  db: AnyDrizzleDb;
-  churchId: string;
-  ministryMembershipId: string;
-  roleIds: string[];
 }
 
 /** Grants the invitation's Role qualifications; a no-op for an empty list. */

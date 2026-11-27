@@ -14,8 +14,8 @@ import type {
   FindAssignmentProposalApplicationInput,
 } from '../../domain/contracts/infrastructure/assignment-proposal-application.repository';
 import type { AppliedProposalAddition } from '../../domain/services/assignment-proposal';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import { getClient, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
 
 interface DrizzleAssignmentProposalApplicationRepositoryInput {
   db: AnyDrizzleDb;

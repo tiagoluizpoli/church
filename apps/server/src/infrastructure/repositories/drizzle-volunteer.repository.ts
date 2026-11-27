@@ -33,13 +33,13 @@ import type {
 import type { MinistryAccessLevel } from '../../domain/entities/ministry-membership';
 import type { Volunteer } from '../../domain/entities/volunteer';
 import { mapVolunteer } from '../mappers/volunteer.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import {
   getClient,
   isValidUuid,
   withActiveVolunteer,
   withChurchIsolation,
 } from './helpers';
-import type { AnyDrizzleDb } from './types';
 
 interface DrizzleVolunteerRepositoryInput {
   db: AnyDrizzleDb;

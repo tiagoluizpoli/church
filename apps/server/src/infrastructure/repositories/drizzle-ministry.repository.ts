@@ -47,13 +47,17 @@ import {
   encodeMinistryListCursor,
 } from '../../domain/ministry-list-cursor';
 import { mapMinistry } from '../mappers/ministry.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  DrizzleMinistryRepositoryInput,
+  RefuseNameInUseInput,
+} from './drizzle-ministry.repository.types';
 import {
   containsPattern,
   getClient,
   isValidUuid,
   withChurchIsolation,
 } from './helpers';
-import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
 const ACTIVE_NAME_CONSTRAINT = 'ministry_church_active_name_idx';
@@ -62,10 +66,6 @@ const NO_MINISTRIES: MinistryListCounts = { total: 0, review: 0, noSectors: 0 };
 
 function countWhere(condition: SQL) {
   return sql<number>`count(*) filter (where ${condition})`.mapWith(Number);
-}
-
-interface RefuseNameInUseInput<T> {
-  write: Promise<T>;
 }
 
 /** The active-name index refusal, including races, as the domain conflict. */
@@ -80,10 +80,6 @@ async function refuseNameInUse<T>({
     }
     throw error;
   }
-}
-
-interface DrizzleMinistryRepositoryInput {
-  db: AnyDrizzleDb;
 }
 
 export class DrizzleMinistryRepository implements MinistryRepository {

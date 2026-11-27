@@ -34,13 +34,12 @@ import {
   wordedForHiddenChoice,
 } from '../../domain/services/hidden-notice';
 import { mapNotification } from '../mappers/notification.mapper';
-import type { WithHiddenChoiceInput } from './drizzle-notification.repository.types';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  DrizzleNotificationRepositoryInput,
+  WithHiddenChoiceInput,
+} from './drizzle-notification.repository.types';
 import { getClient } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleNotificationRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 function ownedBy({ userId, churchId }: NotificationOwner) {
   return and(

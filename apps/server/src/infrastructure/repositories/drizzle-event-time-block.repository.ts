@@ -20,13 +20,13 @@ import type {
 import type { EventTimeBlock } from '../../domain/entities/event-time-block';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import {
   assertPlaceAddresses,
   getClient,
   isValidUuid,
   withChurchIsolation,
 } from './helpers';
-import type { AnyDrizzleDb } from './types';
 
 interface DrizzleEventTimeBlockRepositoryInput {
   db: AnyDrizzleDb;

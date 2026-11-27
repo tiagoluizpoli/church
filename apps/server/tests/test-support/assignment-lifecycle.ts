@@ -17,6 +17,7 @@ import type { UnavailableShiftRepository } from '@/domain/contracts/infrastructu
 import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAssignmentAuditRepository } from '@/infrastructure/repositories/drizzle-assignment-audit.repository';
+import type { AnyDrizzleDb } from '@/infrastructure/repositories/drizzle-db.types';
 import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
@@ -24,7 +25,6 @@ import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-sh
 import { DrizzleSwapRequestRepository } from '@/infrastructure/repositories/drizzle-swap-request.repository';
 import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories/drizzle-unavailable-shift.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
-import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
 
 /**
  * The Assignment lifecycle and facts reader the composition root injects into

@@ -26,13 +26,13 @@ import type {
   RecordOutboxEmailDestinationConfirmedInput,
   RecordOutboxEmailPreparedInput,
 } from '../../domain/contracts/infrastructure/outbox.repository';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  DrizzleOutboxRepositoryInput,
+  OutboxMessageRow,
+} from './drizzle-outbox.repository.types';
 import { currentEmailDeliveryMode } from './drizzle-runtime-configuration.repository';
 import { getClient, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleOutboxRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 export class DrizzleOutboxRepository implements OutboxRepository {
   constructor({ db }: DrizzleOutboxRepositoryInput) {
@@ -227,8 +227,6 @@ export class DrizzleOutboxRepository implements OutboxRepository {
     return row?.status ?? null;
   }
 }
-
-type OutboxMessageRow = typeof outboxMessage.$inferSelect;
 
 /**
  * `payload` is jsonb — its shape is only as trustworthy as whatever enqueued

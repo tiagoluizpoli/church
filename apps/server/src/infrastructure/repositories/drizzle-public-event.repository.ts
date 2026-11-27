@@ -20,11 +20,11 @@ import {
   type EventTimeBlockMove,
   eventTimeBlockMovePath,
 } from '../../domain/services/event-time-block-move-path';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import type { DrizzlePublicEventRepositoryInput } from './drizzle-public-event.repository.types';
 import { withChurchIsolation } from './helpers';
 import { shownEventTimeBlock } from './live-event-time-block';
 import { resolvedPlace } from './time-block-place';
-import type { AnyDrizzleDb } from './types';
 
 export class DrizzlePublicEventRepository implements PublicEventRepository {
   private readonly db: AnyDrizzleDb;

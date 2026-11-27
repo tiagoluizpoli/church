@@ -15,19 +15,13 @@ import type { RegularActivity } from '../../domain/entities/regular-activity';
 import { exceptOrdinals } from '../../domain/programme-order';
 import type { Recurrence } from '../../domain/recurrence';
 import { timeBlocksOverlap } from '../../domain/template-collision';
+import type {
+  DrizzleChurchProgrammeRepositoryInput,
+  WinnerBlock,
+} from './drizzle-church-programme.repository.types';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import { withChurchIsolation } from './helpers';
 import { resolvedPlace } from './time-block-place';
-import type { AnyDrizzleDb } from './types';
-
-interface BlockTimes {
-  startTime: string;
-  endTime: string;
-}
-
-interface WinnerBlock {
-  recurrence: Recurrence;
-  block: BlockTimes;
-}
 
 /** Day-of-month activities follow weekday ones; the last day of the month closes the month. */
 const LAST_DAY_POSITION = 32;
@@ -54,10 +48,6 @@ function programmeOrder() {
     asc(templateTimeBlock.startTime),
     asc(monthlyLast),
   ];
-}
-
-interface DrizzleChurchProgrammeRepositoryInput {
-  db: AnyDrizzleDb;
 }
 
 export class DrizzleChurchProgrammeRepository

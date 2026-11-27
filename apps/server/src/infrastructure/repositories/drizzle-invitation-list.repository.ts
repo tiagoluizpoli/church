@@ -32,52 +32,35 @@ import type {
   InvitationClosure,
   InvitationEmailDelivery,
   InvitationListCounts,
-  InvitationListFilters,
-  InvitationListKind,
   InvitationListOptions,
   InvitationListRole,
   InvitationListRow,
   InvitationListRowsPage,
-  InvitationListScope,
 } from '../../domain/entities/invitation-list-item';
 import { MinistryInvitationNotFoundError } from '../../domain/errors/ministry-invitation-not-found';
 import {
   decodeInvitationListCursor,
   encodeInvitationListCursor,
-  type InvitationListCursorPosition,
 } from '../../domain/invitation-list-cursor';
 import { projectInvitationEmailDelivery } from '../../domain/services/invitation-email-delivery';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  AfterCursorInput,
+  ChurchStatus,
+  ClosureFacts,
+  ClosuresInput,
+  CountScopeInput,
+  DeliveryFacts,
+  DeliveryLookupInput,
+  DrizzleInvitationListRepositoryInput,
+  FilterOptionsInput,
+  IsBeforeInput,
+  KindQueryInput,
+  MinistryQueryInput,
+  RolesByInvitationInput,
+  TallyInput,
+} from './drizzle-invitation-list.repository.types';
 import { containsPattern, getClient } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleInvitationListRepositoryInput {
-  db: AnyDrizzleDb;
-}
-
-interface KindQueryInput {
-  churchId: string;
-  limit: number;
-  position?: InvitationListCursorPosition;
-  filters: InvitationListFilters;
-  now: Date;
-}
-
-interface MinistryQueryInput extends KindQueryInput {
-  ministryIds?: string[];
-}
-
-interface DeliveryFacts {
-  latest: Map<string, InvitationEmailDelivery>;
-  lastSent: Map<string, Date>;
-}
-
-interface DeliveryLookupInput {
-  churchId: string;
-  ministryInvitationIds: string[];
-  churchInvitationIds: string[];
-  /** Ministry row id → its paired Church Invitation, whose T1 may deliver it. */
-  pairedParents: Map<string, string>;
-}
 
 const NO_OFFERS: InvitationListCounts = {
   pending: 0,
@@ -104,59 +87,6 @@ const DISPLAY_STATUS = {
 
 const inviter = alias(user, 'inviter');
 const invitee = alias(user, 'invitee');
-
-interface FilterOptionsInput {
-  churchId: string;
-  scope: InvitationListScope;
-}
-
-interface CountScopeInput extends FilterOptionsInput {
-  now: Date;
-}
-
-interface TallyInput {
-  status: SQL;
-  expiresAt: SQL;
-  /** Extra condition an offer must meet to count as pending or expired. */
-  outstanding?: SQL;
-}
-
-interface ClosuresInput {
-  churchId: string;
-  rows: { kind: InvitationListKind; id: string; closureFacts: ClosureFacts }[];
-}
-
-type ChurchStatus = 'pending' | 'accepted' | 'rejected' | 'canceled';
-
-/** What the row itself recorded about its closure; the audit trail adds the Ministry-side actor. */
-interface ClosureFacts {
-  status: ChurchStatus;
-  at?: Date;
-  actorId?: string;
-  reason?: string;
-}
-
-interface RowOrderKey {
-  createdAt: Date;
-  kind: InvitationListKind;
-  id: string;
-}
-
-interface IsBeforeInput {
-  a: RowOrderKey;
-  b: RowOrderKey;
-}
-
-interface AfterCursorInput {
-  kind: InvitationListKind;
-  position?: InvitationListCursorPosition;
-  createdAt: Parameters<typeof lt>[0];
-  id: Parameters<typeof lt>[0];
-}
-
-interface RolesByInvitationInput {
-  ids: string[];
-}
 
 /** Newest first; equal Instants fall back to kind then id, compared byte-wise like the SQL `COLLATE "C"`. */
 function isBefore({ a, b }: IsBeforeInput): boolean {

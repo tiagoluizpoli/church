@@ -28,7 +28,7 @@ import {
   DrizzleVolunteerRepository,
   DrizzleVolunteerTransferRepository,
 } from '@/infrastructure/repositories';
-import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
+import type { AnyDrizzleDb } from '@/infrastructure/repositories/drizzle-db.types';
 import { InMemoryObjectStorage } from '@/tests/test-support/in-memory-object-storage';
 
 export interface MinistryInvitationTestHarnessOptions {

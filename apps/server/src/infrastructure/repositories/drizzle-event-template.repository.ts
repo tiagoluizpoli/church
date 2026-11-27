@@ -23,13 +23,13 @@ import type {
 import { DuplicateTemplateBlockLabelError } from '../../domain/errors/duplicate-template-block-label';
 import { DuplicateTemplateNameError } from '../../domain/errors/duplicate-template-name';
 import { mapEventTemplate } from '../mappers/event-template.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import {
   assertPlaceAddresses,
   getClient,
   isValidUuid,
   withChurchIsolation,
 } from './helpers';
-import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
 interface MapTemplateGraphsInput {

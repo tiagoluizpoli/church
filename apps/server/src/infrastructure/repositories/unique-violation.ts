@@ -1,25 +1,17 @@
+import type {
+  IsChurchSlugConflictInput,
+  IsConstraintViolationInput,
+  IsUniqueViolationInput,
+  PostgresErrorFields,
+} from './unique-violation.types';
+
 /** PostgreSQL `unique_violation` SQLSTATE. */
 export const PG_UNIQUE_VIOLATION = '23505';
 /** PostgreSQL `exclusion_violation` SQLSTATE. */
 export const PG_EXCLUSION_VIOLATION = '23P01';
 
-interface PostgresErrorFields {
-  code?: unknown;
-  constraint?: unknown;
-  cause?: unknown;
-}
-
 function hasPostgresErrorFields(value: unknown): value is PostgresErrorFields {
   return typeof value === 'object' && value !== null;
-}
-
-export interface IsUniqueViolationInput {
-  error: unknown;
-  constraint: string;
-}
-
-export interface IsConstraintViolationInput extends IsUniqueViolationInput {
-  code: string;
 }
 
 /**
@@ -53,10 +45,6 @@ export function isUniqueViolation({
 const ORGANIZATION_SLUG_UNIQUE = 'organization_slug_unique';
 /** Raised by migration 0070's trigger: the slug is live or history of another Church. */
 const CHURCH_SLUG_CLAIM = 'church_slug_claim';
-
-export interface IsChurchSlugConflictInput {
-  error: unknown;
-}
 
 /** True when a Church Slug write lost to another Church's live or given-up slug. */
 export function isChurchSlugConflict({

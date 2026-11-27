@@ -3,12 +3,9 @@ import type {
   RecordIdentityMismatchInput,
   SecurityLogRepository,
 } from '../../domain/contracts/infrastructure/security-log.repository';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type { DrizzleSecurityLogRepositoryInput } from './drizzle-security-log.repository.types';
 import { getClient } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleSecurityLogRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 export class DrizzleSecurityLogRepository implements SecurityLogRepository {
   constructor({ db }: DrizzleSecurityLogRepositoryInput) {

@@ -10,11 +10,7 @@ import {
   volunteer,
 } from '@church/db';
 import { and, asc, eq, gt, inArray, isNull } from 'drizzle-orm';
-import type {
-  ChurchId,
-  MinistryId,
-  VolunteerId,
-} from '../../domain/branded-ids';
+import type { VolunteerId } from '../../domain/branded-ids';
 import type {
   AcceptMinistryInvitationInput,
   DeclineChurchInvitationInput,
@@ -28,31 +24,22 @@ import type {
 import type { VolunteerRepository } from '../../domain/contracts/infrastructure/volunteer.repository';
 import { CrossChurchVolunteerConflictError } from '../../domain/errors/cross-church-volunteer-conflict';
 import { PendingMinistryInvitationNotFoundError } from '../../domain/errors/pending-ministry-invitation-not-found';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  AssertInvitationGrantScopeInput,
+  DrizzleRedemptionRepositoryInput,
+  ExistingMinistryMembership,
+  FindExistingMinistryMembershipInput,
+  InsertMinistryMembershipInput,
+  InsertVolunteerInput,
+  PersistedInvitationGrant,
+  TopUpMinistryMembershipInput,
+} from './drizzle-redemption.repository.types';
 import { getClient, withChurchIsolation } from './helpers';
 import {
   grantMinistryMembershipRoles,
   insertMinistryMembership,
 } from './ministry-grant';
-import type { AnyDrizzleDb } from './types';
-
-interface PersistedInvitationGrant {
-  ministryAccessLevel: 'leader' | 'volunteer';
-  ministryId: string;
-}
-
-interface PendingInvitationRole {
-  roleId: string;
-}
-
-interface ExistingMinistryMembership {
-  id: string;
-  ministryAccessLevel: 'leader' | 'volunteer';
-}
-
-interface DrizzleRedemptionRepositoryInput {
-  db: AnyDrizzleDb;
-  volunteerRepository: VolunteerRepository;
-}
 
 /**
  * Checkpoint-three persistence only. The application manager owns the
@@ -491,38 +478,4 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       throw new PendingMinistryInvitationNotFoundError();
     }
   }
-}
-
-interface AssertInvitationGrantScopeInput {
-  db: AnyDrizzleDb;
-  churchId: AcceptMinistryInvitationInput['churchId'];
-  ministryId: string;
-  invitationRoles: PendingInvitationRole[];
-}
-
-interface InsertVolunteerInput {
-  db: AnyDrizzleDb;
-  churchId: ChurchId;
-  userId: AcceptMinistryInvitationInput['userId'];
-}
-
-interface FindExistingMinistryMembershipInput {
-  db: AnyDrizzleDb;
-  churchId: ChurchId;
-  volunteerId: string;
-  ministryId: MinistryId | string;
-}
-
-interface TopUpMinistryMembershipInput {
-  db: AnyDrizzleDb;
-  existingMembership: ExistingMinistryMembership;
-  grantedAccessLevel: 'leader' | 'volunteer';
-}
-
-interface InsertMinistryMembershipInput {
-  db: AnyDrizzleDb;
-  churchId: ChurchId;
-  volunteerId: string;
-  ministryId: MinistryId | string;
-  ministryAccessLevel: 'leader' | 'volunteer';
 }

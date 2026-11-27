@@ -25,8 +25,8 @@ import type {
 import { mapEvent } from '../mappers/event.mapper';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
 
 interface DrizzleEventRepositoryInput {
   db: AnyDrizzleDb;

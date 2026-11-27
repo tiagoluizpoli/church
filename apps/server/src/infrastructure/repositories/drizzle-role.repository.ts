@@ -28,15 +28,16 @@ import type {
 import type { Role } from '../../domain/entities/role';
 import { RoleNameInUseError } from '../../domain/errors/role-name-in-use';
 import { mapRole } from '../mappers/role.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  ActiveInMinistryInput,
+  DrizzleRoleRepositoryInput,
+  RefuseNameInUseInput,
+} from './drizzle-role.repository.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
 const ACTIVE_NAME_CONSTRAINT = 'role_ministry_active_name_idx';
-
-interface RefuseNameInUseInput<T> {
-  write: Promise<T>;
-}
 
 /** The active-name index refusal, including races, as the domain conflict. */
 async function refuseNameInUse<T>({
@@ -50,15 +51,6 @@ async function refuseNameInUse<T>({
     }
     throw error;
   }
-}
-
-interface DrizzleRoleRepositoryInput {
-  db: AnyDrizzleDb;
-}
-
-interface ActiveInMinistryInput {
-  churchId: string;
-  ministryId: string;
 }
 
 function activeInMinistry({ churchId, ministryId }: ActiveInMinistryInput) {

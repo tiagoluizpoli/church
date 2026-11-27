@@ -79,6 +79,11 @@ describe('DbActiveChurchResolver', () => {
       churchId,
       volunteerId,
       hasVolunteerMembership: false,
+      actor: actorWithMembership({
+        churchId,
+        accessLevel: 'admin',
+        volunteerId,
+      }),
       autoSelected: false,
     });
     expect(actorRepository.resolveActor).toHaveBeenCalledWith({
@@ -163,6 +168,10 @@ describe('DbActiveChurchResolver', () => {
       churchId: otherChurchId,
       volunteerId: null,
       hasVolunteerMembership: false,
+      actor: actorWithMembership({
+        churchId: otherChurchId,
+        accessLevel: 'member',
+      }),
       autoSelected: true,
       membershipRemovedFrom: 'Former Home Church',
     });
@@ -213,6 +222,7 @@ describe('DbActiveChurchResolver', () => {
       churchId,
       volunteerId: null,
       hasVolunteerMembership: false,
+      actor: actorWithMembership({ churchId, accessLevel: 'member' }),
       autoSelected: true,
     });
     expect(unitOfWork.runWith).toHaveBeenCalledWith({

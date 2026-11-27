@@ -62,6 +62,7 @@ export class CallerCapabilitiesController implements FastifyController {
       async (request, reply) => {
         const capabilities =
           await this.authorityGuard.resolveCallerCapabilities({
+            actor: request.actor,
             churchId: ChurchId.from(request.churchId),
             userId: UserId.from(request.userId),
           });

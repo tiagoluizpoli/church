@@ -139,6 +139,7 @@ export class PrepareController implements FastifyController {
         const churchId = ChurchId.from(request.churchId);
         const { isChurchAdmin, ledMinistries } =
           await this.authorityGuard.resolveCallerCapabilities({
+            actor: request.actor,
             churchId,
             userId: UserId.from(request.userId),
           });
@@ -185,6 +186,7 @@ export class PrepareController implements FastifyController {
         const churchId = ChurchId.from(request.churchId);
         const { isChurchAdmin, ledMinistries } =
           await this.authorityGuard.resolveCallerCapabilities({
+            actor: request.actor,
             churchId,
             userId: UserId.from(request.userId),
           });
@@ -224,6 +226,7 @@ export class PrepareController implements FastifyController {
         const churchId = ChurchId.from(request.churchId);
         const { isChurchAdmin, ledMinistries } =
           await this.authorityGuard.resolveCallerCapabilities({
+            actor: request.actor,
             churchId,
             userId: UserId.from(request.userId),
           });
@@ -278,6 +281,7 @@ export class PrepareController implements FastifyController {
         >;
 
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -329,6 +333,7 @@ export class PrepareController implements FastifyController {
         const { ministryId } = request.query as CycleMinistryQuery;
 
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -371,6 +376,7 @@ export class PrepareController implements FastifyController {
         const { ministryId } = request.params as ScheduleSummaryRouteParams;
 
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -477,6 +483,7 @@ export class PrepareController implements FastifyController {
         const { ministryId, answerBy } = request.body as AskScheduleBody;
 
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -526,6 +533,7 @@ export class PrepareController implements FastifyController {
           request.body as SetAvailabilityDeadlineBody;
 
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -573,6 +581,7 @@ export class PrepareController implements FastifyController {
         const { ministryId } = request.body as RemindScheduleBody;
 
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -623,6 +632,7 @@ export class PrepareController implements FastifyController {
             Partial<ListLimitQuery>;
 
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -665,6 +675,7 @@ export class PrepareController implements FastifyController {
     participationId,
   }: DenyParticipationScopeInput): Promise<boolean> {
     const decision = await this.authorityGuard.decideManageParticipation({
+      actor: request.actor,
       churchId: ChurchId.from(request.churchId),
       participationId: MinistryParticipationId.from(participationId),
       userId: UserId.from(request.userId),
@@ -684,6 +695,7 @@ export class PrepareController implements FastifyController {
   }: DenyAuthorityDecisionInput): Promise<boolean> {
     if (allowed) return false;
     const functionDecision = await this.authorityGuard.decideManageAnyMinistry({
+      actor: request.actor,
       churchId: ChurchId.from(request.churchId),
       userId: UserId.from(request.userId),
     });

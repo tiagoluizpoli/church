@@ -164,6 +164,7 @@ export class EventController implements FastifyController {
     reply,
   }: DenySchedulingFunctionInput): Promise<boolean> {
     const decision = await this.authorityGuard.decideManageAnyMinistry({
+      actor: request.actor,
       churchId: ChurchId.from(request.churchId),
       userId: UserId.from(request.userId),
     });
@@ -179,6 +180,7 @@ export class EventController implements FastifyController {
     ministryId,
   }: DenyMinistryObjectInput): Promise<boolean> {
     const decision = await this.authorityGuard.decideManageMinistry({
+      actor: request.actor,
       churchId: ChurchId.from(request.churchId),
       ministryId: MinistryId.from(ministryId),
       userId: UserId.from(request.userId),

@@ -218,7 +218,7 @@ describe('caller resolution statement budget', () => {
     expect({
       small: small.map(({ statements }) => statements),
       large: large.map(({ statements }) => statements),
-    }).toEqual({ small: [8, 12, 17], large: [8, 12, 17] });
+    }).toEqual({ small: [4, 8, 9], large: [4, 8, 9] });
   });
 
   it('reflects a leader demoted between requests on the very next one', async () => {

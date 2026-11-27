@@ -106,6 +106,7 @@ export class MinistryController implements FastifyController {
         const churchId = ChurchId.from(request.churchId);
         const capabilities =
           await this.authorityGuard.resolveCallerCapabilities({
+            actor: request.actor,
             churchId,
             userId: UserId.from(request.userId),
           });
@@ -157,6 +158,7 @@ export class MinistryController implements FastifyController {
         const churchId = ChurchId.from(request.churchId);
         const { isChurchAdmin, ledMinistries } =
           await this.authorityGuard.resolveCallerCapabilities({
+            actor: request.actor,
             churchId,
             userId: UserId.from(request.userId),
           });
@@ -341,6 +343,7 @@ export class MinistryController implements FastifyController {
           churchId,
           ministryId: MinistryId.from(ministryId),
           inviterId: UserId.from(request.userId),
+          actor: request.actor,
           email: body.email,
           ministryAccessLevel: body.ministryAccessLevel,
           roleIds: body.roleIds.map((roleId) => RoleId.from(roleId)),
@@ -388,6 +391,7 @@ export class MinistryController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
           ministryInvitationId: MinistryInvitationId.from(invitationId),
           callerId: UserId.from(request.userId),
+          actor: request.actor,
         });
         const deliveryStatus =
           await this.ministryInvitationManager.getDeliveryStatus({
@@ -427,6 +431,7 @@ export class MinistryController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
           ministryInvitationId: MinistryInvitationId.from(invitationId),
           callerId: UserId.from(request.userId),
+          actor: request.actor,
         });
         return reply.status(204).send(null);
       },
@@ -439,6 +444,7 @@ export class MinistryController implements FastifyController {
     reply,
   }: DenyNonAdminInput): Promise<boolean> {
     const allowed = await this.authorityGuard.canManageChurch({
+      actor: request.actor,
       churchId: ChurchId.from(request.churchId),
       userId: UserId.from(request.userId),
     });
@@ -454,6 +460,7 @@ export class MinistryController implements FastifyController {
     ministryId,
   }: DenyUnmanagedMinistryInput): Promise<boolean> {
     const decision = await this.authorityGuard.decideManageMinistry({
+      actor: request.actor,
       churchId: ChurchId.from(request.churchId),
       userId: UserId.from(request.userId),
       ministryId,
@@ -472,6 +479,7 @@ export class MinistryController implements FastifyController {
     reply,
   }: DenyMissingMinistryFunctionInput): Promise<boolean> {
     const decision = await this.authorityGuard.decideManageAnyMinistry({
+      actor: request.actor,
       churchId: ChurchId.from(request.churchId),
       userId: UserId.from(request.userId),
     });

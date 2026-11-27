@@ -1,6 +1,9 @@
 import { NotFoundError } from '@church/core';
 import { AuthorityService } from '../domain/authority/authority-service';
-import type { AuthorityDecision } from '../domain/authority/types';
+import type {
+  AuthorityActor,
+  AuthorityDecision,
+} from '../domain/authority/types';
 import type { MinistryId } from '../domain/branded-ids';
 import type {
   CallerCapabilitiesProjection,
@@ -170,7 +173,7 @@ export class DbAuthorityManager implements IAuthorityManager {
   async decideManageMinistry(
     input: CanManageMinistryInput,
   ): Promise<AuthorityDecision> {
-    const { churchId, ministryId, userId } = input;
+    const { churchId, ministryId, userId, actor } = input;
     try {
       await this.ministryRepository.getById({ churchId, id: ministryId });
     } catch (error) {
@@ -182,6 +185,7 @@ export class DbAuthorityManager implements IAuthorityManager {
     return this.decideAuthority({
       churchId,
       userId,
+      actor,
       action: 'manage',
       resource: { type: 'ministry', churchId, ministryId },
       scope: 'object',
@@ -191,7 +195,7 @@ export class DbAuthorityManager implements IAuthorityManager {
   async decideManageParticipation(
     input: CanManageParticipationInput,
   ): Promise<AuthorityDecision> {
-    const { churchId, participationId, userId } = input;
+    const { churchId, participationId, userId, actor } = input;
     const ministryId = await this.scopeRepository.resolveParticipationMinistry({
       churchId,
       participationId,
@@ -200,6 +204,7 @@ export class DbAuthorityManager implements IAuthorityManager {
     return this.decideAuthority({
       churchId,
       userId,
+      actor,
       action: 'manage',
       resource: { type: 'ministry', churchId, ministryId },
       scope: 'object',
@@ -209,7 +214,7 @@ export class DbAuthorityManager implements IAuthorityManager {
   async decideManageShift(
     input: CanManageShiftInput,
   ): Promise<AuthorityDecision> {
-    const { churchId, shiftId, userId } = input;
+    const { churchId, shiftId, userId, actor } = input;
     const ministryId = await this.scopeRepository.resolveShiftMinistry({
       churchId,
       shiftId,
@@ -218,6 +223,7 @@ export class DbAuthorityManager implements IAuthorityManager {
     return this.decideAuthority({
       churchId,
       userId,
+      actor,
       action: 'manage',
       resource: { type: 'ministry', churchId, ministryId },
       scope: 'object',
@@ -317,11 +323,20 @@ export class DbAuthorityManager implements IAuthorityManager {
     return isChurchAdmin || ledMinistries.length > 0;
   }
 
-  private async resolveActor(input: ResolveActorInput) {
+  /** The request's own caller when it is this User in this Church; otherwise a fresh read. */
+  private async resolveActor({
+    churchId,
+    userId,
+    actor,
+    tx,
+  }: ResolveActorInput): Promise<AuthorityActor> {
+    if (actor?.userId === userId && actor.activeChurchId === churchId) {
+      return actor;
+    }
     return this.actorRepository.resolveActor({
-      userId: input.userId,
-      activeChurchId: input.churchId,
-      tx: input.tx,
+      userId,
+      activeChurchId: churchId,
+      tx,
     });
   }
 }

@@ -1,3 +1,4 @@
+import type { AuthorityActor } from '../../authority/types';
 import type { ChurchId, UserId } from '../../branded-ids';
 import type {
   InvitationListFilters,
@@ -11,6 +12,8 @@ export interface ListInvitationsRequest {
   churchId: ChurchId;
   /** The caller, whose authority decides each row's action facts. */
   userId: UserId;
+  /** The caller as this request already read it; reused instead of a fresh read. */
+  actor?: AuthorityActor;
   /** Resolved by the controller from the caller's capabilities; never from the request. */
   scope: InvitationListScope;
   filters: InvitationListFilters;

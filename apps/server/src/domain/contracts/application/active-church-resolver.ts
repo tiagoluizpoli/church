@@ -1,3 +1,4 @@
+import type { AuthorityActor } from '../../authority/types';
 import type { ChurchId, UserId, VolunteerId } from '../../branded-ids';
 import type { AuthorityActorRepository } from '@/domain/contracts/infrastructure/authority-actor.repository';
 import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
@@ -31,6 +32,12 @@ export interface ResolvedActiveChurch extends MembershipRemovalNotice {
    * active Ministry Membership in `churchId` — the gate for serving-only routes.
    */
   hasVolunteerMembership: boolean;
+  /**
+   * The whole caller this resolution was decided on, read fresh for this
+   * request: the request's authority checks reuse it instead of reading the
+   * caller again. Never kept across requests.
+   */
+  actor: AuthorityActor;
   /**
    * True when no active organization was on the session and exactly one
    * Church Membership existed, so this Church was selected on the caller's

@@ -19,6 +19,7 @@ export async function denyMinistryManagement({
   const capability = await authorityGuard.decideManageAnyMinistry({
     churchId,
     userId,
+    actor: request.actor,
   });
   if (!capability.allowed) {
     refuse({ reply, request, code: 'FORBIDDEN' });
@@ -28,6 +29,7 @@ export async function denyMinistryManagement({
   const decision = await authorityGuard.decideManageMinistry({
     churchId,
     userId,
+    actor: request.actor,
     ministryId,
   });
   if (decision.allowed) return false;

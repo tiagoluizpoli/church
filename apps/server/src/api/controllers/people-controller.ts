@@ -85,9 +85,14 @@ export class PeopleController implements FastifyController {
   private async resolveScope({
     churchId,
     userId,
+    actor,
   }: ResolveScopeInput): Promise<PeopleListScope | undefined> {
     const { isChurchAdmin, ledMinistries } =
-      await this.authorityGuard.resolveCallerCapabilities({ churchId, userId });
+      await this.authorityGuard.resolveCallerCapabilities({
+        churchId,
+        userId,
+        actor,
+      });
     if (isChurchAdmin) return { kind: 'church' };
     if (ledMinistries.length === 0) return undefined;
     return {
@@ -131,6 +136,7 @@ export class PeopleController implements FastifyController {
         const actorId = UserId.from(request.userId);
         // Refuse a non-admin before any target lookup; the manager rechecks under the Church lock.
         const isAdmin = await this.authorityGuard.canManageChurch({
+          actor: request.actor,
           churchId,
           userId: actorId,
         });
@@ -189,7 +195,11 @@ export class PeopleController implements FastifyController {
         const churchId = ChurchId.from(request.churchId);
         const actorId = UserId.from(request.userId);
         // The area gate; the manager decides the target under the Church lock.
-        const scope = await this.resolveScope({ churchId, userId: actorId });
+        const scope = await this.resolveScope({
+          churchId,
+          userId: actorId,
+          actor: request.actor,
+        });
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
         const { memberId, membershipId } = request.params as z.infer<
           typeof ministryMembershipParamsSchema
@@ -237,6 +247,7 @@ export class PeopleController implements FastifyController {
         const actorId = UserId.from(request.userId);
         // Refuse a non-admin before any target lookup; the manager rechecks under the Church lock.
         const isAdmin = await this.authorityGuard.canManageChurch({
+          actor: request.actor,
           churchId,
           userId: actorId,
         });
@@ -286,7 +297,11 @@ export class PeopleController implements FastifyController {
         const churchId = ChurchId.from(request.churchId);
         const actorId = UserId.from(request.userId);
         // The area gate; the manager decides the target under the Church lock.
-        const scope = await this.resolveScope({ churchId, userId: actorId });
+        const scope = await this.resolveScope({
+          churchId,
+          userId: actorId,
+          actor: request.actor,
+        });
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
         const { memberId, membershipId } = request.params as z.infer<
           typeof ministryMembershipParamsSchema
@@ -323,12 +338,17 @@ export class PeopleController implements FastifyController {
       async (request, reply) => {
         const churchId = ChurchId.from(request.churchId);
         const callerId = UserId.from(request.userId);
-        const scope = await this.resolveScope({ churchId, userId: callerId });
+        const scope = await this.resolveScope({
+          churchId,
+          userId: callerId,
+          actor: request.actor,
+        });
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
         const result = await this.peopleListManager.get({
           churchId,
           scope,
           callerId,
+          callerActor: request.actor,
           memberId: (request.params as z.infer<typeof personParamsSchema>)
             .memberId,
         });
@@ -365,6 +385,7 @@ export class PeopleController implements FastifyController {
         const scope = await this.resolveScope({
           churchId,
           userId: UserId.from(request.userId),
+          actor: request.actor,
         });
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
         const { cursor, limit, ...filters } = request.query as z.infer<

@@ -108,7 +108,8 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   }
 
   async mint(input: MintMinistryInvitationInput): Promise<MinistryInvitation> {
-    const { churchId, ministryId, inviterId, ministryAccessLevel } = input;
+    const { churchId, ministryId, inviterId, ministryAccessLevel, actor } =
+      input;
     const email = normalizeInvitationEmail({ email: input.email });
     const roleIds = [...new Set(input.roleIds)];
 
@@ -116,11 +117,13 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       churchId,
       ministryId,
       callerId: inviterId,
+      actor,
     });
     await this.ensureOfferAuthority({
       churchId,
       ministryId,
       callerId: inviterId,
+      actor,
       ministryAccessLevel,
     });
 
@@ -365,12 +368,14 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   async resend(
     input: ResendMinistryInvitationInput,
   ): Promise<MinistryInvitation> {
-    const { churchId, ministryId, ministryInvitationId, callerId } = input;
+    const { churchId, ministryId, ministryInvitationId, callerId, actor } =
+      input;
 
     await this.ensureMintableScope({
       churchId,
       ministryId,
       callerId,
+      actor,
     });
 
     return this.unitOfWork.run(async (tx) => {
@@ -391,6 +396,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         churchId,
         ministryId,
         callerId,
+        actor,
         ministryAccessLevel: target.ministryAccessLevel,
         tx,
       });
@@ -496,12 +502,14 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   }
 
   async revoke(input: RevokeMinistryInvitationInput): Promise<void> {
-    const { churchId, ministryId, ministryInvitationId, callerId } = input;
+    const { churchId, ministryId, ministryInvitationId, callerId, actor } =
+      input;
 
     await this.ensureMintableScope({
       churchId,
       ministryId,
       callerId,
+      actor,
     });
 
     await this.unitOfWork.run(async (tx) => {
@@ -519,6 +527,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
         churchId,
         ministryId,
         callerId,
+        actor,
         ministryAccessLevel: target.ministryAccessLevel,
         tx,
       });
@@ -738,7 +747,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   private async ensureMintableScope(
     input: EnsureMintableScopeInput,
   ): Promise<void> {
-    const { churchId, ministryId, callerId } = input;
+    const { churchId, ministryId, callerId, actor } = input;
 
     try {
       await this.ministryRepository.getById({ churchId, id: ministryId });
@@ -753,6 +762,7 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
       churchId,
       ministryId,
       userId: callerId,
+      actor,
     });
     if (!canManage) throw new MinistryInvitationNotFoundError();
   }
@@ -761,10 +771,12 @@ export class DbMinistryInvitationManager implements IMinistryInvitationManager {
   private async ensureOfferAuthority(
     input: EnsureOfferAuthorityInput,
   ): Promise<void> {
-    const { churchId, callerId, ministryId, ministryAccessLevel, tx } = input;
+    const { churchId, callerId, actor, ministryId, ministryAccessLevel, tx } =
+      input;
     const [allowed] = await this.authorityManager.canManageInvitations({
       churchId,
       userId: callerId,
+      actor,
       invitations: [{ ministryId, ministryAccessLevel }],
       tx,
     });

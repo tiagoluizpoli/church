@@ -1,5 +1,6 @@
 import type { AppConfig } from '@church/app-config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { AuthorityActor } from '../../domain/authority/types';
 import type { ChurchId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
@@ -15,6 +16,8 @@ export interface ListLimitQuery {
 export interface ResolveScopeInput {
   churchId: ChurchId;
   userId: UserId;
+  /** The caller as Active Church resolution read it for this request. */
+  actor?: AuthorityActor;
 }
 
 /** Any Ministry Membership manager outcome: a hidden or refused target, or the applied change. */

@@ -87,6 +87,7 @@ export class SwapRequestListController implements FastifyController {
         const { cycleId } = request.query as LeaderSwapRequestsQuery;
         const churchId = ChurchId.from(request.churchId);
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId,
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -130,6 +131,7 @@ export class SwapRequestListController implements FastifyController {
         const churchId = ChurchId.from(request.churchId);
         const userId = UserId.from(request.userId);
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId,
           ministryId: MinistryId.from(ministryId),
           userId,

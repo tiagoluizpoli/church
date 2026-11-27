@@ -80,6 +80,7 @@ export class ChurchSettingsController implements FastifyController {
 
     app.addHook('preValidation', async (request, reply) => {
       const authorized = await this.authorityGuard.canManageChurch({
+        actor: request.actor,
         churchId: ChurchId.from(request.churchId),
         userId: UserId.from(request.userId),
       });

@@ -1,5 +1,6 @@
 import type {
   AuthorityAction,
+  AuthorityActor,
   AuthorityDecision,
   AuthorityResource,
   AuthorityScope,
@@ -23,10 +24,21 @@ import type { MinistryRepository } from '@/domain/contracts/infrastructure/minis
 import type { SchedulingScopeRepository } from '@/domain/contracts/infrastructure/scheduling-scope.repository';
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 
-/** Target facts must come from a Church-scoped repository; null is a missing target. */
-export interface DecideAuthorityInput {
+/**
+ * Who asks. `actor` is the caller Active Church resolution already read for
+ * this request: it is reused instead of read again whenever it names the same
+ * User in the same Church, even beside a `tx`. A check that must re-read the
+ * caller's authority under its own locks omits it. Nothing keeps it beyond
+ * the request.
+ */
+export interface AuthorityCaller {
   churchId: ChurchId;
   userId: UserId;
+  actor?: AuthorityActor;
+}
+
+/** Target facts must come from a Church-scoped repository; null is a missing target. */
+export interface DecideAuthorityInput extends AuthorityCaller {
   action: AuthorityAction;
   resource: AuthorityResource | null;
   scope: AuthorityScope;
@@ -34,17 +46,13 @@ export interface DecideAuthorityInput {
   tx?: TransactionContext;
 }
 
-export interface CanManageChurchInput {
-  churchId: ChurchId;
-  userId: UserId;
+export interface CanManageChurchInput extends AuthorityCaller {
   /** Reads the actor's authority inside this transaction (e.g. after a lock); omitted, it reads committed state. */
   tx?: TransactionContext;
 }
 
-export interface CanManageMinistryInput {
-  churchId: ChurchId;
+export interface CanManageMinistryInput extends AuthorityCaller {
   ministryId: MinistryId;
-  userId: UserId;
 }
 
 /** One stored offer: a Ministry Invitation's Ministry and stored level, or neither for a Church offer. */
@@ -53,9 +61,7 @@ export type InvitationAuthorityTarget = Omit<
   'type' | 'churchId'
 >;
 
-export interface CanManageInvitationsInput {
-  churchId: ChurchId;
-  userId: UserId;
+export interface CanManageInvitationsInput extends AuthorityCaller {
   invitations: InvitationAuthorityTarget[];
   /** Reads inside the caller's transaction, so it never needs a second connection. */
   tx?: TransactionContext;
@@ -67,9 +73,7 @@ export type MinistryMembershipAuthorityTarget = Omit<
   'type' | 'churchId'
 >;
 
-export interface DecideManageMinistryMembershipInput {
-  churchId: ChurchId;
-  userId: UserId;
+export interface DecideManageMinistryMembershipInput extends AuthorityCaller {
   target: MinistryMembershipAuthorityTarget;
   /** Reads the actor's authority inside this transaction, after its locks. */
   tx?: TransactionContext;
@@ -87,45 +91,29 @@ export type MinistryMembershipHints = Record<
   boolean
 >;
 
-export interface CanManageMinistryMembershipsInput {
-  churchId: ChurchId;
-  userId: UserId;
+export interface CanManageMinistryMembershipsInput extends AuthorityCaller {
   targets: MinistryMembershipHintTarget[];
 }
 
-export interface CanManageParticipationInput {
-  churchId: ChurchId;
+export interface CanManageParticipationInput extends AuthorityCaller {
   participationId: MinistryParticipationId;
-  userId: UserId;
 }
 
-export interface CanManageShiftInput {
-  churchId: ChurchId;
+export interface CanManageShiftInput extends AuthorityCaller {
   shiftId: ShiftId;
-  userId: UserId;
 }
 
-export interface CanManageEventInput {
-  churchId: ChurchId;
+export interface CanManageEventInput extends AuthorityCaller {
   eventId: EventId;
-  userId: UserId;
 }
 
-export interface CanManageEventTimeBlockInput {
-  churchId: ChurchId;
+export interface CanManageEventTimeBlockInput extends AuthorityCaller {
   eventTimeBlockId: EventTimeBlockId;
-  userId: UserId;
 }
 
-export interface HasSchedulingAccessInput {
-  churchId: ChurchId;
-  userId: UserId;
-}
+export interface HasSchedulingAccessInput extends AuthorityCaller {}
 
-export interface ResolveCallerCapabilitiesInput {
-  churchId: ChurchId;
-  userId: UserId;
-}
+export interface ResolveCallerCapabilitiesInput extends AuthorityCaller {}
 
 export interface LedMinistryCapability {
   ministryId: MinistryId;
@@ -191,9 +179,7 @@ export interface MinistryMembershipHintInput {
   operation: MinistryMembershipOperation;
 }
 
-export interface ResolveActorInput {
-  churchId: ChurchId;
-  userId: UserId;
+export interface ResolveActorInput extends AuthorityCaller {
   tx?: TransactionContext;
 }
 

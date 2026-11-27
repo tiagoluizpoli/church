@@ -17,9 +17,17 @@ import {
   findReusablePass,
   formatReusedPass,
   readCleanTree,
+  readJudgedTree,
   readMergeBase,
   recordPass,
 } from './gate-pass';
+import {
+  type CheckTiming,
+  countTests,
+  type FormatGateEndingInput,
+  formatGateEnding,
+  formatGateSummary,
+} from './gate-summary';
 import {
   JOURNEY_IMPACT_TRAILER,
   readJourneyImpactTrailers,
@@ -28,6 +36,7 @@ import {
   hasFailure,
   type LaneStep,
   type OutputSink,
+  PROCESS_OUTPUT,
   runStages,
   type StepResult,
 } from './run-lanes';
@@ -101,13 +110,6 @@ export interface RunValidationInput {
 interface RunValidationResult {
   failed: boolean;
   timings: CheckTiming[];
-}
-
-export interface CheckTiming {
-  failed?: boolean;
-  label: string;
-  ms: number;
-  skipped?: boolean;
 }
 
 interface PushSkippedInput {
@@ -567,9 +569,12 @@ async function runValidation({
   onlyE2e,
   plan,
   skipE2e,
+  output,
   tier,
   wholeUnitSuites,
-}: RunValidationInput): Promise<RunValidationResult> {
+}: RunValidationInput & {
+  output: OutputSink;
+}): Promise<RunValidationResult> {
   const timings: CheckTiming[] = [];
   const steps = buildValidationSteps({
     onlyE2e,
@@ -583,6 +588,7 @@ async function runValidation({
   // The i18n compile runs before every check: lint, typecheck and tests read
   // the compiled messages, and a stale compile fails them falsely.
   const results = await runValidationSteps({
+    output,
     steps: {
       ...steps,
       checkLane: [...VALIDATE_SETUP_STEPS, ...steps.checkLane],
@@ -906,28 +912,13 @@ function explainSeedImpact({ plan }: ExplainSeedImpactInput): string[] {
   return lines;
 }
 
-interface FormatTimingSummaryInput {
-  timings: CheckTiming[];
+interface RunCliInput {
+  argumentsResult: ParseArgumentsResult;
+  /** Filled as the run learns it; the exit handler prints it. */
+  ending: Omit<FormatGateEndingInput, 'exitCode'>;
 }
 
-export function formatTimingSummary({
-  timings,
-}: FormatTimingSummaryInput): string {
-  const lines = ['| Check | Elapsed |', '| --- | --- |'];
-  for (const { failed, label, ms, skipped } of timings) {
-    const elapsed = `${(ms / 1000).toFixed(1)}s`;
-    const status = skipped
-      ? 'skipped'
-      : failed
-        ? `failed (${elapsed})`
-        : elapsed;
-    lines.push(`| ${label} | ${status} |`);
-  }
-  return lines.join('\n');
-}
-
-if (import.meta.main) {
-  const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
+async function runCli({ argumentsResult, ending }: RunCliInput) {
   const { tier } = argumentsResult;
   if (tier === 'no-docker') {
     console.log(
@@ -956,6 +947,9 @@ if (import.meta.main) {
       ...readSeedImpactTrailers({ messages: commitMessages }),
     ],
   });
+
+  ending.journeyFallbacks = plan.missingJourneyMappings;
+  ending.seedDecision = plan.seedImpact.decision;
 
   console.log(JSON.stringify(plan, null, 2));
   if (plan.missingJourneyMappings.length > 0) {
@@ -994,10 +988,13 @@ if (import.meta.main) {
     }
     const tree = mergeBase ? readCleanTree({}) : null;
     const lock = await holdValidateLock({ tier });
+    const { counts, output } = countTests({ output: PROCESS_OUTPUT });
+    ending.counts = counts;
     let failed: boolean;
-    let timings: Awaited<ReturnType<typeof runValidation>>['timings'];
+    let timings: CheckTiming[];
     try {
       ({ failed, timings } = await runValidation({
+        output,
         onlyE2e: argumentsResult.onlyE2e,
         plan,
         skipE2e: argumentsResult.skipE2e,
@@ -1007,7 +1004,7 @@ if (import.meta.main) {
     } finally {
       lock.release();
     }
-    const summary = formatTimingSummary({ timings });
+    ending.timings = timings;
     const explanation = explainPlan({
       baseRef,
       plan,
@@ -1015,14 +1012,14 @@ if (import.meta.main) {
       wholeUnitSuites: argumentsResult.dailyGate,
     });
     console.log('');
-    console.log(summary);
     console.log(formatLockWait({ waitedMs: lock.waitedMs }));
     console.log('');
     console.log(explanation);
     if (process.env.GITHUB_STEP_SUMMARY) {
+      const summary = formatGateSummary(ending);
       appendFileSync(
         process.env.GITHUB_STEP_SUMMARY,
-        `\n### Check timings\n\n${summary}\n\n### Selection reasons\n\n\`\`\`\n${explanation}\n\`\`\`\n`,
+        `\n### Gate summary\n\n${summary}\n\n### Selection reasons\n\n\`\`\`\n${explanation}\n\`\`\`\n`,
       );
     }
     if (failed) process.exitCode = 1;
@@ -1035,5 +1032,24 @@ if (import.meta.main) {
     ) {
       recordPass({ base: mergeBase, tier, tree });
     }
+  }
+}
+
+if (import.meta.main) {
+  const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
+  const ending: RunCliInput['ending'] = { tree: 'unknown' };
+  // A dry run's stdout is parsed as JSON. Every other run ends with the
+  // summary however it ends: pass, failure, throw, busy slot or signal.
+  if (!argumentsResult.dryRun) {
+    ending.tree = readJudgedTree({});
+    process.on('exit', (exitCode) => {
+      process.stdout.write(formatGateEnding({ ...ending, exitCode }));
+    });
+  }
+  try {
+    await runCli({ argumentsResult, ending });
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
   }
 }

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'bun:test';
 import {
   classifyChanges,
   explainPlan,
-  formatTimingSummary,
   isScriptsOnlyAddition,
   parseArguments,
   readSeedImpactTrailers,
@@ -1118,50 +1117,6 @@ describe('explainPlan', () => {
 
     expect(explanation).toContain('Tooling tests selected:');
     expect(explanation).toContain('(none)');
-  });
-});
-
-describe('formatTimingSummary', () => {
-  it('renders a markdown table with each check and its elapsed seconds', () => {
-    const summary = formatTimingSummary({
-      timings: [
-        { label: 'lint', ms: 1234 },
-        { label: 'typecheck', ms: 5000 },
-      ],
-    });
-
-    expect(summary).toBe(
-      [
-        '| Check | Elapsed |',
-        '| --- | --- |',
-        '| lint | 1.2s |',
-        '| typecheck | 5.0s |',
-      ].join('\n'),
-    );
-  });
-
-  it('renders just the header rows for no timings', () => {
-    expect(formatTimingSummary({ timings: [] })).toBe(
-      ['| Check | Elapsed |', '| --- | --- |'].join('\n'),
-    );
-  });
-
-  it('renders a skipped check as "skipped" instead of a zero duration', () => {
-    const summary = formatTimingSummary({
-      timings: [
-        { label: 'lint', ms: 0, skipped: true },
-        { label: 'typecheck', ms: 5000 },
-      ],
-    });
-
-    expect(summary).toBe(
-      [
-        '| Check | Elapsed |',
-        '| --- | --- |',
-        '| lint | skipped |',
-        '| typecheck | 5.0s |',
-      ].join('\n'),
-    );
   });
 });
 

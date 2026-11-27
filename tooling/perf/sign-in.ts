@@ -2,8 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import type { Browser, CDPSession, Page } from '@playwright/test';
-import { ensureApiServer } from './api-server';
 import { type DevTarget, devTarget, launchSystemChrome } from './browser';
+import { ensureApiServer } from './dev-servers';
 import { startDistServer } from './dist-server';
 import { formatSignInReport, type SignInTimings } from './sign-in-report';
 

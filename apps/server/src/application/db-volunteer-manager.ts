@@ -521,21 +521,20 @@ export class DbVolunteerManager implements IVolunteerManager {
       churchId,
       volunteerId,
     });
-    const publishedLists = memberMinistryIds.map((ministryId) =>
-      this.participationRepo.listByMinistry({
-        churchId,
-        ministryId,
-        state: 'published',
-      }),
-    );
-    const [allMinistries, listedAssignments, publishedByMinistry, church] =
+    const [allMinistries, listedAssignments, memberPublished, church] =
       await Promise.all([
         this.ministryRepo.listByChurch({ churchId }),
+        // Ended Shifts never list, so they are not read at all.
         this.assignmentRepo.listPublishedByVolunteer({
           churchId,
           volunteerId,
+          endingAfter: now,
         }),
-        Promise.all(publishedLists),
+        this.participationRepo.listByMinistries({
+          churchId,
+          ministryIds: memberMinistryIds,
+          state: 'published',
+        }),
         this.churchRepo.getById({ id: churchId }),
       ]);
     const { timezone: timeZone } = church;
@@ -543,34 +542,26 @@ export class DbVolunteerManager implements IVolunteerManager {
     const ministryNames = new Map(
       allMinistries.map((ministry) => [ministry.id as string, ministry.name]),
     );
-    const assignmentParticipationIds = [
-      ...new Set(assignments.map((a) => a.participationId)),
-    ].filter((id): id is NonNullable<typeof id> => id != null);
-    const assignmentParticipations =
-      assignmentParticipationIds.length === 0
-        ? []
-        : await this.participationRepo.listByIds({
-            churchId,
-            participationIds: assignmentParticipationIds,
-          });
-    const allParticipations = [
-      ...publishedByMinistry.flat(),
-      ...assignmentParticipations,
-    ];
+    const assignmentParticipations = await this.participationRepo.listByIds({
+      churchId,
+      participationIds: [
+        ...new Set(assignments.map((a) => a.participationId)),
+      ].filter((id): id is NonNullable<typeof id> => id != null),
+    });
+    const allParticipations = [...memberPublished, ...assignmentParticipations];
     const participationsById = new Map(
       allParticipations.map((p) => [p.id as string, p]),
     );
-    const eventIds = [...new Set(allParticipations.map((p) => p.eventId))];
-    const eventEntries = await Promise.all(
-      eventIds.map(async (eventId) => {
-        const event = await this.eventRepo.getById({ churchId, eventId });
-        return [eventId as string, event] as const;
-      }),
+    const events = await this.eventRepo.listByIds({
+      churchId,
+      eventIds: [...new Set(allParticipations.map((p) => p.eventId))],
+    });
+    const eventsById = new Map(
+      events.map((event) => [event.id as string, event]),
     );
-    const eventsById = new Map(eventEntries);
 
     const schedules = new Map<string, VolunteerPublishedScheduleSummary>();
-    for (const participation of publishedByMinistry.flat()) {
+    for (const participation of memberPublished) {
       const event = eventsById.get(participation.eventId as string);
       const ministryName = ministryNames.get(
         participation.ministryId as string,
@@ -585,19 +576,15 @@ export class DbVolunteerManager implements IVolunteerManager {
         cycleName: '',
       });
     }
-    const cycleIds = [
-      ...new Set([...schedules.values()].map((s) => s.cycleId)),
-    ];
-    const cycleEntries = await Promise.all(
-      cycleIds.map(async (cycleId) => {
-        const cycle = await this.cycleRepo.getById({
-          churchId,
-          cycleId: CycleId.from(cycleId),
-        });
-        return [cycleId, cycle] as const;
-      }),
+    const cycleList = await this.cycleRepo.listByIds({
+      churchId,
+      cycleIds: [...new Set([...schedules.values()].map((s) => s.cycleId))].map(
+        (cycleId) => CycleId.from(cycleId),
+      ),
+    });
+    const cycles = new Map(
+      cycleList.map((cycle) => [cycle.id as string, cycle]),
     );
-    const cycles = new Map(cycleEntries);
     const churchToday = today({ instant: now, timeZone });
     // A Cycle that ended before today in the Church Timezone is a past one (ADR-0003).
     const currentSchedules = [...schedules.values()].filter((schedule) => {
@@ -621,68 +608,74 @@ export class DbVolunteerManager implements IVolunteerManager {
         assignmentIds: assignments.map((a) => a.id),
       }),
     );
-    const items = await Promise.all(
-      listedAssignments.map(async ({ assignment, cancelled }) => {
-        const participation = participationsById.get(
-          assignment.participationId as string,
-        );
-        const { shiftId, roleId } = assignment;
-        const requirementsRead = participation
-          ? this.shiftRepo.listRequirementsByParticipation({
-              churchId,
-              participationId: participation.id,
-            })
-          : [];
-        const [shift, role, requirements] = await Promise.all([
-          this.shiftRepo.getById({
-            churchId,
-            shiftId: shiftId as NonNullable<Assignment['shiftId']>,
-          }),
-          this.roleRepo.getById({ churchId, id: roleId }),
-          requirementsRead,
-        ]);
-        const event = participation
-          ? eventsById.get(participation.eventId as string)
-          : undefined;
-        const shiftOver =
-          compareInstants({ left: shift.endTime, right: now }) <= 0;
-        // In progress counts: only Shifts already over drop out. Cancelled
-        // work never runs, so it drops out at its Shift's start.
-        const gone = cancelled
-          ? hasStarted({ startTime: shift.startTime, at: now })
-          : shiftOver;
-        if (!participation || !event || gone) return undefined;
-        const ownRequirement = requirements.find(
-          (r) => r.id === assignment.shiftRequirementId,
-        );
-        const item: VolunteerScheduleAssignment = {
-          assignmentId: assignment.id as string,
-          eventId: event.id as string,
-          eventTitle: event.title,
-          shiftId: shift.id as string,
-          startTime: shift.startTime,
-          endTime: shift.endTime,
-          ministryId: participation.ministryId as string,
-          ministryName:
-            ministryNames.get(participation.ministryId as string) ?? '',
-          sectorName: ownRequirement?.sectorName ?? '',
-          roleId: roleId as string,
-          roleName: role.name,
-          // Published, whether or not since cancelled: `cancelled` marks that.
-          status: 'pending',
-          cancelled,
-          // Same rule as the detail read: open past the Shift's start is expired.
-          swapRequested:
-            openSwapIds.has(assignment.id as string) &&
-            !isSwapRequestExpired({
-              status: 'open',
-              shiftStart: shift.startTime,
-              at: now,
-            }),
-        };
-        return item;
+    const [shifts, roles, requirements] = await Promise.all([
+      this.shiftRepo.listByIds({
+        churchId,
+        shiftIds: assignments.map((a) => a.shiftId as ShiftId),
       }),
+      this.roleRepo.listByIds({
+        churchId,
+        roleIds: [...new Set(assignments.map((a) => a.roleId))],
+      }),
+      this.shiftRepo.listRequirementsByIds({
+        churchId,
+        shiftRequirementIds: assignments.map((a) => a.shiftRequirementId),
+      }),
+    ]);
+    const shiftsById = new Map(
+      shifts.map((shift) => [shift.id as string, shift]),
     );
+    const rolesById = new Map(roles.map((role) => [role.id as string, role]));
+    const requirementsById = new Map(
+      requirements.map((item) => [item.id, item]),
+    );
+    const items = listedAssignments.map(({ assignment, cancelled }) => {
+      const participation = participationsById.get(
+        assignment.participationId as string,
+      );
+      const { shiftId, roleId } = assignment;
+      const shift = shiftsById.get(shiftId as string);
+      const role = rolesById.get(roleId as string);
+      const event = participation
+        ? eventsById.get(participation.eventId as string)
+        : undefined;
+      if (!shift || !role) return undefined;
+      const shiftOver =
+        compareInstants({ left: shift.endTime, right: now }) <= 0;
+      // In progress counts: only Shifts already over drop out. Cancelled
+      // work never runs, so it drops out at its Shift's start.
+      const gone = cancelled
+        ? hasStarted({ startTime: shift.startTime, at: now })
+        : shiftOver;
+      if (!participation || !event || gone) return undefined;
+      const requirement = requirementsById.get(assignment.shiftRequirementId);
+      const item: VolunteerScheduleAssignment = {
+        assignmentId: assignment.id as string,
+        eventId: event.id as string,
+        eventTitle: event.title,
+        shiftId: shift.id as string,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        ministryId: participation.ministryId as string,
+        ministryName:
+          ministryNames.get(participation.ministryId as string) ?? '',
+        sectorName: requirement?.sectorName ?? '',
+        roleId: roleId as string,
+        roleName: role.name,
+        // Published, whether or not since cancelled: `cancelled` marks that.
+        status: 'pending',
+        cancelled,
+        // Same rule as the detail read: open past the Shift's start is expired.
+        swapRequested:
+          openSwapIds.has(assignment.id as string) &&
+          !isSwapRequestExpired({
+            status: 'open',
+            shiftStart: shift.startTime,
+            at: now,
+          }),
+      };
+      return item;
+    });
 
     const listed = items
       .filter((item): item is VolunteerScheduleAssignment => item != null)

@@ -52,6 +52,7 @@ import type {
   ListMinistryStaffingInput,
   ListParticipationsByEventInput,
   ListParticipationsByIdsInput,
+  ListParticipationsByMinistriesInput,
   ListParticipationsByMinistryInput,
   ListScheduleLastToldInput,
   ListScheduleRowsInput,
@@ -445,6 +446,28 @@ export class DrizzleMinistryParticipationRepository
       .where(and(...conditions))
       .orderBy(asc(event.start), asc(ministryParticipation.id));
 
+    return rows.map(mapMinistryParticipation);
+  }
+
+  async listByMinistries({
+    churchId,
+    ministryIds,
+    state,
+    tx,
+  }: ListParticipationsByMinistriesInput): Promise<MinistryParticipation[]> {
+    if (ministryIds.length === 0) return [];
+    const rows = await getClient({ db: this.db, tx })
+      .select(getTableColumns(ministryParticipation))
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .where(
+        and(
+          inArray(ministryParticipation.ministryId, ministryIds),
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          state ? eq(ministryParticipation.state, state) : undefined,
+        ),
+      )
+      .orderBy(asc(event.start), asc(ministryParticipation.id));
     return rows.map(mapMinistryParticipation);
   }
 

@@ -68,6 +68,13 @@ export interface ListParticipationsByMinistryInput {
   tx?: TransactionContext;
 }
 
+export interface ListParticipationsByMinistriesInput {
+  churchId: ChurchId;
+  ministryIds: MinistryId[];
+  state?: ParticipationState;
+  tx?: TransactionContext;
+}
+
 export interface ListParticipationsByIdsInput {
   churchId: ChurchId;
   participationIds: MinistryParticipationId[];
@@ -328,6 +335,10 @@ export interface MinistryParticipationRepository {
   hasCycleStaffing(input: HasCycleStaffingInput): Promise<boolean>;
   listByMinistry(
     input: ListParticipationsByMinistryInput,
+  ): Promise<MinistryParticipation[]>;
+  /** The Ministries' participations in one read, earliest Event first. */
+  listByMinistries(
+    input: ListParticipationsByMinistriesInput,
   ): Promise<MinistryParticipation[]>;
   listByIds(
     input: ListParticipationsByIdsInput,

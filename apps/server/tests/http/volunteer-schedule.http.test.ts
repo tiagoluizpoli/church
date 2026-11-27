@@ -1,4 +1,5 @@
 import {
+  assignment,
   event,
   eventTimeBlock,
   ministryParticipation,
@@ -752,5 +753,101 @@ describe('Volunteer reads after an admin cancellation', () => {
     expect((await get(liveAssignment.id)).statusCode).toBe(200);
     expect((await get(inEvent.id)).statusCode).toBe(404);
     expect((await get(inBlock.id)).statusCode).toBe(404);
+  });
+});
+
+describe('Cancelled work that Volunteer reads leave out', () => {
+  /**
+   * `Live` is tomorrow. `Gone` was cancelled and its Shift has started.
+   * `Left` is a live Event whose Assignment was cancelled on its own, and
+   * `Transferred` a cancelled Event holding one a Volunteer Transfer had
+   * already cancelled: both carry no Event or block cancellation of their own.
+   */
+  async function seedLeftOut() {
+    const world = await seedWorld();
+    const { churchId, ministryId, assignMe } = world;
+    const cycle = await seedCycle({
+      churchId,
+      name: 'Current',
+      startOffsetMs: -5 * DAY_MS,
+      endOffsetMs: 25 * DAY_MS,
+    });
+    const common = { churchId, ministryId, cycleId: cycle.id };
+    const seed = (title: string, startOffsetMs: number) =>
+      seedShiftGraph({
+        ...common,
+        title,
+        startOffsetMs,
+        endOffsetMs: startOffsetMs + 2 * HOUR_MS,
+      });
+    const gone = await seed('Gone', -HOUR_MS);
+    const live = await seed('Live', DAY_MS);
+    const left = await seed('Left', 2 * DAY_MS);
+    const transferred = await seed('Transferred', 3 * DAY_MS);
+    await assignMe(gone, 'cancelled');
+    const liveAssignment = await assignMe(live);
+    await assignMe(left, 'cancelled');
+    const moved = await assignMe(transferred, 'cancelled');
+    await db
+      .update(assignment)
+      .set({ reason: 'Volunteer Transfer test' })
+      .where(eq(assignment.id, moved.id));
+    for (const { graph } of [gone, transferred]) {
+      await db
+        .update(event)
+        .set({ status: 'cancelled' })
+        .where(eq(event.id, graph.event.id));
+    }
+    return { ...world, cycle, live, liveAssignment };
+  }
+
+  it('lists only the live Assignment in My schedule, counts and next', async () => {
+    const { liveAssignment } = await seedLeftOut();
+
+    const response = await app.inject({ method: 'GET', url: SCHEDULE_URL });
+
+    expect(response.statusCode).toBe(200);
+    const { assignments, counts, next } = response.json();
+    expect(
+      assignments.map((a: { assignmentId: string }) => a.assignmentId),
+    ).toEqual([liveAssignment.id]);
+    expect(counts.upcoming).toBe(1);
+    expect(next.assignmentId).toBe(liveAssignment.id);
+  });
+
+  it('drops a started cancelled Event from the Ministry schedule and names nobody who left', async () => {
+    const { ministryId, cycle } = await seedLeftOut();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/volunteer/ministries/${ministryId}/schedule?cycleId=${cycle.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const events: {
+      title: string;
+      rows: { volunteerDisplayName?: string }[];
+    }[] = response.json().events;
+    expect(events.map(({ title }) => title)).not.toContain('Gone');
+    expect(
+      events
+        .filter(({ title }) => title !== 'Live')
+        .flatMap(({ rows }) => rows)
+        .filter((row) => row.volunteerDisplayName),
+    ).toEqual([]);
+  });
+
+  it('keeps cancelled work out of the Volunteer dashboard', async () => {
+    const { liveAssignment } = await seedLeftOut();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/volunteer/dashboard',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain(liveAssignment.id);
+    expect(response.json().nextAssignment.eventTitle).toBe('Live');
+    expect(response.body).not.toContain('Transferred');
   });
 });

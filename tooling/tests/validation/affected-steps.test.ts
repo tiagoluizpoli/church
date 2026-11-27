@@ -53,6 +53,12 @@ const BUN_VERSION_STEP = {
   label: 'bun-version',
 };
 
+const CONSTITUTION_VERSION_STEP = {
+  args: ['run', 'validate:constitution-version'],
+  command: 'bun',
+  label: 'constitution-version',
+};
+
 describe('buildValidationSteps', () => {
   it('skips the test-placement guard for an E2E-only run', () => {
     const { checkLane } = buildValidationSteps({
@@ -80,6 +86,7 @@ describe('buildValidationSteps', () => {
       PRESENTATION_TEXT_STEP,
       DATE_TIME_SEAM_STEP,
       BUN_VERSION_STEP,
+      CONSTITUTION_VERSION_STEP,
     ]);
     expect(steps.checkedLabels).toContain('test-placement');
     expect(steps.checkedLabels).toContain('i18n-parity');
@@ -89,6 +96,7 @@ describe('buildValidationSteps', () => {
     expect(steps.checkedLabels).toContain('presentation-text');
     expect(steps.checkedLabels).toContain('date-time-seam');
     expect(steps.checkedLabels).toContain('bun-version');
+    expect(steps.checkedLabels).toContain('constitution-version');
     expect(steps.integrationLane).toEqual([]);
     expect(steps.unitLane).toEqual([]);
     expect(steps.e2eSteps).toEqual([]);
@@ -131,6 +139,7 @@ describe('buildValidationSteps', () => {
       PRESENTATION_TEXT_STEP,
       DATE_TIME_SEAM_STEP,
       BUN_VERSION_STEP,
+      CONSTITUTION_VERSION_STEP,
       {
         args: [
           'turbo',

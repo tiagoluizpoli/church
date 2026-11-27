@@ -950,7 +950,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | `@church/app-config` is plain data with a Zod schema, no logic beyond `withAllParkedOn` | Constitution | Judgement | — | Review: the package is one file; "no logic" is easier to read than to pattern-match |
 | Every workspace name is scoped `@church/` | Constitution | Mechanical | Validation guard | Enforced: `bun run validate:workspace-scope` (every `apps/*` and `packages/*` `package.json`), part of `lint` |
 | Documentation first: significant changes are planned in `planning/` | Constitution | Judgement | — | Review: "significant" is a judgement |
-| A constitution amendment bumps its version | Constitution | Mechanical | Validation guard | Enforced: `bun run validate:constitution-version`, part of `lint` |
+| A constitution amendment bumps its version | Constitution | Mechanical | Validation guard | Enforced: `bun run validate:constitution-version`, part of `lint` and `validate:affected` |
 | A constitution amendment updates its dependent templates | Constitution | Judgement | — | Review: which templates depend on a change is a judgement |
 | `mise.toml` and `packageManager` pin the same Bun | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:bun-version`, part of `lint` and `validate:affected` |
 | Run commands through root Bun scripts | Tooling | Judgement | — | Review: governs how an agent works, leaves nothing in the repository to check |

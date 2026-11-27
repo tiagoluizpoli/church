@@ -12,6 +12,7 @@ const GUARD_LABELS = [
   'presentation-text',
   'date-time-seam',
   'bun-version',
+  'constitution-version',
 ];
 
 const webSteps = () =>

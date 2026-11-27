@@ -231,6 +231,7 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
       {
         churchId,
         ministryId,
+        ministryName: 'Authority Ministry',
         accessLevel: 'leader',
         qualifiedRoleIds: [],
       },
@@ -257,6 +258,7 @@ describe('DrizzleAuthorityActorResolver + AuthorityService (integration)', () =>
       {
         churchId,
         ministryId,
+        ministryName: 'Authority Ministry',
         accessLevel: 'volunteer',
         qualifiedRoleIds: [roleId],
       },

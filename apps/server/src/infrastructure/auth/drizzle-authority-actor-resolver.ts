@@ -141,6 +141,7 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
       .select({
         id: ministryMembership.id,
         ministryId: ministryMembership.ministryId,
+        ministryName: ministry.name,
         ministryAccessLevel: ministryMembership.ministryAccessLevel,
         ministryArchivedAt: ministry.deletedAt,
       })
@@ -174,6 +175,7 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
     const ministryMemberships: MinistryMembershipFact[] = rows.map((row) => ({
       churchId,
       ministryId: row.ministryId as MinistryId,
+      ministryName: row.ministryName,
       // An archived Ministry keeps its Members' historical reads but grants no leadership.
       accessLevel: row.ministryArchivedAt
         ? 'volunteer'

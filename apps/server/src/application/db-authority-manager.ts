@@ -1,6 +1,7 @@
 import { NotFoundError } from '@church/core';
 import { AuthorityService } from '../domain/authority/authority-service';
 import type { AuthorityDecision } from '../domain/authority/types';
+import type { MinistryId } from '../domain/branded-ids';
 import type {
   CallerCapabilitiesProjection,
   CanManageChurchInput,
@@ -16,6 +17,7 @@ import type {
   DecideManageMinistryMembershipInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
+  LedMinistryCapability,
   MinistryMembershipHintInput,
   MinistryMembershipHints,
   ResolveActorInput,
@@ -276,39 +278,35 @@ export class DbAuthorityManager implements IAuthorityManager {
       action: 'participate',
       resource: churchResource,
     });
-    const ledMinistryIds = new Set(
-      actor.ministryMemberships.flatMap((membership) => {
-        if (
-          !actor.volunteerId ||
-          membership.accessLevel !== 'leader' ||
-          membership.churchId !== churchId
-        )
-          return [];
-        const decision = AuthorityService.authorize({
-          actor,
-          action: 'manage',
-          resource: {
-            type: 'ministry',
-            churchId,
-            ministryId: membership.ministryId,
-          },
-        });
-        return decision.allowed ? [membership.ministryId] : [];
-      }),
-    );
-    const ledMinistries = await Promise.all(
-      [...ledMinistryIds].map(async (ministryId) => {
-        const ministry = await this.ministryRepository.getById({
+    // Keyed by Ministry, in membership order, so one Ministry is listed once.
+    const ledMinistries = new Map<MinistryId, LedMinistryCapability>();
+    for (const membership of actor.ministryMemberships) {
+      if (
+        !actor.volunteerId ||
+        membership.accessLevel !== 'leader' ||
+        membership.churchId !== churchId
+      )
+        continue;
+      const decision = AuthorityService.authorize({
+        actor,
+        action: 'manage',
+        resource: {
+          type: 'ministry',
           churchId,
-          id: ministryId,
+          ministryId: membership.ministryId,
+        },
+      });
+      if (decision.allowed && !ledMinistries.has(membership.ministryId)) {
+        ledMinistries.set(membership.ministryId, {
+          ministryId: membership.ministryId,
+          name: membership.ministryName,
         });
-        return { ministryId, name: ministry.name };
-      }),
-    );
+      }
+    }
     return {
       churchId,
       isChurchAdmin: churchDecision.allowed,
-      ledMinistries,
+      ledMinistries: [...ledMinistries.values()],
       hasVolunteerMembership: servingDecision.allowed,
     };
   }

@@ -47,7 +47,13 @@ function ministryLeaderActor(): AuthorityActor {
     activeChurchId: churchId,
     churchMembership: { churchId, accessLevel: 'member' },
     ministryMemberships: [
-      { churchId, ministryId, accessLevel: 'leader', qualifiedRoleIds: [] },
+      {
+        churchId,
+        ministryId,
+        ministryName: 'Worship',
+        accessLevel: 'leader',
+        qualifiedRoleIds: [],
+      },
     ],
   };
 }
@@ -267,6 +273,7 @@ describe('DbAuthorityManager', () => {
     ): MinistryMembershipFact => ({
       churchId,
       ministryId,
+      ministryName: 'Worship',
       accessLevel: 'volunteer',
       qualifiedRoleIds: [],
       ...overrides,

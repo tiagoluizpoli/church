@@ -635,8 +635,52 @@ describe('Volunteer reads after an admin cancellation', () => {
       .update(eventTimeBlock)
       .set({ status: 'cancelled' })
       .where(eq(eventTimeBlock.id, cancelledBlock.graph.eventTimeBlock.id));
-    return { ...world, cycle, live, liveAssignment, inEvent, inBlock };
+    /** Sets the hidden flag of the cancelled Event and of the cancelled block. */
+    const setHidden = async (isHidden: boolean) => {
+      await db
+        .update(event)
+        .set({ isHidden })
+        .where(eq(event.id, cancelledEvent.graph.event.id));
+      await db
+        .update(eventTimeBlock)
+        .set({ isHidden })
+        .where(eq(eventTimeBlock.id, cancelledBlock.graph.eventTimeBlock.id));
+    };
+    return {
+      ...world,
+      cycle,
+      live,
+      liveAssignment,
+      inEvent,
+      inBlock,
+      setHidden,
+    };
   }
+
+  it('leaves hidden scopes out of My schedule and brings them back as cancelled', async () => {
+    const { liveAssignment, inEvent, inBlock, setHidden } =
+      await seedCancelled();
+    const mine = async () => {
+      const response = await app.inject({ method: 'GET', url: SCHEDULE_URL });
+      expect(response.statusCode).toBe(200);
+      return response
+        .json()
+        .assignments.map((a: { assignmentId: string; cancelled: boolean }) => [
+          a.assignmentId,
+          a.cancelled,
+        ]);
+    };
+
+    await setHidden(true);
+    expect(await mine()).toEqual([[liveAssignment.id, false]]);
+
+    await setHidden(false);
+    expect(await mine()).toEqual([
+      [liveAssignment.id, false],
+      [inEvent.id, true],
+      [inBlock.id, true],
+    ]);
+  });
 
   it('lists cancelled Events and blocks in My schedule, marked, before their Shift starts', async () => {
     const { liveAssignment, inEvent, inBlock } = await seedCancelled();
@@ -753,6 +797,33 @@ describe('Volunteer reads after an admin cancellation', () => {
         assignmentCount: 1,
         rows: rows(false),
       },
+    ]);
+  });
+
+  it('leaves hidden scopes out of the Ministry schedule and brings them back as cancelled', async () => {
+    const { ministryId, cycle, setHidden } = await seedCancelled();
+    const read = async () => {
+      const events = await ministryEvents({ ministryId, cycleId: cycle.id });
+      return events.map(({ title, cancelled, assignmentCount, rows }) => [
+        title,
+        cancelled,
+        assignmentCount,
+        rows.length,
+      ]);
+    };
+
+    await setHidden(true);
+    // The live Event of the hidden block stays, without that block's rows.
+    expect(await read()).toEqual([
+      ['Cancelled Block', false, 0, 0],
+      ['Live', false, 1, 2],
+    ]);
+
+    await setHidden(false);
+    expect(await read()).toEqual([
+      ['Cancelled Block', false, 1, 2],
+      ['Cancelled Event', true, 1, 2],
+      ['Live', false, 1, 2],
     ]);
   });
 

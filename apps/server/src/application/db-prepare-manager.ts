@@ -369,6 +369,7 @@ export class DbPrepareManager implements IPrepareManager {
       const eventGroups = await this.eventRepository.listCycleEvents({
         churchId: input.churchId,
         cycleId: input.cycleId,
+        shownOnly: true,
         tx,
       });
       const availabilityRequestedAt =

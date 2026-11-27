@@ -335,6 +335,7 @@ export class DbScheduleBuilderReader implements IScheduleBuilderReader {
       const eventGroups = await this.eventRepository.listCycleEvents({
         churchId: input.churchId,
         cycleId: input.cycleId,
+        shownOnly: true,
         tx,
       });
       const roles = await this.roleRepository.listByMinistry({

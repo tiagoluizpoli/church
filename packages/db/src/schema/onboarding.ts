@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   check,
   index,
   integer,
@@ -185,6 +186,14 @@ export const ministryInvitationRole = pgTable(
 );
 
 /**
+ * The Invitation an outbox payload is about, whichever kind shaped it. Queries
+ * use this exact expression so `outbox_message_invitation_subject_idx` serves them.
+ */
+export function outboxInvitationSubject(payload: AnyPgColumn) {
+  return sql<string>`coalesce(${payload} ->> 'ministryInvitationId', ${payload} -> 'data' ->> 'ministryInvitationId', ${payload} ->> 'churchInvitationId')`;
+}
+
+/**
  * One general, Church-scoped outbox serving invitation emails and
  * Volunteer-Transfer notifications alike — one worker, one retry policy,
  * one place support looks. The payload references its subject by id and is
@@ -249,6 +258,10 @@ export const outboxMessage = pgTable(
     index('outbox_message_pending_due_idx')
       .on(table.scheduledFor)
       .where(sql`${table.status} = 'pending'`),
+    index('outbox_message_invitation_subject_idx').on(
+      table.churchId,
+      outboxInvitationSubject(table.payload),
+    ),
   ],
 );
 

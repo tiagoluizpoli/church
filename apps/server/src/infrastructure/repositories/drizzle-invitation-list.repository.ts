@@ -4,6 +4,7 @@ import {
   ministry,
   ministryInvitation,
   ministryInvitationRole,
+  outboxInvitationSubject,
   outboxMessage,
   role,
   user,
@@ -658,48 +659,74 @@ export class DrizzleInvitationListRepository
   }: DeliveryLookupInput): Promise<DeliveryFacts> {
     const latest = new Map<string, InvitationEmailDelivery>();
     const lastSent = new Map<string, Date>();
-    const subjects: SQL[] = [];
-    if (ministryInvitationIds.length > 0) {
-      subjects.push(
-        sql`(${outboxMessage.kind} = 'invitation.chained' AND ${outboxMessage.payload} ->> 'ministryInvitationId' IN ${ministryInvitationIds})`,
-        sql`(${outboxMessage.kind} = 'notification' AND ${outboxMessage.payload} ->> 'kind' = 'ministry_invitation' AND ${outboxMessage.payload} -> 'data' ->> 'ministryInvitationId' IN ${ministryInvitationIds})`,
-      );
-    }
     const offerIds = [
       ...new Set([...churchInvitationIds, ...pairedParents.values()]),
     ];
-    if (offerIds.length > 0) {
-      subjects.push(
-        sql`(${outboxMessage.kind} = 'invitation.church-bootstrap' AND ${outboxMessage.payload} ->> 'churchInvitationId' IN ${offerIds})`,
-      );
-    }
-    if (subjects.length === 0) return { latest, lastSent };
+    const subjectIds = [...ministryInvitationIds, ...offerIds];
+    if (subjectIds.length === 0) return { latest, lastSent };
 
-    const rows = await getClient({ db: this.db })
-      .select()
+    const subject = outboxInvitationSubject(outboxMessage.payload);
+    // Mirrors the rows `projectInvitationEmailDelivery` reads as sent with a time.
+    const isSent = sql<boolean>`CASE WHEN ${outboxMessage.kind} = 'notification' THEN ${outboxMessage.channelOutcomes} ->> 'email' = 'delivered' AND COALESCE(${outboxMessage.emailDeliveredAt}, ${outboxMessage.sentAt}) IS NOT NULL ELSE ${outboxMessage.status} = 'sent' AND ${outboxMessage.sentAt} IS NOT NULL END`;
+    const newestFirst = sql`${outboxMessage.createdAt} DESC, ${outboxMessage.id} DESC`;
+    const client = getClient({ db: this.db });
+    const ranked = client
+      .select({
+        id: outboxMessage.id,
+        subjectId: subject.as('subject_id'),
+        kind: outboxMessage.kind,
+        status: outboxMessage.status,
+        channelOutcomes: outboxMessage.channelOutcomes,
+        sentAt: outboxMessage.sentAt,
+        emailDeliveredAt: outboxMessage.emailDeliveredAt,
+        createdAt: outboxMessage.createdAt,
+        isSent: isSent.as('is_sent'),
+        rank: sql<number>`row_number() OVER (PARTITION BY ${subject} ORDER BY ${newestFirst})`.as(
+          'rank',
+        ),
+        sentRank:
+          sql<number>`row_number() OVER (PARTITION BY ${subject}, ${isSent} ORDER BY ${newestFirst})`.as(
+            'sent_rank',
+          ),
+      })
       .from(outboxMessage)
-      .where(and(eq(outboxMessage.churchId, churchId), or(...subjects)))
-      .orderBy(desc(outboxMessage.createdAt), desc(outboxMessage.id));
+      .where(
+        and(
+          eq(outboxMessage.churchId, churchId),
+          inArray(subject, subjectIds),
+          or(
+            inArray(outboxMessage.kind, [
+              'invitation.chained',
+              'invitation.church-bootstrap',
+            ]),
+            sql`${outboxMessage.kind} = 'notification' AND ${outboxMessage.payload} ->> 'kind' = 'ministry_invitation'`,
+          ),
+        ),
+      )
+      .as('ranked');
+    // Per subject: its newest row and its newest sent row, nothing else.
+    const rows = await client
+      .select()
+      .from(ranked)
+      .where(
+        or(
+          eq(ranked.rank, 1),
+          and(eq(ranked.isSent, true), eq(ranked.sentRank, 1)),
+        ),
+      )
+      .orderBy(desc(ranked.createdAt), desc(ranked.id));
 
     for (const row of rows) {
-      const payload = (row.payload ?? {}) as Record<string, unknown>;
       // An admin-upgraded pair's halves are delivered by the offer's one T1.
       const subjects =
         row.kind === 'invitation.church-bootstrap'
           ? [
-              `church:${payload.churchInvitationId}`,
+              `church:${row.subjectId}`,
               ...[...pairedParents]
-                .filter(([, parent]) => parent === payload.churchInvitationId)
+                .filter(([, parent]) => parent === row.subjectId)
                 .map(([halfId]) => `ministry:${halfId}`),
             ]
-          : [
-              `ministry:${
-                row.kind === 'notification'
-                  ? (payload.data as Record<string, unknown> | undefined)
-                      ?.ministryInvitationId
-                  : payload.ministryInvitationId
-              }`,
-            ];
+          : [`ministry:${row.subjectId}`];
       const delivery = projectInvitationEmailDelivery({
         kind: row.kind,
         status: row.status,

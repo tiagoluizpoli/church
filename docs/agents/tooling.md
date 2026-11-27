@@ -330,11 +330,25 @@ fails unless each one is referenced by `JOURNEY_MAP` or
 reference in either list names a discovered spec. Paths are web-root-relative
 with the `tests/` prefix. It lists unmapped specs, then stale references, so a
 rename shows both halves; repeated references and overlap between the lists
-are fine. `bun run lint` and every `validate:affected` run it, so a change that only
+are fine. It also fails a mapping whose `sourcePathPrefix` matches no
+production file (the plan's own rule, `tooling/validation/production-path.ts`),
+so a moved or deleted file takes its mapping with it. `bun run lint` and every
+`validate:affected` run it, so a change that only
 adds, renames or deletes a spec still fails on drift with the same
 diagnostics. It needs no browser, database or running application. Whether a
-mapping's source prefix is accurate stays a review decision
+live prefix maps the right specs stays a review decision
 ([ADR-0004](../adr/0004-test-strategy-and-ci-gate-policy.md)).
+
+A production change no mapping covers runs the critical smoke set. The plan
+also lists the changed files that selected no journey.
+
+A pure refactor may skip journeys with a commit trailer
+`Journey-Impact: none - <reason>`. A blank reason does not count. It follows the
+[seed-impact](#seed-impact) rule for the branch's own commits: the plan names
+the commit behind each accepted reason, and a borrowed trailer is refused, so
+the journeys run. One trailer skips the journeys of the whole diff, so use it only when
+every change on the branch is behaviour-neutral. Specs requested with `--e2e`
+still run, and a full local run that skipped journeys records no gate pass.
 
 ## Bundle budget
 
@@ -888,6 +902,8 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Playwright discovers only `*.spec.ts`; Vitest owns `*.test.ts(x)` | ADR-0004 | Mechanical | Validation guard | Enforced: `apps/web/tests/e2e-discovery-boundary.unit.test.ts` |
 | A Playwright spec covers a critical journey | ADR-0004 | Judgement | — | Review: "critical journey" is a judgement |
 | Every Playwright spec has a `JOURNEY_MAP` or `CRITICAL_SMOKE_SPEC_PATHS` entry, and every entry points at an existing spec | ADR-0004 | Mechanical | Validation guard | Enforced: `bun run validate:journey-map`, part of `lint` and `validate:affected` ([#557](https://github.com/tiagoluizpoli/church/issues/557)) |
+| Every `JOURNEY_MAP` prefix matches a production file | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:journey-map`, part of `lint` and `validate:affected` |
+| Skipping browser journeys needs a reason on the branch's own commits | Tooling | Mechanical | Validation guard | Enforced: `tooling/validation/journey-impact.ts` and `seed-acknowledgements.ts` in `validate:affected` |
 | A failing E2E spec gets exactly one retry in CI | ADR-0004 | Mechanical | Validation guard | Enforced: `retries` in `apps/web/playwright.config.ts` |
 | Daily and release gates; no direct pushes to `develop` or `master` | ADR-0004 | Mechanical | Validation guard | Enforced: `.github/workflows/ci.yml` and branch protection |
 | Each worktree has its own databases, ports and URL set | ADR-0005 | Mechanical | Validation guard | Enforced: `env:local` and `db:bootstrap` generate them |

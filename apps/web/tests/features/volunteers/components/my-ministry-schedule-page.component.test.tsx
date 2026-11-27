@@ -28,6 +28,7 @@ const SCHEDULE: GetMinistrySchedule200 = {
       title: 'Sunday Service',
       start: '2026-10-11T12:00:00.000Z',
       end: '2026-10-11T14:00:00.000Z',
+      cancelled: false,
       assignmentCount: 1,
       rows: [
         {
@@ -37,6 +38,7 @@ const SCHEDULE: GetMinistrySchedule200 = {
           shiftLabel: 'Morning',
           sectorName: 'Babies Room',
           roleName: 'Teacher',
+          cancelled: false,
           volunteerDisplayName: 'Alice T.',
         },
         {
@@ -46,6 +48,7 @@ const SCHEDULE: GetMinistrySchedule200 = {
           shiftLabel: 'Morning',
           sectorName: 'Kids Room',
           roleName: 'Teacher',
+          cancelled: false,
         },
       ],
     },
@@ -68,6 +71,32 @@ describe.each([
   'pt-BR',
 ] as const)('MyMinistrySchedulePage (%s)', (locale) => {
   beforeEach(() => setLocale(locale));
+
+  it('marks a cancelled Event once, and a cancelled Shift of a live one', async () => {
+    const [event] = SCHEDULE.events;
+    const rows = event.rows.map((row) => ({ ...row, cancelled: true }));
+    api.getMinistrySchedule.mockResolvedValue({
+      ...SCHEDULE,
+      events: [
+        { ...event, cancelled: true, rows },
+        {
+          ...event,
+          eventId: 'night',
+          title: 'Night Service',
+          rows: rows.map((row) => ({ ...row, shiftLabel: 'Evening' })),
+        },
+      ],
+    });
+    renderPage();
+
+    const title = await screen.findByText('Sunday Service');
+    expect(title.className).toContain('line-through');
+    expect(screen.getByText('Night Service').className).not.toContain(
+      'line-through',
+    );
+    expect(screen.getByText('Evening').className).toContain('line-through');
+    expect(screen.getAllByText(m.event_status_cancelled())).toHaveLength(2);
+  });
 
   it('renders Events, Shifts, names and Open places without confirmation state', async () => {
     api.getMinistrySchedule.mockResolvedValue(SCHEDULE);

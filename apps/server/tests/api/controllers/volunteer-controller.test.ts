@@ -252,6 +252,7 @@ describe('GET /api/v1/volunteer/ministries/:ministryId/schedule', () => {
           title: 'Sunday',
           start: '2026-07-06T09:00:00.000Z',
           end: '2026-07-06T11:00:00.000Z',
+          cancelled: false,
           assignmentCount: 1,
           rows: [
             {
@@ -261,6 +262,7 @@ describe('GET /api/v1/volunteer/ministries/:ministryId/schedule', () => {
               shiftEnd: '2026-07-06T10:00:00.000Z',
               sectorName: 'Babies Room',
               roleName: 'Teacher',
+              cancelled: false,
               volunteerDisplayName: 'Alice T.',
             },
             {
@@ -270,6 +272,7 @@ describe('GET /api/v1/volunteer/ministries/:ministryId/schedule', () => {
               shiftEnd: '2026-07-06T10:00:00.000Z',
               sectorName: 'Kids Room',
               roleName: 'Teacher',
+              cancelled: false,
             },
           ],
         },

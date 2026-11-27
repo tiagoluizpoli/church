@@ -18,7 +18,8 @@ const assignmentSchema = z.object({
   roleId: z.string(),
   roleName: z.string(),
   status: z.enum(['pending']),
-  // Absent in copies stored before the flag existed.
+  // Absent in copies stored before the flags existed.
+  cancelled: z.boolean().default(false),
   swapRequested: z.boolean().default(false),
 });
 
@@ -68,6 +69,7 @@ const ministryRowSchema = z.object({
   shiftEnd: z.string(),
   sectorName: z.string(),
   roleName: z.string(),
+  cancelled: z.boolean().default(false),
   volunteerDisplayName: z.string().optional(),
 });
 
@@ -83,6 +85,7 @@ export const cachedMinistryScheduleSchema = z.object({
       title: z.string(),
       start: z.string(),
       end: z.string(),
+      cancelled: z.boolean().default(false),
       assignmentCount: z.number(),
       rows: z.array(ministryRowSchema),
     }),

@@ -202,7 +202,7 @@ A single Ministry's preparation of a sent Event — the set of EventTimeBlocks t
 | assigning | Assign · Montar escala | Assigning · Montando escala |
 | published | Publish · Publicar escala | Published · Escala publicada |
 
-A Ministry moves its MinistryParticipations through these stages one Schedule at a time: it asks for availability, assigns and publishes the whole Schedule together, independently of other Ministries on the same Events. It may assign once it has asked for availability; its first Assignment moves it from availability requested to assigning, and answers are still accepted afterwards. Inclusions default to nothing and are seeded from the Ministry's UsualSetup when the Cycle is sent; the leader confirms and adds one-off inclusions for dynamic Events. This is where per-Ministry scheduling state lives, since the Event is church-owned.
+A Ministry moves its MinistryParticipations through these stages one Schedule at a time: it asks for availability, assigns and publishes the whole Schedule together, independently of other Ministries on the same Events. A leader may assign at any time, even before asking for availability, since they may already know someone can serve; an Assignment made then leaves the stage preparing. The first Assignment made while availability is requested moves it to assigning, and answers are still accepted afterwards. Inclusions default to nothing and are seeded from the Ministry's UsualSetup when the Cycle is sent; the leader confirms and adds one-off inclusions for dynamic Events. This is where per-Ministry scheduling state lives, since the Event is church-owned.
 _Avoid_: Tailoring, Rostering, Participation, involvement, ministry event
 
 **Schedule** (pt-BR: Escala):

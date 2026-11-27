@@ -811,7 +811,7 @@ describe('availability checks', () => {
 });
 
 describe('Volunteer views', () => {
-  it('shows only the live Assignment on My schedule, the dashboard and the Ministry Schedule', async () => {
+  it('marks cancelled work on My schedule and the Ministry Schedule, and keeps it off the dashboard', async () => {
     const { churchId, ministryId, cycleId } = seeded;
     const { volunteerManager } = createSchedulingManagers();
     const volunteerId = VolunteerId.from(seeded.ana.volunteer.id);
@@ -834,13 +834,27 @@ describe('Volunteer views', () => {
     });
 
     expect(
-      published.assignments.map(({ eventTitle, startTime, status }) => ({
+      published.assignments.map(({ eventTitle, startTime, cancelled }) => ({
         eventTitle,
         startTime,
-        status,
+        cancelled,
       })),
     ).toEqual([
-      { eventTitle: 'Sunday', startTime: liveStart, status: 'pending' },
+      {
+        eventTitle: 'Retreat',
+        startTime: '2026-10-17T12:00:00.000Z',
+        cancelled: true,
+      },
+      {
+        eventTitle: 'Sunday',
+        startTime: '2026-10-18T21:00:00.000Z',
+        cancelled: false,
+      },
+      {
+        eventTitle: 'Sunday',
+        startTime: '2026-10-18T22:00:00.000Z',
+        cancelled: true,
+      },
     ]);
     expect(published.counts).toEqual({
       upcoming: 1,
@@ -857,21 +871,37 @@ describe('Volunteer views', () => {
     ).toEqual([{ eventTitle: 'Sunday', blocks: ['liveBlock'] }]);
     expect(dashboard.nextAssignment?.eventTitle).toBe('Sunday');
     expect(
-      ministrySchedule.events.map(({ title, assignmentCount, rows }) => ({
-        title,
-        assignmentCount,
-        rows: rows.map(({ shiftStart, volunteerDisplayName }) => ({
-          shiftStart,
-          volunteerDisplayName,
-        })),
-      })),
+      ministrySchedule.events.map(
+        ({ title, cancelled, assignmentCount, rows }) => ({
+          title,
+          cancelled,
+          assignmentCount,
+          rows: rows.map((row) => [
+            row.shiftStart,
+            row.cancelled,
+            row.volunteerDisplayName ?? null,
+          ]),
+        }),
+      ),
     ).toEqual([
       {
-        title: 'Sunday',
+        title: 'Retreat',
+        cancelled: true,
         assignmentCount: 1,
         rows: [
-          { shiftStart: liveStart, volunteerDisplayName: 'Ana' },
-          { shiftStart: liveStart, volunteerDisplayName: undefined },
+          ['2026-10-17T12:00:00.000Z', true, 'Ana'],
+          ['2026-10-17T12:00:00.000Z', true, null],
+        ],
+      },
+      {
+        title: 'Sunday',
+        cancelled: false,
+        assignmentCount: 2,
+        rows: [
+          [liveStart, false, 'Ana'],
+          [liveStart, false, null],
+          ['2026-10-18T22:00:00.000Z', true, 'Ana'],
+          ['2026-10-18T22:00:00.000Z', true, null],
         ],
       },
     ]);

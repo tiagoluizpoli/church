@@ -243,7 +243,6 @@ export function CycleFormDialog({
                 <ul className="list-disc ps-5">
                   {failure.outsideEvents.map((outside, index) => (
                     // Two Events may share a title and time; order is stable.
-                    // biome-ignore lint/suspicious/noArrayIndexKey: display-only list rebuilt per failure
                     <li key={index}>{outside}</li>
                   ))}
                 </ul>

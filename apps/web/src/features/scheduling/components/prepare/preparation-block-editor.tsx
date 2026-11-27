@@ -7,7 +7,6 @@ import { isAxiosError } from 'axios';
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { CancelledBadge } from '../cancelled-badge';
 import { blockTitle } from '../participation-prepare.utils';
 import {
   initialPreparationDraft,
@@ -28,6 +27,7 @@ import {
   type PrepareListSearch,
   prepareParticipationQuery,
 } from './prepare-participation-query';
+import { CancelledBadge } from '@/components/cancelled-badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,

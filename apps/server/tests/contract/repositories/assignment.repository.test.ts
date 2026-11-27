@@ -18,15 +18,20 @@ import type {
   FindAssignmentByEventTimeBlockAndVolunteerInput,
   GetAssignmentInput,
   ListAssignmentsByParticipationInput,
+  ListAssignmentsByParticipationsInput,
   ListAssignmentsByRangeInput,
   ListAssignmentsByShiftInput,
   ListAssignmentsByVolunteerInput,
   ListAssignmentsByVolunteerInRangeInput,
   ListAssignmentsByVolunteersInput,
   MoveAssignmentRepositoryInput,
+  PublishedAssignment,
   UpdateAssignmentStatusRepositoryInput,
 } from '@/domain/contracts/infrastructure/assignment.repository';
-import { Assignment } from '@/domain/entities/assignment';
+import {
+  Assignment,
+  isActiveAssignmentStatus,
+} from '@/domain/entities/assignment';
 import { runAssignmentRepositoryContractTests } from '@/tests/domain/contracts/contract-tests/assignment.contract-spec';
 
 class MockAssignmentRepository implements AssignmentRepository {
@@ -183,12 +188,31 @@ class MockAssignmentRepository implements AssignmentRepository {
     );
   }
 
+  async listPublishedByVolunteer(): Promise<PublishedAssignment[]> {
+    return [];
+  }
+
   async listByParticipation({
     churchId,
     participationId,
   }: ListAssignmentsByParticipationInput): Promise<Assignment[]> {
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && a.participationId === participationId,
+    );
+  }
+
+  async listByParticipations({
+    churchId,
+    participationIds,
+    activeOnly,
+  }: ListAssignmentsByParticipationsInput): Promise<Assignment[]> {
+    const participationIdSet = new Set(participationIds);
+    return Array.from(this.assignments.values()).filter(
+      (a) =>
+        a.churchId === churchId &&
+        a.participationId !== undefined &&
+        participationIdSet.has(a.participationId) &&
+        (!activeOnly || isActiveAssignmentStatus(a.status)),
     );
   }
 

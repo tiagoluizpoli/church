@@ -5,7 +5,7 @@
 From workspace root:
 
 ```bash
-bun run --filter web dev
+bun run --filter @church/web dev
 ```
 
 ## Running Tests
@@ -15,7 +15,7 @@ bun run --filter web dev
 From workspace root:
 
 ```bash
-bun run --filter web test:e2e
+bun run --filter @church/web test:e2e
 ```
 
 ### Unit/Component Tests
@@ -23,7 +23,7 @@ bun run --filter web test:e2e
 From workspace root:
 
 ```bash
-bun run --filter web test
+bun run --filter @church/web test
 ```
 
 ## Critical Files

@@ -496,6 +496,11 @@ export function buildValidationSteps({
       command: 'bun',
       label: 'date-time-seam',
     });
+    checkLane.push({
+      args: ['run', 'validate:bun-version'],
+      command: 'bun',
+      label: 'bun-version',
+    });
 
     if (plan.workspaceNames.length > 0) {
       const filters = plan.workspaceNames.flatMap((workspaceName) => [
@@ -508,7 +513,7 @@ export function buildValidationSteps({
         label: 'typecheck',
       });
     }
-    if (plan.workspaceNames.includes('web')) {
+    if (plan.workspaceNames.includes('@church/web')) {
       checkLane.push(BUNDLE_BUDGET_STEP);
     }
 
@@ -535,6 +540,7 @@ export function buildValidationSteps({
       'journey-map',
       'presentation-text',
       'date-time-seam',
+      'bun-version',
       'typecheck',
       'bundle-budget',
       ...ALL_TEST_LAYERS,

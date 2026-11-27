@@ -3,9 +3,11 @@ import {
   assignment,
   event,
   eventTimeBlock,
+  ministryParticipation,
   shift,
   shiftRequirement,
 } from '@church/db';
+import { toDate } from '@church/time';
 import {
   and,
   asc,
@@ -14,8 +16,12 @@ import {
   eq,
   gt,
   inArray,
+  isNull,
   lt,
+  not,
+  or,
   type SQL,
+  sql,
 } from 'drizzle-orm';
 import type {
   AssignmentRepository,
@@ -26,15 +32,22 @@ import type {
   FindAssignmentByEventTimeBlockAndVolunteerInput,
   GetAssignmentInput,
   ListAssignmentsByParticipationInput,
+  ListAssignmentsByParticipationsInput,
   ListAssignmentsByRangeInput,
   ListAssignmentsByShiftInput,
   ListAssignmentsByVolunteerInput,
   ListAssignmentsByVolunteerInRangeInput,
   ListAssignmentsByVolunteersInput,
+  ListPublishedAssignmentsByVolunteerInput,
   MoveAssignmentRepositoryInput,
+  PublishedAssignment,
   UpdateAssignmentStatusRepositoryInput,
 } from '../../domain/contracts/infrastructure/assignment.repository';
-import type { Assignment } from '../../domain/entities/assignment';
+import {
+  ACTIVE_ASSIGNMENT_STATUSES,
+  type Assignment,
+  PUBLISHED_ASSIGNMENT_STATUSES,
+} from '../../domain/entities/assignment';
 import { mapAssignment } from '../mappers/assignment.mapper';
 import type {
   DrizzleAssignmentRepositoryInput,
@@ -43,7 +56,10 @@ import type {
 } from './drizzle-assignment.repository.types';
 import type { AnyDrizzleDb } from './drizzle-db.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import { shownEventTimeBlock } from './live-event-time-block';
+import {
+  liveEventTimeBlock,
+  shownEventTimeBlock,
+} from './live-event-time-block';
 
 export class DrizzleAssignmentRepository implements AssignmentRepository {
   constructor({ db }: DrizzleAssignmentRepositoryInput) {
@@ -236,6 +252,21 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     });
   }
 
+  async listByParticipations({
+    churchId,
+    participationIds,
+    activeOnly,
+    tx,
+  }: ListAssignmentsByParticipationsInput): Promise<Assignment[]> {
+    if (participationIds.length === 0) return [];
+    const conditions: SQL[] = [
+      inArray(assignment.participationId, participationIds),
+    ];
+    if (activeOnly)
+      conditions.push(inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES));
+    return this.rows({ churchId, conditions, tx });
+  }
+
   listByShift({
     churchId,
     shiftId,
@@ -261,6 +292,58 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       conditions,
       tx,
     });
+  }
+
+  async listPublishedByVolunteer({
+    churchId,
+    volunteerId,
+    liveOnly,
+    endingAfter,
+    tx,
+  }: ListPublishedAssignmentsByVolunteerInput): Promise<PublishedAssignment[]> {
+    const cancelledScope = not(liveEventTimeBlock());
+    const published = inArray(assignment.status, [
+      ...PUBLISHED_ASSIGNMENT_STATUSES,
+    ]);
+    const cancelledWithItsScope = and(
+      cancelledScope,
+      eq(assignment.status, 'cancelled'),
+      or(isNull(assignment.reason), eq(assignment.reason, '')),
+    );
+    const listed = liveOnly
+      ? and(published, liveEventTimeBlock())
+      : or(published, cancelledWithItsScope);
+    const conditions = [
+      withChurchIsolation({ table: assignment, churchId }),
+      eq(assignment.volunteerId, volunteerId),
+      eq(ministryParticipation.state, 'published'),
+      shownEventTimeBlock(),
+      listed,
+    ];
+    if (endingAfter) {
+      const earliestEnd = toDate({ instant: endingAfter });
+      conditions.push(gt(shift.endTime, earliestEnd));
+    }
+    const rows = await getClient({ db: this.db, tx })
+      .select({
+        assignment,
+        eventTimeBlockId: shift.eventTimeBlockId,
+        cancelled: sql<boolean>`${cancelledScope}`,
+      })
+      .from(assignment)
+      .innerJoin(shift, eq(shift.id, assignment.shiftId))
+      .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
+      .innerJoin(event, eq(event.id, eventTimeBlock.eventId))
+      .innerJoin(
+        ministryParticipation,
+        eq(ministryParticipation.id, assignment.participationId),
+      )
+      .where(and(...conditions))
+      .orderBy(asc(shift.startTime), asc(assignment.id));
+    return rows.map(({ assignment: row, eventTimeBlockId, cancelled }) => ({
+      assignment: mapAssignment({ row, eventTimeBlockId }),
+      cancelled,
+    }));
   }
 
   async listByVolunteers({

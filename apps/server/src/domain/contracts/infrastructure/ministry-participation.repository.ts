@@ -10,6 +10,7 @@ import type {
 } from '../../branded-ids';
 import type { AssignmentStatus } from '../../entities/assignment';
 import type { Cycle, CycleState } from '../../entities/cycle';
+import type { Event } from '../../entities/event';
 import type { Ministry } from '../../entities/ministry';
 import type {
   MinistryParticipation,
@@ -278,10 +279,33 @@ export interface ScheduleLastToldRow {
   toldAt: Instant;
 }
 
+/** One Volunteer's last-told Schedule, named by its Ministry and Cycle. */
+export interface ScheduleLastToldBySchedulesRow extends ScheduleLastToldRow {
+  ministryId: MinistryId;
+  cycleId: CycleId;
+}
+
+/** A published participation with the Event it serves; the Event names its Cycle. */
+export interface PublishedScheduleParticipation {
+  participation: MinistryParticipation;
+  event: Event;
+}
+
 export interface MinistryParticipationRepository {
   listScheduleLastTold(
     input: ListScheduleLastToldInput,
   ): Promise<ScheduleLastToldRow[]>;
+  /** Last-told rows of every Ministry × Cycle in scope, in one read. */
+  listScheduleLastToldBySchedules(
+    input: ListSchedulesFactsInput,
+  ): Promise<ScheduleLastToldBySchedulesRow[]>;
+  /**
+   * Published participations of every Ministry × Cycle in scope whose Event is
+   * not cancelled, in one read: earliest Event first, as `listCycleEvents`.
+   */
+  listPublishedScheduleParticipations(
+    input: ListSchedulesFactsInput,
+  ): Promise<PublishedScheduleParticipation[]>;
   saveScheduleLastTold(input: SaveScheduleLastToldInput): Promise<void>;
   getById(input: GetParticipationInput): Promise<MinistryParticipation>;
   /** Holds the row until `tx` ends, so its state cannot change under the caller. */

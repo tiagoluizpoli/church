@@ -273,9 +273,26 @@ export interface VolunteerAvailabilityCheckDetail {
   counts: VolunteerAvailabilityCheckCounts;
 }
 
-export interface ListAvailabilityChecksInput {
+export interface CountAvailabilityChecksInput {
   volunteerId: VolunteerId;
   churchId: ChurchId;
+}
+
+export interface ListAvailabilityChecksInput
+  extends CountAvailabilityChecksInput {
+  /** Omitted: every state. */
+  state?: AvailabilityCheckState;
+}
+
+export interface CheckStateInput {
+  state: AvailabilityCheckState;
+}
+
+/** The Volunteer's checks in every state, whatever the list is filtered by. */
+export interface VolunteerAvailabilityCheckStateCounts {
+  total: number;
+  pending: number;
+  confirmed: number;
 }
 
 export interface GetAvailabilityCheckInput {
@@ -334,6 +351,9 @@ export interface IVolunteerManager {
   listAvailabilityChecks(
     input: ListAvailabilityChecksInput,
   ): Promise<VolunteerAvailabilityCheckSummary[]>;
+  countAvailabilityChecks(
+    input: CountAvailabilityChecksInput,
+  ): Promise<VolunteerAvailabilityCheckStateCounts>;
   getAvailabilityCheck(
     input: GetAvailabilityCheckInput,
   ): Promise<VolunteerAvailabilityCheckDetail>;
@@ -415,11 +435,6 @@ export interface DbVolunteerManagerDependencies {
 export interface ListedAssignmentInput {
   assignment: Pick<Assignment, 'status' | 'reason'>;
   /** Whether its Event or EventTimeBlock is cancelled. */
-  cancelled: boolean;
-}
-
-export interface ListedVolunteerAssignment {
-  assignment: Assignment;
   cancelled: boolean;
 }
 

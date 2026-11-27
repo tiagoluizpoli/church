@@ -176,8 +176,8 @@ interface GetTestTargetInput {
 }
 
 export const WORKSPACES: Workspace[] = [
-  { name: 'server', path: 'apps/server/' },
-  { name: 'web', path: 'apps/web/' },
+  { name: '@church/server', path: 'apps/server/' },
+  { name: '@church/web', path: 'apps/web/' },
   { name: '@church/auth', path: 'packages/auth/' },
   { name: '@church/core', path: 'packages/core/' },
   { name: '@church/db', path: 'packages/db/' },
@@ -187,22 +187,32 @@ export const WORKSPACES: Workspace[] = [
 ];
 
 const DEPENDENTS: Record<string, string[]> = {
-  '@church/auth': ['server'],
+  '@church/auth': ['@church/server'],
   '@church/config': [
     '@church/auth',
     '@church/core',
     '@church/db',
     '@church/env',
     '@church/time',
-    'server',
-    'web',
+    '@church/server',
+    '@church/web',
   ],
-  '@church/core': ['server'],
-  '@church/time': ['@church/auth', '@church/db', 'server', 'web'],
-  '@church/db': ['@church/auth', 'server'],
-  '@church/env': ['@church/auth', '@church/db', 'server', 'web'],
-  server: [],
-  web: [],
+  '@church/core': ['@church/server'],
+  '@church/time': [
+    '@church/auth',
+    '@church/db',
+    '@church/server',
+    '@church/web',
+  ],
+  '@church/db': ['@church/auth', '@church/server'],
+  '@church/env': [
+    '@church/auth',
+    '@church/db',
+    '@church/server',
+    '@church/web',
+  ],
+  '@church/server': [],
+  '@church/web': [],
 };
 
 const FULL_E2E_PATHS = new Set([
@@ -591,7 +601,7 @@ function selectSeedContracts({
       changedPath,
       detail: `seed-contract:${area}`,
       testLayer: 'test:integration',
-      workspaceName: 'server',
+      workspaceName: '@church/server',
     });
   }
 }
@@ -654,7 +664,7 @@ function pushTestLayerSelectionReasons({
 function getTestLayersForWorkspace({
   workspaceName,
 }: GetTestLayersForWorkspaceInput): TestLayer[] {
-  if (workspaceName === '@church/core' || workspaceName === 'web') {
+  if (workspaceName === '@church/core' || workspaceName === '@church/web') {
     return ['test:unit'];
   }
 
@@ -662,7 +672,7 @@ function getTestLayersForWorkspace({
     return ['test:integration'];
   }
 
-  if (workspaceName === 'server') {
+  if (workspaceName === '@church/server') {
     return ['test:unit', 'test:integration'];
   }
 
@@ -705,13 +715,13 @@ function getTestLayer({
 }: GetTestLayerInput): TestLayer | null {
   if (!changedPath.includes('.test.')) return null;
 
-  if (workspaceName === 'web') {
+  if (workspaceName === '@church/web') {
     return changedPath.includes('.integration.test.')
       ? 'test:integration'
       : 'test:unit';
   }
 
-  if (workspaceName === 'server') {
+  if (workspaceName === '@church/server') {
     return SERVER_INTEGRATION_TEST_PATHS.has(changedPath) ||
       changedPath.includes('/tests/behavior/') ||
       changedPath.includes('/tests/http/') ||

@@ -134,9 +134,13 @@ export const SEED_CONTRACT_TARGETS: SeedContractTarget[] = [
   {
     testLayer: 'test:integration',
     testPath: 'tests/seeds/',
-    workspaceName: 'server',
+    workspaceName: '@church/server',
   },
-  { testLayer: 'test:unit', testPath: 'tests/seeds/', workspaceName: 'server' },
+  {
+    testLayer: 'test:unit',
+    testPath: 'tests/seeds/',
+    workspaceName: '@church/server',
+  },
   ...[
     'tests/destructive-development-commands.test.ts',
     'tests/e2e-database-reset.test.ts',

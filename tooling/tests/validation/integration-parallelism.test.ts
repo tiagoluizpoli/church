@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-const SELECTED = ['@church/db', '@church/auth', 'server'];
+const SELECTED = ['@church/db', '@church/auth', '@church/server'];
 
 describe('turbo test:integration task graph', () => {
   it('has no dependency edge between the selected integration packages, so --concurrency overlaps them', () => {

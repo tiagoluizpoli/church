@@ -10,7 +10,7 @@ and task ordering.
 | Intent | Command |
 | --- | --- |
 | Lint + format | `bun run lint:fix` |
-| Lint | `bun run lint` |
+| Lint (read-only: reports, never fixes) | `bun run lint` |
 | Typecheck | `bun run typecheck` |
 | Unit/component tests | `bun run test:unit` |
 | Integration tests | `bun run test:integration` |
@@ -363,9 +363,11 @@ the in-memory fake (`tests/test-support/in-memory-object-storage.ts`).
   `grep -E '^RESEND_[A-Z_]+=' .env > "$(git rev-parse --git-common-dir)/church-shared.env"`.
 - **Before the first commit**: the commit hooks run from `node_modules`, so a
   worktree created without the hook (plain `git worktree add`, Orca)
-  bootstraps before it commits; otherwise `commit-msg` hangs on `npx`.
-- **Known transient**: under load the `@church/i18n` postinstall can fail with
-  `LixError: Lix open did not settle within 30000ms`. Rerun the bootstrap.
+  bootstraps before it commits; otherwise `commit-msg` fails at once, naming
+  the bootstrap.
+- **Known transient**: under load the `@church/i18n` compile can hit
+  `LixError: Lix open did not settle within 30000ms`. It retries once by itself
+  (`tooling/i18n/compile.ts`); if the retry fails too, rerun the bootstrap.
 - **Primary checkout**: run `bun run worktree:bootstrap` once, explicitly.
   `env:local` refuses to run while a package value file exists
   (`apps/{server,web}/.env[.local]`, `packages/{db,auth}/.env[.local]`):
@@ -602,6 +604,9 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | IV. Never commit secrets | Constitution | Judgement | — | Review: a secret is not a fixed pattern |
 | V. Biome lints and formats; it passes before every commit | Constitution | Mechanical | Biome rule | Enforced: Lefthook `pre-commit` runs Biome on staged files; `lint` in CI |
 | V. Conventional commits | Constitution | Mechanical | Validation guard | Enforced: commitlint in Lefthook `commit-msg` |
+| `commit-msg` fails at once without `node_modules`; it never waits on an install prompt | Tooling | Mechanical | Validation guard | Enforced: `tooling/tests/validation/commit-time-tooling.test.ts` (`test:validation`) |
+| `lint` writes nothing; fixing stays in `lint:fix` and the pre-commit Biome job | Tooling | Mechanical | Validation guard | Enforced: `tooling/tests/validation/commit-time-tooling.test.ts` (`test:validation`) |
+| The `@church/i18n` compile retries once on the Lix open timeout, and on no other error | Tooling | Mechanical | Validation guard | Enforced: `tooling/tests/validation/i18n-compile.test.ts` (`test:validation`) |
 | Commits run the Lefthook hooks (no `core.hooksPath` override, no `git commit --no-verify`) | Tooling | Mechanical | Claude hook | Enforced for agents: `tooling/claude/block-hook-bypass.sh`, a PreToolUse hook in `.claude/settings.json` |
 | develop is PR-only: no tracked edits left uncommitted on a develop checkout | Tooling | Mechanical | Claude hook | Enforced for agents: `tooling/claude/flag-dirty-develop.sh`, a Stop hook in `.claude/settings.json` that stops the agent once to branch and PR them |
 | Atomic commits are small and focused | Constitution | Judgement | — | Review: "focused" is a judgement about intent |

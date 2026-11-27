@@ -18,7 +18,7 @@ import {
   VolunteerId,
 } from '@/domain/branded-ids';
 import type { RedemptionManager } from '@/domain/contracts/application/redemption-manager';
-import type { VolunteerTransferManager } from '@/domain/contracts/application/volunteer-transfer-manager';
+import type { IVolunteerTransferManager } from '@/domain/contracts/application/volunteer-transfer-manager';
 import { VerificationCodeError } from '@/domain/errors/verification-code-error';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -55,7 +55,7 @@ const redemptionManager: RedemptionManager = {
   getDebugInvitationLink: vi.fn(),
 };
 
-const volunteerTransferManager: VolunteerTransferManager = {
+const volunteerTransferManager: IVolunteerTransferManager = {
   getTransferPreview: vi.fn(),
   confirmTransfer: vi.fn(),
 };

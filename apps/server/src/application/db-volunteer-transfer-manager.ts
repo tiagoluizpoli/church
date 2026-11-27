@@ -1,16 +1,15 @@
 import { compareInstants, fromDate, nowAsDate } from '@church/time';
-import type {
-  ChurchId,
-  MinistryInvitationId,
-  UserId,
-} from '../domain/branded-ids';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   ConfirmTransferInput,
   ConfirmTransferOutcome,
+  DbVolunteerTransferManagerDependencies,
   GetTransferPreviewInput,
+  IVolunteerTransferManager,
+  RecordMismatchInput,
+  ResolvedTransferContext,
+  ResolveTransferContextInput,
   TransferPreview,
-  VolunteerTransferManager,
 } from '../domain/contracts/application/volunteer-transfer-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
@@ -19,45 +18,6 @@ import type { SecurityLogRepository } from '../domain/contracts/infrastructure/s
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { VolunteerTransferRepository } from '../domain/contracts/infrastructure/volunteer-transfer.repository';
-import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
-
-interface DbVolunteerTransferManagerDependencies {
-  churchRepository: ChurchRepository;
-  identityGateway: RedemptionIdentityGateway;
-  invitationRepository: MinistryInvitationRepository;
-  notifications: IChurchNotifications;
-  securityLogRepository: SecurityLogRepository;
-  unitOfWork: UnitOfWork;
-  volunteerRepository: VolunteerRepository;
-  volunteerTransferRepository: VolunteerTransferRepository;
-}
-
-type ResolvedTransferContext =
-  | { status: 'unavailable' }
-  | { status: 'identity-mismatch' }
-  | { status: 'no-transfer-needed' }
-  | {
-      status: 'ready';
-      ministryInvitation: MinistryInvitation;
-      /** The intended addressee's own email (spec: existing-member invitations carry the User's email). */
-      email: string;
-      destinationChurchName: string;
-      sourceChurchId: ChurchId;
-    };
-
-interface ResolveTransferContextInput {
-  ministryInvitationId: MinistryInvitationId;
-  userId: UserId;
-  now: Date;
-}
-
-interface RecordMismatchInput {
-  churchId: ChurchId;
-  ministryInvitationId: MinistryInvitationId;
-  userId: UserId;
-  correlationId: string;
-  now: Date;
-}
 
 /**
  * Volunteer Transfer (spec §8), reachable only from invitation redemption.
@@ -66,7 +26,7 @@ interface RecordMismatchInput {
  * session, then the one transaction that retires one profile and births
  * another. A former-Church actor has no input here by construction.
  */
-export class DbVolunteerTransferManager implements VolunteerTransferManager {
+export class DbVolunteerTransferManager implements IVolunteerTransferManager {
   private readonly churchRepository: ChurchRepository;
   private readonly identityGateway: RedemptionIdentityGateway;
   private readonly invitationRepository: MinistryInvitationRepository;

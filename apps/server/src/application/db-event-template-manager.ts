@@ -1,13 +1,14 @@
-import type { ChurchId } from '../domain/branded-ids';
 import { TemplateTimeBlockId } from '../domain/branded-ids';
 import type {
   ChangeTemplatePrecedenceManagerInput,
   CreateEventTemplateManagerInput,
+  DbEventTemplateManagerDependencies,
   DeleteEventTemplateManagerInput,
-  EventTemplateTimeBlockManagerInput,
   GetEventTemplateManagerInput,
   IEventTemplateManager,
   ListEventTemplatesManagerInput,
+  NormalizeBlocksInput,
+  SettlePrecedencesInput,
   TemplatePrecedenceView,
   UpdateEventTemplateManagerInput,
 } from '../domain/contracts/application/event-template-manager';
@@ -16,7 +17,6 @@ import type {
   EventTemplateTimeBlockInput,
 } from '../domain/contracts/infrastructure/event-template.repository';
 import type { TemplatePrecedenceRepository } from '../domain/contracts/infrastructure/template-precedence.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import {
   EventTemplate,
@@ -27,27 +27,9 @@ import { assertRecurrence } from '../domain/recurrence';
 import { templatesCollide } from '../domain/template-collision';
 import {
   type TemplatePrecedence,
-  type TemplatePrecedenceAnswer,
   toPrecedenceAnswer,
   toStoredPrecedence,
 } from '../domain/template-precedence';
-
-interface DbEventTemplateManagerDependencies {
-  templateRepository: EventTemplateRepository;
-  precedenceRepository: TemplatePrecedenceRepository;
-  unitOfWork: UnitOfWork;
-}
-
-interface SettlePrecedencesInput {
-  churchId: ChurchId;
-  template: EventTemplate;
-  answers?: TemplatePrecedenceAnswer[];
-  tx: TransactionContext;
-}
-
-interface NormalizeBlocksInput {
-  blocks: EventTemplateTimeBlockManagerInput[];
-}
 
 /**
  * Validates the desired blocks and derives contiguous zero-based `order` by

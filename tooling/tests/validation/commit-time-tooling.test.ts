@@ -77,6 +77,16 @@ describe('commit-msg hook', () => {
     expect(result.status).toBe(1);
     expect(result.output).toContain('type-enum');
   });
+
+  it('fails at once without node_modules, naming the bootstrap', () => {
+    const result = runCommitMsg({
+      message: 'chore(root): tidy the hooks',
+      cwd: sandbox,
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.output).toContain('run `bun run worktree:bootstrap`');
+  });
 });
 
 describe('lint scripts', () => {

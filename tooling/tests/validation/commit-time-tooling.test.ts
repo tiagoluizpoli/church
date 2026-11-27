@@ -16,6 +16,7 @@ const FAIL_FAST_MS = 5000;
 
 interface LefthookJob {
   run: string;
+  glob?: string;
 }
 
 interface LefthookConfig {
@@ -110,6 +111,23 @@ describe('lint scripts', () => {
     expect(scripts.lint).toStartWith('bun run lint:files -- . && ');
     expect(scripts.lint).not.toContain('lint:fix');
     expect(scripts.lint).not.toContain('--write');
+  });
+
+  it('lint runs the read-only check, then each guard', () => {
+    expect(scripts.lint?.split(' && ')).toEqual([
+      'bun run lint:files -- .',
+      'bun run validate:test-placement',
+      'bun run validate:i18n-parity',
+      'bun run validate:named-parameters',
+      'bun run validate:journey-map',
+      'bun run validate:presentation-text',
+      'bun run validate:date-time-seam',
+    ]);
+  });
+
+  it('keeps the fixing Biome job to script and JSON files', () => {
+    const [biome] = lefthook['pre-commit'].jobs;
+    expect(biome.glob).toBe('*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}');
   });
 
   it('lint:fix and the pre-commit Biome job fix', () => {

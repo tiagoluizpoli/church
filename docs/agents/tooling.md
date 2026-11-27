@@ -417,7 +417,7 @@ plan then selects that package alone, without its dependents, with its whole
 unit suite, and prints:
 
 ```text
-turbo.json narrowed to web: only its own task entries differ (web#build)
+turbo.json narrowed to @church/web: only its own task entries differ (@church/web#build)
 ```
 
 The package must be one the plan can select (`WORKSPACES`, so not
@@ -439,7 +439,7 @@ fails, naming the chunk, when the entry chunk, the entry CSS or a shared chunk
 (a `modulepreload` in `index.html`) is over its limit. Lazy chunks are printed
 only. It never builds: `validate` runs it right after the type check, which
 builds `dist`, and `validate:affected` and `validate:no-docker` do the same
-when `web` is affected. It is not part of `lint`. The limits are `LIMITS` in
+when `@church/web` is affected. It is not part of `lint`. The limits are `LIMITS` in
 the script; raise one only on purpose and say why in the PR. `shared` is one
 limit for each shared chunk on its own, so a small chunk can grow up to it
 unnoticed. It does not name the module that grew: the build writes no stats
@@ -491,10 +491,10 @@ diagnostics). It skips the root `test:unit`'s `TZ=Asia/Kolkata`, so the
 completion gate is still what catches timezone-dependent failures:
 
 ```sh
-bunx turbo -F server test:unit --only -- tests/api/auth/active-church-pre-validation.test.ts
+bunx turbo -F @church/server test:unit --only -- tests/api/auth/active-church-pre-validation.test.ts
 ```
 
-`-F` takes the package name (`server`, `web`, `@church/core`, …); the task is
+`-F` takes the package name (`@church/server`, `@church/web`, `@church/core`, …); the task is
 `test:unit` for unit and component tests or `test:integration` for
 integration tests; the path is relative to that workspace. Integration tasks
 need this worktree's databases (`bun run worktree:bootstrap`). Story E2E keeps
@@ -943,9 +943,9 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Server classes are built in `main/di/` and injected, never `new`-ed inside another class | Backend | Mechanical | Validation guard | Follow-up [#1129](https://github.com/tiagoluizpoli/church/issues/1129) |
 | Web interfaces get their own file when large or several | Frontend | Judgement | — | Review: "large" and whether a split makes sense are judgements |
 | Shared packages hold only generic code; application code lives in `apps/server` | Constitution, backend | Judgement | — | Review: "application-specific" is a judgement about meaning |
-| Only `apps/server` imports `@church/server`; clients use the orval functions | Constitution | Mechanical | Biome rule | Enforced: root `noRestrictedImports` options in `biome.json` (also bans the bare `server` name until [#549](https://github.com/tiagoluizpoli/church/issues/549)), locked by `tooling/tests/biome/server-import-ban.test.ts`; `apps/fumadocs` is not covered because Biome does not lint it. Relative imports: `packages/*` must name `apps/server`; the `apps/web`/`apps/desktop` override bans `../../server` and deeper. shortcut: a glob cannot see file depth, so a client root file (e.g. `vite.config.ts`) importing `../server` slips through and a future `server` folder two or more levels up inside a client would be flagged; move to a resolver-aware check if either happens |
+| Only `apps/server` imports `@church/server`; clients use the orval functions | Constitution | Mechanical | Biome rule | Enforced: root `noRestrictedImports` options in `biome.json` (also still bans the pre-scope bare `server` specifier), locked by `tooling/tests/biome/server-import-ban.test.ts`; `apps/fumadocs` is not covered because Biome does not lint it. Relative imports: `packages/*` must name `apps/server`; the `apps/web`/`apps/desktop` override bans `../../server` and deeper. shortcut: a glob cannot see file depth, so a client root file (e.g. `vite.config.ts`) importing `../server` slips through and a future `server` folder two or more levels up inside a client would be flagged; move to a resolver-aware check if either happens |
 | `@church/app-config` is plain data with a Zod schema, no logic beyond `withAllParkedOn` | Constitution | Judgement | — | Review: the package is one file; "no logic" is easier to read than to pattern-match |
-| Every workspace name is scoped `@church/` | Constitution | Mechanical | Validation guard | Follow-up [#549](https://github.com/tiagoluizpoli/church/issues/549) |
+| Every workspace name is scoped `@church/` | Constitution | Mechanical | Validation guard | Enforced: `bun run validate:workspace-scope` (every `apps/*` and `packages/*` `package.json`), part of `lint` |
 | Documentation first: significant changes are planned in `planning/` | Constitution | Judgement | — | Review: "significant" is a judgement |
 | A constitution amendment bumps its version | Constitution | Mechanical | Validation guard | Follow-up [#550](https://github.com/tiagoluizpoli/church/issues/550) |
 | A constitution amendment updates its dependent templates | Constitution | Judgement | — | Review: which templates depend on a change is a judgement |

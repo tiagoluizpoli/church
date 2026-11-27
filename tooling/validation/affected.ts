@@ -7,8 +7,10 @@ import { join, relative } from 'node:path';
 import {
   classifyChanges,
   isScriptsOnlyAddition,
+  readTurboNarrowing,
   type TestLayer,
   type TestTarget,
+  type TurboNarrowing,
   type ValidationPlan,
   WORKSPACES,
 } from './affected-plan';
@@ -67,6 +69,18 @@ interface CollectChangedPathsResult {
   deletedPaths: string[];
   /** Root package.json only gained scripts versus the merge base. */
   packageJsonScriptsOnlyAddition: boolean;
+  /** Root turbo.json differs only in one package's tasks versus the merge base. */
+  turboNarrowing: TurboNarrowing | undefined;
+}
+
+interface ReadBaseAndHeadInput {
+  baseRef: string;
+  path: string;
+}
+
+interface BaseAndHead {
+  base: string;
+  head: string;
 }
 
 interface ParseArgumentsInput {
@@ -202,6 +216,26 @@ function isRef({ ref }: { ref: string }): boolean {
   }
 }
 
+/** Undefined when either side is unavailable: the file stays root infrastructure. */
+function readBaseAndHead({
+  baseRef,
+  path,
+}: ReadBaseAndHeadInput): BaseAndHead | undefined {
+  try {
+    const mergeBase = execFileSync('git', ['merge-base', baseRef, 'HEAD'], {
+      encoding: 'utf8',
+    }).trim();
+    return {
+      base: execFileSync('git', ['show', `${mergeBase}:${path}`], {
+        encoding: 'utf8',
+      }),
+      head: readFileSync(path, 'utf8'),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 function collectChangedPaths({
   baseRef,
 }: CollectChangedPathsInput): CollectChangedPathsResult {
@@ -233,27 +267,22 @@ function collectChangedPaths({
     (path, index, paths) => path.length > 0 && paths.indexOf(path) === index,
   );
 
-  let packageJsonScriptsOnlyAddition = false;
-  if (resolvedBaseRef && changedPaths.includes('package.json')) {
-    try {
-      const mergeBase = execFileSync(
-        'git',
-        ['merge-base', resolvedBaseRef, 'HEAD'],
-        { encoding: 'utf8' },
-      ).trim();
-      packageJsonScriptsOnlyAddition = isScriptsOnlyAddition({
-        base: execFileSync('git', ['show', `${mergeBase}:package.json`], {
-          encoding: 'utf8',
-        }),
-        head: readFileSync('package.json', 'utf8'),
-      });
-    } catch {} // base unavailable: keep treating it as root infrastructure
-  }
+  const packageJson =
+    resolvedBaseRef && changedPaths.includes('package.json')
+      ? readBaseAndHead({ baseRef: resolvedBaseRef, path: 'package.json' })
+      : undefined;
+  const turboJson =
+    resolvedBaseRef && changedPaths.includes('turbo.json')
+      ? readBaseAndHead({ baseRef: resolvedBaseRef, path: 'turbo.json' })
+      : undefined;
 
   return {
     baseRef: resolvedBaseRef,
     changedPaths,
-    packageJsonScriptsOnlyAddition,
+    packageJsonScriptsOnlyAddition: packageJson
+      ? isScriptsOnlyAddition(packageJson)
+      : false,
+    turboNarrowing: turboJson ? readTurboNarrowing(turboJson) : undefined,
     deletedPaths: changedPaths.filter((path) => !existsSync(path)),
   };
 }
@@ -815,6 +844,22 @@ export function explainPlan({
     }
   }
 
+  if (plan.turboNarrowing) {
+    const { taskNames, workspaceName } = plan.turboNarrowing;
+    lines.push(
+      '',
+      `turbo.json narrowed to ${workspaceName}: only its own task entries differ (${taskNames.join(', ')})`,
+    );
+  }
+
+  if (plan.turboNarrowingRefused) {
+    const { taskNames, workspaceName } = plan.turboNarrowingRefused;
+    lines.push(
+      '',
+      `turbo.json not narrowed: ${workspaceName} has no test layer in the plan, so every workspace is selected (${taskNames.join(', ')})`,
+    );
+  }
+
   lines.push('', 'Test layers selected:');
   if (plan.testLayers.length === 0) lines.push('  (none)');
   for (const testLayer of plan.testLayers) {
@@ -1004,6 +1049,7 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
     changedPaths,
     deletedPaths,
     packageJsonScriptsOnlyAddition,
+    turboNarrowing,
   } = collectChangedPaths({ baseRef: argumentsResult.baseRef });
   const seedAcknowledgements = readAcknowledgements({
     baseRef,
@@ -1032,6 +1078,7 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
       ...argumentsResult.seedImpactAcknowledgements,
       ...seedAcknowledgements.accepted.map(({ reason }) => reason),
     ],
+    turboNarrowing,
   });
 
   ending.journeyFallbacks = plan.missingJourneyMappings;

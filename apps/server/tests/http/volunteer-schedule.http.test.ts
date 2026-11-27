@@ -638,43 +638,137 @@ describe('Volunteer reads after an admin cancellation', () => {
     return { ...world, cycle, live, liveAssignment, inEvent, inBlock };
   }
 
-  it('drops cancelled Events and blocks from My schedule and keeps the live Assignment', async () => {
-    const { liveAssignment } = await seedCancelled();
+  it('lists cancelled Events and blocks in My schedule, marked, before their Shift starts', async () => {
+    const { liveAssignment, inEvent, inBlock } = await seedCancelled();
 
     const response = await app.inject({ method: 'GET', url: SCHEDULE_URL });
 
     expect(response.statusCode).toBe(200);
+    const { assignments, counts, next } = response.json();
+    expect(
+      assignments.map((a: { assignmentId: string; cancelled: boolean }) => [
+        a.assignmentId,
+        a.cancelled,
+      ]),
+    ).toEqual([
+      [liveAssignment.id, false],
+      [inEvent.id, true],
+      [inBlock.id, true],
+    ]);
+    expect(counts.upcoming).toBe(1);
+    expect(next.assignmentId).toBe(liveAssignment.id);
+  });
+
+  it('never names a cancelled Assignment as the next one', async () => {
+    const { inEvent, liveAssignment } = await seedCancelled();
+    await db.delete(assignment).where(eq(assignment.id, liveAssignment.id));
+
+    const response = await app.inject({ method: 'GET', url: SCHEDULE_URL });
+
+    const { assignments, counts, next } = response.json();
+    expect(assignments[0].assignmentId).toBe(inEvent.id);
+    expect(counts).toEqual({ upcoming: 0, thisMonth: 0, openSwaps: 0 });
+    expect(next).toBeNull();
+  });
+
+  it('drops them from My schedule once their Shift would have started', async () => {
+    const { liveAssignment, inBlock } = await seedCancelled();
+    // Past the cancelled Event's start, before the cancelled block's.
+    setTestClock({
+      instant: fromNow(2 * DAY_MS + HOUR_MS / 2).toISOString() as Instant,
+    });
+
+    const response = await app.inject({ method: 'GET', url: SCHEDULE_URL });
+
     expect(
       response
         .json()
         .assignments.map((a: { assignmentId: string }) => a.assignmentId),
-    ).toEqual([liveAssignment.id]);
+    ).toEqual([inBlock.id]);
+    expect(response.body).not.toContain(liveAssignment.id);
   });
 
-  it('drops cancelled Events and block Shifts from the Ministry schedule', async () => {
-    const { ministryId, cycle, live } = await seedCancelled();
+  interface ScheduleEventBody {
+    title: string;
+    cancelled: boolean;
+    assignmentCount: number;
+    rows: {
+      shiftId: string;
+      cancelled: boolean;
+      volunteerDisplayName?: string;
+    }[];
+  }
 
+  async function ministryEvents({
+    ministryId,
+    cycleId,
+  }: {
+    ministryId: string;
+    cycleId: string;
+  }) {
     const response = await app.inject({
       method: 'GET',
-      url: `/api/v1/volunteer/ministries/${ministryId}/schedule?cycleId=${cycle.id}`,
+      url: `/api/v1/volunteer/ministries/${ministryId}/schedule?cycleId=${cycleId}`,
+    });
+    expect(response.statusCode).toBe(200);
+    const events: ScheduleEventBody[] = response.json().events;
+    return events
+      .map((item) => ({
+        title: item.title,
+        cancelled: item.cancelled,
+        assignmentCount: item.assignmentCount,
+        rows: item.rows.map((row) => [
+          row.cancelled,
+          row.volunteerDisplayName ?? null,
+        ]),
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  it('shows cancelled Events and blocks in the Ministry schedule, marked, before they start', async () => {
+    const { ministryId, cycle } = await seedCancelled();
+
+    const events = await ministryEvents({ ministryId, cycleId: cycle.id });
+
+    const rows = (cancelled: boolean) => [
+      [cancelled, 'Maria L.'],
+      [cancelled, null],
+    ];
+    expect(events).toEqual([
+      {
+        title: 'Cancelled Block',
+        cancelled: false,
+        assignmentCount: 1,
+        rows: rows(true),
+      },
+      {
+        title: 'Cancelled Event',
+        cancelled: true,
+        assignmentCount: 1,
+        rows: rows(true),
+      },
+      {
+        title: 'Live',
+        cancelled: false,
+        assignmentCount: 1,
+        rows: rows(false),
+      },
+    ]);
+  });
+
+  it('drops them from the Ministry schedule once they would have started', async () => {
+    const { ministryId, cycle } = await seedCancelled();
+    setTestClock({
+      instant: fromNow(3 * DAY_MS + HOUR_MS / 2).toISOString() as Instant,
     });
 
-    expect(response.statusCode).toBe(200);
-    const { published, events } = response.json();
-    expect(published).toBe(true);
-    // The block's Event stays (it is not cancelled), with no rows left.
-    expect(
-      events.map((item: { title: string; rows: { shiftId: string }[] }) => [
-        item.title,
-        item.rows.map(({ shiftId }) => shiftId),
-      ]),
-    ).toEqual(
-      expect.arrayContaining([
-        ['Live', [live.shift.id, live.shift.id]],
-        ['Cancelled Block', []],
-      ]),
-    );
-    expect(events).toHaveLength(2);
+    const events = await ministryEvents({ ministryId, cycleId: cycle.id });
+
+    // The live Event stays; the one whose block was cancelled keeps no rows.
+    expect(events.map(({ title, rows }) => [title, rows.length])).toEqual([
+      ['Cancelled Block', 0],
+      ['Live', 2],
+    ]);
   });
 
   it('keeps the live sibling block of the same Event when one block is cancelled', async () => {
@@ -732,15 +826,23 @@ describe('Volunteer reads after an admin cancellation', () => {
     expect(
       mine
         .json()
-        .assignments.map((a: { assignmentId: string }) => a.assignmentId),
-    ).toEqual([inSibling.id]);
-    const rowShiftIds = ministry
+        .assignments.map((a: { assignmentId: string; cancelled: boolean }) => [
+          a.assignmentId,
+          a.cancelled,
+        ]),
+    ).toEqual([
+      [inCancelled.id, true],
+      [inSibling.id, false],
+    ]);
+    const rowMarks = ministry
       .json()
-      .events.flatMap((item: { rows: { shiftId: string }[] }) =>
-        item.rows.map(({ shiftId }) => shiftId),
+      .events.flatMap(
+        (item: { rows: { shiftId: string; cancelled: boolean }[] }) =>
+          item.rows.map(({ shiftId, cancelled }) => [shiftId, cancelled]),
       );
-    expect(rowShiftIds).toContain(sibling.shift.id);
-    expect(rowShiftIds).not.toContain(first.shift.id);
+    expect(rowMarks).toContainEqual([sibling.shift.id, false]);
+    expect(rowMarks).toContainEqual([first.shift.id, true]);
+    expect(rowMarks).not.toContainEqual([first.shift.id, false]);
     expect((await detail(inSibling.id)).statusCode).toBe(200);
     expect((await detail(inCancelled.id)).statusCode).toBe(404);
   });

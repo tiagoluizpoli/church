@@ -72,7 +72,7 @@ interface HasFailureInput {
 
 const REPO_ROOT = join(import.meta.dir, '..', '..');
 
-const PROCESS_OUTPUT: OutputSink = {
+export const PROCESS_OUTPUT: OutputSink = {
   stderr: ({ text }) => {
     process.stderr.write(text);
   },

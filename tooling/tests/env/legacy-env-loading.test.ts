@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'bun:test';
 
 /**
@@ -183,5 +183,26 @@ describe('legacy environment loading', () => {
         pattern: 'TEST_DATABASE_URL|DATABASE_URL_TEST',
       }),
     ).toEqual([]);
+  });
+
+  it('the only reset scripts today are the development-purpose ones', () => {
+    const manifests = execFileSync('git', ['ls-files', '*package.json'], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+    })
+      .trim()
+      .split('\n');
+    const resetScripts = manifests.flatMap((manifest) =>
+      Object.keys(
+        readPackageJson({ workspace: dirname(manifest) }).scripts ?? {},
+      )
+        .filter((name) => name.startsWith('db:reset'))
+        .map((name) => `${manifest}:${name}`),
+    );
+
+    expect(resetScripts).toEqual([
+      'package.json:db:reset:dev',
+      'packages/db/package.json:db:reset:dev',
+    ]);
   });
 });

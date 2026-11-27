@@ -1,5 +1,6 @@
 import { appConfig } from '@church/app-config';
 import { m } from '@church/i18n/messages';
+import { now } from '@church/time';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
@@ -138,11 +139,18 @@ export function CycleBuilder({
       ? m.builder_proposal_disabled_published()
       : m.builder_proposal_disabled_no_availability();
   }
-  const publishStaffing = summarizeCycleStaffing({
-    data: { ...data, events: publishableEvents },
+  const publishData = { ...data, events: publishableEvents };
+  // The server's below-full check counts started Shifts too.
+  const confirmBelowFull =
+    summarizeCycleStaffing({ data: publishData }).shiftsBelowTarget > 0;
+  // Assignments are fixed once a Shift starts, so the dialog only counts the
+  // places a leader can still fill.
+  const openStaffing = summarizeCycleStaffing({
+    data: publishData,
+    openAt: now(),
   });
-  const belowFullCount = publishStaffing.shiftsBelowTarget;
-  const emptyPlaces = publishStaffing.required - publishStaffing.coveredPlaces;
+  const belowFullCount = openStaffing.shiftsBelowTarget;
+  const emptyPlaces = openStaffing.required - openStaffing.coveredPlaces;
   const queryClient = useQueryClient();
   const refreshBoard = () =>
     void queryClient.invalidateQueries({ queryKey: CYCLE_BUILDER_QUERY_KEY });
@@ -489,7 +497,7 @@ export function CycleBuilder({
                   disabled={isPublishing}
                   onClick={() => {
                     setPublishDialogOpen(false);
-                    onPublish(belowFullCount > 0);
+                    onPublish(confirmBelowFull);
                   }}
                 >
                   {isPublishing

@@ -233,9 +233,13 @@ const cases: [ShiftCase, Expected][] = [
   ],
   [
     // The server never proposes a started Shift; the preview shows what it is
-    // sent, and the publish gate still counts its empty place.
+    // sent. Nobody can fill its empty place, so the publish dialog skips it.
     { name: 'started Shift', startTime: STARTED },
-    { ...closed, startedNotice: true },
+    {
+      ...closed,
+      startedNotice: true,
+      publish: m.builder_ui_publish_full({}, { locale: 'en' }),
+    },
   ],
   [
     { name: 'full requirement', peopleNeeded: 1 },
@@ -348,11 +352,11 @@ describe.each(cases)('Schedule builder: $name', (shiftCase, expected) => {
 });
 
 describe('Publishing with empty places on a started Shift', () => {
-  it('counts them in the dialog', async () => {
+  it('leaves them out of the dialog count', async () => {
     renderBuilder(startedAndUpcomingData());
     const dialog = await openPublishDialog();
     expect(
-      dialog.getByText(m.builder_ui_publish_gaps({ places: 3, shifts: 2 })),
+      dialog.getByText(m.builder_ui_publish_gaps({ places: 2, shifts: 1 })),
     ).toBeInTheDocument();
   });
 

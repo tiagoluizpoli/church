@@ -1,18 +1,29 @@
-import { ministryParticipation, shift } from '@church/db';
-import { and, eq } from 'drizzle-orm';
-import type { MinistryId } from '../../domain/branded-ids';
+import {
+  member,
+  ministry,
+  ministryMembership,
+  ministryParticipation,
+  shift,
+  volunteer,
+} from '@church/db';
+import { and, eq, exists, inArray, isNull, sql } from 'drizzle-orm';
+import type { ChurchAccessLevel } from '../../domain/authority/types';
+import type { ChurchId, MinistryId } from '../../domain/branded-ids';
 import type {
+  ListSchedulingScopesInput,
   ResolveParticipationMinistryInput,
   ResolveShiftMinistryInput,
+  SchedulingScope,
   SchedulingScopeRepository,
 } from '../../domain/contracts/infrastructure/scheduling-scope.repository';
 import type { AnyDrizzleDb } from '../repositories/drizzle-db.types';
-import { isValidUuid } from '../repositories/helpers';
+import { isValidUuid, withActiveVolunteer } from '../repositories/helpers';
 import type { DrizzleSchedulingScopeResolverInput } from './drizzle-scheduling-scope-resolver.types';
 
 /**
  * Resolves the owning Ministry for a Participation or Shift, so callers can
- * hand the result to `AuthorityService` as a `MinistryResource`. Supersedes
+ * hand the result to `AuthorityService` as a `MinistryResource`, and a User's
+ * scheduling scope across Churches. Supersedes
  * `DrizzleSchedulingRbacResolver` for callers migrated onto AuthorityService
  * — the admin/leader decision it used to make (`isChurchAdmin`,
  * `isMinistryLeader`) now lives entirely in `AuthorityService`.
@@ -63,5 +74,52 @@ export class DrizzleSchedulingScopeResolver
       )
       .limit(1);
     return (row?.ministryId as MinistryId | undefined) ?? null;
+  }
+
+  async listSchedulingScopes(
+    input: ListSchedulingScopesInput,
+  ): Promise<SchedulingScope[]> {
+    const { userId, churchIds } = input;
+    // Leadership as `DrizzleAuthorityActorResolver` reads it: an active profile
+    // and membership; an archived Ministry grants none.
+    const ledMemberships = this.db
+      .select({ id: ministryMembership.id })
+      .from(volunteer)
+      .innerJoin(
+        ministryMembership,
+        and(
+          eq(ministryMembership.volunteerId, volunteer.id),
+          eq(ministryMembership.churchId, volunteer.churchId),
+        ),
+      )
+      .innerJoin(ministry, eq(ministry.id, ministryMembership.ministryId))
+      .where(
+        and(
+          eq(volunteer.userId, member.userId),
+          eq(volunteer.churchId, member.organizationId),
+          withActiveVolunteer(volunteer),
+          eq(ministryMembership.status, 'active'),
+          eq(ministryMembership.ministryAccessLevel, 'leader'),
+          isNull(ministry.deletedAt),
+        ),
+      );
+    const rows = await this.db
+      .select({
+        churchId: member.organizationId,
+        role: member.role,
+        leadsMinistry: sql<boolean>`${exists(ledMemberships)}`,
+      })
+      .from(member)
+      .where(
+        and(
+          eq(member.userId, userId),
+          inArray(member.organizationId, churchIds),
+        ),
+      );
+    return rows.map((row) => ({
+      churchId: row.churchId as ChurchId,
+      churchAccessLevel: row.role as ChurchAccessLevel,
+      leadsMinistry: row.leadsMinistry,
+    }));
   }
 }

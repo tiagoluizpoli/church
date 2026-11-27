@@ -20,6 +20,7 @@ export * from './ministry-membership-manager';
 export * from './ministry-role-manager';
 export * from './notification-manager';
 export * from './outbox-drainer';
+export * from './outbox-poller';
 export * from './participation-reader';
 export * from './people-list-manager';
 export * from './planning-event-manager';

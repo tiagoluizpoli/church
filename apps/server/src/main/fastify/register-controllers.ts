@@ -1,10 +1,4 @@
-import type { FastifyTypedInstance } from './types';
-import type { FastifyController } from '@/api/contracts/fastify-controller';
-
-interface RegisterControllersParams {
-  app: FastifyTypedInstance;
-  controllers: FastifyController[];
-}
+import type { RegisterControllersParams } from './register-controllers.types';
 
 export const registerControllers = async ({
   app,

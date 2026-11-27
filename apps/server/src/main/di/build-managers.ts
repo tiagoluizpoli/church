@@ -48,55 +48,7 @@ import { DbChurchIdentitySnapshotter } from '../../application/db-church-identit
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
 import { UsualSetupStaffingSeeder } from '../../application/usual-setup-staffing-seeder';
 import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
-import type { Auth } from './build-auth';
-import type { Repositories } from './build-repositories';
-import type { Services } from './build-services';
-import type { CompositionRootDependencies } from './dependencies';
-
-export type Managers = Pick<
-  CompositionRootDependencies,
-  | 'assignmentManager'
-  | 'eventManager'
-  | 'eventTemplateManager'
-  | 'ministryManager'
-  | 'ministryInvitationManager'
-  | 'ministryRoleManager'
-  | 'sectorManager'
-  | 'invitationVerificationCodeManager'
-  | 'redemptionManager'
-  | 'volunteerTransferManager'
-  | 'outboxDrainer'
-  | 'cycleManager'
-  | 'planningEventManager'
-  | 'volunteerManager'
-  | 'swapRequestManager'
-  | 'swapRequestListManager'
-  | 'prepareManager'
-  | 'usualSetupManager'
-  | 'scheduleBuilderReader'
-  | 'assignmentProposalManager'
-  | 'scheduleReadModel'
-  | 'schedulePublisher'
-  | 'availabilityCheckManager'
-  | 'activeChurchSelectionManager'
-  | 'notificationManager'
-  | 'invitationListManager'
-  | 'peopleListManager'
-  | 'setupProgressManager'
-  | 'churchSettingsManager'
-  | 'publicChurchProfileManager'
-  | 'publicEventManager'
-  | 'churchAccessManager'
-  | 'ministryMembershipManager'
->;
-
-export interface BuildManagersInput {
-  config: CompositionRootDependencies['config'];
-  overrides: Partial<CompositionRootDependencies>;
-  repositories: Repositories;
-  services: Services;
-  auth: Auth;
-}
+import type { BuildManagersInput, Managers } from './build-managers.types';
 
 export function buildManagers({
   config,

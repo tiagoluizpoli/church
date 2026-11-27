@@ -1,5 +1,3 @@
-import type { AppConfig } from '@church/app-config';
-import type { FastifyInstance } from 'fastify';
 import { isRateLimited } from '../../api/utils/rate-limit';
 import {
   type EnvelopeRefusal,
@@ -7,6 +5,7 @@ import {
   forwardEnvelope,
   parseErrorEnvelope,
 } from '../../infrastructure/services/error-report-tunnel';
+import type { RegisterErrorReportTunnelInput } from './error-report-tunnel.types';
 
 const ACCEPTED = 202;
 const BAD_REQUEST = 400;
@@ -21,15 +20,6 @@ const REFUSAL_STATUS: Record<EnvelopeRefusal, number> = {
   notError: BAD_REQUEST,
   foreignDsn: FORBIDDEN,
 };
-
-export interface RegisterErrorReportTunnelInput {
-  app: FastifyInstance;
-  /** Our DSN, or undefined while error reporting is off. */
-  dsn: string | undefined;
-  /** CHURCH_ENVIRONMENT; the web app reports under it. */
-  environment: string;
-  settings: AppConfig['errorReportTunnel'];
-}
 
 /**
  * The browser SDK's `tunnel`: web and desktop crash reports reach the tracker

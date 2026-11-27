@@ -3,24 +3,7 @@ import { DbActiveChurchResolver, DbAuthorityManager } from '../../application';
 import { DrizzleAuthorityActorResolver } from '../../infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '../../infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '../../infrastructure/auth/drizzle-scheduling-scope-resolver';
-import type { Repositories } from './build-repositories';
-import type { CompositionRootDependencies } from './dependencies';
-
-export type Auth = Pick<
-  CompositionRootDependencies,
-  | 'scopeRepository'
-  | 'authorityActorRepository'
-  | 'churchMembershipRepository'
-  | 'authorityManager'
-  | 'authorityGuard'
-  | 'activeChurchResolver'
->;
-
-export interface BuildAuthInput {
-  database: CompositionRootDependencies['db'];
-  repositories: Repositories;
-  overrides: Partial<CompositionRootDependencies>;
-}
+import type { Auth, BuildAuthInput } from './build-auth.types';
 
 export function buildAuth({
   database,

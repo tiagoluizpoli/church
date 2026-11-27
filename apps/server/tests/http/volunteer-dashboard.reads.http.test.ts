@@ -12,6 +12,7 @@ import {
   vi,
 } from 'vitest';
 import { VolunteerController } from '@/api/controllers/volunteer-controller';
+import { VolunteerScheduleController } from '@/api/controllers/volunteer-schedule-controller';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
@@ -59,20 +60,24 @@ beforeAll(async () => {
     locale: testLocale,
     errorReporter: testErrorReporter,
   });
-  const controller = new VolunteerController({
-    volunteerManager: createSchedulingManagers().volunteerManager,
-    activeChurchResolver: new DbActiveChurchResolver({
-      churchRepository: new DrizzleChurchRepository({ db }),
-      unitOfWork: new DrizzleUnitOfWork({ db }),
-      actorRepository: new DrizzleAuthorityActorResolver({ db }),
-      membershipRepository: new DrizzleChurchMembershipRepository({ db }),
-    }),
+  const { volunteerManager } = createSchedulingManagers();
+  const activeChurchResolver = new DbActiveChurchResolver({
+    churchRepository: new DrizzleChurchRepository({ db }),
+    unitOfWork: new DrizzleUnitOfWork({ db }),
+    actorRepository: new DrizzleAuthorityActorResolver({ db }),
+    membershipRepository: new DrizzleChurchMembershipRepository({ db }),
   });
+  const controllers = [
+    new VolunteerScheduleController({ volunteerManager, activeChurchResolver }),
+    new VolunteerController({ volunteerManager, activeChurchResolver }),
+  ];
   await app.register(
     async (instance) => {
-      instance.register(controller.registerRoutes.bind(controller), {
-        prefix: controller.prefix,
-      });
+      for (const controller of controllers) {
+        instance.register(controller.registerRoutes.bind(controller), {
+          prefix: controller.prefix,
+        });
+      }
     },
     { prefix: '/api/v1' },
   );
@@ -294,6 +299,24 @@ describe('GET /volunteer/dashboard reads (database-backed)', () => {
       ['Next', [[next.assignment.id, 'Singer']]],
     ]);
     expect(dashboard.nextAssignment?.assignmentId).toBe(running.assignment.id);
+
+    // My Schedule shares the read, and keeps the cancelled work listed.
+    const schedule = await app.inject({
+      method: 'GET',
+      url: '/api/v1/volunteer/schedule',
+    });
+    expect(
+      schedule
+        .json()
+        .assignments.map((a: { eventTitle: string; cancelled: boolean }) => [
+          a.eventTitle,
+          a.cancelled,
+        ]),
+    ).toEqual([
+      ['Running', false],
+      ['Cancelled ahead', true],
+      ['Next', false],
+    ]);
   });
 
   it('grows its statements with the Volunteer history', async () => {

@@ -72,6 +72,14 @@ export interface ListAssignmentsByParticipationInput {
   tx?: TransactionContext;
 }
 
+export interface ListAssignmentsByParticipationsInput {
+  churchId: ChurchId;
+  participationIds: MinistryParticipationId[];
+  /** Only the Assignments that hold a seat (`ACTIVE_ASSIGNMENT_STATUSES`). */
+  activeOnly?: boolean;
+  tx?: TransactionContext;
+}
+
 export interface ListAssignmentsByShiftInput {
   churchId: ChurchId;
   shiftId: ShiftId;
@@ -151,6 +159,10 @@ export interface AssignmentRepository {
   listByEvent(input: AssignmentsByEventInput): Promise<Assignment[]>;
   listByParticipation(
     input: ListAssignmentsByParticipationInput,
+  ): Promise<Assignment[]>;
+  /** One read for every participation; earliest Shift first, as `listByParticipation`. */
+  listByParticipations(
+    input: ListAssignmentsByParticipationsInput,
   ): Promise<Assignment[]>;
   listByShift(input: ListAssignmentsByShiftInput): Promise<Assignment[]>;
   listByVolunteer(

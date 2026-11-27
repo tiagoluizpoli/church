@@ -697,7 +697,7 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
     await expectNothingWritten({ ministryId });
   });
 
-  it('refuses a Ministry serving nothing in the Cycle as zero eligible', async () => {
+  it('refuses a Ministry serving nothing in the Cycle', async () => {
     const { churchId, cycleId } = await seedAskable();
     const idle = await buildMinistry({ db, churchId, name: 'Idle' });
 
@@ -706,7 +706,7 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
     expect(response.statusCode).toBe(422);
     expect(response.json()).toMatchObject({
       error: 'VALIDATION_ERROR',
-      reason: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+      reason: 'ASK_NO_LIVE_SHIFTS',
     });
     expect(await listChecks()).toEqual([]);
     expect(await listAskRecords()).toEqual([]);
@@ -758,8 +758,40 @@ describe('POST /prepare/cycles/:cycleId/ask-availability', () => {
     expect(response.statusCode).toBe(422);
     expect(response.json()).toMatchObject({
       error: 'VALIDATION_ERROR',
-      reason: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+      reason: 'ASK_NO_LIVE_SHIFTS',
     });
+    await expectNothingWritten({ ministryId });
+  });
+
+  it('keeps the repeat Ask refusal once every Event is cancelled', async () => {
+    const schedule = await seedAskable();
+    const asked = await ask(schedule);
+    expect(asked.statusCode).toBe(200);
+    await db
+      .update(event)
+      .set({ status: 'cancelled' })
+      .where(inArray(event.id, eventIds(schedule)));
+
+    const repeat = await ask(schedule);
+
+    expect(repeat.statusCode).toBe(409);
+    expect(repeat.json().error).toBe('ILLEGAL_STATE_TRANSITION');
+    expect(await listAskRecords()).toHaveLength(1);
+  });
+
+  it('keeps the unaskable Cycle refusal for a Schedule with no live Shifts', async () => {
+    const schedule = await seedAskable();
+    const { ministryId, cycleId } = schedule;
+    await db
+      .update(event)
+      .set({ status: 'cancelled' })
+      .where(inArray(event.id, eventIds(schedule)));
+    setTestClock({ instant: parseInstant({ value: AFTER_CYCLE }) });
+
+    const response = await ask({ cycleId, ministryId });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('ILLEGAL_STATE_TRANSITION');
     await expectNothingWritten({ ministryId });
   });
 

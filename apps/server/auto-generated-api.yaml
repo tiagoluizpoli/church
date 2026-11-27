@@ -1718,6 +1718,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -2643,6 +2644,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -2855,6 +2857,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -3191,6 +3194,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -3450,6 +3454,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -3715,6 +3720,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -3867,6 +3873,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -4036,6 +4043,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -4138,6 +4146,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -4247,6 +4256,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -4479,6 +4489,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -4747,6 +4758,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -5035,6 +5047,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -5353,6 +5366,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -5526,6 +5540,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -5777,6 +5792,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -6063,6 +6079,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -6236,6 +6253,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -6423,6 +6441,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -6600,6 +6619,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -10125,6 +10145,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -13381,6 +13402,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   issues:
@@ -13569,6 +13591,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   issues:
@@ -13713,6 +13736,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   issues:

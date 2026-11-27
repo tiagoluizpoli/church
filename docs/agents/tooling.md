@@ -408,6 +408,29 @@ still run, and a full local run that skipped journeys records no gate pass.
    `tooling/validation/journey-map.ts`.
 3. Run `bun run lint`, not `bunx biome check`: only `lint` runs both guards.
 
+## turbo.json narrowing
+
+A root `turbo.json` change selects every workspace, except when every
+difference from the merge-base sits in `<package>#<task>` entries of one
+package (`readTurboNarrowing` in `tooling/validation/affected-plan.ts`). The
+plan then selects that package alone, without its dependents, with its whole
+unit suite, and prints:
+
+```text
+turbo.json narrowed to web: only its own task entries differ (web#build)
+```
+
+The package must be one the plan can select (`WORKSPACES`, so not
+`@church/i18n`) and have a test layer. For one without (`@church/config`,
+`@church/env`, `@church/time`) every workspace stays selected, and the plan
+prints:
+
+```text
+turbo.json not narrowed: @church/time has no test layer in the plan, so every workspace is selected (@church/time#build)
+```
+
+The tooling tests run either way.
+
 ## Bundle budget
 
 `bun run validate:bundle-budget` (`tooling/validation/bundle-budget.ts`)
@@ -967,6 +990,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Every Playwright spec has a `JOURNEY_MAP` or `CRITICAL_SMOKE_SPEC_PATHS` entry, and every entry points at an existing spec | ADR-0004 | Mechanical | Validation guard | Enforced: `bun run validate:journey-map`, part of `lint`, `validate:affected` and `pre-commit` ([#557](https://github.com/tiagoluizpoli/church/issues/557)) |
 | Every `JOURNEY_MAP` prefix matches a production file | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:journey-map`, part of `lint` and `validate:affected` |
 | Skipping browser journeys needs a reason on the branch's own commits | Tooling | Mechanical | Validation guard | Enforced: `tooling/validation/journey-impact.ts` and `seed-acknowledgements.ts` in `validate:affected` |
+| A `turbo.json` change narrows the gate only when it sits in one package's own task entries and that package has a test layer; anything else selects every workspace | Spec #1161 | Mechanical | Validation guard | Enforced: `readTurboNarrowing` in `validate:affected`, locked by `tooling/tests/validation/affected-turbo-narrowing.command.test.ts` |
 | A failing E2E spec gets exactly one retry in CI | ADR-0004 | Mechanical | Validation guard | Enforced: `retries` in `apps/web/playwright.config.ts` |
 | Daily and release gates; no direct pushes to `develop` or `master` | ADR-0004 | Mechanical | Validation guard | Enforced: `.github/workflows/ci.yml` and branch protection |
 | Each worktree has its own databases, ports and URL set | ADR-0005 | Mechanical | Validation guard | Enforced: `env:local` and `db:bootstrap` generate them |

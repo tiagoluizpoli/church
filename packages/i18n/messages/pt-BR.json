@@ -1266,6 +1266,7 @@
   "prepare_ask_deadline_hint": "Os Voluntários ainda podem responder após o Prazo.",
   "prepare_ask_cancel": "Cancelar",
   "prepare_ask_zero_eligible": "Nenhum Voluntário tem as Funções necessárias para estes Turnos.",
+  "prepare_ask_no_live_shifts": "Não há nenhum Turno ativo neste Ciclo, então não há o que perguntar.",
   "prepare_ask_pending": "Pedindo…",
   "prepare_ask_sent": "Disponibilidade solicitada.",
   "prepare_ask_loading": "Carregando a prévia do pedido…",

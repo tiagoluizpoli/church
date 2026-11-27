@@ -89,23 +89,29 @@ export function ScheduleAsk({ ministryId, cycleId }: ScheduleAskProps) {
       {formatInstantOf({ value: startsAt, timeZone: churchTimezone })}
     </Link>
   ));
-  if (preview.data?.shiftCount === 0) return null;
+  const nothingLive = preview.data?.shiftCount === 0;
+  const nothingLiveId = `${deadlineId}-no-live-shifts`;
+  const flaggedId =
+    flaggedBlocks.length > 0 ? `${deadlineId}-flagged` : undefined;
   return (
     <div className="contents">
+      {/* aria-disabled (not disabled) keeps the button focusable, so the reason is announced. */}
       <Button
         onClick={() => {
+          if (nothingLive) return;
           setAnswerBy('');
           ask.reset();
           setOpen(true);
         }}
-        aria-describedby={
-          flaggedBlocks.length > 0 ? `${deadlineId}-flagged` : undefined
-        }
+        aria-disabled={nothingLive || undefined}
+        aria-describedby={nothingLive ? nothingLiveId : flaggedId}
+        className="aria-disabled:opacity-50"
         disabled={
-          preview.isFetching ||
-          preview.isError ||
-          !preview.data ||
-          flaggedBlocks.length > 0
+          !nothingLive &&
+          (preview.isFetching ||
+            preview.isError ||
+            !preview.data ||
+            flaggedBlocks.length > 0)
         }
       >
         {preview.isFetching ? <Spinner /> : null}
@@ -242,6 +248,11 @@ export function ScheduleAsk({ ministryId, cycleId }: ScheduleAskProps) {
             )}
           </div>
         </ResponsiveFormSurface>
+      ) : null}
+      {nothingLive ? (
+        <p id={nothingLiveId} className="order-last basis-full text-sm">
+          {m.prepare_ask_no_live_shifts()}
+        </p>
       ) : null}
       {!open && flaggedBlocks.length > 0 ? (
         <div className="order-last flex basis-full flex-col gap-1 text-sm">

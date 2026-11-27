@@ -546,7 +546,13 @@ it('disables Ask while Shifts are flagged and links the affected rows in Church 
   );
 });
 
-it('hides Ask when the Ministry serves nothing in the Cycle', async () => {
+// An all-cancelled Schedule reads as `not_serving`; a live block with no Shifts stays `to_prepare`.
+it.each([
+  'to_prepare',
+  'not_serving',
+])('shows Ask disabled with its reason when a %s Schedule has no live Shifts', async (stage) => {
+  const user = userEvent.setup();
+  api.getSchedule.mockResolvedValue({ ...SCHEDULE, stage });
   api.getAskPreview.mockResolvedValue({
     eligibleVolunteerCount: 0,
     shiftCount: 0,
@@ -558,17 +564,15 @@ it('hides Ask when the Ministry serves nothing in the Cycle', async () => {
     initialPath: `/app/schedules/${MINISTRY_ID}/${CYCLE_ID}`,
     churchTimezone: 'America/Sao_Paulo',
   });
-  await screen.findByTestId('prepare-calendar');
-  await waitFor(() =>
-    expect(api.getAskPreview).toHaveBeenCalledWith(CYCLE_ID, {
-      ministryId: MINISTRY_ID,
-    }),
-  );
-  await waitFor(() =>
-    expect(
-      screen.queryByRole('button', { name: m.prepare_ask() }),
-    ).not.toBeInTheDocument(),
-  );
+  expect(await screen.findByText(m.prepare_ask_no_live_shifts())).toBeVisible();
+  const ask = screen.getByRole('button', { name: m.prepare_ask() });
+  expect(ask).toHaveAttribute('aria-disabled', 'true');
+  expect(ask).toHaveAccessibleDescription(m.prepare_ask_no_live_shifts());
+  expect(ask).toBeEnabled();
+  ask.focus();
+  expect(ask).toHaveFocus();
+  await user.click(ask);
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
 it('previews counts and unheld Roles with People and Invitations links that open in new tabs', async () => {
@@ -589,6 +593,10 @@ it('previews counts and unheld Roles with People and Invitations links that open
   });
   const ask = await screen.findByRole('button', { name: m.prepare_ask() });
   await waitFor(() => expect(ask).toBeEnabled());
+  expect(ask).not.toHaveAttribute('aria-disabled');
+  expect(
+    screen.queryByText(m.prepare_ask_no_live_shifts()),
+  ).not.toBeInTheDocument();
   await user.click(ask);
   const dialog = await screen.findByRole('dialog');
   expect(dialog).toHaveTextContent(

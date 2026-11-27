@@ -1266,6 +1266,7 @@
   "prepare_ask_deadline_hint": "Volunteers can still answer after the Deadline.",
   "prepare_ask_cancel": "Cancel",
   "prepare_ask_zero_eligible": "No Volunteers hold the Roles needed for these Shifts.",
+  "prepare_ask_no_live_shifts": "There is no active Shift in this Cycle, so there is nothing to ask about.",
   "prepare_ask_pending": "Asking…",
   "prepare_ask_sent": "Availability requested.",
   "prepare_ask_loading": "Loading Ask preview…",

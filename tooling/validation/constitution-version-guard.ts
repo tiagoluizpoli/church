@@ -63,12 +63,25 @@ export function checkConstitutionVersionBump({
   const baseContent = getFileAtRef({ path: CONSTITUTION_PATH, ref: baseRef });
   const headContent = getFileAtRef({ path: CONSTITUTION_PATH, ref: 'HEAD' });
 
-  if (!baseContent || !headContent) {
+  // Constitution missing at HEAD is an error (guard should not pass)
+  if (!headContent) {
     return {
       constitutionChanged: false,
       versionChanged: false,
       baseVersion: null,
       headVersion: null,
+      valid: false,
+      failure: `${CONSTITUTION_PATH}: file missing at HEAD`,
+    };
+  }
+
+  // Constitution missing at base (new file) is valid
+  if (!baseContent) {
+    return {
+      constitutionChanged: false,
+      versionChanged: false,
+      baseVersion: null,
+      headVersion: extractVersion({ content: headContent }),
       valid: true,
       failure: null,
     };
@@ -110,7 +123,8 @@ function isRef({ ref }: { ref: string }): boolean {
   }
 }
 
-function readValidateBase(): string {
+function readValidateBase(): string | undefined {
+  // 1. Try branch.*.validateBase config
   try {
     const branch = execFileSync('git', ['branch', '--show-current'], {
       encoding: 'utf8',
@@ -126,14 +140,26 @@ function readValidateBase(): string {
       }
     }
   } catch {
-    // Fall through to develop
+    // Fall through
   }
-  return 'develop';
+
+  // 2. In CI, try origin/$GITHUB_BASE_REF
+  const githubBaseRef = process.env.GITHUB_BASE_REF;
+  if (githubBaseRef) {
+    const ciBase = `origin/${githubBaseRef}`;
+    if (isRef({ ref: ciBase })) {
+      return ciBase;
+    }
+  }
+
+  // 3. Try origin/develop, then develop
+  return ['origin/develop', 'develop'].find((ref) => isRef({ ref }));
 }
 
 if (import.meta.main) {
   const baseRefIndex = process.argv.indexOf('--base');
-  let baseRef: string;
+  let baseRef: string | undefined;
+
   if (baseRefIndex !== -1) {
     const baseRefArg = process.argv[baseRefIndex + 1];
     if (!baseRefArg) {
@@ -143,6 +169,13 @@ if (import.meta.main) {
     baseRef = baseRefArg;
   } else {
     baseRef = readValidateBase();
+  }
+
+  if (!baseRef) {
+    console.error(
+      'No base ref found: set branch.*.validateBase, or ensure origin/develop or develop exists',
+    );
+    process.exit(1);
   }
 
   if (!isRef({ ref: baseRef })) {

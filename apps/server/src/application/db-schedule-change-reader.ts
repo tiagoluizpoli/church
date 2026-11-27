@@ -267,6 +267,7 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
     };
   }
 
+  // SQL twin: `listCycleCancellations` (drizzle-planning-event.repository.ts).
   compareScheduleAssignments({
     events,
     baseline,

@@ -301,6 +301,7 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     const published = inArray(assignment.status, [
       ...PUBLISHED_ASSIGNMENT_STATUSES,
     ]);
+    // TS twin: `isListedAssignment` (domain/services/scheduling/listed-assignment.ts).
     const cancelledWithItsScope = and(
       cancelledScope,
       eq(assignment.status, 'cancelled'),

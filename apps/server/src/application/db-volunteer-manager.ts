@@ -37,7 +37,6 @@ import type {
   InCancelledScopeInput,
   IVolunteerManager,
   ListAvailabilityChecksInput,
-  ListedAssignmentInput,
   MinistrySchedule,
   RequirementCoverageInput,
   ResolveCheckDetailInput,
@@ -85,6 +84,7 @@ import {
   groupCheckDays,
   isShiftAnswerable,
 } from '../domain/services/scheduling/availability-check-days';
+import { isListedAssignment } from '../domain/services/scheduling/listed-assignment';
 import {
   assertUnavailableShiftsWithinScope,
   expandWholeDayShiftIds,
@@ -143,18 +143,6 @@ function servingMonths({
 
 function isPublishedStatus(status: AssignmentStatus): status is 'pending' {
   return status === 'pending';
-}
-
-/**
- * Published work, plus what an Event or EventTimeBlock cancellation cancelled.
- * A `reason` marks a Volunteer Transfer's own cancellation, which stays hidden.
- */
-function isListedAssignment({
-  assignment: { status, reason },
-  cancelled,
-}: ListedAssignmentInput): boolean {
-  if (isPublishedStatus(status)) return true;
-  return cancelled && status === 'cancelled' && !reason;
 }
 
 function hasStarted({ startTime, at }: HasStartedInput): boolean {

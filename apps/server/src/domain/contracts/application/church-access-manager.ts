@@ -1,5 +1,8 @@
 import type { ChurchAccessLevel } from '../../authority/types';
 import type { ChurchId, UserId } from '../../branded-ids';
+import type { IAuthorityManager } from '@/domain/contracts/application/authority-manager';
+import type { ChurchAccessRepository } from '@/domain/contracts/infrastructure/church-access.repository';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
 export interface ChangeChurchAccessRequest {
   /** Both from the authenticated Active Church context, never the payload. */
@@ -26,4 +29,10 @@ export interface IChurchAccessManager {
   changeChurchAccess(
     input: ChangeChurchAccessRequest,
   ): Promise<ChangeChurchAccessOutcome>;
+}
+
+export interface DbChurchAccessManagerDependencies {
+  authorityManager: IAuthorityManager;
+  churchAccessRepository: ChurchAccessRepository;
+  unitOfWork: UnitOfWork;
 }

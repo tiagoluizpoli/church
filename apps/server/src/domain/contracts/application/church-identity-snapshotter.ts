@@ -1,5 +1,7 @@
 import type { ChurchId } from '../../branded-ids';
 import type { ChurchIdentitySnapshot } from '../../church-identity-snapshot';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type { ObjectStorage } from '@/domain/contracts/infrastructure/object-storage';
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
 
 export interface SnapshotChurchIdentityInput {
@@ -14,3 +16,11 @@ export interface ChurchIdentitySnapshotter {
 }
 
 export type { ChurchIdentitySnapshot };
+
+export interface DbChurchIdentitySnapshotterDependencies {
+  churchRepository: Pick<ChurchRepository, 'getSettings'>;
+  objectStorage: Pick<ObjectStorage, 'publicUrl'>;
+}
+
+/** `I<Name>` for the class; existing consumers keep the original name. */
+export type IChurchIdentitySnapshotter = ChurchIdentitySnapshotter;

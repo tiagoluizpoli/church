@@ -4,6 +4,8 @@ import type {
   PublicEventCursor,
   PublicEventPage,
 } from '../../entities/public-event';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type { PublicEventRepository } from '@/domain/contracts/infrastructure/public-event.repository';
 
 export interface ListPublicEventsInput {
   churchId: ChurchId;
@@ -30,4 +32,9 @@ export interface IPublicEventManager {
     input: ListPublicEventsBySlugInput,
   ): Promise<PublicChurchEvents | null>;
   listPublicEvents(input: ListPublicEventsInput): Promise<PublicEventPage>;
+}
+
+export interface DbPublicEventManagerDependencies {
+  publicEventRepository: PublicEventRepository;
+  churchRepository: ChurchRepository;
 }

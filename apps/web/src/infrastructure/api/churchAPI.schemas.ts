@@ -7018,6 +7018,8 @@ export type PublishCycle200 = {
   published: boolean;
   belowFull: boolean;
   participations: PublishCycle200ParticipationsItem[];
+  /** Set only on a below-full refusal: the places still to fill. */
+  gapCount?: number;
 };
 
 export type PublishCycle403 = {

@@ -101,7 +101,15 @@ export interface AcquireCycleChurchLockInput {
   tx: TransactionContext;
 }
 
+export interface ListCyclesByIdsInput {
+  churchId: ChurchId;
+  cycleIds: CycleId[];
+  tx?: TransactionContext;
+}
+
 export interface CycleRepository {
+  /** The Church's Cycles among the ids, in one read, ordered as `list`. */
+  listByIds(input: ListCyclesByIdsInput): Promise<Cycle[]>;
   create(input: CreateCycleInput): Promise<Cycle>;
   /** Newest start first, then end, then id. */
   list(input: ListCyclesInput): Promise<Cycle[]>;

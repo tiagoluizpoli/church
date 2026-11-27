@@ -38,6 +38,11 @@ export interface ReadParticipationCompletionInput {
   tx?: TransactionContext;
 }
 
+export interface ParticipationStaffingView extends ParticipationCompletionView {
+  /** Places no active Assignment covers, counted per requirement. */
+  gapCount: number;
+}
+
 export interface ScheduleScopeInput {
   churchId: ChurchId;
   ministryId: MinistryId;
@@ -71,7 +76,7 @@ export interface IScheduleChangeReader {
   countScheduleChanges(input: CountScheduleChangesInput): Promise<number>;
   readParticipationCompletion(
     input: ReadParticipationCompletionInput,
-  ): Promise<ParticipationCompletionView>;
+  ): Promise<ParticipationStaffingView>;
   compareScheduleAssignments(
     input: CompareScheduleAssignmentsInput,
   ): ScheduleVolunteerChanges[];

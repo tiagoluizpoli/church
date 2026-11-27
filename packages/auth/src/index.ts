@@ -6,6 +6,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { organization } from 'better-auth/plugins/organization';
 import { allowedOrigins } from './allowed-origins';
 import { assertConfiguredRole } from './organization/assert-configured-role';
+import { closedOrganizationPaths } from './organization/closed-http-paths';
 import {
   organizationCreatorRole,
   organizationRoles,
@@ -42,6 +43,35 @@ export function createAuth({
   revokeSessionsOnPasswordReset,
 }: CreateAuthInput) {
   const isSecureOrigin = env.BETTER_AUTH_URL.startsWith('https://');
+  const organizationPlugin = organization({
+    roles: organizationRoles,
+    creatorRole: organizationCreatorRole,
+    // Churches are provisioned by the Platform Operator, never over HTTP,
+    // so the plugin's create-organization route stays shut.
+    allowUserToCreateOrganization: false,
+    membershipLimit: organizationMembershipLimit,
+    // Better Auth treats any custom `generateId` as predictable and then
+    // requires a verified email to accept or reject an invitation by id.
+    // Ours mints random UUIDs, and redemption proves the mailbox with its
+    // own emailed code before the account exists, so that gate does not
+    // apply; leaving it on rejects every newly redeemed User.
+    requireEmailVerificationOnInvitation: false,
+    // No invitation mailer: the plugin therefore sends nothing and mints no
+    // token or link. Invitation delivery is the application's own concern.
+    organizationHooks: {
+      // The plugin's own role validation still accepts its built-in
+      // `owner`, and `add-member` validates nothing. These close it.
+      beforeAddMember: async ({ member }) => {
+        assertConfiguredRole({ role: member.role });
+      },
+      beforeUpdateMemberRole: async ({ newRole }) => {
+        assertConfiguredRole({ role: newRole });
+      },
+      beforeCreateInvitation: async ({ invitation }) => {
+        assertConfiguredRole({ role: invitation.role });
+      },
+    },
+  });
 
   return betterAuth({
     database: drizzleAdapter(database, {
@@ -56,15 +86,14 @@ export function createAuth({
       sendResetPassword,
       revokeSessionsOnPasswordReset,
     },
-    // Public registration, Church Access Level changes and Church identity
-    // updates are deliberately unavailable. Redemption, app-managed access
-    // changes and Church Settings use trusted server APIs, which do not
-    // traverse these HTTP routes.
+    // Public registration is deliberately unavailable, and so is every
+    // organization route the app does not call (an allowlist): membership
+    // data and changes go through the app's own API (ADR 0009). Redemption,
+    // app-managed access changes and Church Settings use trusted server APIs,
+    // which do not traverse these HTTP routes.
     disabledPaths: [
       '/sign-up/email',
-      '/organization/update-member-role',
-      '/organization/update',
-      '/organization/check-slug',
+      ...closedOrganizationPaths({ endpoints: organizationPlugin.endpoints }),
     ],
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
@@ -90,37 +119,7 @@ export function createAuth({
         httpOnly: true,
       },
     },
-    plugins: [
-      organization({
-        roles: organizationRoles,
-        creatorRole: organizationCreatorRole,
-        // Churches are provisioned by the Platform Operator, never over HTTP,
-        // so the plugin's create-organization route stays shut.
-        allowUserToCreateOrganization: false,
-        membershipLimit: organizationMembershipLimit,
-        // Better Auth treats any custom `generateId` as predictable and then
-        // requires a verified email to accept or reject an invitation by id.
-        // Ours mints random UUIDs, and redemption proves the mailbox with its
-        // own emailed code before the account exists, so that gate does not
-        // apply; leaving it on rejects every newly redeemed User.
-        requireEmailVerificationOnInvitation: false,
-        // No invitation mailer: the plugin therefore sends nothing and mints no
-        // token or link. Invitation delivery is the application's own concern.
-        organizationHooks: {
-          // The plugin's own role validation still accepts its built-in
-          // `owner`, and `add-member` validates nothing. These close it.
-          beforeAddMember: async ({ member }) => {
-            assertConfiguredRole({ role: member.role });
-          },
-          beforeUpdateMemberRole: async ({ newRole }) => {
-            assertConfiguredRole({ role: newRole });
-          },
-          beforeCreateInvitation: async ({ invitation }) => {
-            assertConfiguredRole({ role: invitation.role });
-          },
-        },
-      }),
-    ],
+    plugins: [organizationPlugin],
   });
 }
 

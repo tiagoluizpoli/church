@@ -12,6 +12,9 @@ const getCycleBuilderData = vi.fn();
 const listMinistrySwapRequests = vi.fn();
 const getSchedule = vi.fn();
 const toastError = vi.fn();
+const toastSuccess = vi.fn();
+const toastWarning = vi.fn();
+const publishCycle = vi.fn();
 const getSession = vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } });
 
 vi.mock('@/utils/api-instances', async () => ({
@@ -20,6 +23,7 @@ vi.mock('@/utils/api-instances', async () => ({
     listMinistrySwapRequests: (...args: unknown[]) =>
       listMinistrySwapRequests(...args),
     getSchedule: (...args: unknown[]) => getSchedule(...args),
+    publishCycle: (...args: unknown[]) => publishCycle(...args),
   },
   activeChurchApi: (await import('@/tests/setup/active-church'))
     .activeChurchApiMock,
@@ -41,7 +45,11 @@ vi.mock('@/components/theme-provider', () => ({
 }));
 
 vi.mock('sonner', () => ({
-  toast: { error: (...args: unknown[]) => toastError(...args) },
+  toast: {
+    error: (...args: unknown[]) => toastError(...args),
+    success: (...args: unknown[]) => toastSuccess(...args),
+    warning: (...args: unknown[]) => toastWarning(...args),
+  },
 }));
 
 vi.mock('@/components/ui/sonner', () => ({
@@ -423,4 +431,203 @@ it('preserves the current board destination when the session expires after switc
   });
   await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
   expect(router.state.location.search).toEqual({ redirect: path });
+});
+
+interface PublishableBoardInput {
+  assignedVolunteerIds: string[];
+}
+
+/** One assigning Event with one future Shift asking for a single person. */
+function publishableBoard({ assignedVolunteerIds }: PublishableBoardInput) {
+  const start = '2030-08-02T09:00:00.000Z';
+  const end = '2030-08-02T11:00:00.000Z';
+  const assignments = assignedVolunteerIds.map((volunteerId) => ({
+    id: `assignment-${volunteerId}`,
+    churchId: 'church-1',
+    eventTimeBlockId: 'block-1',
+    participationId: 'participation-1',
+    shiftId: 'shift-1',
+    volunteerId,
+    roleId: 'role-1',
+    shiftRequirementId: 'requirement-1',
+    status: 'pending',
+    assignedAt: '2030-08-01T09:00:00.000Z',
+    lateMark: false,
+  }));
+  return {
+    affectedVolunteerCount: 0,
+    cycle: {
+      id: 'cycle-1',
+      name: 'August 2030',
+      startDate: '2030-08-01',
+      endDate: '2030-08-31',
+    },
+    roles: [{ id: 'role-1', name: 'Greeter' }],
+    events: [
+      {
+        participation: { id: 'participation-1', state: 'assigning' },
+        event: {
+          id: 'event-1',
+          title: 'Sunday Gathering',
+          start,
+          end,
+          status: 'scheduled',
+        },
+        eventTimeBlocks: [
+          {
+            eventTimeBlock: { id: 'block-1', startTime: start, endTime: end },
+            included: true,
+            cancelled: false,
+            shifts: [
+              {
+                shift: { id: 'shift-1', startTime: start, endTime: end },
+                requirements: [
+                  {
+                    id: 'requirement-1',
+                    roleId: 'role-1',
+                    sectorName: 'Main',
+                    peopleNeeded: 1,
+                  },
+                ],
+                assignments,
+                eligibleVolunteers: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/** Opens the board, then Publish and the dialog's own Publish. */
+async function publishFromBoard() {
+  const user = userEvent.setup();
+  renderRoute({
+    initialPath: '/app/schedules/ministry-1/cycle-1/assign',
+    churchTimezone: 'UTC',
+  });
+  await user.click(
+    await screen.findByRole('button', { name: m.builder_ui_publish() }),
+  );
+  const dialog = await screen.findByRole('dialog');
+  await user.click(
+    within(dialog).getByRole('button', { name: m.builder_ui_publish() }),
+  );
+  return user;
+}
+
+describe('Assign board route: publish', () => {
+  it('publishes a fully staffed board without confirming below the target', async () => {
+    getCycleBuilderData.mockResolvedValue(
+      publishableBoard({ assignedVolunteerIds: ['ana'] }),
+    );
+    publishCycle.mockResolvedValue({ published: true });
+
+    await publishFromBoard();
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledExactlyOnceWith(
+        m.builder_logic_cycle_published(),
+      ),
+    );
+    expect(publishCycle).toHaveBeenCalledExactlyOnceWith(
+      'cycle-1',
+      { confirmBelowFull: false },
+      { ministryId: 'ministry-1' },
+    );
+    expect(toastWarning).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('confirms below the target when the board has an empty place', async () => {
+    getCycleBuilderData.mockResolvedValue(
+      publishableBoard({ assignedVolunteerIds: [] }),
+    );
+    publishCycle.mockResolvedValue({ published: true });
+
+    await publishFromBoard();
+
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledOnce());
+    expect(publishCycle).toHaveBeenCalledExactlyOnceWith(
+      'cycle-1',
+      { confirmBelowFull: true },
+      { ministryId: 'ministry-1' },
+    );
+  });
+
+  it('says publishing failed when the request is refused with an error', async () => {
+    getCycleBuilderData.mockResolvedValue(
+      publishableBoard({ assignedVolunteerIds: ['ana'] }),
+    );
+    publishCycle.mockRejectedValue(new Error('offline'));
+
+    await publishFromBoard();
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledExactlyOnceWith(
+        m.common_publish_failed(),
+      ),
+    );
+    expect(toastSuccess).not.toHaveBeenCalled();
+  });
+
+  it('asks to confirm with the server gap count when publish is refused', async () => {
+    getCycleBuilderData.mockResolvedValue(
+      publishableBoard({ assignedVolunteerIds: ['ana'] }),
+    );
+    publishCycle
+      .mockResolvedValueOnce({ published: false, gapCount: 2 })
+      .mockResolvedValueOnce({ published: true });
+
+    const user = await publishFromBoard();
+
+    const confirmation = await screen.findByRole('dialog');
+    expect(
+      within(confirmation).getByText(m.prepare_publish_gaps({ count: 2 })),
+    ).toBeVisible();
+    expect(getCycleBuilderData).toHaveBeenCalledTimes(2);
+    expect(toastWarning).not.toHaveBeenCalled();
+    await user.click(
+      within(confirmation).getByRole('button', {
+        name: m.builder_ui_publish(),
+      }),
+    );
+
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledOnce());
+    expect(publishCycle).toHaveBeenCalledTimes(2);
+    expect(publishCycle).toHaveBeenLastCalledWith(
+      'cycle-1',
+      { confirmBelowFull: true },
+      { ministryId: 'ministry-1' },
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('forgets the refusal when the leader cancels the confirmation', async () => {
+    getCycleBuilderData.mockResolvedValue(
+      publishableBoard({ assignedVolunteerIds: ['ana'] }),
+    );
+    publishCycle.mockResolvedValue({ published: false, gapCount: 2 });
+
+    const user = await publishFromBoard();
+    const refusal = await screen.findByRole('dialog');
+    await within(refusal).findByText(m.prepare_publish_gaps({ count: 2 }));
+    await user.click(
+      within(refusal).getByRole('button', { name: m.builder_ui_cancel() }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.builder_ui_publish() }),
+    );
+
+    expect(
+      within(await screen.findByRole('dialog')).getByText(
+        m.builder_ui_publish_full(),
+      ),
+    ).toBeVisible();
+    expect(publishCycle).toHaveBeenCalledOnce();
+  });
 });

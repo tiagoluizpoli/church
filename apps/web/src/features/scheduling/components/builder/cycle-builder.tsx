@@ -70,6 +70,9 @@ interface CycleBuilderProps {
   onSendUpdates?: () => void;
   isPublishing: boolean;
   isSendingUpdates?: boolean;
+  /** The server refused the publish as below target, with this many places open. */
+  refusedGapCount?: number;
+  onDismissRefusal?: () => void;
   cycleId: string;
   ministryId: string;
   cycleName?: string;
@@ -98,6 +101,8 @@ export function CycleBuilder({
   onSendUpdates,
   isPublishing,
   isSendingUpdates = false,
+  refusedGapCount,
+  onDismissRefusal,
   cycleId,
   ministryId,
   cycleName,
@@ -151,6 +156,21 @@ export function CycleBuilder({
   });
   const belowFullCount = openStaffing.shiftsBelowTarget;
   const emptyPlaces = openStaffing.required - openStaffing.coveredPlaces;
+  // A refusal reopens the confirmation: the server saw gaps the board did not.
+  const isRefused = refusedGapCount !== undefined;
+  let publishDescription = m.builder_ui_publish_full();
+  if (isRefused) {
+    publishDescription = m.prepare_publish_gaps({ count: refusedGapCount });
+  } else if (belowFullCount > 0) {
+    publishDescription = m.builder_ui_publish_gaps({
+      places: emptyPlaces,
+      shifts: belowFullCount,
+    });
+  }
+  const closePublishDialog = () => {
+    setPublishDialogOpen(false);
+    onDismissRefusal?.();
+  };
   const queryClient = useQueryClient();
   const refreshBoard = () =>
     void queryClient.invalidateQueries({ queryKey: CYCLE_BUILDER_QUERY_KEY });
@@ -471,24 +491,20 @@ export function CycleBuilder({
             </DialogContent>
           </Dialog>
 
-          <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+          <Dialog
+            open={publishDialogOpen || isRefused}
+            onOpenChange={(open) => !open && closePublishDialog()}
+          >
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{m.builder_ui_publish_title()}</DialogTitle>
-                <DialogDescription>
-                  {belowFullCount > 0
-                    ? m.builder_ui_publish_gaps({
-                        places: emptyPlaces,
-                        shifts: belowFullCount,
-                      })
-                    : m.builder_ui_publish_full()}
-                </DialogDescription>
+                <DialogDescription>{publishDescription}</DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setPublishDialogOpen(false)}
+                  onClick={closePublishDialog}
                 >
                   {m.builder_ui_cancel()}
                 </Button>
@@ -496,8 +512,8 @@ export function CycleBuilder({
                   type="button"
                   disabled={isPublishing}
                   onClick={() => {
-                    setPublishDialogOpen(false);
-                    onPublish(confirmBelowFull);
+                    closePublishDialog();
+                    onPublish(isRefused || confirmBelowFull);
                   }}
                 >
                   {isPublishing

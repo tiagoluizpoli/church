@@ -970,6 +970,223 @@ describe('DbSchedulePublisher.publishCycle (R7 integration)', () => {
   });
 });
 
+interface SeedStaffedShiftInput {
+  churchId: string;
+  participationId: string;
+  eventTimeBlockId: string;
+  roleId: string;
+  sectorId: string;
+  peopleNeeded: number;
+  volunteerIds: string[];
+}
+
+/** One Shift in the block, asking `peopleNeeded` and holding those Assignments. */
+async function seedStaffedShift(input: SeedStaffedShiftInput): Promise<void> {
+  const { churchId, participationId, roleId } = input;
+  const shiftId = await seedShift({
+    churchId,
+    participationId,
+    eventTimeBlockId: input.eventTimeBlockId,
+    startTime: EVENT_START,
+    endTime: EVENT_END,
+  });
+  const requirement = await buildShiftRequirement({
+    db: schedulingTestDb,
+    churchId,
+    participationId,
+    shiftId,
+    roleId,
+    sectorId: input.sectorId,
+    peopleNeeded: input.peopleNeeded,
+  });
+  for (const volunteerId of input.volunteerIds) {
+    await buildAssignment({
+      db: schedulingTestDb,
+      churchId,
+      participationId,
+      shiftId,
+      shiftRequirementId: requirement.id,
+      volunteerId,
+      roleId,
+      status: 'pending',
+    });
+  }
+}
+
+interface SeedCompletionScheduleInput {
+  seed: Awaited<ReturnType<typeof seedSchedulingPhase3Base>>;
+}
+
+/** A sent Cycle with one assigning Event, its Role and Sector, and no Shifts yet. */
+async function seedCompletionSchedule({ seed }: SeedCompletionScheduleInput) {
+  const { churchAId: churchId, ministryAId: ministryId } = seed;
+  const cycle = await createSchedulingPhase3Cycle({
+    churchId,
+    name: 'Completion Cycle',
+    startDate: CYCLE_START,
+    endDate: CYCLE_END,
+    state: 'sent',
+  });
+  const graph = await createSchedulingPhase3EventGraph({
+    churchId,
+    cycleId: cycle.id,
+    ministryId,
+    title: 'Live Service',
+    start: EVENT_START,
+    end: EVENT_END,
+  });
+  const role = await buildRole({
+    db: schedulingTestDb,
+    churchId,
+    ministryId,
+    name: 'Greeter',
+  });
+  const sector = await buildSector({
+    db: schedulingTestDb,
+    churchId,
+    ministryId,
+    name: 'Geral',
+  });
+  await schedulingTestDb
+    .update(ministryParticipation)
+    .set({ state: 'assigning' })
+    .where(eq(ministryParticipation.id, graph.participation.id));
+  const shiftBase = {
+    churchId,
+    participationId: graph.participation.id,
+    eventTimeBlockId: graph.eventTimeBlock.id,
+    roleId: role.id,
+    sectorId: sector.id,
+  };
+  const publishInput = {
+    churchId: ChurchId.from(churchId),
+    cycleId: CycleId.from(cycle.id),
+    ministryId: MinistryId.from(ministryId),
+    userId: UserId.from(seed.adminUserId),
+  };
+  const completionInput = {
+    churchId: ChurchId.from(churchId),
+    participationId: MinistryParticipationId.from(graph.participation.id),
+  };
+  return { cycle, graph, shiftBase, publishInput, completionInput };
+}
+
+describe('Schedule completion and publish (integration)', () => {
+  beforeEach(async () => {
+    await resetSchedulingPhase3Db();
+  });
+
+  it('caps covered places per requirement while counting every active Assignment', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { graph, shiftBase, completionInput } = await seedCompletionSchedule({
+      seed,
+    });
+    const extra = await seedUnqualifiedMember({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Extra Member',
+      email: 'extra-member@example.com',
+    });
+    // Over-filled by one, beside an empty requirement it cannot cover.
+    await seedStaffedShift({
+      ...shiftBase,
+      peopleNeeded: 1,
+      volunteerIds: [seed.adminVolunteerId, extra.volunteerId],
+    });
+    await seedStaffedShift({
+      ...shiftBase,
+      peopleNeeded: 1,
+      volunteerIds: [],
+    });
+
+    const { scheduleReadModel } = createParticipationModules();
+
+    expect(
+      await scheduleReadModel.getCompletion(completionInput),
+    ).toStrictEqual({
+      participationId: graph.participation.id,
+      peopleNeeded: 2,
+      assignedCount: 2,
+      completionPercent: 50,
+    });
+  });
+
+  it('refuses a below-full publish with exactly the outcome of each participation', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { graph, shiftBase, publishInput } = await seedCompletionSchedule({
+      seed,
+    });
+    await seedStaffedShift({
+      ...shiftBase,
+      peopleNeeded: 2,
+      volunteerIds: [seed.adminVolunteerId],
+    });
+
+    const result =
+      await createParticipationModules().schedulePublisher.publishCycle(
+        publishInput,
+      );
+
+    expect(result).toStrictEqual({
+      published: false,
+      belowFull: true,
+      participations: [
+        {
+          participationId: graph.participation.id,
+          state: 'assigning',
+          peopleNeeded: 2,
+          assignedCount: 1,
+        },
+      ],
+    });
+  });
+
+  it('publishes without confirmation, leaving out a wholly cancelled Event', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { cycle, graph, shiftBase, publishInput } =
+      await seedCompletionSchedule({ seed });
+    await seedStaffedShift({
+      ...shiftBase,
+      peopleNeeded: 1,
+      volunteerIds: [seed.adminVolunteerId],
+    });
+    const cancelled = await createSchedulingPhase3EventGraph({
+      churchId: seed.churchAId,
+      cycleId: cycle.id,
+      ministryId: seed.ministryAId,
+      title: 'Cancelled Service',
+      start: EVENT_START,
+      end: EVENT_END,
+      status: 'cancelled',
+    });
+    await seedStaffedShift({
+      ...shiftBase,
+      participationId: cancelled.participation.id,
+      eventTimeBlockId: cancelled.eventTimeBlock.id,
+      peopleNeeded: 1,
+      volunteerIds: [],
+    });
+
+    const result =
+      await createParticipationModules().schedulePublisher.publishCycle(
+        publishInput,
+      );
+
+    expect(result).toStrictEqual({
+      published: true,
+      belowFull: false,
+      participations: [
+        {
+          participationId: graph.participation.id,
+          state: 'published',
+          peopleNeeded: 1,
+          assignedCount: 1,
+        },
+      ],
+    });
+  });
+});
+
 describe('DrizzleAssignmentAuditRepository.listByCycle (R5 integration)', () => {
   beforeEach(async () => {
     await resetSchedulingPhase3Db();

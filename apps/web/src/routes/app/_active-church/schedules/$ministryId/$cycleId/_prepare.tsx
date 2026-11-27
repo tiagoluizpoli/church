@@ -272,7 +272,8 @@ function PrepareWorkspaceRoute() {
       stage ? (
         // No box of its own: these join the row they are placed in (the Respostas bar's actions).
         <div className="contents max-md:[&_a]:min-h-11 max-md:[&_a]:text-sm max-md:[&_button]:min-h-11 max-md:[&_button]:text-sm">
-          {!readOnly && stage === 'to_prepare' ? (
+          {/* A Schedule with nothing live reads as `not_serving`; Ask says why it can't. */}
+          {!readOnly && (stage === 'to_prepare' || stage === 'not_serving') ? (
             <ScheduleAsk ministryId={ministryId} cycleId={cycleId} />
           ) : null}
           {!pastCycle ? (

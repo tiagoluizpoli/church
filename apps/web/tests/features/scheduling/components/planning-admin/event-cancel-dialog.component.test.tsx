@@ -7,6 +7,7 @@ import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventCancelDialog } from '@/features/scheduling/components/planning-admin/event-cancel-dialog';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
+import { waitForDialogFocus } from '@/tests/setup/dialog';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const previewPlanningEventCancellation = vi.fn();
@@ -78,6 +79,7 @@ async function open({ queryClient }: OpenInput = {}) {
       name: m.event_cancel_action_label({ title: 'Sunday' }),
     }),
   );
+  await waitForDialogFocus();
   return user;
 }
 
@@ -319,6 +321,7 @@ describe('EventCancelDialog for one EventTimeBlock', () => {
         name: m.event_cancel_action_label({ title: 'Sunday · Service' }),
       }),
     );
+    await waitForDialogFocus();
     await screen.findByTestId('event-cancel-impact');
     await user.type(
       screen.getByLabelText(m.event_cancel_confirm_label({ word })),

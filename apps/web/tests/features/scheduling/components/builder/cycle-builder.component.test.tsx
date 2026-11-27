@@ -21,6 +21,7 @@ import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-bui
 import type { LeaderSwapRequest } from '@/features/scheduling/components/builder/swap-request/swap-request-sheet';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
 import { dateLabel } from '@/features/scheduling/utils/builder/cycle-builder-date.utils';
+import { waitForDialogFocus } from '@/tests/setup/dialog';
 import { renderWithProviders } from '@/tests/setup/render';
 import { adminApi } from '@/utils/api-instances';
 import * as volunteerInitials from '@/utils/format-volunteer-initials';
@@ -854,6 +855,7 @@ describe('Assignment proposal preview', () => {
     await userEvent.click(
       screen.getByRole('button', { name: m.builder_proposal_open() }),
     );
+    await waitForDialogFocus();
     return screen.findByTestId('assignment-proposal-preview');
   }
 

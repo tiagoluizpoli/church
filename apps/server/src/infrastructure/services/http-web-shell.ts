@@ -1,27 +1,14 @@
-import {
-  addMilliseconds,
-  compareInstants,
-  type Instant,
-  now,
-} from '@church/time';
+import { addMilliseconds, compareInstants, now } from '@church/time';
 import type { WebShell } from '../../domain/contracts/infrastructure';
+import type {
+  CachedIndex,
+  HttpWebShellInput,
+} from '../../domain/contracts/infrastructure/web-shell';
 
 /** A hung web container must not hold the API's `/{slug}` handlers. */
 const INDEX_FETCH_TIMEOUT_MS = 3000;
 /** index.html changes only on a web deploy; a minute of staleness is fine. */
 export const INDEX_CACHE_TTL_MS = 60_000;
-
-interface HttpWebShellInput {
-  publicOrigin: string;
-  /** Where the server reaches the web container, e.g. `http://church-web:8080`. */
-  internalUrl: string;
-  timeoutMs?: number;
-}
-
-interface CachedIndex {
-  html: string;
-  expiresAt: Instant;
-}
 
 /** Reads `index.html` from the web container over the Compose network, kept in memory briefly. */
 export class HttpWebShell implements WebShell {

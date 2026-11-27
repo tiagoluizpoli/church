@@ -1,6 +1,4 @@
-import type { eventTimeBlock } from '@church/db';
 import { fromDate } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
   EventId,
@@ -9,14 +7,7 @@ import type {
 } from '../../domain/branded-ids';
 import type { EventTimeBlockProps } from '../../domain/entities/event-time-block';
 import { EventTimeBlock } from '../../domain/entities/event-time-block';
-import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
-
-type EventTimeBlockRow = InferSelectModel<typeof eventTimeBlock>;
-
-export interface MapEventTimeBlockInput {
-  row: EventTimeBlockRow;
-  requirements?: ShiftRequirement[];
-}
+import type { MapEventTimeBlockInput } from './event-time-block.mapper.types';
 
 export function mapEventTimeBlock({
   row,

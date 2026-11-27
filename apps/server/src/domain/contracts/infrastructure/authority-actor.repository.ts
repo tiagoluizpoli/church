@@ -1,4 +1,7 @@
-import type { AuthorityActor } from '../../authority/types';
+import type {
+  AuthorityActor,
+  MinistryMembershipFact,
+} from '../../authority/types';
 import type { ChurchId, UserId } from '../../branded-ids';
 import type { TransactionContext } from './transaction-context';
 
@@ -16,4 +19,8 @@ export interface ResolveAuthorityActorInput {
  */
 export interface AuthorityActorRepository {
   resolveActor(input: ResolveAuthorityActorInput): Promise<AuthorityActor>;
+}
+
+export interface MembershipFacts {
+  ministryMemberships: MinistryMembershipFact[];
 }

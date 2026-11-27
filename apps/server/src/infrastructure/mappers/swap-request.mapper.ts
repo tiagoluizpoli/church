@@ -1,6 +1,4 @@
-import type { swapRequest } from '@church/db';
 import { fromDate } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AssignmentId,
   ChurchId,
@@ -11,12 +9,7 @@ import {
   SwapRequest,
   type SwapRequestStatus,
 } from '../../domain/entities/swap-request';
-
-type SwapRequestRow = InferSelectModel<typeof swapRequest>;
-
-export interface MapSwapRequestInput {
-  row: SwapRequestRow;
-}
+import type { MapSwapRequestInput } from './swap-request.mapper.types';
 
 export function mapSwapRequest({ row }: MapSwapRequestInput): SwapRequest {
   return new SwapRequest({

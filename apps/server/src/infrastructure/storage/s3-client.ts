@@ -1,11 +1,5 @@
 import { S3Client } from '@aws-sdk/client-s3';
-
-export interface S3ClientConfig {
-  endpoint: string;
-  region: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-}
+import type { S3ClientConfig } from '../../domain/contracts/infrastructure/object-storage';
 
 /** A path-style client for any S3-compatible host (RustFS). */
 export function s3Client(config: S3ClientConfig): S3Client {

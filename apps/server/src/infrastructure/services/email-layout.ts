@@ -9,39 +9,12 @@ import {
 } from '@church/domain-rules/email-accent';
 import { m } from '@church/i18n/messages';
 import type {
-  EmailDuration,
-  EmailLocale,
-} from '../../domain/contracts/infrastructure/email-sender';
-
-/** One button; the layout also prints `url` as visible text. Callers compose
- * `url` from the configured web origin (escaping is not URL construction). */
-export interface EmailAction {
-  label: string;
-  url: string;
-}
-
-/**
- * Semantic content every email kind supplies. Every value is plain text — the
- * layout alone adds markup and escapes each insertion exactly once.
- */
-export interface EmailContent {
-  subject: string;
-  greeting: string;
-  /** One line. */
-  heading: string;
-  /** One to three paragraphs. */
-  facts: [string, ...string[]];
-  list?: string[];
-  action?: EmailAction;
-  /** Why the recipient received this email. */
-  footer: string;
-}
-
-export interface RenderedEmail {
-  subject: string;
-  html: string;
-  text: string;
-}
+  EmailSenderInput,
+  FormatEmailDurationInput,
+  PluralForInput,
+  RenderEmailLayoutInput,
+  RenderedEmail,
+} from '../../domain/contracts/infrastructure/email-layout';
 
 const HTML_ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -54,28 +27,6 @@ const HTML_ESCAPES: Record<string, string> = {
 /** Interpolated facts are text, never markup. */
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
-}
-
-/** Who the email says it is from: the header band and the plain-text first line. */
-export interface EmailIdentity {
-  displayName: string;
-  /** Absolute URL; without it the band shows the name alone. */
-  logoUrl?: string;
-  /** `#rrggbb`; never drawn behind text beyond its 10% tint. */
-  accent: string;
-}
-
-/** The muted "Enviado com {appName}" line; linked only when `siteUrl` is set. */
-export interface EmailCredit {
-  appName: string;
-  siteUrl?: string;
-}
-
-export interface RenderEmailLayoutInput {
-  content: EmailContent;
-  locale: EmailLocale;
-  identity: EmailIdentity;
-  credit?: EmailCredit;
 }
 
 const FONT_STACK =
@@ -157,11 +108,6 @@ ${facts.map(paragraph).join('')}${details}${button}
   return { subject, html, text: textBlocks.filter(Boolean).join('\n\n') };
 }
 
-export interface FormatEmailDurationInput {
-  duration: EmailDuration;
-  locale: EmailLocale;
-}
-
 /** A policy duration in catalog words, pluralized by the locale's rules. */
 export function formatEmailDuration({
   duration,
@@ -186,20 +132,8 @@ export function formatEmailDuration({
     : m.email_duration_minutes_other({ count }, options);
 }
 
-interface PluralForInput {
-  count: number;
-  locale: EmailLocale;
-}
-
 function pluralFor({ count, locale }: PluralForInput): Intl.LDMLPluralRule {
   return new Intl.PluralRules(locale).select(count);
-}
-
-export interface EmailSenderInput {
-  /** Church name, or the app name for church-less email. */
-  displayName: string;
-  /** The configured sender, `Name <mailbox>` or a bare mailbox. */
-  configuredFrom: string;
 }
 
 const CONTROL_CHARACTERS = /\p{Cc}+/gu;

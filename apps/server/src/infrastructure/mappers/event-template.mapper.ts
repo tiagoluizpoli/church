@@ -1,6 +1,4 @@
-import type { eventTemplate, templateTimeBlock } from '@church/db';
 import { fromTimeColumn } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
   EventTemplateId,
@@ -11,14 +9,10 @@ import { EventTemplate } from '../../domain/entities/event-template';
 import type { TemplateTimeBlockProps } from '../../domain/entities/template-time-block';
 import { TemplateTimeBlock } from '../../domain/entities/template-time-block';
 import type { Recurrence } from '../../domain/recurrence';
-
-type EventTemplateRow = InferSelectModel<typeof eventTemplate>;
-type TemplateTimeBlockRow = InferSelectModel<typeof templateTimeBlock>;
-
-interface MapEventTemplateInput {
-  template: EventTemplateRow;
-  blocks: TemplateTimeBlockRow[];
-}
+import type {
+  MapEventTemplateInput,
+  TemplateTimeBlockRow,
+} from './event-template.mapper.types';
 
 export function mapTemplateTimeBlock(
   row: TemplateTimeBlockRow,

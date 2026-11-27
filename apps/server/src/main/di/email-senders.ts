@@ -1,8 +1,8 @@
 import type { EmailSender } from '../../domain/contracts/infrastructure/email-sender';
+import type { PlatformBranding } from '../../domain/contracts/infrastructure/email-templates';
 import type { RuntimeConfigurationRepository } from '../../domain/contracts/infrastructure/runtime-configuration.repository';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
 import { DeliveryModeEmailSender } from '../../infrastructure/services/delivery-mode-email-sender';
-import type { PlatformBranding } from '../../infrastructure/services/email-templates';
 import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
 import { SmtpEmailSender } from '../../infrastructure/services/smtp-email-sender';
 

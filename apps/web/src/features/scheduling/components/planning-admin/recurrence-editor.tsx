@@ -348,7 +348,6 @@ export function RecurrenceEditor({
           <Label>{m.event_templates_recurrence_entries_label()}</Label>
           {recurrence.entries.map((entry, index) => (
             <EntryRow
-              // biome-ignore lint/suspicious/noArrayIndexKey: entries have no identity beyond their position
               key={index}
               entry={entry}
               index={index}

@@ -165,7 +165,6 @@ function AssignmentFacts({ detail }: AssignmentFactsProps) {
               {group.people.map((person, index) => (
                 <li
                   // Names can repeat within a group; order is stable per read.
-                  // biome-ignore lint/suspicious/noArrayIndexKey: see above
                   key={index}
                   className={person.isYou ? 'font-semibold' : undefined}
                   aria-current={person.isYou ? 'true' : undefined}
@@ -178,7 +177,6 @@ function AssignmentFacts({ detail }: AssignmentFactsProps) {
               ))}
               {Array.from({ length: group.openCount }, (_, index) => (
                 <li
-                  // biome-ignore lint/suspicious/noArrayIndexKey: identical placeholders
                   key={`open-${index}`}
                   className="text-muted-foreground italic"
                 >

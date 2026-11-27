@@ -96,6 +96,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
         state: 'draft',
       },
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
 
     const user = userEvent.setup();
@@ -140,6 +141,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
         state: 'sent',
       },
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
 
     const user = userEvent.setup();
@@ -293,6 +295,7 @@ describe('Cycles routes step-sequence gating (T038, T056)', () => {
         state: 'draft',
       },
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
     listEventTemplates.mockResolvedValue({
       templates: [
@@ -371,6 +374,7 @@ describe('CyclesActions (US4)', () => {
         state: 'draft',
       },
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
 
     const user = userEvent.setup();
@@ -417,6 +421,7 @@ describe('CyclesActions (US4)', () => {
         state: 'draft',
       },
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
 
     const user = userEvent.setup();
@@ -441,7 +446,11 @@ describe('Cycle deletion', () => {
       state,
     };
     listCycles.mockResolvedValue({ cycles: [cycle] });
-    getCycle.mockResolvedValue({ cycle, events: [] });
+    getCycle.mockResolvedValue({
+      cycle,
+      events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
+    });
   }
 
   it('offers Delete only on a Draft, behind a confirmation that deletes nothing until confirmed', async () => {
@@ -550,7 +559,11 @@ describe('Cycle deletion and Apply against a stale Draft', () => {
 
   it('refetches after a stale delete refusal, shows the refusal and hides the Draft actions', async () => {
     listCycles.mockResolvedValue({ cycles: [draft] });
-    getCycle.mockResolvedValue({ cycle: draft, events: [] });
+    getCycle.mockResolvedValue({
+      cycle: draft,
+      events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
+    });
     deleteCycle.mockRejectedValue(
       refusal(409, 'Only a Draft Cycle can be deleted.'),
     );
@@ -560,6 +573,7 @@ describe('Cycle deletion and Apply against a stale Draft', () => {
     getCycle.mockResolvedValue({
       cycle: { ...draft, state: 'sent' },
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
 
     await user.click(
@@ -579,7 +593,11 @@ describe('Cycle deletion and Apply against a stale Draft', () => {
 
   it('refetches after a stale Apply refusal and hides the Draft actions', async () => {
     listCycles.mockResolvedValue({ cycles: [draft] });
-    getCycle.mockResolvedValue({ cycle: draft, events: [] });
+    getCycle.mockResolvedValue({
+      cycle: draft,
+      events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
+    });
     const sunday = {
       id: 'template-1',
       name: 'Sunday',
@@ -598,6 +616,7 @@ describe('Cycle deletion and Apply against a stale Draft', () => {
     getCycle.mockResolvedValue({
       cycle: { ...draft, state: 'sent' },
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
     await screen.findAllByTestId('template-select-checkbox');
 
@@ -627,10 +646,18 @@ describe('Cycle edit', () => {
   it('edits a Draft in place, refreshing its name on the same detail', async () => {
     const renamed = { ...draft, name: 'Retiro de agosto' };
     listCycles.mockResolvedValue({ cycles: [draft] });
-    getCycle.mockResolvedValue({ cycle: draft, events: [] });
+    getCycle.mockResolvedValue({
+      cycle: draft,
+      events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
+    });
     updateCycle.mockImplementation(async () => {
       listCycles.mockResolvedValue({ cycles: [renamed] });
-      getCycle.mockResolvedValue({ cycle: renamed, events: [] });
+      getCycle.mockResolvedValue({
+        cycle: renamed,
+        events: [],
+        counts: { eventCount: 0, eventTimeBlockCount: 0 },
+      });
       return renamed;
     });
     const user = userEvent.setup();
@@ -662,7 +689,11 @@ describe('Cycle edit', () => {
   it('does not offer Edit on a sent Cycle', async () => {
     const sent = { ...draft, state: 'sent' as const };
     listCycles.mockResolvedValue({ cycles: [sent] });
-    getCycle.mockResolvedValue({ cycle: sent, events: [] });
+    getCycle.mockResolvedValue({
+      cycle: sent,
+      events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
+    });
     const user = userEvent.setup();
     renderCycles();
     await user.click(
@@ -721,6 +752,7 @@ describe('Cycle header visibility (chip-leak fix)', () => {
         state: 'draft',
       },
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
 
     const user = userEvent.setup();
@@ -815,6 +847,7 @@ describe('Direct Cycle review route', () => {
         endDate: '2026-10-25',
         state,
       },
+      counts: { eventCount: 1, eventTimeBlockCount: 1 },
       events: [
         {
           event: {

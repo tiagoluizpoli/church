@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import type { Instant } from '@church/time';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { CancelledBadge } from '../cancelled-badge';
 import { EventCancelDialog } from './event-cancel-dialog';
 import { EventEditPreview } from './event-edit-preview';
 import { EventMovePreview } from './event-move-preview';
@@ -153,7 +154,7 @@ export function calendarRowKey({
       ? visibleRow.weekEnd
       : visibleRow.kind === 'parent'
         ? `${visibleRow.row.title}-${visibleRow.row.location ?? ''}-${visibleRow.row.start}-${visibleRow.row.end}-${visibleRow.row.status}-${visibleRow.row.eventTimeBlocks.length}`
-        : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}`;
+        : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}-${visibleRow.status}-${visibleRow.parentStatus}`;
 
   return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEventTimeBlock ? 'deleting-event-time-block' : 'normal'}-${deleteEventTimeBlockPending ? 'event-time-block-pending' : 'event-time-block-idle'}`;
 }
@@ -473,6 +474,9 @@ function EventTimeBlockRowCell({
             timeZone,
           })}
         </span>
+      ) : null}
+      {column.id === 'status' && visibleRow.status === 'cancelled' ? (
+        <CancelledBadge />
       ) : null}
       {column.id === 'actions' && canPreviewMove ? (
         <EventMovePreview

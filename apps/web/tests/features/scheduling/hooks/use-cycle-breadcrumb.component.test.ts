@@ -54,6 +54,7 @@ describe('useCycleBreadcrumb', () => {
         updatedAt: '2026-07-01T00:00:00.000Z',
       },
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
 
     const { result } = renderCycleBreadcrumb();

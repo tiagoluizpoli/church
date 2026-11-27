@@ -73,10 +73,6 @@ interface EventStatusVariantInput {
   status: GetCycle200EventsItemEventStatus;
 }
 
-interface TotalEventTimeBlocksInput {
-  events: CycleEventGroup[] | undefined;
-}
-
 interface CycleFormValidityInput {
   cycleForm: CycleFormState;
 }
@@ -297,17 +293,6 @@ export function eventStatusBadgeVariant({
   }
 
   return 'secondary';
-}
-
-export function calculateTotalEventTimeBlocks({
-  events,
-}: TotalEventTimeBlocksInput): number {
-  return (
-    events?.reduce(
-      (count, eventGroup) => count + eventGroup.eventTimeBlocks.length,
-      0,
-    ) ?? 0
-  );
 }
 
 /** Matches the server's `cycle.name` bound. */

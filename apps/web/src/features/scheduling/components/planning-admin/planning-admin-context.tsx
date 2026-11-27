@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useContext } from 'react';
-import type { SelectedCycle } from './planning-admin.types';
+import type { CyclePlannedCounts, SelectedCycle } from './planning-admin.types';
 import {
   type SelectCycleInput,
   type UsePlanningAdminResult,
@@ -92,11 +92,6 @@ export function useCycleSelection(): CycleSelectionModel {
   };
 }
 
-export interface CycleHeaderCounts {
-  eventCount: number;
-  eventTimeBlockCount: number;
-}
-
 export interface CycleHeaderNameAndStatus {
   name: string;
   status: SelectedCycle['state'];
@@ -110,7 +105,7 @@ export interface CycleHeaderPeriod {
 export interface CycleHeaderModel {
   nameAndStatus: CycleHeaderNameAndStatus | null;
   period: CycleHeaderPeriod | null;
-  counts: CycleHeaderCounts | null;
+  counts: CyclePlannedCounts | null;
 }
 
 /**
@@ -119,8 +114,7 @@ export interface CycleHeaderModel {
  * other component should render `selectedCycle.state` as a badge.
  */
 export function useCycleHeader(): CycleHeaderModel {
-  const { selectedCycle, cycleEvents, totalEventTimeBlocks } =
-    usePlanningAdminContext();
+  const { selectedCycle, plannedCounts } = usePlanningAdminContext();
 
   if (!selectedCycle) {
     return { nameAndStatus: null, period: null, counts: null };
@@ -132,10 +126,7 @@ export function useCycleHeader(): CycleHeaderModel {
       startDate: selectedCycle.startDate,
       endDate: selectedCycle.endDate,
     },
-    counts: {
-      eventCount: cycleEvents.length,
-      eventTimeBlockCount: totalEventTimeBlocks,
-    },
+    counts: plannedCounts,
   };
 }
 
@@ -176,7 +167,7 @@ export type CycleReviewCardModel = Pick<
   | 'cycleDetailsError'
   | 'refetchCycleDetails'
   | 'cycleEvents'
-  | 'ownedEventCount'
+  | 'plannedCounts'
   | 'deleteEventTimeBlockPending'
   | 'handleDeleteEventTimeBlock'
 >;
@@ -191,7 +182,7 @@ export function useCycleReviewCard(): CycleReviewCardModel {
     cycleDetailsError: context.cycleDetailsError,
     refetchCycleDetails: context.refetchCycleDetails,
     cycleEvents: context.cycleEvents,
-    ownedEventCount: context.ownedEventCount,
+    plannedCounts: context.plannedCounts,
     deleteEventTimeBlockPending: context.deleteEventTimeBlockPending,
     handleDeleteEventTimeBlock: context.handleDeleteEventTimeBlock,
   };

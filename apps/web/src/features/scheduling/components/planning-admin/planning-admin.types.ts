@@ -1,5 +1,6 @@
 import type { TimeOfDay } from '@church/time';
 import type {
+  GetCycle200Counts,
   GetCycle200Cycle,
   GetCycle200EventsItem,
   ListCycles200CyclesItem,
@@ -38,6 +39,7 @@ export type CycleSummary = ListCycles200CyclesItem;
 export type PlanningTemplateSummary = ListEventTemplates200TemplatesItem;
 export type SelectedCycle = GetCycle200Cycle;
 export type CycleEventGroup = GetCycle200EventsItem;
+export type CyclePlannedCounts = GetCycle200Counts;
 
 export interface CyclesTableRow {
   id: string;

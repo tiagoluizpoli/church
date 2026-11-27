@@ -117,3 +117,92 @@ describe('seed impact acknowledgement without a pull request', () => {
     expect(stderr).toContain('  acknowledged: scratch');
   });
 });
+
+describe('seed impact acknowledgement source', () => {
+  /** feature/upper, stacked on feature/lower, with an open PR onto it. */
+  const stackOnLower = () => {
+    const lowerSha = commit({
+      file: 'drizzle-a.ts',
+      message: 'feat: a\n\nSeed-Impact: none - lower only',
+    });
+    git('checkout', '-q', '-b', 'feature/upper');
+    stubGh({
+      script: `echo '{"baseRefName":"feature/lower","state":"OPEN"}'`,
+    });
+    return { lowerSha };
+  };
+
+  it('names the commit behind an acknowledgement it accepts', () => {
+    const sha = commit({
+      file: 'drizzle-a.ts',
+      message: 'feat: a\n\nSeed-Impact: none - read only',
+    });
+
+    const { stderr } = dryRun();
+
+    expect(stderr).toContain(`  acknowledged: read only (commit ${sha})`);
+  });
+
+  it('accepts the branch’s own trailer on a stacked branch', () => {
+    const { lowerSha } = stackOnLower();
+    const sha = commit({
+      file: 'drizzle-b.ts',
+      message: 'feat: b\n\nSeed-Impact: none - upper too',
+    });
+
+    const { decision, stderr } = dryRun();
+
+    expect(decision).toBe('acknowledged');
+    expect(stderr).toContain(`  acknowledged: upper too (commit ${sha})`);
+    expect(stderr).not.toContain(lowerSha);
+  });
+
+  it('refuses a trailer borrowed from the branch below the open PR', () => {
+    const { lowerSha } = stackOnLower();
+    commit({ file: 'drizzle-b.ts', message: 'feat: b' });
+
+    const { decision, stderr } = dryRun();
+
+    expect(decision).toBe('undecided');
+    expect(stderr).toContain(
+      `  refused: lower only (commit ${lowerSha}) is not one of this branch's own commits (above feature/lower).`,
+    );
+    expect(stderr).toContain('Add the trailer on this branch.');
+  });
+
+  it('prefers the remote-tracking ref of the PR base', () => {
+    const { lowerSha } = stackOnLower();
+    git('update-ref', 'refs/remotes/origin/feature/lower', 'HEAD');
+    git('branch', '-f', 'feature/lower', 'develop');
+    commit({ file: 'drizzle-b.ts', message: 'feat: b' });
+
+    const { stderr } = dryRun();
+
+    expect(stderr).toContain(
+      `(commit ${lowerSha}) is not one of this branch's own commits (above origin/feature/lower).`,
+    );
+  });
+
+  it('measures own commits from the validate base once the PR is closed', () => {
+    const { lowerSha } = stackOnLower();
+    stubGh({
+      script: `echo '{"baseRefName":"feature/lower","state":"MERGED"}'`,
+    });
+    commit({ file: 'drizzle-b.ts', message: 'feat: b' });
+
+    const { decision, stderr } = dryRun();
+
+    expect(decision).toBe('acknowledged');
+    expect(stderr).toContain(`  acknowledged: lower only (commit ${lowerSha})`);
+  });
+
+  it('fails when the PR base is not available locally', () => {
+    commit({
+      file: 'drizzle-a.ts',
+      message: 'feat: a\n\nSeed-Impact: none - read only',
+    });
+    stubGh({ script: `echo '{"baseRefName":"spec/gone","state":"OPEN"}'` });
+
+    expect(() => dryRun()).toThrow('git fetch origin spec/gone');
+  });
+});

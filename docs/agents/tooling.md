@@ -254,14 +254,19 @@ validate until the change carries one decision:
   `Seed-Impact: none - <reason>` (or `--no-seed-impact "<reason>"` for
   uncommitted work). A blank reason does not count.
 
-The trailer lookup reads the commits between the validate base and `HEAD`.
-On a branch stacked on another open PR, set `validateBase` to the branch below
-(see [Test loop and completion gate](#test-loop-and-completion-gate)).
-Otherwise the lower branch's trailer satisfies the local gate, and CI, which
-sees only the PR's own commits once the lower PR merges, refuses.
+The trailer lookup reads the commits between the validate base and `HEAD`,
+and accepts only the branch's own: those above the open PR's base
+(`gh pr view`; `origin/<base>`, else the local branch) or, without a PR,
+above the validate base. The plan prints each accepted reason with its commit
+and the ref used. A trailer from a lower stacked branch is refused: add one on
+this branch. Without a PR the gate can't see a stack, so set `validateBase` to
+the branch below (see
+[Test loop and completion gate](#test-loop-and-completion-gate)). A failing
+`gh` (offline, not signed in) counts as no PR.
 
 `--dry-run` only reports the missing decision; the validating run fails.
-The rules live in `tooling/validation/seed-impact.ts`. A deleted file keeps
+The rules live in `tooling/validation/seed-impact.ts`, the commit lookup in
+`tooling/validation/seed-acknowledgements.ts`. A deleted file keeps
 its workspace in scope but selects no test file and, when no journey maps it,
 no smoke fallback.
 
@@ -669,6 +674,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Tests live in the owning project's `tests/` and import by alias | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:test-placement`, part of `lint` |
 | User-facing copy comes from the `@church/i18n` catalog, never a literal | Spec #837, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:presentation-text`, part of `lint` and `validate:affected`. Copy reached only through calls or unrelated names stays with review (see Presentation text) |
 | Seed-relevant changes carry a seed decision | Tooling, ADR-0006 | Mechanical | Validation guard | Enforced: `tooling/validation/seed-impact.ts` in `validate:affected` |
+| A `Seed-Impact` acknowledgement comes from the branch's own commits | Spec #1161 | Mechanical | Validation guard | Enforced: `tooling/validation/seed-acknowledgements.ts` in `validate:affected` |
 | Destructive database commands refuse any target but their own | Tooling, ADR-0005 | Mechanical | Validation guard | Enforced: runtime preflight of the database resolver |
 | No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |
 | The API client and `auto-generated-api.yaml` are generated, never hand-edited | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:api-generated`, run by the `develop-fast` and `fast-gate` CI jobs |

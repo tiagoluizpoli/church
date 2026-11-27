@@ -8,6 +8,13 @@ import {
 } from './run-lanes';
 import { formatLockWait, holdValidateLock } from './validate-lock';
 
+/** Reads the web `dist` the type check just built, so it must follow it. */
+export const BUNDLE_BUDGET_STEP: LaneStep = {
+  args: ['run', 'validate:bundle-budget'],
+  command: 'bun',
+  label: 'bundle-budget',
+};
+
 /**
  * Unit tests are CPU-bound and integration tests are DB/IO-bound, so the two
  * lanes overlap instead of queueing; E2E needs everything else green first.
@@ -15,6 +22,7 @@ import { formatLockWait, holdValidateLock } from './validate-lock';
 export const LINT_TYPECHECK_UNIT_LANE: LaneStep[] = [
   { args: ['run', 'lint'], command: 'bun', label: 'lint' },
   { args: ['run', 'typecheck'], command: 'bun', label: 'typecheck' },
+  BUNDLE_BUDGET_STEP,
   { args: ['run', 'test:unit'], command: 'bun', label: 'test:unit' },
 ];
 

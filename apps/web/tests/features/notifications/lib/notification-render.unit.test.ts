@@ -804,3 +804,77 @@ describe('Swap request answered Notification (N8)', () => {
     expect(renderNotification(answered()).body).not.toContain('Reply:');
   });
 });
+
+describe('Notices about a hidden Event', () => {
+  // The server blanks every title and marks the notice hidden.
+  const shift = { ...published.shifts[0], eventTitle: '', ministryName: 'Som' };
+  const base9 = {
+    cycleId: ID,
+    eventId: ID,
+    eventTitle: '',
+    hidden: true,
+    start: '2026-12-25T02:30:00.000Z',
+    churchTimezone: 'America/Sao_Paulo',
+    shifts: [shift],
+  };
+  const n9 = (data: object) =>
+    ({
+      ...base,
+      kind: 'event_cancelled',
+      data: { ...base9, ...data },
+    }) as GetNotifications200ItemsItem;
+  const n10 = (change: object, scope: object = {}) =>
+    ({
+      ...base,
+      kind: 'event_changed',
+      data: {
+        ...base9,
+        cycleName: 'Dezembro',
+        adminName: 'Ana',
+        ministries: [{ id: ID, name: 'Som' }],
+        change: {
+          start: '2026-12-25T02:30:00.000Z',
+          end: '2026-12-25T04:00:00.000Z',
+          ...change,
+        },
+        ...scope,
+      },
+    }) as unknown as GetNotifications200ItemsItem;
+
+  it.each([
+    ['en', {}, 'The Thursday event on 24 Dec at 23:30 was cancelled'],
+    ['pt-BR', {}, 'O evento de quinta-feira, 24 dez, às 23:30, foi cancelado'],
+    [
+      'en',
+      { eventTimeBlockId: ID },
+      'The Thursday 23:30 time block was cancelled',
+    ],
+    [
+      'pt-BR',
+      { eventTimeBlockId: ID },
+      'O horário de quinta-feira às 23:30 foi cancelado',
+    ],
+  ] as const)('names only the day and start time (%s, %j)', (locale, scope, expected) => {
+    overwriteGetLocale(() => locale);
+    const cancel = { kind: 'cancel', impacts: [] };
+
+    expect(renderNotification(n9(scope)).title).toBe(expected);
+    expect(renderNotification(n10(cancel, scope)).title).toBe(expected);
+  });
+
+  it('lists the Volunteer own Ministry and Role on each N9 line', () => {
+    overwriteGetLocale(() => 'en');
+
+    expect(renderNotification(n9({})).body.split('\n')[1]).toBe(
+      'Thu 24 Dec · 23:30–01:00 · Som · Violão',
+    );
+  });
+
+  it('calls the Event by its weekday in an older add notice', () => {
+    overwriteGetLocale(() => 'en');
+
+    expect(renderNotification(n10({ kind: 'add' })).title).toBe(
+      'New event in Dezembro: Thursday event',
+    );
+  });
+});

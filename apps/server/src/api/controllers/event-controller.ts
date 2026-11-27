@@ -1,5 +1,4 @@
 import { NotFoundError } from '@church/core';
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -8,11 +7,11 @@ import {
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IEventManager } from '../../domain/contracts/application/event-manager';
 import type { EventStatus } from '../../domain/entities/event';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   eventListResponseSchema,
@@ -21,45 +20,25 @@ import {
   scheduleBuilderDataResponseSchema,
 } from '../dtos/event.dto';
 import { refuse } from '../utils/refuse';
+import type {
+  DenyMinistryObjectInput,
+  DenySchedulingFunctionInput,
+  EventControllerDependencies,
+  ListEventsQuery,
+  ScheduleBuilderQuery,
+} from './event-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
 
-interface ScheduleBuilderQuery {
-  eventId: string;
-  ministryId?: string;
-}
-
-interface ListEventsQuery {
-  ministryId: string;
-  status?: string;
-}
-
-interface DenySchedulingFunctionInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-}
-
-interface DenyMinistryObjectInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  ministryId: string;
-}
-
-interface EventControllerDependencies {
-  eventManager: IEventManager;
-  activeChurchResolver: IActiveChurchResolver;
-  authorityGuard: AuthorityGuard;
-}
-
 export class EventController implements FastifyController {
   readonly prefix = '/events';
 
   private readonly eventManager: IEventManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     eventManager,

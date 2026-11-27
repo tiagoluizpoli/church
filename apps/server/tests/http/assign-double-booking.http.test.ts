@@ -25,10 +25,8 @@ import {
 import { AssignController } from '@/api/controllers/assign-controller';
 import { VolunteerController } from '@/api/controllers/volunteer-controller';
 import type { CycleBuilderResponse } from '@/api/dtos/cycle-builder.dto';
-import {
-  proposalReviewTokenFor,
-  type ReviewedAddition,
-} from '@/domain/services/assignment-proposal';
+import { proposalReviewTokenFor } from '@/domain/services/scheduling/assignment-proposal';
+import type { ReviewedAddition } from '@/domain/services/scheduling/assignment-proposal.types';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { buildMinistry, buildSector } from '@/seeds/builders/ministry';

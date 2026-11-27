@@ -833,6 +833,8 @@ paths:
                               type: string
                               format: date-time
                               pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            isHidden:
+                              type: boolean
                           required:
                             - id
                             - churchId
@@ -843,6 +845,7 @@ paths:
                             - status
                             - createdAt
                             - updatedAt
+                            - isHidden
                           additionalProperties: false
                         eventTimeBlocks:
                           type: array
@@ -902,6 +905,8 @@ paths:
                                     - sectorId
                                     - peopleNeeded
                                   additionalProperties: false
+                              isHidden:
+                                type: boolean
                             required:
                               - id
                               - churchId
@@ -913,14 +918,31 @@ paths:
                               - placeAddressId
                               - status
                               - requirements
+                              - isHidden
                             additionalProperties: false
                       required:
                         - event
                         - eventTimeBlocks
                       additionalProperties: false
+                  counts:
+                    type: object
+                    properties:
+                      eventCount:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                      eventTimeBlockCount:
+                        type: integer
+                        minimum: -9007199254740991
+                        maximum: 9007199254740991
+                    required:
+                      - eventCount
+                      - eventTimeBlockCount
+                    additionalProperties: false
                 required:
                   - cycle
                   - events
+                  - counts
                 additionalProperties: false
     patch:
       operationId: updateCycle
@@ -1696,6 +1718,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -2621,6 +2644,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -2833,6 +2857,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -3169,6 +3194,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -3428,6 +3454,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -3693,6 +3720,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -3845,6 +3873,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -3882,6 +3911,8 @@ paths:
               properties:
                 confirmation:
                   type: string
+                hidden:
+                  type: boolean
               required:
                 - confirmation
       parameters:
@@ -4012,6 +4043,220 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
+                      - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/admin/cycles/{cycleId}/events/{eventId}/hidden:
+    put:
+      operationId: setPlanningEventHidden
+      summary: Hide or show a cancelled Event
+      tags:
+        - planning
+      description: Hide a cancelled Event, with every EventTimeBlock in it, from
+        everyone but ChurchAdmins planning the Cycle, or show it again. Allowed
+        at any time, after its start too, and sends nothing. Refuses an Event
+        that is not cancelled (ILLEGAL_STATE_TRANSITION); an unknown, foreign or
+        wrong-Cycle Event is 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hidden:
+                  type: boolean
+              required:
+                - hidden
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
+                      - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/admin/cycles/{cycleId}/events/{eventId}/event-time-blocks/{eventTimeBlockId}/hidden:
+    put:
+      operationId: setPlanningEventTimeBlockHidden
+      summary: Hide or show a cancelled EventTimeBlock
+      tags:
+        - planning
+      description: Set a cancelled EventTimeBlock's own hidden choice; a block of a
+        hidden Event stays hidden whatever its own. Allowed at any time and
+        sends nothing. Refuses a block that is not itself cancelled
+        (ILLEGAL_STATE_TRANSITION); an unknown, foreign or wrong-Cycle block is
+        404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hidden:
+                  type: boolean
+              required:
+                - hidden
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          in: path
+          name: eventId
+          required: true
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          in: path
+          name: eventTimeBlockId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -4244,6 +4489,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -4512,6 +4758,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -4800,6 +5047,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -5118,6 +5366,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -5291,6 +5540,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -5542,6 +5792,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -5828,6 +6079,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -6001,6 +6253,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -6034,6 +6287,8 @@ paths:
               properties:
                 confirmation:
                   type: string
+                hidden:
+                  type: boolean
               required:
                 - confirmation
       parameters:
@@ -6186,6 +6441,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -6363,6 +6619,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -9888,6 +10145,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   field:
@@ -13144,6 +13402,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   issues:
@@ -13332,6 +13591,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   issues:
@@ -13476,6 +13736,7 @@ paths:
                       - DUPLICATE_EVENT_TIME_BLOCK_LABEL
                       - DUPLICATE_EVENT_TIME_BLOCK_ID
                       - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - ASK_NO_LIVE_SHIFTS
                       - CANCEL_CONFIRMATION
                       - PLACE_ADDRESS_NOT_FOUND
                   issues:
@@ -16234,6 +16495,12 @@ paths:
                                         - end
                                         - impacts
                                       additionalProperties: false
+                                eventTimeBlockId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                hidden:
+                                  type: boolean
                               required:
                                 - cycleId
                                 - cycleName
@@ -16307,6 +16574,8 @@ paths:
                                         type: string
                                         format: date-time
                                         pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                      ministryName:
+                                        type: string
                                     required:
                                       - eventTitle
                                       - roleName
@@ -16314,6 +16583,12 @@ paths:
                                       - startsAt
                                       - endsAt
                                     additionalProperties: false
+                                eventTimeBlockId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                hidden:
+                                  type: boolean
                               required:
                                 - cycleId
                                 - eventId
@@ -21299,6 +21574,12 @@ paths:
                                         - end
                                         - impacts
                                       additionalProperties: false
+                                eventTimeBlockId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                hidden:
+                                  type: boolean
                               required:
                                 - cycleId
                                 - cycleName
@@ -21372,6 +21653,8 @@ paths:
                                         type: string
                                         format: date-time
                                         pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                                      ministryName:
+                                        type: string
                                     required:
                                       - eventTitle
                                       - roleName
@@ -21379,6 +21662,12 @@ paths:
                                       - startsAt
                                       - endsAt
                                     additionalProperties: false
+                                eventTimeBlockId:
+                                  type: string
+                                  format: uuid
+                                  pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                                hidden:
+                                  type: boolean
                               required:
                                 - cycleId
                                 - eventId
@@ -21790,6 +22079,8 @@ paths:
                           type: string
                           format: date-time
                           pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                        cancelled:
+                          type: boolean
                         assignmentCount:
                           type: number
                         rows:
@@ -21813,6 +22104,8 @@ paths:
                                 type: string
                               roleName:
                                 type: string
+                              cancelled:
+                                type: boolean
                               volunteerDisplayName:
                                 type: string
                             required:
@@ -21822,12 +22115,14 @@ paths:
                               - shiftEnd
                               - sectorName
                               - roleName
+                              - cancelled
                             additionalProperties: false
                       required:
                         - eventId
                         - title
                         - start
                         - end
+                        - cancelled
                         - assignmentCount
                         - rows
                       additionalProperties: false
@@ -22361,6 +22656,8 @@ paths:
                           type: string
                           enum:
                             - pending
+                        cancelled:
+                          type: boolean
                         swapRequested:
                           type: boolean
                       required:
@@ -22376,6 +22673,7 @@ paths:
                         - roleId
                         - roleName
                         - status
+                        - cancelled
                         - swapRequested
                       additionalProperties: false
                   schedules:
@@ -22451,6 +22749,8 @@ paths:
                         type: string
                         enum:
                           - pending
+                      cancelled:
+                        type: boolean
                       swapRequested:
                         type: boolean
                     required:
@@ -22466,6 +22766,7 @@ paths:
                       - roleId
                       - roleName
                       - status
+                      - cancelled
                       - swapRequested
                     additionalProperties: false
                   options:

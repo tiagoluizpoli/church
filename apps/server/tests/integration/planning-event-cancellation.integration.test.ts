@@ -30,6 +30,7 @@ import type {
 import { AdminCancellationWindowClosedError } from '@/domain/errors/admin-cancellation-window-closed';
 import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
 import { SwapRequestUnpublishedError } from '@/domain/errors/swap-request';
+import { CycleEventGenerator } from '@/domain/services/planning/cycle-event-generator';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
@@ -66,6 +67,7 @@ const eventRepository = new DrizzlePlanningEventRepository({ db });
 const churchRepository = new DrizzleChurchRepository({ db });
 const unitOfWork = new DrizzleUnitOfWork({ db });
 const managerDependencies = {
+  cycleEventGenerator: new CycleEventGenerator(),
   cycleRepository: new DrizzleCycleRepository({ db }),
   eventRepository,
   precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),

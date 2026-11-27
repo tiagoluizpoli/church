@@ -20,22 +20,17 @@ import type {
 import type { EventTimeBlock } from '../../domain/entities/event-time-block';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  DrizzleEventTimeBlockRepositoryInput,
+  FetchWithRequirementsInput,
+} from './drizzle-event-time-block.repository.types';
 import {
   assertPlaceAddresses,
   getClient,
   isValidUuid,
   withChurchIsolation,
 } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleEventTimeBlockRepositoryInput {
-  db: AnyDrizzleDb;
-}
-
-interface FetchWithRequirementsInput {
-  db: AnyDrizzleDb;
-  eventTimeBlockRow: typeof eventTimeBlock.$inferSelect;
-}
 
 export class DrizzleEventTimeBlockRepository
   implements EventTimeBlockRepository
@@ -178,6 +173,7 @@ export class DrizzleEventTimeBlockRepository
         ...(input.placeAddressId !== undefined
           ? { placeAddressId: input.placeAddressId }
           : {}),
+        ...(input.isHidden !== undefined ? { isHidden: input.isHidden } : {}),
       })
       .where(
         and(

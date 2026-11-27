@@ -6,6 +6,7 @@ import { ChurchId, UserId } from '../../domain/branded-ids';
 import { ChurchAddressesRefused } from '../../domain/church-address';
 import { LOGO_MAX_BYTES } from '../../domain/church-logo';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IChurchSettingsManager } from '../../domain/contracts/application/church-settings-manager';
 import { ChurchLegalDocumentTakenError } from '../../domain/errors/church-legal-document-taken';
 import {
@@ -15,7 +16,6 @@ import {
 import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   type ChurchSettingsValidationIssue,
@@ -35,25 +35,16 @@ import {
   uploadChurchLogoBodySchema,
 } from '../dtos/church-settings.dto';
 import { refuse } from '../utils/refuse';
-
-interface AddressUsageParams {
-  addressId: string;
-}
-
-interface SlugAvailabilityQuery {
-  slug: string;
-}
+import type {
+  AddressUsageParams,
+  ChurchSettingsControllerDependencies,
+  SlugAvailabilityQuery,
+} from './church-settings-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-interface ChurchSettingsControllerDependencies {
-  churchSettingsManager: IChurchSettingsManager;
-  activeChurchResolver: IActiveChurchResolver;
-  authorityGuard: AuthorityGuard;
-}
 
 /** The Active Church's Church Settings, ChurchAdmin only. */
 export class ChurchSettingsController implements FastifyController {
@@ -61,7 +52,7 @@ export class ChurchSettingsController implements FastifyController {
 
   private readonly churchSettingsManager: IChurchSettingsManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     churchSettingsManager,

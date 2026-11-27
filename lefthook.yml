@@ -8,6 +8,16 @@ pre-commit:
       glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
       run: bun run lint:fix:files -- {staged_files}
       stage_fixed: true
+    - name: css
+      glob: "*.css"
+      run: bun run lint:files -- {staged_files}
+      fail_text: "Unformatted or invalid CSS: run `bun run lint:fix`, then stage the result."
+    - name: spec-registration
+      glob:
+        - "apps/web/tests/**.spec.ts"
+        - "apps/web/tests/fixtures/e2e-lanes.ts"
+        - "tooling/validation/journey-map.ts"
+      run: bun run validate:e2e-lanes && bun run validate:journey-map
 
 post-merge:
   jobs:
@@ -30,4 +40,10 @@ pre-push:
 commit-msg:
   commands:
     commitlint:
-      run: npx commitlint --edit {1}
+      # Never `npx`: without node_modules it waits on an install prompt.
+      run: |
+        if [ ! -x node_modules/.bin/commitlint ]; then
+          echo 'Dependencies are missing here: run `bun run worktree:bootstrap`.'
+          exit 1
+        fi
+        node_modules/.bin/commitlint --edit {1}

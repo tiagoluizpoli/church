@@ -7,7 +7,6 @@ import {
 import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, describe, expect, it } from 'vitest';
 import type {
-  CycleEventGroup,
   CycleFormState,
   SelectedCycle,
   TemplateFormState,
@@ -15,7 +14,6 @@ import type {
   TemplateTimeBlockDraft,
 } from '@/features/scheduling/components/planning-admin/planning-admin.types';
 import {
-  calculateTotalEventTimeBlocks,
   canCreateCycle,
   canEditEvent,
   canSaveTemplate,
@@ -43,37 +41,6 @@ function makeCycle(overrides: Partial<SelectedCycle> = {}): SelectedCycle {
     createdAt: '2027-01-01T00:00:00.000Z',
     updatedAt: '2027-01-01T00:00:00.000Z',
     ...overrides,
-  };
-}
-
-function makeEventGroup(eventTimeBlockCount: number): CycleEventGroup {
-  return {
-    event: {
-      id: 'event-1',
-      churchId: 'church-1',
-      cycleId: 'cycle-1',
-      title: 'Sunday Service',
-      start: '2027-01-03T09:00:00.000Z',
-      end: '2027-01-03T11:00:00.000Z',
-      status: 'scheduled',
-      createdAt: '2027-01-01T00:00:00.000Z',
-      updatedAt: '2027-01-01T00:00:00.000Z',
-    },
-    eventTimeBlocks: Array.from(
-      { length: eventTimeBlockCount },
-      (_unused, index) => ({
-        id: `event-time-block-${index}`,
-        churchId: 'church-1',
-        eventId: 'event-1',
-        startTime: '2027-01-03T09:00:00.000Z',
-        endTime: '2027-01-03T09:30:00.000Z',
-        isPublic: false,
-        place: null,
-        placeAddressId: null,
-        status: 'active',
-        requirements: [],
-      }),
-    ),
   };
 }
 
@@ -332,18 +299,6 @@ describe('describeTemplateTimeBlockSpan', () => {
   });
 });
 
-describe('calculateTotalEventTimeBlocks', () => {
-  it('sums time block counts across every event group', () => {
-    const events = [makeEventGroup(2), makeEventGroup(1)];
-
-    expect(calculateTotalEventTimeBlocks({ events })).toBe(3);
-  });
-
-  it('is zero for undefined events', () => {
-    expect(calculateTotalEventTimeBlocks({ events: undefined })).toBe(0);
-  });
-});
-
 describe('cycleIsReadOnly', () => {
   it('is true for a sent or past cycle and false for a draft or none', () => {
     expect(cycleIsReadOnly({ cycle: makeCycle({ state: 'sent' }) })).toBe(true);
@@ -368,6 +323,7 @@ describe('groupRowsByWeek', () => {
     start,
     end,
     status: 'scheduled' as const,
+    isHidden: false,
     eventTimeBlocks: [],
   });
 

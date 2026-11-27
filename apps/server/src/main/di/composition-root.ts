@@ -1,26 +1,14 @@
-import { type AppConfig, appConfig } from '@church/app-config';
+import { appConfig } from '@church/app-config';
 import { db } from '@church/db';
-import type { FastifyController } from '../../api/contracts/fastify-controller';
-import type { IOutboxDrainer } from '../../domain/contracts/application';
-import type { ErrorReporter } from '../../domain/contracts/infrastructure';
-import type { LocaleSettings } from '../fastify/setup';
 import { buildAuth } from './build-auth';
 import { buildControllers } from './build-controllers';
 import { buildManagers } from './build-managers';
 import { buildRepositories } from './build-repositories';
 import { buildServices } from './build-services';
-import type { CompositionRootDependencies } from './dependencies';
+import type { CompositionRoot } from './composition-root.types';
+import type { CompositionRootDependencies } from './dependencies.types';
 
-export type { CompositionRootDependencies } from './dependencies';
-
-interface CompositionRoot {
-  controllers: FastifyController[];
-  outboxDrainer: IOutboxDrainer;
-  locale: LocaleSettings;
-  errorReportTunnel: AppConfig['errorReportTunnel'];
-  /** The one reporter: the request error handler and the outbox share it. */
-  errorReporter: ErrorReporter;
-}
+export type { CompositionRootDependencies } from './dependencies.types';
 
 export function createCompositionRoot(
   overrides: Partial<CompositionRootDependencies> = {},

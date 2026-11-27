@@ -6,12 +6,9 @@ import type {
   ResolveShiftMinistryInput,
   SchedulingScopeRepository,
 } from '../../domain/contracts/infrastructure/scheduling-scope.repository';
+import type { AnyDrizzleDb } from '../repositories/drizzle-db.types';
 import { isValidUuid } from '../repositories/helpers';
-import type { AnyDrizzleDb } from '../repositories/types';
-
-interface DrizzleSchedulingScopeResolverInput {
-  db: AnyDrizzleDb;
-}
+import type { DrizzleSchedulingScopeResolverInput } from './drizzle-scheduling-scope-resolver.types';
 
 /**
  * Resolves the owning Ministry for a Participation or Shift, so callers can

@@ -1,15 +1,11 @@
 import { randomBytes } from 'node:crypto';
-import type { IncomingHttpHeaders } from 'node:http';
+import type { RequestIdInput } from './request-id.types';
 
 // W3C traceparent, version 00: trace id and parent id lowercase hex, neither all zeros.
 const TRACEPARENT =
   /^00-(?!0{32})([0-9a-f]{32})-(?!0{16})[0-9a-f]{16}-[0-9a-f]{2}$/;
 const TRACE_ID_BYTES = 16;
 const SPAN_ID_BYTES = 8;
-
-interface RequestIdInput {
-  headers: IncomingHttpHeaders;
-}
 
 // Fastify calls the first onRequest hook (the request span's) synchronously
 // after genReqId, so the root span takes this id before any other root span.

@@ -2,12 +2,11 @@ import { allowedOrigins, DESKTOP_ORIGIN } from '@church/auth/allowed-origins';
 import { DomainError } from '@church/core';
 import { env } from '@church/env/server';
 import { m } from '@church/i18n/messages';
-import type { Locale } from '@church/i18n/runtime';
 import fastifyCors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import apiReference from '@scalar/fastify-api-reference';
-import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
+import Fastify from 'fastify';
 import {
   hasZodFastifySchemaValidationErrors,
   isResponseSerializationError,
@@ -15,7 +14,7 @@ import {
   serializerCompiler,
   validatorCompiler,
 } from 'fastify-type-provider-zod';
-import pino, { type DestinationStream } from 'pino';
+import pino from 'pino';
 import PinoPretty from 'pino-pretty';
 import { connectionErrorCode } from '../../api/utils/connection-error';
 import { debugEndpointsEnabled } from '../../api/utils/debug-endpoints';
@@ -41,7 +40,6 @@ import { errorStatus } from '../../api/utils/error-table';
 import { refuse } from '../../api/utils/refuse';
 import { requestLocale } from '../../api/utils/request-locale';
 import { HardConstraintError } from '../../domain/conflict/errors/hard-constraint-error';
-import type { ErrorReporter } from '../../domain/contracts/infrastructure/error-reporter';
 import {
   redactUrl,
   serializeError,
@@ -50,24 +48,16 @@ import {
 import { auth } from '../di/server-auth';
 import { fastifyOtel } from '../instrumentation';
 import { requestId } from './request-id';
+import type {
+  CreateFastifyInput,
+  FastifyFactory,
+  LoggingOptionsInput,
+  ReportUnexpectedInput,
+} from './setup.types';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
 // Cast to a concrete factory type so TypeScript knows the return value is a FastifyInstance.
-type FastifyFactory = (opts?: Record<string, unknown>) => FastifyInstance;
 const createFastifyInstance = Fastify as unknown as FastifyFactory;
-
-export interface LocaleSettings {
-  localeCookieName: string;
-  defaultLocale: Locale;
-}
-
-interface CreateFastifyInput {
-  locale: LocaleSettings;
-  /** The composition root's reporter, for unexpected 500s. */
-  errorReporter: ErrorReporter;
-  /** Forces logging to this stream in any mode; tests capture log lines here. */
-  logStream?: DestinationStream;
-}
 
 const logSerializers = { req: serializeRequest, err: serializeError };
 
@@ -89,18 +79,6 @@ function reportUnexpected({
     churchId,
     request: { method, url, headers },
   });
-}
-
-interface ReportUnexpectedInput {
-  errorReporter: ErrorReporter;
-  error: unknown;
-  request: FastifyRequest;
-}
-
-interface LoggingOptionsInput {
-  logStream: DestinationStream | undefined;
-  isTest: boolean;
-  isProd: boolean;
 }
 
 /** Fastify's logger options for the mode; a given stream wins in any mode. */

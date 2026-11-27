@@ -1,4 +1,5 @@
 import type {
+  DbPublicChurchProfileManagerDependencies,
   GetPublicChurchProfileInput,
   IPublicChurchProfileManager,
   PublicChurchProfile,
@@ -8,12 +9,6 @@ import type { ChurchRepository } from '../domain/contracts/infrastructure/church
 import type { ChurchProgrammeRepository } from '../domain/contracts/infrastructure/church-programme.repository';
 import type { ObjectStorage } from '../domain/contracts/infrastructure/object-storage';
 import { churchLogoUrl } from './church-logo-url';
-
-interface DbPublicChurchProfileManagerDependencies {
-  churchRepository: ChurchRepository;
-  objectStorage: ObjectStorage;
-  programmeRepository: ChurchProgrammeRepository;
-}
 
 /** The sign-in-free Public Church Profile, resolved by live or old slug. */
 export class DbPublicChurchProfileManager

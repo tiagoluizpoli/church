@@ -139,6 +139,7 @@ export function CycleReviewCard({
     cycleDetailsError,
     refetchCycleDetails,
     cycleEvents,
+    plannedCounts,
     deleteEventTimeBlockPending,
     handleDeleteEventTimeBlock,
   } = useCycleReviewCard();
@@ -270,7 +271,7 @@ export function CycleReviewCard({
                 <CycleSendAction
                   cycleId={reviewedCycle.id}
                   cycleName={reviewedCycle.name}
-                  eventCount={cycleEvents.length}
+                  eventCount={plannedCounts?.eventCount ?? 0}
                 />
               </div>
             )}

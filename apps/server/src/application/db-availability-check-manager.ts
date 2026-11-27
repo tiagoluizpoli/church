@@ -50,6 +50,7 @@ import {
   type FlaggedBlock,
 } from '../domain/errors/ask-blocked-flagged-shifts';
 import { AskNoEligibleVolunteersError } from '../domain/errors/ask-no-eligible-volunteers';
+import { AskNoLiveShiftsError } from '../domain/errors/ask-no-live-shifts';
 import { RemindOnCooldownError } from '../domain/errors/remind-on-cooldown';
 
 const ASK_TRANSITION = 'ask_availability';
@@ -232,6 +233,9 @@ export class DbAvailabilityCheckManager implements IAvailabilityCheckManager {
 
       const servedShifts =
         await this.availabilityCheckRepository.listServedShifts(scope);
+      if (servedShifts.length === 0) {
+        throw new AskNoLiveShiftsError();
+      }
       const flaggedBlocks = flaggedBlocksOf({ servedShifts });
       if (flaggedBlocks.length > 0) {
         throw new AskBlockedFlaggedShiftsError({ flaggedBlocks });

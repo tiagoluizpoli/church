@@ -6,6 +6,7 @@ import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventEditPreview } from '@/features/scheduling/components/planning-admin/event-edit-preview';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
+import { waitForDialogFocus } from '@/tests/setup/dialog';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const previewPlanningEventEdit = vi.fn();
@@ -30,6 +31,7 @@ const BLOCKS = [
     startTime: START,
     endTime: BLOCK_END,
     status: 'active' as const,
+    isHidden: false,
     isOnlyEventTimeBlockInEvent: false,
   },
   {
@@ -38,6 +40,7 @@ const BLOCKS = [
     startTime: START,
     endTime: BLOCK_END,
     status: 'cancelled' as const,
+    isHidden: false,
     isOnlyEventTimeBlockInEvent: false,
   },
 ];
@@ -94,6 +97,7 @@ async function openEditor() {
       name: m.event_edit_preview_action_label({ title: 'Sunday' }),
     }),
   );
+  await waitForDialogFocus();
   return user;
 }
 
@@ -207,6 +211,10 @@ describe('EventEditPreview', () => {
 
   it('shows the Event date once and a same-day block as times, revealing its dates on Outro dia', async () => {
     const user = await openEditor();
+    // The dialog focuses its first field a frame later; wait so it can't pull focus back.
+    await vi.waitFor(() =>
+      expect(screen.getByTestId('event-edit-start-date')).toHaveFocus(),
+    );
 
     expect(screen.getByTestId('event-edit-start-date')).toBeInTheDocument();
     expect(screen.getByTestId('event-edit-end-time')).toBeInTheDocument();

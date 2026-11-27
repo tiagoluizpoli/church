@@ -12,41 +12,21 @@ import type {
   ChurchMembershipFact,
   MinistryMembershipFact,
 } from '../../domain/authority/types';
-import type {
-  ChurchId,
-  MinistryId,
-  RoleId,
-  UserId,
-  VolunteerId,
-} from '../../domain/branded-ids';
+import type { MinistryId, RoleId, VolunteerId } from '../../domain/branded-ids';
 import type {
   AuthorityActorRepository,
+  MembershipFacts,
   ResolveAuthorityActorInput,
 } from '../../domain/contracts/infrastructure/authority-actor.repository';
 import type { MinistryAccessLevel } from '../../domain/entities/ministry-membership';
+import type { AnyDrizzleDb } from '../repositories/drizzle-db.types';
 import { getClient, withActiveVolunteer } from '../repositories/helpers';
-import type { AnyDrizzleDb } from '../repositories/types';
-
-interface ChurchScopedLookupInput {
-  db: AnyDrizzleDb;
-  churchId: ChurchId;
-  userId: UserId;
-}
-
-interface ResolveMembershipFactsInput {
-  db: AnyDrizzleDb;
-  churchId: ChurchId;
-  volunteerId: VolunteerId;
-}
-
-interface MembershipFacts {
-  ministryMemberships: MinistryMembershipFact[];
-}
-
-interface MembershipRoleRow {
-  membershipId: string;
-  roleId: string;
-}
+import type {
+  ChurchScopedLookupInput,
+  DrizzleAuthorityActorResolverInput,
+  MembershipRoleRow,
+  ResolveMembershipFactsInput,
+} from './drizzle-authority-actor-resolver.types';
 
 /** Collect junction-table rows into a `membershipId -> row` lookup. */
 function groupByMembership<TRow extends { membershipId: string }>(
@@ -62,10 +42,6 @@ function groupByMembership<TRow extends { membershipId: string }>(
     grouped.set(row.membershipId, [row]);
   }
   return grouped;
-}
-
-interface DrizzleAuthorityActorResolverInput {
-  db: AnyDrizzleDb;
 }
 
 /**

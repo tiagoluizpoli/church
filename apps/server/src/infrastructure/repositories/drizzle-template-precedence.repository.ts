@@ -11,12 +11,9 @@ import type {
   UpdateTemplatePrecedenceInput,
 } from '../../domain/contracts/infrastructure/template-precedence.repository';
 import type { TemplatePrecedence } from '../../domain/template-precedence';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type { DrizzleTemplatePrecedenceRepositoryInput } from './drizzle-template-precedence.repository.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleTemplatePrecedenceRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 export class DrizzleTemplatePrecedenceRepository
   implements TemplatePrecedenceRepository

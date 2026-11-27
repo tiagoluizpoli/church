@@ -25,6 +25,7 @@ import {
   asc,
   eq,
   exists,
+  getTableColumns,
   gt,
   inArray,
   isNull,
@@ -75,14 +76,15 @@ import type {
   EventWithEventTimeBlocks,
 } from '../../domain/entities/event';
 import { deriveScheduleParticipationState } from '../../domain/entities/ministry-participation';
-import type { CancellationScopeAssignment } from '../../domain/services/event-cancellation';
+import type { CancellationScopeAssignment } from '../../domain/services/planning/event-cancellation.types';
 import type {
   MoveClashCandidate,
   MoveScopeAssignment,
-} from '../../domain/services/event-move';
+} from '../../domain/services/planning/event-move.types';
 import { mapEvent } from '../mappers/event.mapper';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import type { DrizzlePlanningEventRepositoryInput } from './drizzle-planning-event.repository.types';
 import {
   assertPlaceAddresses,
@@ -90,7 +92,7 @@ import {
   isValidUuid,
   withChurchIsolation,
 } from './helpers';
-import type { AnyDrizzleDb } from './types';
+import { shownEventTimeBlock } from './live-event-time-block';
 
 export class DrizzlePlanningEventRepository implements PlanningEventRepository {
   constructor({ db }: DrizzlePlanningEventRepositoryInput) {
@@ -138,6 +140,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         ...(input.start !== undefined ? { start: input.start } : {}),
         ...(input.end !== undefined ? { end: input.end } : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
+        ...(input.isHidden !== undefined ? { isHidden: input.isHidden } : {}),
         updatedAt: nowAsDate(),
       })
       .where(
@@ -210,6 +213,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         and(
           eq(event.cycleId, input.cycleId),
           withChurchIsolation({ table: event, churchId: input.churchId }),
+          input.shownOnly ? eq(event.isHidden, false) : undefined,
         ),
       )
       .orderBy(
@@ -222,8 +226,9 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     return Promise.all(
       eventRows.map(async (eventRow) => {
         const eventTimeBlockRows = await db
-          .select()
+          .select(getTableColumns(eventTimeBlock))
           .from(eventTimeBlock)
+          .innerJoin(event, eq(event.id, eventTimeBlock.eventId))
           .where(
             and(
               eq(eventTimeBlock.eventId, eventRow.id),
@@ -231,6 +236,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
                 table: eventTimeBlock,
                 churchId: input.churchId,
               }),
+              input.shownOnly ? shownEventTimeBlock() : undefined,
             ),
           )
           .orderBy(
@@ -794,11 +800,12 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
   async cancelEventTimeBlock({
     churchId,
     eventTimeBlockId,
+    isHidden = false,
     tx,
   }: CancelEventTimeBlockInput): Promise<void> {
     await getClient({ db: this.db, tx })
       .update(eventTimeBlock)
-      .set({ status: 'cancelled' })
+      .set({ status: 'cancelled', isHidden })
       .where(
         and(
           withChurchIsolation({ table: eventTimeBlock, churchId }),

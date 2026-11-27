@@ -1,24 +1,20 @@
 import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
 import type {
-  NotificationSink,
+  IInboxNotificationSink,
+  InboxNotificationSinkDependencies,
+} from '../domain/contracts/application/inbox-notification-sink';
+import type {
   SinkDeliverInput,
   SinkOutcome,
 } from '../domain/contracts/application/notifier';
 import type { NotificationRepository } from '../domain/contracts/infrastructure/notification.repository';
 import type { NotificationPayload } from '../domain/notification-kinds';
 
-interface InboxNotificationSinkDependencies {
-  notificationRepository: NotificationRepository;
-}
-
 /**
  * Writes the member inbox row, keyed by the delivery: a replay keeps the
  * existing row, its frozen facts and its read state.
  */
-export class InboxNotificationSink
-  implements
-    NotificationSink<ChurchRecipient, ChurchRecipient, NotificationPayload>
-{
+export class InboxNotificationSink implements IInboxNotificationSink {
   private readonly notificationRepository: NotificationRepository;
 
   constructor({ notificationRepository }: InboxNotificationSinkDependencies) {

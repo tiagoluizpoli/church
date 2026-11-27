@@ -8,6 +8,7 @@ import { DbVolunteerManager } from '@/application/db-volunteer-manager';
 import { UsualSetupStaffingSeeder } from '@/application/usual-setup-staffing-seeder';
 import type { IChurchNotifications } from '@/domain/contracts/application/church-notifications';
 import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import { ProfileSeeder } from '@/domain/services/church-identity/profile-seeder';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
@@ -145,6 +146,7 @@ export function createSchedulingManagers({
         db: schedulingTestDb,
       }),
       staffingSeeder: new UsualSetupStaffingSeeder({
+        profileSeeder: new ProfileSeeder(),
         participationRepository: participationRepo,
         shiftRepository: shiftRepo,
         usualSetupRepository,

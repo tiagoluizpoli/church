@@ -38,28 +38,42 @@ Load for backend, API, database, security, tenancy, or infrastructure work.
 
 ## Contracts and composition
 
-Owner rule. The existing code predates it; follow this section, never the
-neighbouring file. [#1129](https://github.com/tiagoluizpoli/church/issues/1129)
-adds the guard.
+Owner rule. `bun run lint` and `validate:affected` fail on an `interface` or
+`type` declared in a server implementation file
+([the server types guard](tooling.md#server-types)).
 
-- An implementation file holds only implementation. Every `interface` and
-  `type` a server class uses lives in its contract: public inputs and
-  outputs, private helper inputs, result shapes and its `...Dependencies` bag.
-  Application classes use `domain/contracts/application/<name>.ts`, and
-  repositories use `domain/contracts/infrastructure/<name>.repository.ts`.
-  Drizzle row and query types cannot enter the domain, so they sit beside
-  their repository in `<name>.repository.types.ts`.
-- Each class implements its `I<Name>`, is built once in
-  `main/di/build-managers.ts`, and is injected, typed by that interface.
-  Reads that several modules share become a small injected reader with its
-  own contract.
+- An implementation file holds only implementation. Each type has one home:
+  - An application class: its public inputs and outputs, private helper inputs,
+    result shapes and `...Dependencies` bag go in
+    `domain/contracts/application/<name>.ts`.
+  - A repository: `domain/contracts/infrastructure/<name>.repository.ts`.
+    Drizzle row and query types cannot enter the domain, so they sit in the
+    repository's sibling `.types.ts`.
+  - Any other adapter: what callers see goes in
+    `domain/contracts/infrastructure/<name>.ts`. A type that names a
+    third-party client stays beside the adapter in its `.types.ts`.
+  - HTTP shapes (`api/`) and composition-root shapes (`main/`): a sibling
+    `.types.ts`, unless a domain contract already covers them. `api/dtos/`
+    holds the schemas and their types.
+- Each application class implements its `I<Name>`. Repository and other
+  infrastructure contracts keep their names without the `I`
+  (`ChurchRepository`, `EmailSender`). Controllers implement
+  `FastifyController` (`api/contracts/fastify-controller.ts`).
+- Build each class once in the composition root (`main/di/`) and inject it,
+  typed by its contract. A class never constructs another injectable class.
+  Reads that several modules share become a small injected reader with its own
+  contract.
 - A contract imports another contract by its full alias, such as
   `@/domain/contracts/infrastructure/transaction-context`. Biome's
   domain-layer rule allows only import paths that contain `domain`.
-- Pure domain rules (`domain/services/`) are grouped by domain concept, and
-  each rule's types sit in a sibling `<rule>.types.ts`. A rule takes the
-  entities themselves. Behaviour that belongs to one entity is a method on it,
-  such as `Shift.overlaps`.
+- Pure domain rules (`domain/services/`) are grouped by domain concept
+  (`scheduling/`, `planning/`, `invitations/`, `notifications/`,
+  `church-identity/`), and each rule's types sit in a sibling
+  `<rule>.types.ts`. A rule gets its own folder inside a concept only at three
+  or more files.
+- A rule takes the entities themselves. Behaviour that belongs to one entity is
+  a method on it, such as `Shift.overlaps`; a type that only copies an
+  entity's fields is the smell that points there.
 
 ## Rollback-compatible migrations
 

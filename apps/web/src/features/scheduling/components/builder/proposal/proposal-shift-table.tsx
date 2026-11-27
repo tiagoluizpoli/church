@@ -14,6 +14,7 @@ import { dateLabel } from '../../../utils/builder/cycle-builder-date.utils';
 import { CoverageMeter, PickNotes, ReasonPopover } from './proposal-parts';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { GetAssignmentProposal200AdditionsItem } from '@/infrastructure/api/churchAPI.schemas';
+import { STRUCK } from '@/lib/struck';
 import { cn } from '@/lib/utils';
 import { formatTimeOf } from '@/shared/utils/church-time';
 
@@ -192,7 +193,7 @@ const PickRow = memo(function PickRow({
               // The name wins the space; the status note truncates instead.
               'max-w-full shrink-0 truncate',
               row.kind === 'addition' && 'font-semibold',
-              isExcluded && 'text-muted-foreground line-through',
+              isExcluded && STRUCK,
             )}
           >
             {row.kind === 'existing'

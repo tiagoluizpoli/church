@@ -92,6 +92,7 @@ import {
   mapMinistryParticipation,
   mapParticipationEventTimeBlockInclusion,
 } from '../mappers/ministry-participation.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import type {
   AfterPositionInput,
   DrizzleMinistryParticipationRepositoryInput,
@@ -104,7 +105,6 @@ import {
   withChurchIsolation,
 } from './helpers';
 import { liveEventTimeBlock } from './live-event-time-block';
-import type { AnyDrizzleDb } from './types';
 
 const NOT_SERVING: ScheduleStage = 'not_serving';
 

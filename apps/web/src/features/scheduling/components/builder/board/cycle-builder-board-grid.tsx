@@ -27,18 +27,19 @@ import {
   isActiveAssignment,
   isCancelledEvent,
 } from '../../../utils/scheduling-rules';
-import { CancelledBadge } from '../../cancelled-badge';
 import {
   CycleBuilderCell,
   type CycleBuilderCellSelectInput,
   type MoveAssignmentInput,
 } from './cycle-builder-cell';
 import type { FailedAssignmentWrite } from './cycle-builder-cell-parts';
+import { CancelledBadge } from '@/components/cancelled-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useMediaQuery, XL_MEDIA_QUERY } from '@/hooks/use-media-query';
+import { STRUCK } from '@/lib/struck';
 import { cn } from '@/lib/utils';
 
 interface BoardEmptyStateProps {
@@ -239,7 +240,7 @@ export function CycleBuilderBoardGrid({
                             className={cn(
                               'truncate font-semibold text-foreground text-sm',
                               isCancelledEvent({ eventStatus: event.status }) &&
-                                'text-muted-foreground line-through',
+                                STRUCK,
                             )}
                           >
                             {event.title}
@@ -276,8 +277,7 @@ export function CycleBuilderBoardGrid({
                                 <h3
                                   className={cn(
                                     'font-medium text-foreground text-xs',
-                                    eventTimeBlock.cancelled &&
-                                      'text-muted-foreground line-through',
+                                    eventTimeBlock.cancelled && STRUCK,
                                   )}
                                 >
                                   {eventTimeBlock.label ??

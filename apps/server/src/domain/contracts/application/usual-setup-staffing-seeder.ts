@@ -9,9 +9,10 @@ import type {
 import type { DefaultDirection } from '../../entities/ministry';
 import type { MinistryParticipation } from '../../entities/ministry-participation';
 import type {
+  IProfileSeeder,
   ParticipationSeedPlan,
   ProfileSeederEntry,
-} from '../../services/profile-seeder';
+} from '../../services/church-identity/profile-seeder.types';
 import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '@/domain/contracts/infrastructure/ministry-participation.repository';
 import type { ShiftRepository } from '@/domain/contracts/infrastructure/shift.repository';
@@ -79,6 +80,7 @@ export interface UsualSetupStaffingSeederDependencies {
   shiftRepository: ShiftRepository;
   usualSetupRepository: UsualSetupRepository;
   ministryRepository: MinistryRepository;
+  profileSeeder: IProfileSeeder;
 }
 
 /**

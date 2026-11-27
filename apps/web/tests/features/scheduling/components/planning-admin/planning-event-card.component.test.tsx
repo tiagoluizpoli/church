@@ -54,6 +54,7 @@ function rowWithTwoEventTimeBlocks(): CycleCalendarTableRow {
     start: '2026-08-02T09:00:00Z',
     end: '2026-08-02T11:00:00Z',
     status: 'scheduled',
+    isHidden: false,
     eventTimeBlocks: [
       {
         eventTimeBlockId: 'event-time-block-1',
@@ -61,6 +62,7 @@ function rowWithTwoEventTimeBlocks(): CycleCalendarTableRow {
         startTime: '2026-08-02T09:00:00Z',
         endTime: '2026-08-02T10:00:00Z',
         status: 'active',
+        isHidden: false,
         isOnlyEventTimeBlockInEvent: false,
       },
       {
@@ -69,6 +71,7 @@ function rowWithTwoEventTimeBlocks(): CycleCalendarTableRow {
         startTime: '2026-08-02T10:00:00Z',
         endTime: '2026-08-02T11:00:00Z',
         status: 'active',
+        isHidden: false,
         isOnlyEventTimeBlockInEvent: false,
       },
     ],
@@ -82,6 +85,7 @@ function oneEventTimeBlockRow(): CycleCalendarTableRow {
     start: '2026-08-05T19:00:00Z',
     end: '2026-08-05T21:00:00Z',
     status: 'scheduled',
+    isHidden: false,
     eventTimeBlocks: [
       {
         eventTimeBlockId: 'event-time-block-3',
@@ -89,6 +93,7 @@ function oneEventTimeBlockRow(): CycleCalendarTableRow {
         startTime: '2026-08-05T19:00:00Z',
         endTime: '2026-08-05T20:00:00Z',
         status: 'active',
+        isHidden: false,
         isOnlyEventTimeBlockInEvent: true,
       },
     ],
@@ -359,6 +364,7 @@ describe('PlanningEventCard review content', () => {
           start: '2026-08-07T20:00:00Z',
           end: '2026-08-09T15:00:00Z',
           status: 'scheduled',
+          isHidden: false,
           eventTimeBlocks: [
             {
               eventTimeBlockId: 'block-vigil',
@@ -366,6 +372,7 @@ describe('PlanningEventCard review content', () => {
               startTime: '2026-08-07T22:00:00Z',
               endTime: '2026-08-08T02:00:00Z',
               status: 'active',
+              isHidden: false,
               isOnlyEventTimeBlockInEvent: false,
             },
             {
@@ -374,6 +381,7 @@ describe('PlanningEventCard review content', () => {
               startTime: '2026-08-09T13:00:00Z',
               endTime: '2026-08-09T15:00:00Z',
               status: 'active',
+              isHidden: false,
               isOnlyEventTimeBlockInEvent: false,
             },
           ],
@@ -505,13 +513,15 @@ describe('PlanningEventCard cancellation', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps a cancelled Event visible, greyed and struck through with its badge and no actions', () => {
-    render(
-      <PlanningEventCard
-        row={{ ...rowWithTwoEventTimeBlocks(), status: 'cancelled' }}
-        isReadOnly
-        {...baseProps()}
-      />,
+  it('keeps a cancelled Event visible, greyed and struck through, offering only Hide', () => {
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="UTC">
+        <PlanningEventCard
+          row={{ ...rowWithTwoEventTimeBlocks(), status: 'cancelled' }}
+          isReadOnly
+          {...baseProps()}
+        />
+      </TimezoneProvider>,
     );
 
     const card = screen.getByTestId('planning-event-card');
@@ -525,6 +535,15 @@ describe('PlanningEventCard cancellation', () => {
     expect(
       within(card).queryAllByRole('button', { name: /Cancelar|Mover/ }),
     ).toHaveLength(0);
+    expect(
+      within(within(card).getByTestId('planning-event-actions')).getAllByRole(
+        'button',
+      ),
+    ).toEqual([
+      within(card).getByRole('button', {
+        name: 'Ocultar evento cancelado: Sunday Service',
+      }),
+    ]);
   });
 });
 
@@ -573,5 +592,30 @@ describe('PlanningEventCard block cancellation', () => {
     expect(screen.getByText('Message').parentElement).not.toHaveClass(
       'line-through',
     );
+  });
+
+  it('offers no move preview on a cancelled block, which cannot move', () => {
+    const row = rowWithTwoEventTimeBlocks();
+    const [worship, message] = row.eventTimeBlocks;
+    if (!worship || !message) throw new Error('fixture needs two blocks');
+    row.eventTimeBlocks = [worship, { ...message, status: 'cancelled' }];
+
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="UTC">
+        <PlanningEventCard
+          row={row}
+          isReadOnly
+          canPreviewMove
+          {...baseProps()}
+        />
+      </TimezoneProvider>,
+    );
+
+    const moveButton = (title: string) =>
+      screen.queryByRole('button', {
+        name: m.event_move_preview_action_label({ title }),
+      });
+    expect(moveButton('Sunday Service · Worship')).toBeInTheDocument();
+    expect(moveButton('Sunday Service · Message')).not.toBeInTheDocument();
   });
 });

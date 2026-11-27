@@ -10,12 +10,9 @@ import type {
   LockChurchAccessInput,
   SaveChurchAccessChangeInput,
 } from '../../domain/contracts/infrastructure/church-access.repository';
+import type { DrizzleChurchAccessRepositoryInput } from './drizzle-church-access.repository.types';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import { getClient } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleChurchAccessRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 /** Church access on Better Auth's `member.role`, audited in `identity_audit`. */
 export class DrizzleChurchAccessRepository implements ChurchAccessRepository {

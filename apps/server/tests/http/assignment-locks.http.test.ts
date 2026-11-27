@@ -51,6 +51,7 @@ import {
 } from '@/domain/branded-ids';
 import { MinistryInUseError } from '@/domain/errors/ministry-in-use';
 import { UpcomingAssignmentsError } from '@/domain/errors/upcoming-assignments';
+import { CycleEventGenerator } from '@/domain/services/planning/cycle-event-generator';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
 import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
@@ -165,6 +166,7 @@ beforeAll(async () => {
     eventTemplateManager: {} as never,
     ministryManager: {} as never,
     planningEventManager: new DbPlanningEventManager({
+      cycleEventGenerator: new CycleEventGenerator(),
       cycleRepository: new DrizzleCycleRepository({ db }),
       eventRepository: new DrizzlePlanningEventRepository({ db }),
       precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),

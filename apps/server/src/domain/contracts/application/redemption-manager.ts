@@ -6,11 +6,27 @@ import type {
   UserId,
   VolunteerId,
 } from '../../branded-ids';
+import type { MinistryInvitation } from '../../entities/ministry-invitation';
 import type {
   PublicRedemptionMinistry,
   PublicRedemptionPreview,
 } from '../../entities/public-redemption-preview';
 import type { RedemptionBundleMinistry } from '../../entities/redemption-bundle';
+import type { IInvitationVerificationCodeManager } from './invitation-verification-code-manager';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type { InvitationVerificationCodeRepository } from '@/domain/contracts/infrastructure/invitation-verification-code.repository';
+import type {
+  ChurchInvitationContext,
+  MinistryInvitationContext,
+  MinistryInvitationRepository,
+} from '@/domain/contracts/infrastructure/ministry-invitation.repository';
+import type { RedemptionRepository } from '@/domain/contracts/infrastructure/redemption.repository';
+import type { RedemptionFailureLog } from '@/domain/contracts/infrastructure/redemption-failure-log';
+import type { RedemptionIdentityGateway } from '@/domain/contracts/infrastructure/redemption-identity-gateway';
+import type { SecurityLogRepository } from '@/domain/contracts/infrastructure/security-log.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
+import type { VerificationCodeInspector } from '@/domain/contracts/infrastructure/verification-code-inspector';
 
 export interface AcceptPendingMinistryInvitationInput {
   churchId: ChurchId;
@@ -295,7 +311,7 @@ export type DeclineInvitationOutcome =
   | DeclineIdentityFailedOutcome;
 
 /** Owns checkpoint three from spec §7.4; no HTTP transport is in #98. */
-export interface RedemptionManager {
+export interface IRedemptionManager {
   getPublicPreview(
     input: GetPublicRedemptionPreviewInput,
   ): Promise<PublicRedemptionPreview | null>;
@@ -335,4 +351,124 @@ export interface RedemptionManager {
   getDebugInvitationLink(
     input: GetDebugInvitationLinkInput,
   ): Promise<string | null>;
+}
+
+export interface DbRedemptionManagerDependencies {
+  churchRepository: ChurchRepository;
+  identityGateway: RedemptionIdentityGateway;
+  invitationRepository: MinistryInvitationRepository;
+  invitationVerificationCodeManager: IInvitationVerificationCodeManager;
+  redemptionRepository: RedemptionRepository;
+  securityLogRepository: SecurityLogRepository;
+  unitOfWork: UnitOfWork;
+  verificationCodeRepository: InvitationVerificationCodeRepository;
+  failureLog: RedemptionFailureLog;
+  /** Non-production only — see `getDebugVerificationCode`. */
+  verificationCodeInspector?: VerificationCodeInspector;
+}
+
+export interface AdmitNewPersonInput {
+  preview: PublicRedemptionPreview;
+  name: string;
+  password: string;
+  correlationId: string;
+  now: Date;
+  tx: TransactionContext;
+}
+
+export interface AdmittedChurchOnly {
+  kind: 'church-only';
+  sourceChurchId: ChurchId;
+  /** The headline half named to the caller; every half stays pending. */
+  ministry: PublicRedemptionMinistry;
+  sessionCookie: string;
+}
+
+export type AdmittedNewPerson = FullRedemptionSuccess | AdmittedChurchOnly;
+
+export interface ReplayCommittedInput {
+  churchInvitationId: ChurchInvitationId;
+  password: string;
+  code: string;
+  idempotencyKey: string;
+  now: Date;
+}
+
+export interface ClassifyIdentityFailureInput {
+  email: string;
+}
+
+export interface ChurchOnlyOutcomeInput {
+  sourceChurchId: ChurchId;
+  destinationChurchId: ChurchId;
+  destinationChurchName: string;
+  ministryInvitationId: AcceptPendingMinistryInvitationInput['ministryInvitationId'];
+  ministryName: string;
+}
+
+export interface MinistryGrantFailureInput {
+  cause: unknown;
+}
+
+export interface AcceptReviewedBundleInput {
+  ministryInvitation: MinistryInvitation;
+  userId: AcceptExistingMemberInput['userId'];
+  sessionCookie: string;
+  reviewToken: string;
+  acceptedAt: Date;
+  correlationId: string;
+  tx: TransactionContext;
+}
+
+export type AcceptedBundle =
+  | { kind: 'full-success'; volunteerId: VolunteerId }
+  | { kind: 'church-only'; sourceChurchId: ChurchId };
+
+export interface ResolveInvitationContextInput {
+  ministryInvitationId: AcceptExistingMemberInput['ministryInvitationId'];
+  userId: AcceptExistingMemberInput['userId'];
+  now: Date;
+  /** The attempt's own correlation id, when the caller has one (e.g. `acceptExistingMember`'s idempotency key). */
+  correlationId?: string;
+}
+
+export type ResolvedInvitationContext =
+  | { status: 'unavailable' }
+  | { status: 'identity-mismatch'; addressedEmail: string }
+  | { status: 'already-accepted'; ministryInvitation: MinistryInvitation }
+  | { status: 'redeemable'; context: MinistryInvitationContext };
+
+export interface ResolveChurchInvitationInput {
+  churchInvitationId: AcceptChurchInvitationInput['churchInvitationId'];
+  userId: AcceptChurchInvitationInput['userId'];
+  now: Date;
+  correlationId?: string;
+}
+
+export type ResolvedChurchInvitation =
+  | { status: 'unavailable' }
+  | { status: 'identity-mismatch'; maskedEmail: string }
+  | { status: 'already-accepted'; churchId: ChurchId }
+  | { status: 'redeemable'; context: ChurchInvitationContext };
+
+export type ChurchAcceptanceResult =
+  | 'accepted'
+  | 'offer-changed'
+  | 'already-accepted'
+  | 'unavailable';
+
+export interface IsInvitationRedeemableInput {
+  ministryInvitation: MinistryInvitation;
+  now: Date;
+}
+
+export interface IsUnexpiredInput {
+  expiresAt: Date;
+  now: Date;
+}
+
+export interface EnsureChurchInvitationPendingInput {
+  churchId: ChurchId;
+  churchInvitationId: string;
+  tx: TransactionContext;
 }

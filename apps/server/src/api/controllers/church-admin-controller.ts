@@ -1,5 +1,4 @@
 import { NotFoundError } from '@church/core';
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -11,6 +10,7 @@ import {
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { ICycleManager } from '../../domain/contracts/application/cycle-manager';
 import type { IEventTemplateManager } from '../../domain/contracts/application/event-template-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
@@ -18,7 +18,6 @@ import type { IPlanningEventManager } from '../../domain/contracts/application/p
 import type { ISetupProgressManager } from '../../domain/contracts/application/setup-progress-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   createCycleBodySchema,
@@ -74,6 +73,8 @@ import {
   eventMoveResponseSchema,
   type MovePlanningEventBody,
   movePlanningEventBodySchema,
+  type SetPlanningHiddenBody,
+  setPlanningHiddenBodySchema,
   type UpdatePlanningEventBody,
   type UpdatePlanningEventDetailsBody,
   updatePlanningEventBodySchema,
@@ -92,10 +93,12 @@ import {
   dateFromInstantString,
   optionalDateFromInstantString,
 } from '../utils/request-time';
-
-interface EditInputInput {
-  body: EditPlanningEventBody;
-}
+import type {
+  ChurchAdminControllerDependencies,
+  EditInputInput,
+  NestedObjectOperationInput,
+  PrecedenceBody,
+} from './church-admin-controller.types';
 
 /** The edit body as the manager reads it: the same for preview and apply. */
 function editInput({ body }: EditInputInput) {
@@ -129,10 +132,6 @@ const cycleEventTimeBlockParamsSchema = z.object({
 });
 const ministryParamsSchema = z.object({ ministryId: z.guid() });
 
-type PrecedenceBody = z.infer<
-  typeof createEventTemplateBodySchema
->['precedences'];
-
 function precedenceAnswers(precedences: PrecedenceBody) {
   return precedences?.map((precedence) => ({
     otherTemplateId: EventTemplateId.from(precedence.otherTemplateId),
@@ -145,22 +144,6 @@ const notFoundResponseSchema = z.object({
   message: z.string(),
 });
 
-interface ChurchAdminControllerDependencies {
-  cycleManager: ICycleManager;
-  eventTemplateManager: IEventTemplateManager;
-  planningEventManager: IPlanningEventManager;
-  activeChurchResolver: IActiveChurchResolver;
-  ministryManager: IMinistryManager;
-  setupProgressManager: ISetupProgressManager;
-  authorityGuard: AuthorityGuard;
-}
-
-interface NestedObjectOperationInput<T> {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  operation: () => Promise<T>;
-}
-
 export class ChurchAdminController implements FastifyController {
   readonly prefix = '/admin';
 
@@ -170,7 +153,7 @@ export class ChurchAdminController implements FastifyController {
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly ministryManager: IMinistryManager;
   private readonly setupProgressManager: ISetupProgressManager;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     cycleManager,
@@ -904,9 +887,11 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId, eventId } = request.params as z.infer<
           typeof cycleEventParamsSchema
         >;
-        const { confirmation } = request.body as CancelPlanningEventBody;
+        const { confirmation, hidden } =
+          request.body as CancelPlanningEventBody;
         assertCancelConfirmation({ confirmation, locale: request.locale });
         const impact = await this.planningEventManager.confirmCancellation({
+          hidden,
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
@@ -914,6 +899,84 @@ export class ChurchAdminController implements FastifyController {
           actingUserId: UserId.from(request.userId),
         });
         return reply.send(impact);
+      },
+    );
+
+    app.put(
+      '/cycles/:cycleId/events/:eventId/hidden',
+      {
+        schema: {
+          params: cycleEventParamsSchema,
+          tags: ['planning'],
+          operationId: 'setPlanningEventHidden',
+          summary: 'Hide or show a cancelled Event',
+          description:
+            'Hide a cancelled Event, with every EventTimeBlock in it, from everyone but ChurchAdmins planning the Cycle, or show it again. Allowed at any time, after its start too, and sends nothing. Refuses an Event that is not cancelled (ILLEGAL_STATE_TRANSITION); an unknown, foreign or wrong-Cycle Event is 404.',
+          body: setPlanningHiddenBodySchema,
+          response: {
+            204: z.null(),
+            404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId } = request.params as z.infer<
+          typeof cycleEventParamsSchema
+        >;
+        const { hidden } = request.body as SetPlanningHiddenBody;
+        await this.planningEventManager.setHidden({
+          churchId: ChurchId.from(request.churchId),
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          scope: { kind: 'event' },
+          hidden,
+        });
+        return reply.status(204).send();
+      },
+    );
+
+    app.put(
+      '/cycles/:cycleId/events/:eventId/event-time-blocks/:eventTimeBlockId/hidden',
+      {
+        schema: {
+          params: cycleEventTimeBlockParamsSchema,
+          tags: ['planning'],
+          operationId: 'setPlanningEventTimeBlockHidden',
+          summary: 'Hide or show a cancelled EventTimeBlock',
+          description:
+            "Set a cancelled EventTimeBlock's own hidden choice; a block of a hidden Event stays hidden whatever its own. Allowed at any time and sends nothing. Refuses a block that is not itself cancelled (ILLEGAL_STATE_TRANSITION); an unknown, foreign or wrong-Cycle block is 404.",
+          body: setPlanningHiddenBodySchema,
+          response: {
+            204: z.null(),
+            404: notFoundResponseSchema,
+            422: validationErrorResponseSchema,
+          },
+        },
+      },
+      async (request, reply) => {
+        const { cycleId, eventId, eventTimeBlockId } =
+          request.params as z.infer<typeof cycleEventTimeBlockParamsSchema>;
+        const { hidden } = request.body as SetPlanningHiddenBody;
+        const updated = await this.withNestedNotFound({
+          request,
+          reply,
+          operation: async () => {
+            await this.planningEventManager.setHidden({
+              churchId: ChurchId.from(request.churchId),
+              cycleId: CycleId.from(cycleId),
+              eventId: EventId.from(eventId),
+              scope: {
+                kind: 'eventTimeBlock',
+                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+              },
+              hidden,
+            });
+            return true;
+          },
+        });
+        if (!updated) return;
+        return reply.status(204).send();
       },
     );
 
@@ -1259,7 +1322,8 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId, eventId, eventTimeBlockId } =
           request.params as z.infer<typeof cycleEventTimeBlockParamsSchema>;
-        const { confirmation } = request.body as CancelPlanningEventBody;
+        const { confirmation, hidden } =
+          request.body as CancelPlanningEventBody;
         assertCancelConfirmation({ confirmation, locale: request.locale });
         const impact = await this.withNestedNotFound({
           request,
@@ -1274,6 +1338,7 @@ export class ChurchAdminController implements FastifyController {
                 eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
               },
               actingUserId: UserId.from(request.userId),
+              hidden,
             }),
         });
         if (!impact) return;

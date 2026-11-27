@@ -13,8 +13,8 @@ import {
 import { Link } from '@tanstack/react-router';
 import { ChevronRightIcon, TriangleAlertIcon } from 'lucide-react';
 import { memo, useEffect, useMemo, useState } from 'react';
-import { CancelledBadge } from '../cancelled-badge';
 import { blockTitle, coverageTone } from '../participation-prepare.utils';
+import { CancelledBadge } from '@/components/cancelled-badge';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';

@@ -118,7 +118,7 @@ const CHURCH_INVITATION_SOURCE_PREFIXES = [
   'apps/server/src/domain/contracts/application/redemption-manager.ts',
   'apps/server/src/domain/contracts/infrastructure/ministry-invitation.repository.ts',
   'apps/server/src/domain/entities/redemption-bundle.ts',
-  'apps/server/src/domain/services/redemption-review-token.ts',
+  'apps/server/src/domain/services/invitations/redemption-review-token.ts',
   'apps/server/src/infrastructure/repositories/drizzle-ministry-invitation.repository.ts',
   'apps/web/src/routeTree.gen.ts',
 ];
@@ -251,6 +251,16 @@ const PREPARE_SPEC_PATHS = [
   'tests/scheduling/us4-schedule-publish.spec.ts',
 ];
 
+// #1167: committing, removing and reassigning Assignments, and covering a
+// swap request.
+const ASSIGNMENT_SPEC_PATHS = [
+  'tests/scheduling/qualification.spec.ts',
+  'tests/scheduling/builder-event-time-block-focus.spec.ts',
+  'tests/scheduling/us5-leader-reassign.spec.ts',
+  'tests/scheduling/us4-schedule-publish.spec.ts',
+  ...SWAP_REQUEST_SPEC_PATHS,
+];
+
 // #900: the scoped Schedules list (`/schedules`).
 const SCHEDULE_LIST_SPEC_PATHS = [
   'tests/scheduling/capability-index.spec.ts',
@@ -277,6 +287,16 @@ const PREPARE_ROUTE_FILES = [
   'schedules/index.tsx',
   'schedules/$ministryId/$cycleId/_prepare',
 ].map((f) => `apps/web/src/routes/app/_active-church/${f}`);
+
+function mapEach({
+  paths,
+  specPaths,
+}: {
+  paths: string[];
+  specPaths: string[];
+}): JourneyMapping[] {
+  return paths.map((sourcePathPrefix) => ({ sourcePathPrefix, specPaths }));
+}
 
 export const JOURNEY_MAP: JourneyMapping[] = [
   ...[
@@ -354,6 +374,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     'apps/server/src/domain/entities/public-event.ts',
     'apps/server/src/infrastructure/repositories/drizzle-church-programme.repository.ts',
     'apps/server/src/infrastructure/repositories/drizzle-public-event.repository.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-public-event.repository.types.ts',
   ].map((sourcePathPrefix) => ({
     sourcePathPrefix,
     specPaths: PUBLIC_CHURCH_PROFILE_SPEC_PATHS,
@@ -407,10 +428,10 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: [...MINISTRIES_JOURNEY_SPEC_PATHS, ...CRITICAL_SMOKE_SPEC_PATHS],
   })),
   ...[
-    'apps/server/src/domain/contracts/application/participation-manager.ts',
     'apps/server/src/domain/contracts/infrastructure/ministry-participation.repository.ts',
     'apps/server/src/domain/entities/ministry-participation.ts',
     'apps/server/src/infrastructure/repositories/drizzle-ministry-participation.repository.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-ministry-participation.repository.types.ts',
   ].map((sourcePathPrefix) => ({
     sourcePathPrefix,
     specPaths: [
@@ -536,17 +557,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     sourcePathPrefix: 'apps/web/src/shared/utils/active-church-switch.ts',
     specPaths: ['tests/identity/active-church-switching.spec.ts'],
-  },
-  {
-    // #288 — this prefix used to be the bare `.../scheduling` ancestor,
-    // which (via startsWith) also matched every cycles/prepare/
-    // assign path below it, pulling smoke/schedule-publish/guard-matrix/
-    // capability-index into unrelated route changes. Narrowed to the exact
-    // index route file: capability-index.spec.ts is the only spec that
-    // navigates to the bare `/scheduling` landing page it renders.
-    sourcePathPrefix:
-      'apps/web/src/routes/app/_active-church/scheduling/index.tsx',
-    specPaths: ['tests/scheduling/capability-index.spec.ts'],
   },
   {
     // Rendered only within the planning-admin surface (planning-admin.tsx
@@ -865,7 +875,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   // J8 exercises publication, changes, Send updates and recipient bell details.
   ...[
-    'apps/server/src/application/db-participation-manager.ts',
     'apps/server/src/domain/schedule-changes.ts',
     'apps/server/src/domain/notification-kinds.ts',
     'apps/server/src/application/church-notifier.ts',
@@ -900,32 +909,10 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/us4-schedule-publish.spec.ts',
     ],
   },
-  // #218 — the notification bell (header, every page) and the /notifications
-  // inbox page, proven end to end by this one spec.
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/components/notification-bell.tsx',
-    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
-  },
+  // #218 — the /notifications inbox page, proven end to end by this one spec.
   {
     sourcePathPrefix:
       'apps/web/src/routes/app/_active-church/notifications.tsx',
-    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/components/notifications-inbox-section.tsx',
-    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/hooks/use-notification-inbox.ts',
-    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
-  },
-  {
-    // Drives the deep-link the spec asserts on when clicking a notification.
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/lib/notification-navigation.ts',
     specPaths: NOTIFICATION_BELL_SPEC_PATHS,
   },
   {
@@ -986,13 +973,13 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     'apps/web/src/features/scheduling/components/planning-admin/event-cancel-dialog.tsx',
     'apps/web/src/features/scheduling/components/planning-admin/event-edit-page.tsx',
     'apps/server/src/api/utils/cancel-confirmation.ts',
-    'apps/server/src/application/cancel-assignment.ts',
-    'apps/server/src/domain/services/event-cancellation.ts',
+    'apps/server/src/domain/services/planning/event-cancellation.ts',
     'apps/server/src/domain/errors/admin-cancellation-window-closed.ts',
     'apps/server/src/domain/errors/cancel-confirmation-mismatch.ts',
     'apps/server/src/domain/contracts/application/planning-event-manager.ts',
     'apps/server/src/domain/contracts/infrastructure/planning-event.repository.ts',
     'apps/server/src/infrastructure/repositories/drizzle-planning-event.repository.ts',
+    'apps/server/src/infrastructure/repositories/drizzle-planning-event.repository.types.ts',
     'apps/server/src/infrastructure/repositories/drizzle-assignment-audit.repository.ts',
     'apps/server/src/infrastructure/mappers/event-time-block.mapper.ts',
     'apps/server/src/infrastructure/services/email-templates.ts',
@@ -1077,6 +1064,155 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       ...NOTIFICATION_BELL_SPEC_PATHS,
     ],
   },
+  // #1167: the scheduling modules split out of the old participation manager,
+  // the shared Assignment rules, and their web twins.
+  ...mapEach({
+    paths: [
+      'apps/server/src/application/db-assignment-manager.ts',
+      'apps/server/src/domain/contracts/application/assignment-manager.ts',
+      'apps/server/src/domain/errors/shift-started.ts',
+    ],
+    specPaths: ASSIGNMENT_SPEC_PATHS,
+  }),
+  // Cancelling an Event releases Assignments through the lifecycle too.
+  ...mapEach({
+    paths: [
+      'apps/server/src/application/assignment-lifecycle.ts',
+      'apps/server/src/domain/contracts/application/assignment-lifecycle.ts',
+    ],
+    specPaths: [...ASSIGNMENT_SPEC_PATHS, ...ADMIN_CANCEL_SPEC_PATHS],
+  }),
+  ...mapEach({
+    paths: [
+      'apps/server/src/domain/services/scheduling/assignment-eligibility.ts',
+      'apps/server/src/domain/services/scheduling/assignment-eligibility.types.ts',
+      'apps/server/src/api/dtos/assign.dto.ts',
+      'apps/server/src/api/dtos/cycle-builder.dto.ts',
+      'apps/web/src/features/scheduling/utils/scheduling-rules.ts',
+      'apps/web/src/features/scheduling/utils/shift-verdict.ts',
+    ],
+    specPaths: [...ASSIGNMENT_SPEC_PATHS, ...BUILDER_SPEC_PATHS],
+  }),
+  ...mapEach({
+    paths: ['apps/server/src/domain/event-time-block-cancellation.ts'],
+    specPaths: [
+      ...ASSIGNMENT_SPEC_PATHS,
+      ...BUILDER_SPEC_PATHS,
+      ...ADMIN_CANCEL_SPEC_PATHS,
+    ],
+  }),
+  ...mapEach({
+    paths: ['apps/server/src/domain/entities/shift.ts'],
+    specPaths: [...ASSIGNMENT_SPEC_PATHS, ...PREPARE_SPEC_PATHS],
+  }),
+  ...mapEach({
+    paths: [
+      'apps/server/src/application/db-assignment-proposal-manager.ts',
+      'apps/server/src/domain/contracts/application/assignment-proposal-manager.ts',
+      'apps/server/src/domain/services/scheduling/assignment-proposal.ts',
+    ],
+    specPaths: ['tests/scheduling/us4-schedule-publish.spec.ts'],
+  }),
+  ...mapEach({
+    paths: [
+      'apps/server/src/application/db-schedule-builder-reader.ts',
+      'apps/server/src/domain/contracts/application/schedule-builder-reader.ts',
+    ],
+    specPaths: BUILDER_SPEC_PATHS,
+  }),
+  ...mapEach({
+    paths: [
+      'apps/server/src/application/db-schedule-publisher.ts',
+      'apps/server/src/domain/contracts/application/schedule-publisher.ts',
+    ],
+    specPaths: [
+      'tests/scheduling/smoke.spec.ts',
+      'tests/scheduling/us4-schedule-publish.spec.ts',
+    ],
+  }),
+  // What changed since a Volunteer was last told: Send updates.
+  ...mapEach({
+    paths: [
+      'apps/server/src/application/db-schedule-change-reader.ts',
+      'apps/server/src/domain/contracts/application/schedule-change-reader.ts',
+    ],
+    specPaths: [
+      'tests/scheduling/us4-schedule-publish.spec.ts',
+      ...SWAP_REQUEST_SPEC_PATHS,
+      ...ADMIN_EDIT_SPEC_PATHS,
+    ],
+  }),
+  ...mapEach({
+    paths: [
+      'apps/server/src/application/db-schedule-read-model.ts',
+      'apps/server/src/domain/contracts/application/schedule-read-model.ts',
+    ],
+    specPaths: [...SCHEDULE_LIST_SPEC_PATHS, ...PREPARE_SPEC_PATHS],
+  }),
+  ...mapEach({
+    paths: [
+      'apps/server/src/application/db-prepare-manager.ts',
+      'apps/server/src/domain/contracts/application/prepare-manager.ts',
+      'apps/server/src/application/participation-view-filter.ts',
+    ],
+    specPaths: [
+      ...SCHEDULE_LIST_SPEC_PATHS,
+      ...PREPARE_SPEC_PATHS,
+      ...LEADER_AVAILABILITY_SPEC_PATHS,
+    ],
+  }),
+  ...mapEach({
+    paths: [
+      'apps/server/src/application/db-participation-reader.ts',
+      'apps/server/src/domain/contracts/application/participation-reader.ts',
+    ],
+    specPaths: [
+      ...BUILDER_SPEC_PATHS,
+      ...PREPARE_SPEC_PATHS,
+      'tests/scheduling/us4-schedule-publish.spec.ts',
+    ],
+  }),
+  // Usual setup is edited on the Ministry and read by Prepare.
+  ...mapEach({
+    paths: [
+      'apps/server/src/application/db-usual-setup-manager.ts',
+      'apps/server/src/domain/contracts/application/usual-setup-manager.ts',
+      'apps/server/src/api/controllers/usual-setup-controller.ts',
+      'apps/server/src/api/dtos/usual-setup.dto.ts',
+    ],
+    specPaths: [...MINISTRIES_JOURNEY_SPEC_PATHS, ...PREPARE_SPEC_PATHS],
+  }),
+  ...mapEach({
+    paths: [
+      'apps/server/src/domain/contracts/application/usual-setup-staffing-seeder.ts',
+    ],
+    specPaths: CYCLE_HANDOFF_SPEC_PATHS,
+  }),
+  ...mapEach({
+    paths: [
+      'apps/server/src/domain/contracts/application/availability-check-manager.ts',
+      'apps/server/src/infrastructure/repositories/drizzle-availability-check.repository.types.ts',
+    ],
+    specPaths: LEADER_AVAILABILITY_SPEC_PATHS,
+  }),
+  // The live-Time-block filter of the participation and Availability reads.
+  ...mapEach({
+    paths: [
+      'apps/server/src/infrastructure/repositories/live-event-time-block.ts',
+    ],
+    specPaths: [...PREPARE_SPEC_PATHS, ...LEADER_AVAILABILITY_SPEC_PATHS],
+  }),
+  ...mapEach({
+    paths: [
+      'apps/server/src/domain/contracts/application/volunteer-manager.ts',
+    ],
+    specPaths: [
+      ...VOLUNTEER_AVAILABILITY_SPEC_PATHS,
+      'tests/scheduling/us5-leader-reassign.spec.ts',
+      ...NOTIFICATION_BELL_SPEC_PATHS,
+      ...ADMIN_CANCEL_SPEC_PATHS,
+    ],
+  }),
   // #327 — journey recipes build the graph a spec starts from, through the
   // shared seed builders, blueprints and the provisioning scripts they call:
   // a change to any can break the journeys that load a recipe. Add each spec

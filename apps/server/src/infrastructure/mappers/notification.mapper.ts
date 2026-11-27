@@ -1,6 +1,4 @@
-import type { notification } from '@church/db';
 import { fromDate } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
   NotificationId,
@@ -12,8 +10,7 @@ import {
   type NotificationPayload,
   notificationKindDataSchemas,
 } from '../../domain/notification-kinds';
-
-type NotificationRow = InferSelectModel<typeof notification>;
+import type { NotificationRow } from './notification.mapper.types';
 
 /** Re-validates the persisted kind/data boundary so a corrupt row fails loudly. */
 export function mapNotification(row: NotificationRow): Notification {

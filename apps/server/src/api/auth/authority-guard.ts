@@ -1,5 +1,9 @@
 import type { AuthorityDecision } from '../../domain/authority/types';
 import type {
+  AuthorityGuardDependencies,
+  IAuthorityGuard,
+} from '../../domain/contracts/application/authority-guard';
+import type {
   CallerCapabilitiesProjection,
   CanManageChurchInput,
   CanManageEventInput,
@@ -13,17 +17,13 @@ import type {
   ResolveCallerCapabilitiesInput,
 } from '../../domain/contracts/application/authority-manager';
 
-interface AuthorityGuardDependencies {
-  manager: IAuthorityManager;
-}
-
 /**
  * Controller-facing wrapper around `IAuthorityManager` — supersedes
  * `SchedulingRbacGuard` and the inline `ctx.isAdmin` / `ctx.isLeader`
  * route-role checks it replaces. Every controller authorization check goes
  * through here.
  */
-export class AuthorityGuard {
+export class AuthorityGuard implements IAuthorityGuard {
   private readonly manager: IAuthorityManager;
 
   constructor({ manager }: AuthorityGuardDependencies) {

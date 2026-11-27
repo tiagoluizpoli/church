@@ -1,5 +1,6 @@
 import type { TimeOfDay } from '@church/time';
 import type {
+  GetCycle200Counts,
   GetCycle200Cycle,
   GetCycle200EventsItem,
   ListCycles200CyclesItem,
@@ -38,6 +39,7 @@ export type CycleSummary = ListCycles200CyclesItem;
 export type PlanningTemplateSummary = ListEventTemplates200TemplatesItem;
 export type SelectedCycle = GetCycle200Cycle;
 export type CycleEventGroup = GetCycle200EventsItem;
+export type CyclePlannedCounts = GetCycle200Counts;
 
 export interface CyclesTableRow {
   id: string;
@@ -63,6 +65,8 @@ export interface CycleCalendarEventTimeBlockRow {
   startTime: string;
   endTime: string;
   status: 'active' | 'cancelled';
+  /** Hidden itself or through its Event. */
+  isHidden: boolean;
   isOnlyEventTimeBlockInEvent: boolean;
 }
 
@@ -73,6 +77,7 @@ export interface CycleCalendarTableRow {
   start: string;
   end: string;
   status: CycleEventGroup['event']['status'];
+  isHidden: boolean;
   eventTimeBlocks: CycleCalendarEventTimeBlockRow[];
 }
 

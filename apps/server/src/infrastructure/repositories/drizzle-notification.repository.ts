@@ -1,6 +1,16 @@
-import { notification } from '@church/db';
+import { event, eventTimeBlock, notification } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, count, desc, eq, isNull, lt, or, sql } from 'drizzle-orm';
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  lt,
+  or,
+  sql,
+} from 'drizzle-orm';
 import type {
   CountUnreadNotificationsInput,
   CreateNotificationInput,
@@ -10,6 +20,7 @@ import type {
   NotificationRepository,
 } from '../../domain/contracts/infrastructure/notification.repository';
 import type {
+  Notification,
   NotificationOwner,
   NotificationPage,
 } from '../../domain/entities/notification';
@@ -18,13 +29,17 @@ import {
   encodeNotificationCursor,
 } from '../../domain/notification-cursor';
 import { schedulePublishedNotificationDataSchema } from '../../domain/notification-kinds';
+import {
+  noticeScope,
+  wordedForHiddenChoice,
+} from '../../domain/services/notifications/hidden-notice';
 import { mapNotification } from '../mappers/notification.mapper';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  DrizzleNotificationRepositoryInput,
+  WithHiddenChoiceInput,
+} from './drizzle-notification.repository.types';
 import { getClient } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleNotificationRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 function ownedBy({ userId, churchId }: NotificationOwner) {
   return and(
@@ -118,7 +133,7 @@ export class DrizzleNotificationRepository implements NotificationRepository {
     });
     const last = pageRows.at(-1);
     return {
-      items,
+      items: await this.withHiddenChoice({ churchId, items, tx }),
       nextCursor:
         rows.length > limit && last
           ? encodeNotificationCursor({
@@ -127,6 +142,56 @@ export class DrizzleNotificationRepository implements NotificationRepository {
             })
           : undefined,
     };
+  }
+
+  /**
+   * Every reader of stored notices comes through `list`, so a hidden Event's
+   * title is dropped here, from the choice as it stands now.
+   */
+  private async withHiddenChoice({
+    churchId,
+    items,
+    tx,
+  }: WithHiddenChoiceInput): Promise<Notification[]> {
+    const scopes = items.flatMap((item) => {
+      const scope = noticeScope({ notification: item });
+      return scope ? [scope] : [];
+    });
+    if (scopes.length === 0) return items;
+    const client = getClient({ db: this.db, tx });
+    const eventIds = scopes.map(({ eventId }) => eventId);
+    const blockIds = scopes.flatMap(({ eventTimeBlockId }) =>
+      eventTimeBlockId ? [eventTimeBlockId] : [],
+    );
+    const [events, blocks] = await Promise.all([
+      client
+        .select({ id: event.id })
+        .from(event)
+        .where(
+          and(
+            eq(event.churchId, churchId),
+            eq(event.isHidden, true),
+            inArray(event.id, eventIds),
+          ),
+        ),
+      client
+        .select({ id: eventTimeBlock.id })
+        .from(eventTimeBlock)
+        .where(
+          and(
+            eq(eventTimeBlock.churchId, churchId),
+            eq(eventTimeBlock.isHidden, true),
+            inArray(eventTimeBlock.id, blockIds),
+          ),
+        ),
+    ]);
+    const hidden = {
+      eventIds: events.map(({ id }) => id),
+      eventTimeBlockIds: blocks.map(({ id }) => id),
+    };
+    return items.map((item) =>
+      wordedForHiddenChoice({ notification: item, hidden }),
+    );
   }
 
   async countUnread({

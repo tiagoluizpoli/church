@@ -82,6 +82,7 @@ import type {
   GetPublishedVolunteerSchedule200SchedulesItem as MinistrySchedule,
   GetPublishedVolunteerSchedule200AssignmentsItem as ScheduleAssignment,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { STRUCK } from '@/lib/struck';
 import { cn } from '@/lib/utils';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useDebouncedSearch } from '@/shared/hooks/use-debounced-search';
@@ -419,6 +420,7 @@ function UpcomingTable({
                 <span
                   className={cn(
                     'block tabular-nums',
+                    assignment.cancelled && STRUCK,
                     byDay &&
                       GROUP_INDENT[
                         leafIndentStep({ depth: row.depth, nested: true })
@@ -433,7 +435,10 @@ function UpcomingTable({
                 <span className="flex items-center gap-2">
                   {/* Rows stay one line: long titles truncate, the full title is one tap away. */}
                   <span
-                    className="block max-w-24 truncate xl:max-w-56 2xl:max-w-52 min-[1800px]:max-w-96"
+                    className={cn(
+                      'block max-w-24 truncate xl:max-w-56 2xl:max-w-52 min-[1800px]:max-w-96',
+                      assignment.cancelled && STRUCK,
+                    )}
                     title={assignment.eventTitle}
                   >
                     {assignment.eventTitle}
@@ -451,7 +456,9 @@ function UpcomingTable({
                 </span>
               );
             default:
-              return <OpenAssignment row={item} {...context} />;
+              return assignment.cancelled ? null : (
+                <OpenAssignment row={item} {...context} />
+              );
           }
         }}
         renderMobileCard={({ item: row }) => {
@@ -468,6 +475,39 @@ function UpcomingTable({
           const item = row.leaf;
           const { assignment } = item;
           const time = assignmentTimeRange({ assignment, timeZone });
+          const body = (
+            <span className="min-w-0 flex-1 space-y-0.5">
+              {byDay ? null : (
+                <span className="block text-muted-foreground text-xs">
+                  <DayName row={item} />
+                </span>
+              )}
+              <span
+                className={cn(
+                  'block break-words font-medium text-sm',
+                  assignment.cancelled && STRUCK,
+                )}
+              >
+                <span className="tabular-nums">{time}</span>{' '}
+                {assignment.eventTitle}
+              </span>
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
+                <span className="break-words">
+                  {assignmentRoleLine({ assignment, showMinistry })}
+                </span>{' '}
+                <AssignmentBadges assignment={assignment} />
+              </span>
+            </span>
+          );
+          const card =
+            'surface-subtle radius-control flex items-center gap-3 p-3';
+          // A cancelled shift has nothing to open: the detail read refuses it.
+          if (assignment.cancelled)
+            return (
+              <div className={rail}>
+                <div className={card}>{body}</div>
+              </div>
+            );
           // The Usual setup card: the whole card opens the shift.
           return (
             <div className={rail}>
@@ -479,25 +519,12 @@ function UpcomingTable({
                   day: item.date,
                   time,
                 })}
-                className="surface-subtle radius-control flex items-center gap-3 p-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(
+                  card,
+                  'outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                )}
               >
-                <span className="min-w-0 flex-1 space-y-0.5">
-                  {byDay ? null : (
-                    <span className="block text-muted-foreground text-xs">
-                      <DayName row={item} />
-                    </span>
-                  )}
-                  <span className="block break-words font-medium text-sm">
-                    <span className="tabular-nums">{time}</span>{' '}
-                    {assignment.eventTitle}
-                  </span>
-                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
-                    <span className="break-words">
-                      {assignmentRoleLine({ assignment, showMinistry })}
-                    </span>{' '}
-                    <AssignmentBadges assignment={assignment} />
-                  </span>
-                </span>
+                {body}
                 <ChevronRight
                   aria-hidden="true"
                   className="size-4 shrink-0 text-muted-foreground"
@@ -867,6 +894,9 @@ function MySchedule({
     data.options?.ministries.length ??
     new Set(data.assignments.map((a) => a.ministryId)).size;
   const context: RowContext = { timeZone, showMinistry: ministryCount > 1 };
+  // No next shift is not empty: cancelled shifts are still listed. `months` covers the unfiltered list.
+  const isEmpty =
+    !next && (data.options?.months.length ?? data.assignments.length) === 0;
   return (
     <WorkspacePage>
       <BackgroundRefreshIndicator
@@ -891,7 +921,7 @@ function MySchedule({
           </div>
         ) : null}
         <div className="min-w-0 space-y-4 md:col-span-2 md:row-start-2 2xl:col-span-1 2xl:col-start-1 2xl:row-span-2 2xl:row-start-1">
-          {next && data.options ? (
+          {!isEmpty && data.options ? (
             <FilterBar
               filters={filters}
               options={data.options}
@@ -899,7 +929,7 @@ function MySchedule({
               onChange={onFiltersChange}
             />
           ) : null}
-          {!next ? (
+          {isEmpty ? (
             <EmptySchedule />
           ) : rows.length === 0 ? (
             <FilteredEmpty

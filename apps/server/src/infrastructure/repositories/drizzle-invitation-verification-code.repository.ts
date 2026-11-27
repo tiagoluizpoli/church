@@ -1,4 +1,3 @@
-import type { AppConfig } from '@church/app-config';
 import { invitationVerificationCode } from '@church/db';
 import { addMilliseconds, fromDate, toDate } from '@church/time';
 import { and, eq, gt, isNull, lt, ne, or, sql } from 'drizzle-orm';
@@ -17,13 +16,12 @@ import {
   type StoredRedemption,
   storedRedemptionSchema,
 } from '../../domain/stored-redemption';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type {
+  DrizzleInvitationVerificationCodeRepositoryInput,
+  MapVerificationCodeInput,
+} from './drizzle-invitation-verification-code.repository.types';
 import { getClient } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleInvitationVerificationCodeRepositoryInput {
-  db: AnyDrizzleDb;
-  config: AppConfig;
-}
 
 export class DrizzleInvitationVerificationCodeRepository
   implements InvitationVerificationCodeRepository
@@ -200,13 +198,6 @@ export class DrizzleInvitationVerificationCodeRepository
       .returning({ id: invitationVerificationCode.id });
     return row != null;
   }
-}
-
-type InvitationVerificationCodeRow =
-  typeof invitationVerificationCode.$inferSelect;
-
-interface MapVerificationCodeInput {
-  row: InvitationVerificationCodeRow;
 }
 
 function mapVerificationCode({

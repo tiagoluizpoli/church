@@ -29,6 +29,7 @@ import type {
   FindOverlappingCyclesInput,
   GetCycleInput,
   ListCyclesInput,
+  RefuseExclusionRaceInput,
   ResolveElapsedCyclesInput,
   UpdateCycleInput,
   UpdateCycleStateInput,
@@ -40,13 +41,14 @@ import type {
 } from '../../domain/entities/cycle';
 import { OverlappingCycleError } from '../../domain/errors/overlapping-cycle';
 import { mapCycle } from '../mappers/cycle.mapper';
+import type { DrizzleCycleRepositoryInput } from './drizzle-cycle.repository.types';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import {
   containsPattern,
   getClient,
   isValidUuid,
   withChurchIsolation,
 } from './helpers';
-import type { AnyDrizzleDb } from './types';
 import {
   isConstraintViolation,
   PG_EXCLUSION_VIOLATION,
@@ -54,11 +56,6 @@ import {
 
 /** The Church-scoped inclusive daterange exclusion (migration 0042). */
 const CHURCH_DATE_EXCLUSION_CONSTRAINT = 'cycle_church_date_excl';
-
-interface RefuseExclusionRaceInput {
-  error: unknown;
-  range: Omit<FindOverlappingCyclesInput, 'tx'>;
-}
 
 /** The Church's Cycles narrowed by `list`'s optional filters. */
 function listConditions(input: ListCyclesInput) {
@@ -80,10 +77,6 @@ function listConditions(input: ListCyclesInput) {
     conditions.push(lte(cycle.startDate, input.to));
   }
   return and(...conditions);
-}
-
-interface DrizzleCycleRepositoryInput {
-  db: AnyDrizzleDb;
 }
 
 export class DrizzleCycleRepository implements CycleRepository {

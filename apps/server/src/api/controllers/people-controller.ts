@@ -1,15 +1,14 @@
-import type { AppConfig } from '@church/app-config';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { ChurchId, MinistryId, RoleId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IChurchAccessManager } from '../../domain/contracts/application/church-access-manager';
 import type { IMinistryMembershipManager } from '../../domain/contracts/application/ministry-membership-manager';
 import type { IPeopleListManager } from '../../domain/contracts/application/people-list-manager';
 import type { PeopleListScope } from '../../domain/entities/people-list-item';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import {
@@ -27,33 +26,17 @@ import {
   upcomingAssignmentsResponseSchema,
 } from '../dtos/people-list.dto';
 import { refuse } from '../utils/refuse';
+import type {
+  ListLimitQuery,
+  PeopleControllerDependencies,
+  ResolveScopeInput,
+  SendMembershipOutcomeInput,
+} from './people-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-/** The page size the route's own schema bounds by the configured maximum. */
-interface ListLimitQuery {
-  limit?: number;
-}
-
-interface ResolveScopeInput {
-  churchId: ChurchId;
-  userId: UserId;
-}
-
-/** Any Ministry Membership manager outcome: a hidden or refused target, or the applied change. */
-type MembershipOutcome =
-  | { kind: 'forbidden' }
-  | { kind: 'not-found' }
-  | { kind: 'applied' };
-
-interface SendMembershipOutcomeInput {
-  reply: FastifyReply;
-  request: FastifyRequest;
-  outcome: MembershipOutcome;
-}
 
 /** Maps the shared refusals and sends the applied change without its `kind`. */
 function sendMembershipOutcome({
@@ -71,15 +54,6 @@ function sendMembershipOutcome({
   return reply.send(result);
 }
 
-interface PeopleControllerDependencies {
-  peopleListManager: IPeopleListManager;
-  churchAccessManager: IChurchAccessManager;
-  ministryMembershipManager: IMinistryMembershipManager;
-  activeChurchResolver: IActiveChurchResolver;
-  authorityGuard: AuthorityGuard;
-  config: Pick<AppConfig, 'people'>;
-}
-
 /** The People directory: the Active Church's members within the caller's authority. */
 export class PeopleController implements FastifyController {
   readonly prefix = '/people';
@@ -88,7 +62,7 @@ export class PeopleController implements FastifyController {
   private readonly churchAccessManager: IChurchAccessManager;
   private readonly ministryMembershipManager: IMinistryMembershipManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
   private readonly maxPageSize: number;
 
   constructor({

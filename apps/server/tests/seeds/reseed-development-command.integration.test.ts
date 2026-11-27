@@ -360,7 +360,8 @@ describe('db:reseed:dev command', () => {
     expect(result.status, result.output).toBe(0);
     const anchor = /anchor=(\d{4}-\d{2}-\d{2})/.exec(result.output)?.[1];
     expect([before, after]).toContain(anchor);
-  });
+    // A full reseed: 34-66s against a remote PostgreSQL, like its siblings'.
+  }, 60_000);
 
   it('refuses an invalid anchor before resolving or resetting anything', async () => {
     await plantSentinel({ database: SCRATCH_DATABASE });

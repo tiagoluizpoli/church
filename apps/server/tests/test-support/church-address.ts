@@ -1,4 +1,4 @@
-import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
+import type { AnyDrizzleDb } from '@/infrastructure/repositories/drizzle-db.types';
 import { buildChurchAddress } from '@/seeds/builders/church';
 
 export interface InsertChurchAddressInput {

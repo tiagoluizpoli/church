@@ -3,54 +3,49 @@ import { m } from '@church/i18n/messages';
 import {
   formatCalendarDay,
   formatDayLabel,
+  formatDayMonthShort,
   formatInstant,
+  formatTimeOfDay,
+  formatWeekdayInSentence,
   today,
+  toTimeOfDay,
 } from '@church/time';
 import type {
-  AvailabilityEmail,
-  ChainedInvitationEmail,
-  ChurchBootstrapInvitationEmail,
-  ChurchOfferMinistryFacts,
-  CycleReadyToPrepareEmail,
-  EmailLocale,
+  EmailContent,
+  EmailCredit,
+  EmailIdentity,
+} from '../../domain/contracts/infrastructure/email-layout';
+import type {
   EmailPayload,
-  EventCancelledEmail,
-  EventChangedEmail,
-  MinistryInvitationEmail,
   PasswordResetEmail,
   PreparedEmail,
   SchedulePublishedEmail,
-  ScheduleUpdatedEmail,
-  SwapRequestAnsweredEmail,
-  SwapRequestEmail,
-  TransferDigestEmail,
-  VerificationCodeEmail,
 } from '../../domain/contracts/infrastructure/email-sender';
+import type {
+  AvailabilityFactLinesInput,
+  CycleReadyToPrepareContentInput,
+  EventCancelledContentInput,
+  EventCancelledTitleInput,
+  EventChangedContentInput,
+  EventMoveImpactLineInput,
+  InvitationContentInput,
+  MemberNotificationContentInput,
+  MinistryOfferContentInput,
+  MinistryOfferLinesInput,
+  PasswordResetContentInput,
+  PrepareEmailFromInput,
+  PrepareLayoutEmailInput,
+  SwapRequestAnsweredContentInput,
+  TransferDigestContentInput,
+  VerificationCodeContentInput,
+  WithChurchPlaceInput,
+} from '../../domain/contracts/infrastructure/email-templates';
 import {
-  type EmailContent,
-  type EmailCredit,
-  type EmailIdentity,
   emailSender,
   formatEmailDuration,
   renderEmailLayout,
 } from './email-layout';
 import { formatEventWhen, formatShiftLine } from './email-shift-line';
-
-export interface PrepareEmailFromInput {
-  payload: EmailPayload;
-  from: string;
-  locale?: EmailLocale;
-  /** Display name for app-branded kinds; injected from composition. */
-  appName: string;
-  platform?: PlatformBranding;
-}
-
-/** Platform assets the layout needs; both are absolute URLs. */
-export interface PlatformBranding {
-  logoUrl?: string;
-  /** Where the "Enviado com {appName}" credit links; plain text when unset. */
-  siteUrl?: string;
-}
 
 /**
  * The one renderer every EmailSender adapter prepares with, so capture and
@@ -173,16 +168,6 @@ function churchIdentity(
   };
 }
 
-interface PrepareLayoutEmailInput {
-  payload: EmailPayload;
-  locale: EmailLocale;
-  /** The composed sender (see `emailSender`). */
-  from: string;
-  content: EmailContent;
-  identity: EmailIdentity;
-  credit?: EmailCredit;
-}
-
 /** A kind on the shared layout: HTML and text from the same content. */
 export function prepareLayoutEmail({
   payload,
@@ -203,11 +188,6 @@ export function prepareLayoutEmail({
     locale,
     request: { from, to: payload.to, subject, html, text },
   };
-}
-
-interface VerificationCodeContentInput {
-  payload: VerificationCodeEmail;
-  locale: EmailLocale;
 }
 
 /** T2: the code leads; no action, since there is nothing to open. */
@@ -231,18 +211,6 @@ function verificationCodeContent({
     ],
     footer: m.email_footer_invitation({ email: to, churchName }, options),
   };
-}
-
-type MemberNotificationEmail =
-  | MinistryInvitationEmail
-  | AvailabilityEmail
-  | SchedulePublishedEmail
-  | ScheduleUpdatedEmail
-  | SwapRequestEmail;
-
-interface MemberNotificationContentInput {
-  payload: MemberNotificationEmail;
-  locale: EmailLocale;
 }
 
 /** Title and body reuse the bell's catalog keys, so both channels agree. */
@@ -398,11 +366,6 @@ function memberNotificationContent({
   };
 }
 
-interface AvailabilityFactLinesInput {
-  payload: AvailabilityEmail;
-  locale: EmailLocale;
-}
-
 /**
  * The Shift count and span, the Deadline when set, then what to do. Only N4
  * says the Deadline was missed; N3 is a first ask, so it always says Answer by.
@@ -443,11 +406,6 @@ function availabilityFactLines({
       : m.notification_availability_answer_by({ deadline }, options),
     markOnly,
   ];
-}
-
-interface CycleReadyToPrepareContentInput {
-  payload: CycleReadyToPrepareEmail;
-  locale: EmailLocale;
 }
 
 /** N2 on the bell's catalog keys: Cycle, its dates and Events, the Ministries. */
@@ -504,11 +462,6 @@ function cycleReadyToPrepareContent({
   };
 }
 
-interface EventChangedContentInput {
-  payload: EventChangedEmail;
-  locale: EmailLocale;
-}
-
 /** N10 on the bell's catalog keys; `change.kind` picks the wording. */
 function eventChangedContent({
   payload,
@@ -516,7 +469,7 @@ function eventChangedContent({
 }: EventChangedContentInput): EmailContent {
   const options = { locale };
   const { change, cycleName, eventTitle, ministryNames, churchName } = payload;
-  const { adminName, churchTimezone } = payload;
+  const { adminName, churchTimezone, hidden, eventTimeBlockId } = payload;
   const firstName = payload.recipientFirstName.trim();
   const when = formatEventWhen({
     start: change.start,
@@ -531,6 +484,8 @@ function eventChangedContent({
   if (change.kind === 'cancel') {
     title = eventCancelledTitle({
       eventTitle,
+      hidden,
+      eventTimeBlockId,
       start: change.start,
       churchTimezone,
       locale,
@@ -601,16 +556,6 @@ function eventChangedContent({
   };
 }
 
-type EventMoveImpact = Extract<
-  EventChangedEmail['change'],
-  { kind: 'move' }
->['impacts'][number];
-
-interface EventMoveImpactLineInput {
-  impact: EventMoveImpact;
-  locale: EmailLocale;
-}
-
 /** One Ministry's affected count, noting answers given for the old time. */
 function eventMoveImpactLine({
   impact: { ministryName, volunteerCount: count, answersGiven },
@@ -632,28 +577,37 @@ function eventMoveImpactLine({
     : line;
 }
 
-interface EventCancelledTitleInput {
-  eventTitle: string;
-  start: EventCancelledEmail['start'];
-  churchTimezone: string;
-  locale: EmailLocale;
-}
-
-/** N9 and N10 cancel share it: `Cancelado: {event} · {day}`, the scope's Church-Timezone day. */
+/**
+ * N9 and N10 cancel share it: `Cancelado: {event} · {day}`, the scope's
+ * Church-Timezone day. Hidden names the weekday and start time instead.
+ */
 function eventCancelledTitle({
   eventTitle,
+  hidden,
+  eventTimeBlockId,
   start,
   churchTimezone: timeZone,
   locale,
 }: EventCancelledTitleInput): string {
   const startDay = today({ instant: start, timeZone });
+  if (hidden) {
+    const weekday = formatWeekdayInSentence({ day: startDay, locale });
+    const startTime = toTimeOfDay({ instant: start, timeZone });
+    const time = formatTimeOfDay({ time: startTime });
+    if (eventTimeBlockId) {
+      return m.notification_hidden_time_block_cancelled_title(
+        { weekday, time },
+        { locale },
+      );
+    }
+    const date = formatDayMonthShort({ day: startDay, locale });
+    return m.notification_hidden_event_cancelled_title(
+      { weekday, date, time },
+      { locale },
+    );
+  }
   const day = formatDayLabel({ day: startDay, locale });
   return m.notification_event_cancelled_title({ eventTitle, day }, { locale });
-}
-
-interface EventCancelledContentInput {
-  payload: EventCancelledEmail;
-  locale: EmailLocale;
 }
 
 /** N9 on the bell's catalog keys: the frozen Shift lines, then My schedule. */
@@ -672,20 +626,23 @@ function eventCancelledContent({
       : m.email_greeting_transactional({}, options),
     heading: title,
     facts: [m.notification_event_cancelled_body({}, options)],
-    list: payload.shifts.map((shift) =>
-      formatShiftLine({ ...shift, churchTimezone, locale }),
-    ),
+    list: payload.shifts.map((shift) => {
+      const line = { ...shift, churchTimezone, locale };
+      // Hidden: the Volunteer's own Ministry and Role, nothing of the Event.
+      return payload.hidden
+        ? formatShiftLine({
+            ...line,
+            eventTitle: shift.ministryName,
+            sectorName: undefined,
+          })
+        : formatShiftLine(line);
+    }),
     action: {
       label: m.notification_event_cancelled_action({}, options),
       url: payload.actionUrl,
     },
     footer: m.email_footer_membership({ churchName }, options),
   };
-}
-
-interface SwapRequestAnsweredContentInput {
-  payload: SwapRequestAnsweredEmail;
-  locale: EmailLocale;
 }
 
 /** N8 on the bell's catalog keys: the Shift kept, the reply, the Assignment page. */
@@ -733,12 +690,6 @@ function swapRequestAnsweredContent({
   };
 }
 
-interface PasswordResetContentInput {
-  payload: PasswordResetEmail;
-  locale: EmailLocale;
-  appName: string;
-}
-
 /** T3: no Church; the action opens the supplied reset URL. */
 function passwordResetContent({
   payload,
@@ -768,11 +719,6 @@ function passwordResetContent({
   };
 }
 
-interface InvitationContentInput {
-  payload: ChainedInvitationEmail | ChurchBootstrapInvitationEmail;
-  locale: EmailLocale;
-}
-
 /** T1: ChurchAdmin-only (bootstrap) and paired Ministry invitations. */
 function invitationContent({
   payload,
@@ -783,12 +729,6 @@ function invitationContent({
     payload,
     locale,
   });
-}
-
-interface WithChurchPlaceInput {
-  content: EmailContent;
-  payload: { churchName: string; churchLocality?: string };
-  locale: EmailLocale;
 }
 
 /** Tells a same-named Church apart, as the select-church screen does. */
@@ -843,11 +783,6 @@ function invitationBody({
   return { ...common, ...ministryOfferContent({ offer: payload, locale }) };
 }
 
-interface MinistryOfferContentInput {
-  offer: ChainedInvitationEmail | MinistryInvitationEmail;
-  locale: EmailLocale;
-}
-
 /** T1 and N1 share the inviter-led lead/serve offer: title, body, Roles, expiry. */
 function ministryOfferContent({
   offer,
@@ -879,11 +814,6 @@ function ministryOfferContent({
   };
 }
 
-interface MinistryOfferLinesInput {
-  offer: ChurchOfferMinistryFacts & { churchName: string };
-  locale: EmailLocale;
-}
-
 /** The inviter-led lead/serve line, then its Roles when there are any. */
 function ministryOfferLines({
   offer,
@@ -901,11 +831,6 @@ function ministryOfferLines({
     body,
     m.email_invitation_roles({ roles: roleNames.join(', ') }, options),
   ];
-}
-
-interface TransferDigestContentInput {
-  payload: TransferDigestEmail;
-  locale: EmailLocale;
 }
 
 /** N11–12: both kinds share the digest; the leaderless escalation adds why

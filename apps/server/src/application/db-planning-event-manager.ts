@@ -53,6 +53,7 @@ import type {
   PreviewPlanningEditManagerInput,
   PreviewPlanningMoveManagerInput,
   PublicFieldsPatch,
+  SetPlanningHiddenManagerInput,
   UpdatePlanningEventDetailsManagerInput,
   UpdatePlanningEventManagerInput,
   UpdatePlanningEventTimeBlockManagerInput,
@@ -75,36 +76,36 @@ import {
   LastRemainingEventTimeBlockError,
   PublicInfoLockedError,
 } from '../domain/errors';
+import { eventTimeBlockEnvelope } from '../domain/services/planning/cycle-event-generator';
+import type {
+  ExistingGeneratedEventTimeBlockFingerprint,
+  ICycleEventGenerator,
+} from '../domain/services/planning/cycle-event-generator.types';
 import {
-  CycleEventGenerator,
-  type ExistingGeneratedEventTimeBlockFingerprint,
-  eventTimeBlockEnvelope,
-} from '../domain/services/cycle-event-generator';
-import {
-  type CancellationImpact,
-  type CancellationScopeAssignment,
   resolveCancellationScope,
   summarizeCancellationImpact,
-} from '../domain/services/event-cancellation';
+} from '../domain/services/planning/event-cancellation';
+import type {
+  CancellationImpact,
+  CancellationScopeAssignment,
+} from '../domain/services/planning/event-cancellation.types';
 import {
   findEditClashes,
   proposeEdit,
   proposeShiftBounds,
-} from '../domain/services/event-edit';
+} from '../domain/services/planning/event-edit';
+import { assertEventGraph } from '../domain/services/planning/event-graph';
+import type {
+  EventGraph,
+  EventGraphTimeBlock,
+} from '../domain/services/planning/event-graph.types';
 import {
-  assertEventGraph,
-  type EventGraph,
-  type EventGraphTimeBlock,
-} from '../domain/services/event-graph';
-import {
-  type BoundsPair,
   findMoveClashes,
   proposeMove,
-} from '../domain/services/event-move';
-import {
-  listLosingEventTimeBlocks,
-  type PrecedencePair,
-} from '../domain/services/template-precedence-application';
+} from '../domain/services/planning/event-move';
+import type { BoundsPair } from '../domain/services/planning/event-move.types';
+import { listLosingEventTimeBlocks } from '../domain/services/planning/template-precedence-application';
+import type { PrecedencePair } from '../domain/services/planning/template-precedence-application.types';
 import type { TemplatePrecedence } from '../domain/template-precedence';
 
 const sameBounds = ({ left, right }: BoundsPair) =>
@@ -117,8 +118,6 @@ const sameBounds = ({ left, right }: BoundsPair) =>
  * Event writes serialize.
  */
 export class DbPlanningEventManager implements IPlanningEventManager {
-  private readonly generator = new CycleEventGenerator();
-
   private readonly cycleRepository: CycleRepository;
   private readonly eventRepository: PlanningEventRepository;
   private readonly templateRepository: EventTemplateRepository;
@@ -129,6 +128,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly assignmentLifecycle: IAssignmentLifecycle;
   private readonly recipients: IChurchRecipients;
   private readonly notifications: IChurchNotifications;
+  private readonly generator: ICycleEventGenerator;
 
   constructor({
     cycleRepository,
@@ -141,7 +141,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     assignmentLifecycle,
     recipients,
     notifications,
+    cycleEventGenerator,
   }: DbPlanningEventManagerDependencies) {
+    this.generator = cycleEventGenerator;
     this.cycleRepository = cycleRepository;
     this.eventRepository = eventRepository;
     this.templateRepository = templateRepository;
@@ -1491,7 +1493,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     input: ConfirmPlanningCancellationManagerInput,
   ): Promise<CancellationImpact> {
     const church = await this.churchRepository.getById({ id: input.churchId });
-    const { churchId, eventId, scope, actingUserId } = input;
+    const { churchId, eventId, scope, actingUserId, hidden = false } = input;
 
     return this.unitOfWork.run(async (tx) => {
       // Move's lock order: Assignment creation takes the Church lock, removal
@@ -1504,7 +1506,14 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       const { impact, cycle, resolved, scopeAssignments } = computed;
       // Frozen before any write: the Shifts and counts the rows carry are
       // exactly what the writes below cancel.
-      await this.enqueueEventCancelled({ actingUserId, church, computed, tx });
+      await this.enqueueEventCancelled({
+        actingUserId,
+        church,
+        computed,
+        scope,
+        hidden,
+        tx,
+      });
 
       // A request raised while confirm waited is closed too: count closures.
       let openSwapRequestCount = 0;
@@ -1537,16 +1546,61 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           churchId,
           eventId,
           status: 'cancelled',
+          isHidden: hidden,
           tx,
         });
       } else {
         await this.eventRepository.cancelEventTimeBlock({
           churchId,
           eventTimeBlockId: scope.eventTimeBlockId,
+          isHidden: hidden,
           tx,
         });
       }
       return { ...impact, openSwapRequestCount };
+    });
+  }
+
+  async setHidden(input: SetPlanningHiddenManagerInput): Promise<void> {
+    const { churchId, eventId, scope, hidden } = input;
+
+    // A cancellation is final, so a scope read as cancelled stays so: no lock.
+    await this.unitOfWork.run(async (tx) => {
+      // 404 for a foreign Cycle; no writability check: any Cycle state.
+      await this.cycleRepository.getById({ ...input, tx });
+      const event = await this.getCycleEvent({ input, tx });
+      if (scope.kind === 'event') {
+        if (hidden) event.hide();
+        else event.show();
+        const { isHidden } = event;
+        await this.eventRepository.updateEvent({
+          churchId,
+          eventId,
+          isHidden,
+          tx,
+        });
+        return;
+      }
+      const { eventTimeBlockId } = scope;
+      const block = await this.eventTimeBlockRepository.getById({
+        churchId,
+        eventTimeBlockId,
+        tx,
+      });
+      if (block.eventId !== eventId) {
+        throw new NotFoundError(
+          `EventTimeBlock not found: ${eventTimeBlockId}`,
+        );
+      }
+      if (hidden) block.hide();
+      else block.show();
+      const { isHidden } = block;
+      await this.eventTimeBlockRepository.update({
+        churchId,
+        eventTimeBlockId,
+        input: { isHidden },
+        tx,
+      });
     });
   }
 
@@ -1559,9 +1613,17 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     actingUserId,
     church,
     computed: { impact, cycle, event, resolved, scopeAssignments },
+    scope,
+    hidden,
     tx,
   }: EnqueueEventCancelledInput): Promise<void> {
     const churchId = church.id;
+    const hideable = {
+      ...(scope.kind === 'eventTimeBlock' && {
+        eventTimeBlockId: scope.eventTimeBlockId,
+      }),
+      ...(hidden && { hidden }),
+    };
     const shiftsByUser = new Map<UserId, CancellationScopeAssignment[]>();
     for (const row of scopeAssignments.filter(({ published }) => published)) {
       shiftsByUser.set(row.userId, [
@@ -1578,11 +1640,13 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           cycleId: cycle.id,
           eventId: event.id,
           eventTitle: event.title,
+          ...hideable,
           start: resolved.start,
           churchName: church.name,
           churchTimezone: church.timezone,
           shifts: rows.map((row) => ({
             eventTitle: event.title,
+            ministryName: row.ministryName,
             roleName: row.roleName,
             sectorName: row.sectorName,
             startsAt: row.shiftStart,
@@ -1618,6 +1682,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           cycleName: cycle.name,
           eventId: event.id,
           eventTitle: event.title,
+          ...hideable,
           adminName,
           churchName: church.name,
           churchTimezone: church.timezone,

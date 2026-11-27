@@ -89,3 +89,15 @@ export interface INotifier<TRecipient, TKind extends string, TData> {
     input: NotifierSendInput<TRecipient, TKind, TData>,
   ): Promise<NotifierSendResult>;
 }
+
+/** A registration with its address and content types closed over. */
+export interface RegisteredSink<TRecipient, TKind extends string, TData> {
+  name: string;
+  attempt(
+    input: NotifierSendInput<TRecipient, TKind, TData>,
+  ): Promise<SinkOutcome>;
+}
+
+export interface NotifierInput<TRecipient, TKind extends string, TData> {
+  sinks: RegisteredSink<TRecipient, TKind, TData>[];
+}

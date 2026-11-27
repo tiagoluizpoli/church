@@ -26,6 +26,7 @@ import { DrizzleAssignmentProposalApplicationRepository } from '@/infrastructure
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
+import type { AnyDrizzleDb } from '@/infrastructure/repositories/drizzle-db.types';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
@@ -40,7 +41,6 @@ import { DrizzleUnavailableShiftRepository } from '@/infrastructure/repositories
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
-import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
 import { buildRole, buildSector } from '@/seeds/builders/ministry';
 import {
   buildAssignment,

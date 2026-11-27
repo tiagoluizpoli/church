@@ -2,12 +2,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import type {
   CycleEventGroup,
+  CyclePlannedCounts,
   CycleSummary,
   PlanningTemplateSummary,
   SelectedCycle,
 } from './planning-admin.types';
 import {
-  calculateTotalEventTimeBlocks,
   getSelectedCycleIdOrThrow,
   isForbiddenError,
 } from './planning-admin.utils';
@@ -37,10 +37,10 @@ export interface UsePlanningAdminResult {
   templates: PlanningTemplateSummary[];
   selectedCycleId: string | null;
   selectedCycle: SelectedCycle | null;
+  /** Every owned Event, cancelled ones included. */
   cycleEvents: CycleEventGroup[];
-  /** Every owned Event, cancelled ones included: what a Cycle delete removes. */
-  ownedEventCount: number;
-  totalEventTimeBlocks: number;
+  /** The server's counts of what is still planned; null until they load. */
+  plannedCounts: CyclePlannedCounts | null;
   cyclesLoading: boolean;
   /** The list read failed for a reason other than missing access. */
   cyclesError: boolean;
@@ -78,16 +78,7 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
   const cycles = cyclesQuery.data?.cycles ?? [];
   const templates = templatesQuery.data?.templates ?? [];
   const selectedCycle = cycleDetailsQuery.data?.cycle ?? null;
-  // A cancelled event (FR-006's day-delete) is a soft delete at the data
-  // layer only — the Calendar review table and header counts must still
-  // treat it as removed, per FR-006's acceptance scenario and edge case.
-  const allEvents = cycleDetailsQuery.data?.events ?? [];
-  const cycleEvents = allEvents.filter(
-    (eventGroup) => eventGroup.event.status !== 'cancelled',
-  );
-  const totalEventTimeBlocks = calculateTotalEventTimeBlocks({
-    events: cycleEvents,
-  });
+  const cycleEvents = cycleDetailsQuery.data?.events ?? [];
 
   const isAccessDenied = useMemo(
     () =>
@@ -114,8 +105,7 @@ export function usePlanningAdmin(): UsePlanningAdminResult {
     selectedCycleId,
     selectedCycle,
     cycleEvents,
-    ownedEventCount: allEvents.length,
-    totalEventTimeBlocks,
+    plannedCounts: cycleDetailsQuery.data?.counts ?? null,
     cyclesLoading: cyclesQuery.isLoading,
     cyclesError: cyclesQuery.isError && !isAccessDenied,
     refetchCycles: () => void cyclesQuery.refetch(),

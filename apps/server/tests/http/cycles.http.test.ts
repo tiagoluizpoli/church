@@ -47,6 +47,8 @@ import {
   VolunteerId,
 } from '@/domain/branded-ids';
 import { OverlappingCycleError } from '@/domain/errors/overlapping-cycle';
+import { ProfileSeeder } from '@/domain/services/church-identity/profile-seeder';
+import { CycleEventGenerator } from '@/domain/services/planning/cycle-event-generator';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -108,6 +110,7 @@ beforeAll(async () => {
   });
   const templateRepository = new DrizzleEventTemplateRepository({ db });
   const staffingSeeder = new UsualSetupStaffingSeeder({
+    profileSeeder: new ProfileSeeder(),
     participationRepository,
     shiftRepository: new DrizzleShiftRepository({ db }),
     usualSetupRepository: new DrizzleUsualSetupRepository({ db }),
@@ -134,6 +137,7 @@ beforeAll(async () => {
       }),
     }),
     planningEventManager: new DbPlanningEventManager({
+      cycleEventGenerator: new CycleEventGenerator(),
       cycleRepository,
       eventRepository,
       precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),
@@ -1101,6 +1105,160 @@ describe('GET /admin/cycles', () => {
 
     expect(forbidden.statusCode).toBe(403);
     expect(signedOut.statusCode).toBe(401);
+  });
+});
+
+describe('GET /admin/cycles/:cycleId', () => {
+  const START = parseInstant({ value: '2026-10-18T13:00:00Z' });
+  const END = parseInstant({ value: '2026-10-18T15:00:00Z' });
+
+  it('returns cancelled Events and EventTimeBlocks with their status', async () => {
+    const seed = await signIn();
+    const sent = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+      state: 'sent',
+    });
+    for (const status of ['scheduled', 'cancelled'] as const) {
+      const seeded = await buildEvent({
+        db,
+        churchId: seed.churchAId,
+        cycleId: sent.id,
+        title: status,
+        start: START,
+        end: END,
+        status,
+      });
+      for (const blockStatus of ['active', 'cancelled'] as const) {
+        const block = await buildEventTimeBlock({
+          db,
+          churchId: seed.churchAId,
+          eventId: seeded.id,
+          label: blockStatus,
+          start: START,
+          end: END,
+        });
+        await db
+          .update(eventTimeBlock)
+          .set({ status: blockStatus })
+          .where(eq(eventTimeBlock.id, block.id));
+      }
+    }
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/admin/cycles/${sent.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const read = response
+      .json()
+      .events.map(
+        (graph: {
+          event: { title: string; status: string };
+          eventTimeBlocks: { label: string; status: string }[];
+        }) => ({
+          title: graph.event.title,
+          status: graph.event.status,
+          blocks: graph.eventTimeBlocks
+            .map(({ label, status }) => `${label}:${status}`)
+            .sort(),
+        }),
+      );
+    const blocks = ['active:active', 'cancelled:cancelled'];
+    expect(read).toEqual([
+      { title: 'cancelled', status: 'cancelled', blocks },
+      { title: 'scheduled', status: 'scheduled', blocks },
+    ]);
+    // Only the scheduled Event and its active block are still planned.
+    expect(response.json().counts).toEqual({
+      eventCount: 1,
+      eventTimeBlockCount: 1,
+    });
+  });
+
+  it('marks hidden Events and blocks, a block also through its Event, counting only planned ones', async () => {
+    const seed = await signIn();
+    const sent = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+      state: 'sent',
+    });
+    for (const [title, status, isHidden] of [
+      ['hidden', 'cancelled', true],
+      ['scheduled', 'scheduled', false],
+      ['shown', 'cancelled', false],
+    ] as const) {
+      const seeded = await buildEvent({
+        db,
+        churchId: seed.churchAId,
+        cycleId: sent.id,
+        title,
+        start: START,
+        end: END,
+        status,
+      });
+      await db.update(event).set({ isHidden }).where(eq(event.id, seeded.id));
+      for (const [label, blockStatus, blockHidden] of [
+        ['active', 'active', false],
+        ['hidden', 'cancelled', true],
+        ['shown', 'cancelled', false],
+      ] as const) {
+        const block = await buildEventTimeBlock({
+          db,
+          churchId: seed.churchAId,
+          eventId: seeded.id,
+          label,
+          start: START,
+          end: END,
+        });
+        await db
+          .update(eventTimeBlock)
+          .set({ status: blockStatus, isHidden: blockHidden })
+          .where(eq(eventTimeBlock.id, block.id));
+      }
+    }
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/admin/cycles/${sent.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const read = Object.fromEntries(
+      response
+        .json()
+        .events.map(
+          (graph: {
+            event: { title: string; isHidden: boolean };
+            eventTimeBlocks: { label: string; isHidden: boolean }[];
+          }) => [
+            graph.event.title,
+            {
+              isHidden: graph.event.isHidden,
+              blocks: Object.fromEntries(
+                graph.eventTimeBlocks.map((b) => [b.label, b.isHidden]),
+              ),
+            },
+          ],
+        ),
+    );
+    const ownChoices = { active: false, hidden: true, shown: false };
+    expect(read).toEqual({
+      hidden: {
+        isHidden: true,
+        blocks: { active: true, hidden: true, shown: true },
+      },
+      scheduled: { isHidden: false, blocks: ownChoices },
+      shown: { isHidden: false, blocks: ownChoices },
+    });
+    // Only the scheduled Event and its active block are still planned.
+    expect(response.json().counts).toEqual({
+      eventCount: 1,
+      eventTimeBlockCount: 1,
+    });
   });
 });
 

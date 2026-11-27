@@ -3,15 +3,12 @@ import type {
   TransactionWork,
   UnitOfWork,
 } from '../../domain/contracts/infrastructure/unit-of-work';
+import type { AnyDrizzleDb } from './drizzle-db.types';
 import {
   asTxContext,
   DrizzleTransactionContext,
 } from './drizzle-transaction-context';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleUnitOfWorkInput {
-  db: AnyDrizzleDb;
-}
+import type { DrizzleUnitOfWorkInput } from './drizzle-unit-of-work.types';
 
 export class DrizzleUnitOfWork implements UnitOfWork {
   constructor({ db }: DrizzleUnitOfWorkInput) {

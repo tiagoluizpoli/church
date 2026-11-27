@@ -46,6 +46,7 @@ const item = (id: string, startTime: string, endTime: string) => ({
   roleId: 'r',
   roleName: 'Teacher',
   status: 'pending' as const,
+  cancelled: false,
   swapRequested: false,
 });
 
@@ -240,6 +241,41 @@ describe('MySchedulePage', () => {
         screen.getByRole('region', { name: 'Next assignment' }),
       ).queryByText('Swap requested'),
     ).toBeNull();
+  });
+
+  it('marks a cancelled Assignment, struck through and with nothing to open', async () => {
+    const [first, second] = DATA.assignments;
+    api.getPublishedVolunteerSchedule.mockResolvedValue({
+      ...DATA,
+      assignments: [first, { ...second, cancelled: true }],
+      next: first,
+    });
+    renderPage('user-1', { group: [] });
+
+    const table = await screen.findByRole('grid');
+    const [live, cancelled] = within(table).getAllByRole('row').slice(1);
+    expect(within(cancelled).getByText('Cancelled')).toBeTruthy();
+    expect(within(cancelled).getByText('Sunday').className).toContain(
+      'line-through',
+    );
+    expect(within(cancelled).queryByRole('link')).toBeNull();
+    expect(within(live).queryByText('Cancelled')).toBeNull();
+    expect(within(live).getByRole('link')).toBeTruthy();
+  });
+
+  it('still lists the shifts when every one of them is cancelled', async () => {
+    const [first] = DATA.assignments;
+    api.getPublishedVolunteerSchedule.mockResolvedValue({
+      ...FULL,
+      assignments: [{ ...first, cancelled: true }],
+      next: null,
+    });
+    renderPage('user-1', { group: [] });
+
+    const table = await screen.findByRole('grid');
+    expect(within(table).getByText('Cancelled')).toBeTruthy();
+    expect(screen.queryByText(m.my_schedule_empty())).toBeNull();
+    expect(screen.queryByText(m.home_next_assignment())).toBeNull();
   });
 
   it('counts down to the next Assignment', async () => {

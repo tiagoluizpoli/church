@@ -30,12 +30,14 @@ import type {
   GetMinistryScheduleInput,
   GetOwnedCheckContextInput,
   GetPublishedScheduleInput,
+  HasStartedInput,
   InCancelledScopeInput,
   IVolunteerManager,
   ListAvailabilityChecksInput,
+  ListedAssignmentInput,
+  ListedVolunteerAssignment,
   MinistrySchedule,
   RequirementCoverageInput,
-  RequirementCoverageStatusInput,
   ResolveCheckDetailInput,
   ScheduleShiftLabelInput,
   ServingMonthsInput,
@@ -65,10 +67,9 @@ import type { SwapRequestRepository } from '../domain/contracts/infrastructure/s
 import type { UnavailableShiftRepository } from '../domain/contracts/infrastructure/unavailable-shift.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-import {
-  type Assignment,
-  type AssignmentStatus,
-  isActiveAssignmentStatus,
+import type {
+  Assignment,
+  AssignmentStatus,
 } from '../domain/entities/assignment';
 import { isSwapRequestExpired } from '../domain/entities/swap-request';
 import { AssignmentAccessDeniedError } from '../domain/errors/assignment-access-denied';
@@ -80,12 +81,12 @@ import { isEventTimeBlockCancelled } from '../domain/event-time-block-cancellati
 import {
   groupCheckDays,
   isShiftAnswerable,
-} from '../domain/services/availability-check-days';
+} from '../domain/services/scheduling/availability-check-days';
 import {
   assertUnavailableShiftsWithinScope,
   expandWholeDayShiftIds,
   resolveShiftAvailability,
-} from '../domain/services/unavailable-shifts';
+} from '../domain/services/scheduling/unavailable-shifts';
 
 const NOTIFICATION_PREVIEW_LIMIT = 3;
 
@@ -141,13 +142,26 @@ function isPublishedStatus(status: AssignmentStatus): status is 'pending' {
   return status === 'pending';
 }
 
-function countsTowardRequirementCoverage({
-  status,
-}: RequirementCoverageStatusInput): boolean {
-  return isActiveAssignmentStatus(status);
+/**
+ * Published work, plus what an Event or EventTimeBlock cancellation cancelled.
+ * A `reason` marks a Volunteer Transfer's own cancellation, which stays hidden.
+ */
+function isListedAssignment({
+  assignment: { status, reason },
+  cancelled,
+}: ListedAssignmentInput): boolean {
+  if (isPublishedStatus(status)) return true;
+  return cancelled && status === 'cancelled' && !reason;
 }
 
-/** The Assignments bound to one requirement, and how many places stay open. */
+function hasStarted({ startTime, at }: HasStartedInput): boolean {
+  return compareInstants({ left: startTime, right: at }) <= 0;
+}
+
+/**
+ * The Assignments bound to one requirement, and how many places stay open.
+ * Callers pass only the Assignments that hold a place.
+ */
 function projectRequirementCoverage({
   requirement,
   assignments,
@@ -155,10 +169,8 @@ function projectRequirementCoverage({
   const bound = assignments.filter(
     (assignment) => assignment.shiftRequirementId === requirement.id,
   );
-  const filled = bound.filter((assignment) =>
-    countsTowardRequirementCoverage({ status: assignment.status }),
-  ).length;
-  return { bound, openCount: Math.max(0, requirement.peopleNeeded - filled) };
+  const openCount = Math.max(0, requirement.peopleNeeded - bound.length);
+  return { bound, openCount };
 }
 
 /** Fallback label when a Shift has none. No Church Timezone is available at
@@ -252,10 +264,13 @@ export class DbVolunteerManager implements IVolunteerManager {
     const ministryById = new Map(ministries.map((m) => [m.id, m]));
 
     // Assignment groups: upcoming published assignments grouped by event
-    const allAssignments = await this.listPublishedAssignmentsForVolunteer({
+    const listedAssignments = await this.listPublishedAssignmentsForVolunteer({
       churchId,
       volunteerId,
     });
+    const allAssignments = listedAssignments.flatMap(
+      ({ assignment, cancelled }) => (cancelled ? [] : [assignment]),
+    );
     const participationIds = [
       ...new Set(
         allAssignments
@@ -510,7 +525,7 @@ export class DbVolunteerManager implements IVolunteerManager {
         state: 'published',
       }),
     );
-    const [allMinistries, assignments, publishedByMinistry, church] =
+    const [allMinistries, listedAssignments, publishedByMinistry, church] =
       await Promise.all([
         this.ministryRepo.listByChurch({ churchId }),
         this.listPublishedAssignmentsForVolunteer(input),
@@ -518,6 +533,7 @@ export class DbVolunteerManager implements IVolunteerManager {
         this.churchRepo.getById({ id: churchId }),
       ]);
     const { timezone: timeZone } = church;
+    const assignments = listedAssignments.map(({ assignment }) => assignment);
     const ministryNames = new Map(
       allMinistries.map((ministry) => [ministry.id as string, ministry.name]),
     );
@@ -600,7 +616,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       }),
     );
     const items = await Promise.all(
-      assignments.map(async (assignment) => {
+      listedAssignments.map(async ({ assignment, cancelled }) => {
         const participation = participationsById.get(
           assignment.participationId as string,
         );
@@ -624,8 +640,12 @@ export class DbVolunteerManager implements IVolunteerManager {
           : undefined;
         const shiftOver =
           compareInstants({ left: shift.endTime, right: now }) <= 0;
-        // In progress counts: only Shifts already over drop out.
-        if (!participation || !event || shiftOver) return undefined;
+        // In progress counts: only Shifts already over drop out. Cancelled
+        // work never runs, so it drops out at its Shift's start.
+        const gone = cancelled
+          ? hasStarted({ startTime: shift.startTime, at: now })
+          : shiftOver;
+        if (!participation || !event || gone) return undefined;
         const ownRequirement = requirements.find(
           (r) => r.id === assignment.shiftRequirementId,
         );
@@ -642,7 +662,9 @@ export class DbVolunteerManager implements IVolunteerManager {
           sectorName: ownRequirement?.sectorName ?? '',
           roleId: roleId as string,
           roleName: role.name,
-          status: assignment.status as VolunteerScheduleAssignment['status'],
+          // Published, whether or not since cancelled: `cancelled` marks that.
+          status: 'pending',
+          cancelled,
           // Same rule as the detail read: open past the Shift's start is expired.
           swapRequested:
             openSwapIds.has(assignment.id as string) &&
@@ -665,6 +687,8 @@ export class DbVolunteerManager implements IVolunteerManager {
     const monthOf = (item: VolunteerScheduleAssignment) =>
       today({ instant: item.startTime, timeZone }).slice(0, 7);
     const currentMonth = churchToday.slice(0, 7);
+    // Counters and the next shift are about serving, so cancelled work is out.
+    const serving = listed.filter((item) => !item.cancelled);
     const { search, month, ministryId } = input.filters ?? {};
     const needle = search?.toLocaleLowerCase();
     // shortcut: filters run over the assembled list, not in SQL; a Volunteer's own upcoming Assignments stay few. Move into the repository read if that list ever pages.
@@ -678,12 +702,12 @@ export class DbVolunteerManager implements IVolunteerManager {
       assignments: filtered,
       schedules: scheduleList,
       counts: {
-        upcoming: listed.length,
-        thisMonth: listed.filter((item) => monthOf(item) === currentMonth)
+        upcoming: serving.length,
+        thisMonth: serving.filter((item) => monthOf(item) === currentMonth)
           .length,
-        openSwaps: listed.filter((item) => item.swapRequested).length,
+        openSwaps: serving.filter((item) => item.swapRequested).length,
       },
-      next: listed[0] ?? null,
+      next: serving[0] ?? null,
       options: {
         months: [...new Set(listed.map(monthOf))],
         ministries: memberMinistryIds
@@ -700,6 +724,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     input: GetMinistryScheduleInput,
   ): Promise<MinistrySchedule> {
     const { churchId, ministryId, volunteerId, cycleId } = input;
+    const now = nowInstant();
 
     const memberMinistryIds = await this.volunteerRepo.listMemberMinistryIds({
       churchId,
@@ -724,7 +749,12 @@ export class DbVolunteerManager implements IVolunteerManager {
         const { id: participationId, eventId } = participation;
         const [group, shifts, requirements, assignments] = await Promise.all([
           this.eventRepo.getWithEventTimeBlocks({ churchId, eventId }),
-          this.shiftRepo.listByParticipation({ churchId, participationId }),
+          // Hidden cancelled work is out of every Volunteer read.
+          this.shiftRepo.listByParticipation({
+            churchId,
+            participationId,
+            shownOnly: true,
+          }),
           this.shiftRepo.listRequirementsByParticipation({
             churchId,
             participationId,
@@ -734,21 +764,34 @@ export class DbVolunteerManager implements IVolunteerManager {
             participationId,
           }),
         ]);
-        // Cancelled work leaves the Volunteer's Schedule: a cancelled
-        // Event drops out below, a cancelled block's Shifts drop out here.
-        const liveShifts = shifts.filter(
-          ({ eventTimeBlockId }) =>
-            !inCancelledScope({ group, eventTimeBlockId }),
+        // Cancelled work stays, marked, until its Shift would have started.
+        const cancelledShiftIds = new Set(
+          shifts
+            .filter(({ eventTimeBlockId }) =>
+              inCancelledScope({ group, eventTimeBlockId }),
+            )
+            .map(({ id }) => id as string),
         );
-        const liveIds = new Set(liveShifts.map(({ id }) => id as string));
+        const shownShifts = shifts.filter(
+          ({ id, startTime }) =>
+            !cancelledShiftIds.has(id as string) ||
+            !hasStarted({ startTime, at: now }),
+        );
+        const shownIds = new Set(shownShifts.map(({ id }) => id as string));
         return {
           event: group.event,
-          shifts: liveShifts,
+          cancelledShiftIds,
+          shifts: shownShifts,
           requirements: requirements.filter(({ shiftId }) =>
-            liveIds.has(shiftId as string),
+            shownIds.has(shiftId as string),
           ),
-          assignments: assignments.filter(({ shiftId }) =>
-            liveIds.has(shiftId as string),
+          assignments: assignments.filter(
+            (assignment) =>
+              shownIds.has(assignment.shiftId as string) &&
+              isListedAssignment({
+                assignment,
+                cancelled: cancelledShiftIds.has(assignment.shiftId as string),
+              }),
           ),
         };
       }),
@@ -757,11 +800,13 @@ export class DbVolunteerManager implements IVolunteerManager {
       (item) => item.event.cycleId === cycleId,
     );
     const eventData = cycleEventData.filter(
-      ({ event }) => event.status !== 'cancelled',
+      ({ event, shifts }) =>
+        !event.isHidden &&
+        (event.status !== 'cancelled' ||
+          shifts.length > 0 ||
+          !hasStarted({ startTime: event.start, at: now })),
     );
-    const assignments = eventData
-      .flatMap((item) => item.assignments)
-      .filter((assignment) => isPublishedStatus(assignment.status));
+    const assignments = eventData.flatMap((item) => item.assignments);
     const volunteerIds = [
       ...new Set(assignments.map((item) => item.volunteerId)),
     ];
@@ -777,12 +822,15 @@ export class DbVolunteerManager implements IVolunteerManager {
     );
 
     const events = eventData.map(
-      ({ event, shifts, requirements, assignments: eventAssignments }) => {
-        const activeAssignments = eventAssignments.filter((assignment) =>
-          countsTowardRequirementCoverage({ status: assignment.status }),
-        );
+      ({
+        event,
+        cancelledShiftIds,
+        shifts,
+        requirements,
+        assignments: eventAssignments,
+      }) => {
         const rows = shifts.flatMap((shift) => {
-          const shiftAssignments = activeAssignments.filter(
+          const shiftAssignments = eventAssignments.filter(
             (assignment) => assignment.shiftId === shift.id,
           );
           const shiftRequirements = requirements.filter(
@@ -805,6 +853,7 @@ export class DbVolunteerManager implements IVolunteerManager {
               ...shiftIdentity,
               sectorName: requirement.sectorName,
               roleName,
+              cancelled: cancelledShiftIds.has(shift.id as string),
             };
             const assignmentRows = bound
               .map((assignment) => ({
@@ -835,7 +884,8 @@ export class DbVolunteerManager implements IVolunteerManager {
           title: event.title,
           start: event.start,
           end: event.end,
-          assignmentCount: activeAssignments.length,
+          cancelled: event.status === 'cancelled',
+          assignmentCount: eventAssignments.length,
           rows,
         };
       },
@@ -1256,10 +1306,12 @@ export class DbVolunteerManager implements IVolunteerManager {
   private async listPublishedAssignmentsForVolunteer({
     volunteerId,
     churchId,
-  }: GetPublishedScheduleInput): Promise<Assignment[]> {
+  }: GetPublishedScheduleInput): Promise<ListedVolunteerAssignment[]> {
+    // Hidden cancelled work is out of every Volunteer read.
     const assignments = await this.assignmentRepo.listByVolunteer({
       churchId,
       volunteerId,
+      shownOnly: true,
     });
     const participationIds = [
       ...new Set(
@@ -1300,14 +1352,14 @@ export class DbVolunteerManager implements IVolunteerManager {
       ]),
     );
 
-    return assignments.filter(
-      ({ status, participationId, eventTimeBlockId }) =>
-        isPublishedStatus(status) &&
-        groupsByParticipation.has(participationId as string) &&
-        !inCancelledScope({
-          group: groupsByParticipation.get(participationId as string),
-          eventTimeBlockId,
-        }),
-    );
+    return assignments.flatMap((assignment) => {
+      const { participationId, eventTimeBlockId } = assignment;
+      if (!groupsByParticipation.has(participationId as string)) return [];
+      const group = groupsByParticipation.get(participationId as string);
+      const cancelled = inCancelledScope({ group, eventTimeBlockId });
+      return isListedAssignment({ assignment, cancelled })
+        ? [{ assignment, cancelled }]
+        : [];
+    });
   }
 }

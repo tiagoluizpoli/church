@@ -1,14 +1,11 @@
 import { trace } from '@opentelemetry/api';
-import type { IOutboxDrainer } from '../domain/contracts/application/outbox-drainer';
+import type {
+  IOutboxPoller,
+  OutboxPollerOptions,
+} from '../domain/contracts/application/outbox-poller';
 import { SERVICE_NAME } from '../infrastructure/services/otel-tracing';
 
 const tracer = trace.getTracer(SERVICE_NAME);
-
-export interface OutboxPollerOptions {
-  drainer: IOutboxDrainer;
-  intervalMs: number;
-  batchSize: number;
-}
 
 /**
  * The runtime host for the outbox drain worker — an in-process interval,
@@ -17,7 +14,7 @@ export interface OutboxPollerOptions {
  * drain (many due messages, a sluggish EmailSender) never piles up
  * concurrent ticks against the same table.
  */
-export class OutboxPoller {
+export class OutboxPoller implements IOutboxPoller {
   private timer: ReturnType<typeof setInterval> | undefined;
   private isDraining = false;
   private inFlight: Promise<void> | undefined;
@@ -35,7 +32,6 @@ export class OutboxPoller {
     }, this.options.intervalMs);
   }
 
-  /** Stops scheduling and resolves once a tick already in flight has finished. */
   async stop(): Promise<void> {
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;

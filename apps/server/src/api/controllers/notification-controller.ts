@@ -2,10 +2,10 @@ import { NotFoundError } from '@church/core';
 import { z } from 'zod';
 import { ChurchId, NotificationId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { INotificationManager } from '../../domain/contracts/application/notification-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   markedResponseSchema,
@@ -16,19 +16,12 @@ import {
 } from '../dtos/member-notification.dto';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import { refuse } from '../utils/refuse';
+import type { NotificationControllerDependencies } from './notification-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-interface NotificationControllerDependencies {
-  notificationManager: INotificationManager;
-  activeChurchResolver: IActiveChurchResolver;
-  authorityGuard: AuthorityGuard;
-  /** Most notifications one page may ask for (validated central config). */
-  maxPageSize: number;
-}
 
 /**
  * A Church Member's own inbox. The session supplies User and Active Church —
@@ -39,7 +32,7 @@ export class NotificationController implements FastifyController {
 
   private readonly notificationManager: INotificationManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
   private readonly maxPageSize: number;
 
   constructor({

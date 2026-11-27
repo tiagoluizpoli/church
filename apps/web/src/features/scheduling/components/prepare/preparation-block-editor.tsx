@@ -7,7 +7,6 @@ import { isAxiosError } from 'axios';
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { CancelledBadge } from '../cancelled-badge';
 import { blockTitle } from '../participation-prepare.utils';
 import {
   initialPreparationDraft,
@@ -28,6 +27,7 @@ import {
   type PrepareListSearch,
   prepareParticipationQuery,
 } from './prepare-participation-query';
+import { CancelledBadge } from '@/components/cancelled-badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
@@ -66,6 +66,7 @@ import type {
   GetCycleParticipation200EventsItemEventTimeBlocksItem,
   SaveEventTimeBlockPreparationBody,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { STRUCK } from '@/lib/struck';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { dayOf, formatTimeOf } from '@/shared/utils/church-time';
@@ -608,7 +609,7 @@ function PreparationBlockForm({
                     aria-describedby="preparation-block-when"
                     className={cn(
                       'font-semibold text-lg outline-none',
-                      cancelled && 'text-muted-foreground line-through',
+                      cancelled && STRUCK,
                     )}
                   >
                     {blockTitle({

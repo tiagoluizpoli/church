@@ -1,13 +1,10 @@
 import { type AppConfig, appConfig } from '@church/app-config';
 import { ChurchNotifications } from '@/application/church-notifications';
-import {
-  buildChurchNotifier,
-  type ChurchNotifier,
-} from '@/application/church-notifier';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbChurchIdentitySnapshotter } from '@/application/db-church-identity-snapshotter';
 import { DbMinistryInvitationManager } from '@/application/db-ministry-invitation-manager';
 import { SchedulingNotificationFacts } from '@/application/scheduling-notification-facts';
+import type { ChurchNotifier } from '@/domain/contracts/application/church-notifier';
 import type { EmailSender } from '@/domain/contracts/infrastructure/email-sender';
 import type { NotificationRepository } from '@/domain/contracts/infrastructure/notification.repository';
 import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
@@ -28,7 +25,8 @@ import {
   DrizzleVolunteerRepository,
   DrizzleVolunteerTransferRepository,
 } from '@/infrastructure/repositories';
-import type { AnyDrizzleDb } from '@/infrastructure/repositories/types';
+import type { AnyDrizzleDb } from '@/infrastructure/repositories/drizzle-db.types';
+import { buildChurchNotifier } from '@/main/di/build-church-notifier';
 import { InMemoryObjectStorage } from '@/tests/test-support/in-memory-object-storage';
 
 export interface MinistryInvitationTestHarnessOptions {

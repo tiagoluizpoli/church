@@ -21,6 +21,7 @@ import { CycleBuilder } from '@/features/scheduling/components/builder/cycle-bui
 import type { LeaderSwapRequest } from '@/features/scheduling/components/builder/swap-request/swap-request-sheet';
 import type { CycleBuilderData } from '@/features/scheduling/hooks/use-cycle-builder';
 import { dateLabel } from '@/features/scheduling/utils/builder/cycle-builder-date.utils';
+import { waitForDialogFocus } from '@/tests/setup/dialog';
 import { renderWithProviders } from '@/tests/setup/render';
 import { adminApi } from '@/utils/api-instances';
 import * as volunteerInitials from '@/utils/format-volunteer-initials';
@@ -854,6 +855,7 @@ describe('Assignment proposal preview', () => {
     await userEvent.click(
       screen.getByRole('button', { name: m.builder_proposal_open() }),
     );
+    await waitForDialogFocus();
     return screen.findByTestId('assignment-proposal-preview');
   }
 
@@ -1412,6 +1414,12 @@ describe('Assignment proposal preview', () => {
     );
     renderBuilder({ data: twoDayBoard() });
     const preview = await openPreview();
+    // The dialog opens on its title a frame later; wait so it can't pull focus back.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: m.builder_proposal_title() }),
+      ).toHaveFocus(),
+    );
     const boxes = within(preview).getAllByRole('checkbox');
     expect(boxes.filter((box) => box.tabIndex === 0)).toHaveLength(0);
     const whys = within(preview).getAllByRole('button', { name: /^Why / });

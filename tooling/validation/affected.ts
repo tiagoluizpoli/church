@@ -7,8 +7,10 @@ import { join, relative } from 'node:path';
 import {
   classifyChanges,
   isScriptsOnlyAddition,
+  readTurboNarrowing,
   type TestLayer,
   type TestTarget,
+  type TurboNarrowing,
   type ValidationPlan,
   WORKSPACES,
 } from './affected-plan';
@@ -17,18 +19,36 @@ import {
   findReusablePass,
   formatReusedPass,
   readCleanTree,
+  readJudgedTree,
   readMergeBase,
   recordPass,
 } from './gate-pass';
 import {
+  type CheckTiming,
+  countTests,
+  type FormatGateEndingInput,
+  formatGateEnding,
+  formatGateSummary,
+} from './gate-summary';
+import {
+  JOURNEY_IMPACT_TRAILER,
+  readBlankJourneyImpactTrailers,
+  readJourneyImpactTrailers,
+} from './journey-impact';
+import {
   hasFailure,
   type LaneStep,
   type OutputSink,
+  PROCESS_OUTPUT,
   runStages,
   type StepResult,
 } from './run-lanes';
+import {
+  type Acknowledgements,
+  readAcknowledgements,
+} from './seed-acknowledgements';
 import { readSeedImpactTrailers, SEED_IMPACT_TRAILER } from './seed-impact';
-import { VALIDATE_SETUP_STEPS } from './validate';
+import { BUNDLE_BUDGET_STEP, VALIDATE_SETUP_STEPS } from './validate';
 import { formatLockWait, holdValidateLock } from './validate-lock';
 
 export { classifyChanges, isScriptsOnlyAddition } from './affected-plan';
@@ -48,10 +68,20 @@ interface CollectChangedPathsResult {
   changedPaths: string[];
   /** Changed paths with no file in the working tree. */
   deletedPaths: string[];
-  /** Messages of the commits the branch adds over the base. */
-  commitMessages: string[];
   /** Root package.json only gained scripts versus the merge base. */
   packageJsonScriptsOnlyAddition: boolean;
+  /** Root turbo.json differs only in one package's tasks versus the merge base. */
+  turboNarrowing: TurboNarrowing | undefined;
+}
+
+interface ReadBaseAndHeadInput {
+  baseRef: string;
+  path: string;
+}
+
+interface BaseAndHead {
+  base: string;
+  head: string;
 }
 
 interface ParseArgumentsInput {
@@ -97,13 +127,6 @@ export interface RunValidationInput {
 interface RunValidationResult {
   failed: boolean;
   timings: CheckTiming[];
-}
-
-export interface CheckTiming {
-  failed?: boolean;
-  label: string;
-  ms: number;
-  skipped?: boolean;
 }
 
 interface PushSkippedInput {
@@ -194,6 +217,26 @@ function isRef({ ref }: { ref: string }): boolean {
   }
 }
 
+/** Undefined when either side is unavailable: the file stays root infrastructure. */
+function readBaseAndHead({
+  baseRef,
+  path,
+}: ReadBaseAndHeadInput): BaseAndHead | undefined {
+  try {
+    const mergeBase = execFileSync('git', ['merge-base', baseRef, 'HEAD'], {
+      encoding: 'utf8',
+    }).trim();
+    return {
+      base: execFileSync('git', ['show', `${mergeBase}:${path}`], {
+        encoding: 'utf8',
+      }),
+      head: readFileSync(path, 'utf8'),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 function collectChangedPaths({
   baseRef,
 }: CollectChangedPathsInput): CollectChangedPathsResult {
@@ -225,37 +268,22 @@ function collectChangedPaths({
     (path, index, paths) => path.length > 0 && paths.indexOf(path) === index,
   );
 
-  const commitMessages = resolvedBaseRef
-    ? runCommand({
-        args: ['log', '--format=%B%x00', `${resolvedBaseRef}..HEAD`],
-        command: 'git',
-      })
-        .join('\n')
-        .split('\0')
-    : [];
-
-  let packageJsonScriptsOnlyAddition = false;
-  if (resolvedBaseRef && changedPaths.includes('package.json')) {
-    try {
-      const mergeBase = execFileSync(
-        'git',
-        ['merge-base', resolvedBaseRef, 'HEAD'],
-        { encoding: 'utf8' },
-      ).trim();
-      packageJsonScriptsOnlyAddition = isScriptsOnlyAddition({
-        base: execFileSync('git', ['show', `${mergeBase}:package.json`], {
-          encoding: 'utf8',
-        }),
-        head: readFileSync('package.json', 'utf8'),
-      });
-    } catch {} // base unavailable: keep treating it as root infrastructure
-  }
+  const packageJson =
+    resolvedBaseRef && changedPaths.includes('package.json')
+      ? readBaseAndHead({ baseRef: resolvedBaseRef, path: 'package.json' })
+      : undefined;
+  const turboJson =
+    resolvedBaseRef && changedPaths.includes('turbo.json')
+      ? readBaseAndHead({ baseRef: resolvedBaseRef, path: 'turbo.json' })
+      : undefined;
 
   return {
     baseRef: resolvedBaseRef,
     changedPaths,
-    commitMessages,
-    packageJsonScriptsOnlyAddition,
+    packageJsonScriptsOnlyAddition: packageJson
+      ? isScriptsOnlyAddition(packageJson)
+      : false,
+    turboNarrowing: turboJson ? readTurboNarrowing(turboJson) : undefined,
     deletedPaths: changedPaths.filter((path) => !existsSync(path)),
   };
 }
@@ -449,6 +477,11 @@ export function buildValidationSteps({
       label: 'named-parameters',
     });
     checkLane.push({
+      args: ['run', 'validate:server-types'],
+      command: 'bun',
+      label: 'server-types',
+    });
+    checkLane.push({
       args: ['run', 'validate:journey-map'],
       command: 'bun',
       label: 'journey-map',
@@ -475,6 +508,9 @@ export function buildValidationSteps({
         label: 'typecheck',
       });
     }
+    if (plan.workspaceNames.includes('web')) {
+      checkLane.push(BUNDLE_BUDGET_STEP);
+    }
 
     const tierLayers = noDocker ? UNIT_ONLY_LAYERS : ALL_TEST_LAYERS;
     for (const testLayer of tierLayers) {
@@ -495,15 +531,19 @@ export function buildValidationSteps({
       'test-placement',
       'i18n-parity',
       'named-parameters',
+      'server-types',
       'journey-map',
       'presentation-text',
       'date-time-seam',
       'typecheck',
+      'bundle-budget',
       ...ALL_TEST_LAYERS,
     );
     if (plan.toolingTestPaths.length > 0) {
+      // The script, not a bare `bun test`: on GitHub Actions it annotates
+      // each failed test (#1162).
       unitLane.push({
-        args: ['test', 'tooling'],
+        args: ['run', 'test:validation'],
         command: 'bun',
         label: 'test:tooling',
       });
@@ -563,9 +603,12 @@ async function runValidation({
   onlyE2e,
   plan,
   skipE2e,
+  output,
   tier,
   wholeUnitSuites,
-}: RunValidationInput): Promise<RunValidationResult> {
+}: RunValidationInput & {
+  output: OutputSink;
+}): Promise<RunValidationResult> {
   const timings: CheckTiming[] = [];
   const steps = buildValidationSteps({
     onlyE2e,
@@ -579,6 +622,7 @@ async function runValidation({
   // The i18n compile runs before every check: lint, typecheck and tests read
   // the compiled messages, and a stale compile fails them falsely.
   const results = await runValidationSteps({
+    output,
     steps: {
       ...steps,
       checkLane: [...VALIDATE_SETUP_STEPS, ...steps.checkLane],
@@ -770,7 +814,11 @@ function buildTurboStep({
 
 interface ExplainPlanInput {
   baseRef: string | undefined;
+  journeyAcknowledgements?: Acknowledgements;
+  /** `Journey-Impact` trailers with no reason, from any commit above the base. */
+  blankJourneyTrailers?: Acknowledgements;
   plan: ValidationPlan;
+  seedAcknowledgements?: Acknowledgements;
   tier?: ValidationTier;
   wholeUnitSuites?: boolean;
 }
@@ -778,6 +826,9 @@ interface ExplainPlanInput {
 export function explainPlan({
   baseRef,
   plan,
+  journeyAcknowledgements,
+  blankJourneyTrailers,
+  seedAcknowledgements,
   tier = 'affected',
   wholeUnitSuites = false,
 }: ExplainPlanInput): string {
@@ -795,6 +846,22 @@ export function explainPlan({
     )) {
       lines.push(`      ${reason.detail} <- ${reason.changedPath}`);
     }
+  }
+
+  if (plan.turboNarrowing) {
+    const { taskNames, workspaceName } = plan.turboNarrowing;
+    lines.push(
+      '',
+      `turbo.json narrowed to ${workspaceName}: only its own task entries differ (${taskNames.join(', ')})`,
+    );
+  }
+
+  if (plan.turboNarrowingRefused) {
+    const { taskNames, workspaceName } = plan.turboNarrowingRefused;
+    lines.push(
+      '',
+      `turbo.json not narrowed: ${workspaceName} has no test layer in the plan, so every workspace is selected (${taskNames.join(', ')})`,
+    );
   }
 
   lines.push('', 'Test layers selected:');
@@ -838,6 +905,14 @@ export function explainPlan({
     }
   }
 
+  lines.push(
+    ...explainJourneyImpact({
+      plan,
+      journeyAcknowledgements,
+      blankJourneyTrailers,
+    }),
+  );
+
   lines.push('', 'Tooling tests selected:');
   if (plan.toolingTestPaths.length === 0) {
     lines.push('  (none)');
@@ -845,7 +920,7 @@ export function explainPlan({
     for (const path of plan.toolingTestPaths) lines.push(`  - ${path}`);
   }
 
-  lines.push('', ...explainSeedImpact({ plan }));
+  lines.push('', ...explainSeedImpact({ plan, seedAcknowledgements }));
 
   if (plan.missingJourneyMappings.length > 0) {
     lines.push(
@@ -853,16 +928,97 @@ export function explainPlan({
       'Missing journey mappings (fell back to critical smoke set):',
     );
     for (const path of plan.missingJourneyMappings) lines.push(`  - ${path}`);
+    lines.push(
+      `  A pure refactor may skip journeys with a commit trailer "${JOURNEY_IMPACT_TRAILER}".`,
+    );
+  }
+
+  if (plan.ignoredPaths.length > 0) {
+    lines.push('', 'Changed files ignored by journey selection:');
+    for (const path of plan.ignoredPaths) lines.push(`  - ${path}`);
   }
 
   return lines.join('\n');
 }
 
-interface ExplainSeedImpactInput {
-  plan: ValidationPlan;
+/** A reason with no commit did not come from a trailer. */
+function explainAcknowledged({
+  reasons,
+  accepted,
+}: {
+  reasons: string[];
+  accepted: Acknowledgements['accepted'];
+}): string[] {
+  return [...new Set(reasons)].map((reason) => {
+    const shas = accepted
+      .filter((acknowledgement) => acknowledgement.reason === reason)
+      .map(({ sha }) => sha);
+    const source = shas.length > 0 ? ` (commit ${shas.join(', ')})` : '';
+    return `  acknowledged: ${reason}${source}`;
+  });
 }
 
-function explainSeedImpact({ plan }: ExplainSeedImpactInput): string[] {
+function explainRefused({
+  borrowed,
+  ownBaseRef,
+}: {
+  borrowed: Acknowledgements['borrowed'];
+  ownBaseRef: string | undefined;
+}): string[] {
+  return borrowed.map(
+    ({ reason, sha }) =>
+      `  refused: ${reason} (commit ${sha}) is not one of this branch's own commits (above ${ownBaseRef}).`,
+  );
+}
+
+function explainJourneyImpact({
+  plan,
+  journeyAcknowledgements,
+  blankJourneyTrailers,
+}: {
+  plan: ValidationPlan;
+  journeyAcknowledgements?: Acknowledgements;
+  blankJourneyTrailers?: Acknowledgements;
+}): string[] {
+  const {
+    accepted = [],
+    borrowed = [],
+    ownBaseRef,
+  } = journeyAcknowledgements ?? {};
+  const { accepted: ownBlank = [], borrowed: borrowedBlank = [] } =
+    blankJourneyTrailers ?? {};
+  const blank = [...ownBlank, ...borrowedBlank].map(
+    ({ sha }) =>
+      `  refused: no reason given (commit ${sha}); write "${JOURNEY_IMPACT_TRAILER}".`,
+  );
+  const reasons = plan.journeyImpactAcknowledgements;
+  if (reasons.length > 0) {
+    return [
+      '',
+      'Journey impact: acknowledged, journeys skipped',
+      ...explainAcknowledged({ reasons, accepted }),
+      ...blank,
+    ];
+  }
+  const refused = [...explainRefused({ borrowed, ownBaseRef }), ...blank];
+  if (refused.length === 0) return [];
+  return ['', 'Journey impact: trailer refused, journeys run', ...refused];
+}
+
+interface ExplainSeedImpactInput {
+  plan: ValidationPlan;
+  seedAcknowledgements?: Acknowledgements;
+}
+
+function explainSeedImpact({
+  plan,
+  seedAcknowledgements,
+}: ExplainSeedImpactInput): string[] {
+  const {
+    accepted = [],
+    borrowed = [],
+    ownBaseRef,
+  } = seedAcknowledgements ?? {};
   const { acknowledgements, changes, decision } = plan.seedImpact;
   if (decision === 'not-applicable') return ['Seed impact: none selected'];
 
@@ -874,10 +1030,14 @@ function explainSeedImpact({ plan }: ExplainSeedImpactInput): string[] {
   for (const { area, changedPath } of changes) {
     lines.push(`  - ${area} <- ${changedPath}`);
   }
-  for (const reason of acknowledgements) {
-    lines.push(`  acknowledged: ${reason}`);
+  // A reason with no commit came from --no-seed-impact.
+  lines.push(...explainAcknowledged({ reasons: acknowledgements, accepted }));
+  if (accepted.length > 0 || borrowed.length > 0) {
+    lines.push(`  own commits: above ${ownBaseRef}`);
   }
   if (decision === 'undecided') {
+    lines.push(...explainRefused({ borrowed, ownBaseRef }));
+    if (borrowed.length > 0) lines.push('  Add the trailer on this branch.');
     lines.push(
       '  Update apps/server/seeds (and its contracts) in this change, or',
       `  acknowledge it with a commit trailer "${SEED_IMPACT_TRAILER}"`,
@@ -887,28 +1047,13 @@ function explainSeedImpact({ plan }: ExplainSeedImpactInput): string[] {
   return lines;
 }
 
-interface FormatTimingSummaryInput {
-  timings: CheckTiming[];
+interface RunCliInput {
+  argumentsResult: ParseArgumentsResult;
+  /** Filled as the run learns it; the exit handler prints it. */
+  ending: Omit<FormatGateEndingInput, 'exitCode'>;
 }
 
-export function formatTimingSummary({
-  timings,
-}: FormatTimingSummaryInput): string {
-  const lines = ['| Check | Elapsed |', '| --- | --- |'];
-  for (const { failed, label, ms, skipped } of timings) {
-    const elapsed = `${(ms / 1000).toFixed(1)}s`;
-    const status = skipped
-      ? 'skipped'
-      : failed
-        ? `failed (${elapsed})`
-        : elapsed;
-    lines.push(`| ${label} | ${status} |`);
-  }
-  return lines.join('\n');
-}
-
-if (import.meta.main) {
-  const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
+async function runCli({ argumentsResult, ending }: RunCliInput) {
   const { tier } = argumentsResult;
   if (tier === 'no-docker') {
     console.log(
@@ -918,22 +1063,47 @@ if (import.meta.main) {
   const {
     baseRef,
     changedPaths,
-    commitMessages,
     deletedPaths,
     packageJsonScriptsOnlyAddition,
+    turboNarrowing,
   } = collectChangedPaths({ baseRef: argumentsResult.baseRef });
+  const seedAcknowledgements = readAcknowledgements({
+    baseRef,
+    readReasons: readSeedImpactTrailers,
+  });
+  const journeyAcknowledgements = readAcknowledgements({
+    baseRef,
+    readReasons: readJourneyImpactTrailers,
+  });
+  const blankJourneyTrailers = readAcknowledgements({
+    baseRef,
+    readReasons: readBlankJourneyImpactTrailers,
+  });
+  const explained = {
+    baseRef,
+    blankJourneyTrailers,
+    journeyAcknowledgements,
+    seedAcknowledgements,
+  };
   const plan = classifyChanges({
     changedPaths,
     dailyGate: argumentsResult.dailyGate,
     deletedPaths,
     e2eImportGraph: readE2eImportGraph(),
     e2eSpecPaths: argumentsResult.e2eSpecPaths,
+    journeyImpactAcknowledgements: journeyAcknowledgements.accepted.map(
+      ({ reason }) => reason,
+    ),
     packageJsonScriptsOnlyAddition,
     seedImpactAcknowledgements: [
       ...argumentsResult.seedImpactAcknowledgements,
-      ...readSeedImpactTrailers({ messages: commitMessages }),
+      ...seedAcknowledgements.accepted.map(({ reason }) => reason),
     ],
+    turboNarrowing,
   });
+
+  ending.journeyFallbacks = plan.missingJourneyMappings;
+  ending.seedDecision = plan.seedImpact.decision;
 
   console.log(JSON.stringify(plan, null, 2));
   if (plan.missingJourneyMappings.length > 0) {
@@ -945,7 +1115,7 @@ if (import.meta.main) {
   // Only a run that would validate refuses: --dry-run stays a pure plan whose
   // JSON other CI steps parse, and the gate that runs validation enforces it.
   if (plan.seedImpact.decision === 'undecided' && !argumentsResult.dryRun) {
-    console.error(explainPlan({ baseRef, plan }));
+    console.error(explainPlan({ ...explained, plan }));
     console.error(
       '\nSeed impact is undecided: this change touches schema, persistence, authentication, tenancy or scheduling. Nothing was validated.',
     );
@@ -957,7 +1127,7 @@ if (import.meta.main) {
     // Bun (see ci.yml's "Determine affected plan" step) — the explanation
     // must stay off stdout so that stays valid JSON.
     console.error('');
-    console.error(explainPlan({ baseRef, plan }));
+    console.error(explainPlan({ ...explained, plan }));
   } else {
     const mergeBase =
       baseRef && isWholeLocalRun({ argumentsResult, ci: process.env.CI })
@@ -972,10 +1142,13 @@ if (import.meta.main) {
     }
     const tree = mergeBase ? readCleanTree({}) : null;
     const lock = await holdValidateLock({ tier });
+    const { counts, output } = countTests({ output: PROCESS_OUTPUT });
+    ending.counts = counts;
     let failed: boolean;
-    let timings: Awaited<ReturnType<typeof runValidation>>['timings'];
+    let timings: CheckTiming[];
     try {
       ({ failed, timings } = await runValidation({
+        output,
         onlyE2e: argumentsResult.onlyE2e,
         plan,
         skipE2e: argumentsResult.skipE2e,
@@ -985,25 +1158,52 @@ if (import.meta.main) {
     } finally {
       lock.release();
     }
-    const summary = formatTimingSummary({ timings });
+    ending.timings = timings;
     const explanation = explainPlan({
-      baseRef,
+      ...explained,
       plan,
       tier,
       wholeUnitSuites: argumentsResult.dailyGate,
     });
     console.log('');
-    console.log(summary);
     console.log(formatLockWait({ waitedMs: lock.waitedMs }));
     console.log('');
     console.log(explanation);
     if (process.env.GITHUB_STEP_SUMMARY) {
+      const summary = formatGateSummary(ending);
       appendFileSync(
         process.env.GITHUB_STEP_SUMMARY,
-        `\n### Check timings\n\n${summary}\n\n### Selection reasons\n\n\`\`\`\n${explanation}\n\`\`\`\n`,
+        `\n### Gate summary\n\n${summary}\n\n### Selection reasons\n\n\`\`\`\n${explanation}\n\`\`\`\n`,
       );
     }
     if (failed) process.exitCode = 1;
-    else if (tree && mergeBase) recordPass({ base: mergeBase, tier, tree });
+    // A pass is keyed by tree, which a reworded trailer keeps: never record
+    // one whose journeys a trailer skipped.
+    else if (
+      tree &&
+      mergeBase &&
+      (tier === 'no-docker' || plan.journeyImpactAcknowledgements.length === 0)
+    ) {
+      recordPass({ base: mergeBase, tier, tree });
+    }
+  }
+}
+
+if (import.meta.main) {
+  const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
+  const ending: RunCliInput['ending'] = { tree: 'unknown' };
+  // A dry run's stdout is parsed as JSON. Every other run ends with the
+  // summary however it ends: pass, failure, throw, busy slot or signal.
+  if (!argumentsResult.dryRun) {
+    ending.tree = readJudgedTree({});
+    process.on('exit', (exitCode) => {
+      process.stdout.write(formatGateEnding({ ...ending, exitCode }));
+    });
+  }
+  try {
+    await runCli({ argumentsResult, ending });
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
   }
 }

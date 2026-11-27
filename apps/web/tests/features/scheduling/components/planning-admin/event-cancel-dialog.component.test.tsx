@@ -7,6 +7,7 @@ import { AxiosError, type AxiosResponse } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventCancelDialog } from '@/features/scheduling/components/planning-admin/event-cancel-dialog';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
+import { waitForDialogFocus } from '@/tests/setup/dialog';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const previewPlanningEventCancellation = vi.fn();
@@ -78,6 +79,7 @@ async function open({ queryClient }: OpenInput = {}) {
       name: m.event_cancel_action_label({ title: 'Sunday' }),
     }),
   );
+  await waitForDialogFocus();
   return user;
 }
 
@@ -319,6 +321,7 @@ describe('EventCancelDialog for one EventTimeBlock', () => {
         name: m.event_cancel_action_label({ title: 'Sunday · Service' }),
       }),
     );
+    await waitForDialogFocus();
     await screen.findByTestId('event-cancel-impact');
     await user.type(
       screen.getByLabelText(m.event_cancel_confirm_label({ word })),
@@ -339,5 +342,62 @@ describe('EventCancelDialog for one EventTimeBlock', () => {
     );
     expect(previewPlanningEventCancellation).not.toHaveBeenCalled();
     expect(cancelPlanningEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('EventCancelDialog hidden option', () => {
+  it.each([
+    ['event', undefined, 'Ocultar evento cancelado'],
+    ['time block', 'block-1', 'Ocultar horário cancelado'],
+  ])('offers it unchecked for an %s and sends hidden only when ticked', async (_scope, eventTimeBlockId, label) => {
+    const preview = eventTimeBlockId
+      ? previewPlanningEventTimeBlockCancellation
+      : previewPlanningEventCancellation;
+    const cancel = eventTimeBlockId
+      ? cancelPlanningEventTimeBlock
+      : cancelPlanningEvent;
+    preview.mockResolvedValue(impact());
+    cancel.mockResolvedValue(impact());
+    const user = userEvent.setup();
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="America/Sao_Paulo">
+        <EventCancelDialog
+          cycleId="cycle-1"
+          eventId="event-1"
+          eventTimeBlockId={eventTimeBlockId}
+          title="Sunday"
+        />
+      </TimezoneProvider>,
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: m.event_cancel_action_label({ title: 'Sunday' }),
+      }),
+    );
+    await waitForDialogFocus();
+    await screen.findByTestId('event-cancel-impact');
+    const option = screen.getByRole('checkbox', { name: label });
+    expect(option).not.toBeChecked();
+
+    await user.click(option);
+    await user.type(
+      screen.getByLabelText(m.event_cancel_confirm_label({ word: 'cancelar' })),
+      'cancelar',
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: eventTimeBlockId
+          ? m.event_cancel_block_confirm()
+          : m.event_cancel_confirm(),
+      }),
+    );
+
+    const ids = eventTimeBlockId
+      ? ['cycle-1', 'event-1', eventTimeBlockId]
+      : ['cycle-1', 'event-1'];
+    expect(cancel).toHaveBeenCalledWith(...ids, {
+      confirmation: 'cancelar',
+      hidden: true,
+    });
   });
 });

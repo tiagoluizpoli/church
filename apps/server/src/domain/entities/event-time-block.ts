@@ -6,6 +6,7 @@ import type {
   EventTimeBlockId,
   TemplateTimeBlockId,
 } from '../branded-ids';
+import { IllegalStateTransitionError } from '../errors/illegal-state-transition';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
 import type { ShiftRequirement } from './shift-requirement';
 
@@ -25,23 +26,30 @@ export interface EventTimeBlockProps {
   /** A Church Address as the place; exclusive with `place`. */
   placeAddressId?: string;
   status: EventTimeBlockStatus;
+  /** The block's own choice, only ever true on a cancelled block. */
+  isHidden: boolean;
   requirements: ShiftRequirement[];
 }
 
 export interface EventTimeBlockInput {
   props: Omit<
     LooseProps<EventTimeBlockProps>,
-    'status' | 'requirements' | 'isPublic'
+    'status' | 'requirements' | 'isPublic' | 'isHidden'
   > &
     Partial<
       Pick<
         LooseProps<EventTimeBlockProps>,
-        'status' | 'requirements' | 'isPublic'
+        'status' | 'requirements' | 'isPublic' | 'isHidden'
       >
     >;
   id?: string;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+interface SetHiddenInput {
+  isHidden: boolean;
+  action: 'hide' | 'show';
 }
 
 export class EventTimeBlock extends Entity<
@@ -62,6 +70,7 @@ export class EventTimeBlock extends Entity<
         ...props,
         isPublic: props.isPublic ?? false,
         status: props.status ?? 'active',
+        isHidden: props.isHidden ?? false,
         requirements: props.requirements ?? [],
       } as unknown as EventTimeBlockProps,
       id: id as EventTimeBlockId,
@@ -110,12 +119,34 @@ export class EventTimeBlock extends Entity<
     return this._props.status;
   }
 
+  get isHidden(): boolean {
+    return this._props.isHidden;
+  }
+
   get requirements(): ShiftRequirement[] {
     return this._props.requirements;
   }
 
   public cancel(): void {
     this._props.status = 'cancelled';
+    this._updatedAt = toDate({ instant: now() });
+  }
+
+  /** Only cancelled work can be hidden or shown again. */
+  public hide(): void {
+    this.setHidden({ isHidden: true, action: 'hide' });
+  }
+
+  public show(): void {
+    this.setHidden({ isHidden: false, action: 'show' });
+  }
+
+  private setHidden({ isHidden, action }: SetHiddenInput): void {
+    const { status } = this._props;
+    if (status !== 'cancelled') {
+      throw new IllegalStateTransitionError({ from: status, to: action });
+    }
+    this._props.isHidden = isHidden;
     this._updatedAt = toDate({ instant: now() });
   }
 }

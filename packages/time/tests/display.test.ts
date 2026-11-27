@@ -5,6 +5,7 @@ import {
   formatCalendarDayWithWeekday,
   formatDayAndMonth,
   formatDayLabel,
+  formatDayMonthShort,
   formatInstant,
   formatInstantPrecise,
   formatLongCalendarDay,
@@ -14,6 +15,7 @@ import {
   formatRelative,
   formatTimeOfDay,
   formatWeekday,
+  formatWeekdayInSentence,
   formatWeekdayOfIndex,
   formatWeekdayPluralOfIndex,
   formatWeekdayShort,
@@ -103,6 +105,17 @@ describe('formatWeekday', () => {
   it('capitalizes the first letter in pt-BR', () => {
     expect(formatWeekday({ day: day('2027-01-04'), locale: 'pt-BR' })).toMatch(
       /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ]/,
+    );
+  });
+});
+
+describe('formatWeekdayInSentence', () => {
+  it.each([
+    ['en', 'Monday'],
+    ['pt-BR', 'segunda-feira'],
+  ] as const)('writes the weekday as %s does mid-sentence', (locale, expected) => {
+    expect(formatWeekdayInSentence({ day: day('2027-01-04'), locale })).toBe(
+      expected,
     );
   });
 });
@@ -488,6 +501,17 @@ describe('formatDayLabel', () => {
     expect(formatDayLabel({ day: day('2026-10-04'), locale: 'en' })).toBe(
       'Sun 4 Oct',
     );
+  });
+});
+
+describe('formatDayMonthShort', () => {
+  it('reads like `4 Oct` / `4 out`, without padding or a dot', () => {
+    expect(formatDayMonthShort({ day: day('2026-10-04'), locale: 'en' })).toBe(
+      '4 Oct',
+    );
+    expect(
+      formatDayMonthShort({ day: day('2026-10-04'), locale: 'pt-BR' }),
+    ).toBe('4 out');
   });
 });
 

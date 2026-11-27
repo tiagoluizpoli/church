@@ -1,16 +1,19 @@
 interface ScheduleUpdateShift {
   startsAt: string;
   endsAt: string;
-  eventTitle: string;
+  /** An anonymised line puts the Ministry here, or nothing. */
+  eventTitle?: string;
   roleName: string;
-  sectorName: string;
+  sectorName?: string;
 }
 
 import { m } from '@church/i18n/messages';
 import { getLocale } from '@church/i18n/runtime';
 import {
   formatDayLabel,
+  formatDayMonthShort,
   formatTimeOfDay,
+  formatWeekdayInSentence,
   parseInstant,
   today,
   toTimeOfDay,
@@ -47,7 +50,9 @@ function formatShiftLine({ shift, timeZone, locale }: FormatShiftLineInput) {
     shift.eventTitle,
     shift.roleName,
     shift.sectorName,
-  ].join(' · ');
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 export interface RenderedNotification {
@@ -185,7 +190,18 @@ export function renderNotification(
         body: [
           m.notification_event_cancelled_body(),
           ...data.shifts.map((shift) =>
-            formatShiftLine({ shift, timeZone: data.churchTimezone, locale }),
+            formatShiftLine({
+              // Hidden: the Volunteer's own Ministry and Role, nothing of the Event.
+              shift: data.hidden
+                ? {
+                    ...shift,
+                    eventTitle: shift.ministryName,
+                    sectorName: undefined,
+                  }
+                : shift,
+              timeZone: data.churchTimezone,
+              locale,
+            }),
           ),
         ].join('\n'),
         kindLabel: m.notification_kind_event_cancelled(),
@@ -374,13 +390,18 @@ type EventChangedData = Extract<
 
 /** N10: the Event, who changed it and the recipient's affected Ministries. */
 function eventChangedWords(data: EventChangedData) {
-  const { cycleName, eventTitle, ministries, change, churchTimezone } = data;
-  const { adminName } = data;
+  const { cycleName, ministries, change, churchTimezone } = data;
+  const { adminName, hidden, eventTimeBlockId } = data;
+  const eventTitle = hidden
+    ? hiddenEventName({ start: change.start, timeZone: churchTimezone })
+    : data.eventTitle;
   const when = eventWhen({ ...change, timeZone: churchTimezone });
   if (change.kind === 'cancel') {
     return {
       title: eventCancelledTitle({
         eventTitle,
+        hidden,
+        eventTimeBlockId,
         start: change.start,
         timeZone: churchTimezone,
       }),
@@ -467,21 +488,60 @@ function eventMoveImpactLine({
   return answersGiven ? `${line} · ${m.prepare_answers_coverage_note()}` : line;
 }
 
-interface EventCancelledTitleInput {
-  eventTitle: string;
+interface WeekdayOfStartInput {
   start: string;
   timeZone: string;
 }
 
-/** N9 and N10 cancel share it: the scope's Church-Timezone day. */
+/** The start's Church-Timezone weekday as it reads mid-sentence. */
+function weekdayOfStart({ start, timeZone }: WeekdayOfStartInput): string {
+  const startInstant = parseInstant({ value: start });
+  const startDay = today({ instant: startInstant, timeZone });
+  const locale = getLocale();
+  return formatWeekdayInSentence({ day: startDay, locale });
+}
+
+/** What stands in for a hidden Event's title: `Friday event`. */
+function hiddenEventName(input: WeekdayOfStartInput): string {
+  const weekday = weekdayOfStart(input);
+  return m.notification_hidden_event_name({ weekday });
+}
+
+interface EventCancelledTitleInput {
+  eventTitle: string;
+  hidden?: boolean;
+  eventTimeBlockId?: string;
+  start: string;
+  timeZone: string;
+}
+
+/**
+ * N9 and N10 cancel share it: the scope's Church-Timezone day. Hidden names the
+ * weekday and start time instead of the title.
+ */
 function eventCancelledTitle({
   eventTitle,
+  hidden,
+  eventTimeBlockId,
   start,
   timeZone,
 }: EventCancelledTitleInput): string {
   const startInstant = parseInstant({ value: start });
   const startDay = today({ instant: startInstant, timeZone });
   const locale = getLocale();
+  if (hidden) {
+    const weekday = weekdayOfStart({ start, timeZone });
+    const startTime = toTimeOfDay({ instant: startInstant, timeZone });
+    const time = formatTimeOfDay({ time: startTime });
+    if (eventTimeBlockId) {
+      return m.notification_hidden_time_block_cancelled_title({
+        weekday,
+        time,
+      });
+    }
+    const date = formatDayMonthShort({ day: startDay, locale });
+    return m.notification_hidden_event_cancelled_title({ weekday, date, time });
+  }
   const day = formatDayLabel({ day: startDay, locale });
   return m.notification_event_cancelled_title({ eventTitle, day });
 }

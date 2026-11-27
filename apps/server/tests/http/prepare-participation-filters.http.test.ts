@@ -286,6 +286,37 @@ describe('GET /prepare/cycles/:cycleId/participation filters', () => {
     expect(vigilBlock?.answerCoverage).toEqual({ available: 0, needed: null });
   });
 
+  it('leaves hidden cancelled scopes out, and brings them back when shown', async () => {
+    const scope = await seedCycle();
+    const vigil = schedulingTestDb
+      .select({ id: event.id })
+      .from(event)
+      .where(eq(event.title, 'Night Vigil'));
+    // A hidden cancelled Event, and a hidden cancelled block under a live one.
+    const setHidden = async (isHidden: boolean) => {
+      await schedulingTestDb
+        .update(event)
+        .set({ status: 'cancelled', isHidden })
+        .where(eq(event.title, 'Sunday Worship'));
+      await schedulingTestDb
+        .update(eventTimeBlock)
+        .set({ status: 'cancelled', isHidden })
+        .where(inArray(eventTimeBlock.eventId, vigil));
+    };
+
+    await setHidden(true);
+    const hidden = await getView({ scope });
+    expect(titles(hidden)).toEqual(['Midweek']);
+    expect(hidden.dayMarkers).toEqual(['2026-09-09']);
+    expect(hidden.totals).toEqual({ blocks: 1, needsAttention: 0 });
+
+    await setHidden(false);
+    const shown = await getView({ scope });
+    expect(titles(shown)).toEqual(['Sunday Worship', 'Night Vigil', 'Midweek']);
+    expect(shown.dayMarkers).toEqual(ALL_DAYS);
+    expect(shown.totals).toEqual({ blocks: 3, needsAttention: 0 });
+  });
+
   it('combines filters', async () => {
     const scope = await seedCycle();
     const view = await getView({

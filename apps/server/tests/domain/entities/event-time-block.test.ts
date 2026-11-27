@@ -1,6 +1,7 @@
 import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { EventTimeBlock } from '@/domain/entities/event-time-block';
+import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
 import { InvalidDateRangeError } from '@/domain/errors/invalid-date-range';
 
 describe('EventTimeBlock Entity', () => {
@@ -61,5 +62,36 @@ describe('EventTimeBlock Entity', () => {
         },
       });
     }).toThrow(InvalidDateRangeError);
+  });
+});
+
+describe('EventTimeBlock hide/show', () => {
+  const props = {
+    churchId: 'c1',
+    eventId: 'e1',
+    startTime: parseInstant({ value: '2026-05-15T10:00:00Z' }),
+    endTime: parseInstant({ value: '2026-05-15T12:00:00Z' }),
+  };
+
+  it('hides and shows a cancelled block', () => {
+    const block = new EventTimeBlock({ props });
+    block.cancel();
+
+    block.hide();
+    expect(block.isHidden).toBe(true);
+    block.show();
+    expect(block.isHidden).toBe(false);
+  });
+
+  it('refuses to hide or show an active block', () => {
+    const block = new EventTimeBlock({ props });
+
+    expect(() => block.hide()).toThrow(
+      new IllegalStateTransitionError({ from: 'active', to: 'hide' }),
+    );
+    expect(() => block.show()).toThrow(
+      new IllegalStateTransitionError({ from: 'active', to: 'show' }),
+    );
+    expect(block.isHidden).toBe(false);
   });
 });

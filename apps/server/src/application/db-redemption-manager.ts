@@ -1,43 +1,50 @@
 import { compareInstants, fromDate, nowAsDate, toDate } from '@church/time';
-import {
-  type ChurchId,
-  ChurchInvitationId,
-  type VolunteerId,
-} from '../domain/branded-ids';
-import type { InvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
+import { ChurchInvitationId, type VolunteerId } from '../domain/branded-ids';
+import type { IInvitationVerificationCodeManager } from '../domain/contracts/application/invitation-verification-code-manager';
 import type {
   AcceptChurchInvitationInput,
   AcceptChurchInvitationOutcome,
   AcceptExistingMemberInput,
   AcceptExistingMemberOutcome,
+  AcceptedBundle,
   AcceptPendingMinistryInvitationInput,
+  AcceptReviewedBundleInput,
+  AdmitNewPersonInput,
+  AdmittedNewPerson,
   AuthenticatedInvitationStatus,
+  ChurchAcceptanceResult,
   ChurchInvitationReviewStatus,
+  ChurchOnlyOutcomeInput,
   ChurchOnlyRedemptionOutcome,
+  ClassifyIdentityFailureInput,
+  DbRedemptionManagerDependencies,
   DeclineChurchInvitationInput,
   DeclineChurchInvitationOutcome,
   DeclineInvitationInput,
   DeclineInvitationOutcome,
-  FullRedemptionSuccess,
+  EnsureChurchInvitationPendingInput,
   GetAuthenticatedInvitationStatusInput,
   GetChurchInvitationReviewStatusInput,
   GetDebugInvitationLinkInput,
   GetDebugVerificationCodeInput,
   GetPublicRedemptionPreviewInput,
-  PublicRedemptionMinistry,
+  IRedemptionManager,
+  IsInvitationRedeemableInput,
+  IsUnexpiredInput,
+  MinistryGrantFailureInput,
   PublicRedemptionPreview,
   RedeemNewUserInput,
   RedeemNewUserOutcome,
-  RedemptionManager,
+  ReplayCommittedInput,
   RequestRedemptionCodeInput,
+  ResolveChurchInvitationInput,
+  ResolvedChurchInvitation,
+  ResolvedInvitationContext,
+  ResolveInvitationContextInput,
 } from '../domain/contracts/application/redemption-manager';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { InvitationVerificationCodeRepository } from '../domain/contracts/infrastructure/invitation-verification-code.repository';
-import type {
-  ChurchInvitationContext,
-  MinistryInvitationContext,
-  MinistryInvitationRepository,
-} from '../domain/contracts/infrastructure/ministry-invitation.repository';
+import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { RedemptionRepository } from '../domain/contracts/infrastructure/redemption.repository';
 import type { RedemptionFailureLog } from '../domain/contracts/infrastructure/redemption-failure-log';
 import type {
@@ -45,74 +52,15 @@ import type {
   RejectChurchInvitationInput,
 } from '../domain/contracts/infrastructure/redemption-identity-gateway';
 import type { SecurityLogRepository } from '../domain/contracts/infrastructure/security-log.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VerificationCodeInspector } from '../domain/contracts/infrastructure/verification-code-inspector';
-import type { MinistryInvitation } from '../domain/entities/ministry-invitation';
 import { CrossChurchVolunteerConflictError } from '../domain/errors/cross-church-volunteer-conflict';
 import { InvitationNotPendingError } from '../domain/errors/invitation-not-pending';
 import { PendingMinistryInvitationNotFoundError } from '../domain/errors/pending-ministry-invitation-not-found';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
-import { maskEmail } from '../domain/services/mask-email';
-import { reviewTokenFor } from '../domain/services/redemption-review-token';
+import { maskEmail } from '../domain/services/invitations/mask-email';
+import { reviewTokenFor } from '../domain/services/invitations/redemption-review-token';
 import type { StoredRedemption } from '../domain/stored-redemption';
-
-interface DbRedemptionManagerDependencies {
-  churchRepository: ChurchRepository;
-  identityGateway: RedemptionIdentityGateway;
-  invitationRepository: MinistryInvitationRepository;
-  invitationVerificationCodeManager: InvitationVerificationCodeManager;
-  redemptionRepository: RedemptionRepository;
-  securityLogRepository: SecurityLogRepository;
-  unitOfWork: UnitOfWork;
-  verificationCodeRepository: InvitationVerificationCodeRepository;
-  failureLog: RedemptionFailureLog;
-  /** Non-production only — see `getDebugVerificationCode`. */
-  verificationCodeInspector?: VerificationCodeInspector;
-}
-
-interface AdmitNewPersonInput {
-  preview: PublicRedemptionPreview;
-  name: string;
-  password: string;
-  correlationId: string;
-  now: Date;
-  tx: TransactionContext;
-}
-
-interface AdmittedChurchOnly {
-  kind: 'church-only';
-  sourceChurchId: ChurchId;
-  /** The headline half named to the caller; every half stays pending. */
-  ministry: PublicRedemptionMinistry;
-  sessionCookie: string;
-}
-
-type AdmittedNewPerson = FullRedemptionSuccess | AdmittedChurchOnly;
-
-interface ReplayCommittedInput {
-  churchInvitationId: ChurchInvitationId;
-  password: string;
-  code: string;
-  idempotencyKey: string;
-  now: Date;
-}
-
-interface ClassifyIdentityFailureInput {
-  email: string;
-}
-
-interface ChurchOnlyOutcomeInput {
-  sourceChurchId: ChurchId;
-  destinationChurchId: ChurchId;
-  destinationChurchName: string;
-  ministryInvitationId: AcceptPendingMinistryInvitationInput['ministryInvitationId'];
-  ministryName: string;
-}
-
-interface MinistryGrantFailureInput {
-  cause: unknown;
-}
 
 /** Marks a throw from the Ministry grant step, so the rollback reports it as such. */
 class MinistryGrantFailure extends Error {
@@ -135,63 +83,11 @@ class ReviewedOfferChanged extends Error {
   }
 }
 
-interface AcceptReviewedBundleInput {
-  ministryInvitation: MinistryInvitation;
-  userId: AcceptExistingMemberInput['userId'];
-  sessionCookie: string;
-  reviewToken: string;
-  acceptedAt: Date;
-  correlationId: string;
-  tx: TransactionContext;
-}
-
-type AcceptedBundle =
-  | { kind: 'full-success'; volunteerId: VolunteerId }
-  | { kind: 'church-only'; sourceChurchId: ChurchId };
-
 /** Marks a throw from Better Auth's Church-half rejection, so the decline reports it as such. */
 class IdentityRejectFailure extends Error {
   constructor({ cause }: MinistryGrantFailureInput) {
     super('Church Invitation rejection failed during decline.', { cause });
   }
-}
-
-interface ResolveInvitationContextInput {
-  ministryInvitationId: AcceptExistingMemberInput['ministryInvitationId'];
-  userId: AcceptExistingMemberInput['userId'];
-  now: Date;
-  /** The attempt's own correlation id, when the caller has one (e.g. `acceptExistingMember`'s idempotency key). */
-  correlationId?: string;
-}
-
-type ResolvedInvitationContext =
-  | { status: 'unavailable' }
-  | { status: 'identity-mismatch'; addressedEmail: string }
-  | { status: 'already-accepted'; ministryInvitation: MinistryInvitation }
-  | { status: 'redeemable'; context: MinistryInvitationContext };
-
-interface ResolveChurchInvitationInput {
-  churchInvitationId: AcceptChurchInvitationInput['churchInvitationId'];
-  userId: AcceptChurchInvitationInput['userId'];
-  now: Date;
-  correlationId?: string;
-}
-
-type ResolvedChurchInvitation =
-  | { status: 'unavailable' }
-  | { status: 'identity-mismatch'; maskedEmail: string }
-  | { status: 'already-accepted'; churchId: ChurchId }
-  | { status: 'redeemable'; context: ChurchInvitationContext };
-
-type ChurchAcceptanceResult =
-  | 'accepted'
-  | 'offer-changed'
-  | 'already-accepted'
-  | 'unavailable';
-
-interface IsInvitationRedeemableInput {
-  ministryInvitation: MinistryInvitation;
-  now: Date;
 }
 
 /** Pending and not yet past its `expiresAt` — the shared gate every redemption path checks before proceeding. */
@@ -208,11 +104,6 @@ function isInvitationRedeemable({
   );
 }
 
-interface IsUnexpiredInput {
-  expiresAt: Date;
-  now: Date;
-}
-
 function isUnexpired({ expiresAt, now }: IsUnexpiredInput): boolean {
   return (
     compareInstants({
@@ -222,22 +113,16 @@ function isUnexpired({ expiresAt, now }: IsUnexpiredInput): boolean {
   );
 }
 
-interface EnsureChurchInvitationPendingInput {
-  churchId: ChurchId;
-  churchInvitationId: string;
-  tx: TransactionContext;
-}
-
 /**
  * Checkpoint three from spec §7.4. This is intentionally transport-free: #99
  * will authenticate and call it, while this operation owns the sole database
  * transaction that creates grants and consumes the Ministry Invitation.
  */
-export class DbRedemptionManager implements RedemptionManager {
+export class DbRedemptionManager implements IRedemptionManager {
   private readonly churchRepository: ChurchRepository;
   private readonly identityGateway: RedemptionIdentityGateway;
   private readonly invitationRepository: MinistryInvitationRepository;
-  private readonly invitationVerificationCodeManager: InvitationVerificationCodeManager;
+  private readonly invitationVerificationCodeManager: IInvitationVerificationCodeManager;
   private readonly redemptionRepository: RedemptionRepository;
   private readonly securityLogRepository: SecurityLogRepository;
   private readonly unitOfWork: UnitOfWork;

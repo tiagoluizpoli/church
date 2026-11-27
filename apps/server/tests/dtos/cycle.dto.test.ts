@@ -127,6 +127,12 @@ describe('cycleMapper', () => {
       events: [
         { event, eventTimeBlocks: [eventTimeBlockOne, eventTimeBlockTwo] },
       ],
+      counts: { eventCount: 1, eventTimeBlockCount: 2 },
+    });
+
+    expect(response.counts).toEqual({
+      eventCount: 1,
+      eventTimeBlockCount: 2,
     });
 
     expect(response.cycle.id).toBe('22222222-2222-2222-2222-222222222222');
@@ -151,6 +157,7 @@ describe('cycleMapper', () => {
     const response = cycleMapper.detailsToResponse({
       cycle,
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
 
     expect(response.events).toEqual([]);
@@ -163,6 +170,7 @@ describe('cycleMapper', () => {
     const response = cycleMapper.detailsToResponse({
       cycle,
       events: [{ event, eventTimeBlocks: [] }],
+      counts: { eventCount: 1, eventTimeBlockCount: 0 },
     });
 
     expect(response.events).toHaveLength(1);

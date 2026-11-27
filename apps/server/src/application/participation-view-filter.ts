@@ -1,31 +1,11 @@
-import {
-  type CalendarDay,
-  type TimeOfDay,
-  today,
-  toTimeOfDay,
-} from '@church/time';
+import { type TimeOfDay, today, toTimeOfDay } from '@church/time';
 import type {
-  CycleParticipationFilters,
-  ParticipationEventTimeBlockView,
-  ParticipationEventView,
-} from '../domain/contracts/application/prepare-manager';
-
-export interface FilterCycleParticipationInput {
-  events: ParticipationEventView[];
-  filters: CycleParticipationFilters;
-  timeZone: string;
-}
-
-export interface FilteredCycleParticipation {
-  /** Events with only the matching blocks, in block order. */
-  events: ParticipationEventView[];
-  /** Church-local days with at least one block, over the unfiltered cycle. */
-  dayMarkers: CalendarDay[];
-  /** Blocks of the unfiltered cycle. */
-  totalBlocks: number;
-  /** Served, uncancelled blocks of the unfiltered cycle with a Shift that has no headcount. */
-  needsAttentionBlocks: number;
-}
+  BlockMatchesInput,
+  CompareBlocksInput,
+  FilterCycleParticipationInput,
+  FilteredCycleParticipation,
+} from '../domain/contracts/application/participation-view-filter';
+import type { ParticipationEventTimeBlockView } from '../domain/contracts/application/prepare-manager';
 
 /** A served, uncancelled block with a Shift lacking a ShiftRequirement: the prepare list's "needs headcount". */
 export function blockNeedsAttention(
@@ -36,13 +16,6 @@ export function blockNeedsAttention(
     !block.cancelled &&
     block.shifts.some((shift) => shift.flagged)
   );
-}
-
-interface BlockMatchesInput {
-  block: ParticipationEventTimeBlockView;
-  eventTitle: string;
-  filters: CycleParticipationFilters;
-  timeZone: string;
 }
 
 function blockMatches({
@@ -125,11 +98,6 @@ export function filterCycleParticipation({
     totalBlocks: allBlocks.length,
     needsAttentionBlocks: allBlocks.filter(blockNeedsAttention).length,
   };
-}
-
-interface CompareBlocksInput {
-  left: ParticipationEventTimeBlockView;
-  right: ParticipationEventTimeBlockView;
 }
 
 function compareBlocks({ left, right }: CompareBlocksInput): number {

@@ -101,6 +101,12 @@ export function formatWeekdayShort({
   return weekdayName({ index: weekdayIndex({ day }), locale, style: 'short' });
 }
 
+/** The weekday as it reads mid-sentence: pt-BR writes it in lower case. */
+export function formatWeekdayInSentence(input: CalendarDayLocaleInput): string {
+  const weekday = formatWeekday(input);
+  return input.locale === 'pt-BR' ? weekday.toLowerCase() : weekday;
+}
+
 export interface WeekdayByIndexInput {
   /** 0 (Sunday) … 6 (Saturday). */
   index: WeekdayIndex;
@@ -167,6 +173,15 @@ export function formatDayLabel({
   const label = `${weekdayName({ index: weekdayIndex({ day }), locale, style: 'short' })} ${dayOfMonth} ${monthShort({ day, locale })}`;
   const plain = label.replaceAll('.', '');
   return locale === 'pt-BR' ? plain.toLowerCase() : plain;
+}
+
+/** `12 Oct` / `12 out`: day of month and month; no dot, no zero pad. */
+export function formatDayMonthShort({
+  day,
+  locale,
+}: CalendarDayLocaleInput): string {
+  const dayOfMonth = Number(splitCalendarDay({ day }).dayOfMonth);
+  return `${dayOfMonth} ${formatMonthShort({ day, locale })}`;
 }
 
 /** `October 2026` / `Outubro 2026`: the month and year of the day. */

@@ -9,12 +9,15 @@ import {
 import { cachedReadOptions, fetchAndCache } from '../lib/my-schedule-cache';
 import { cachedMinistryScheduleSchema } from '../lib/my-schedule-schemas';
 import { MyScheduleBackLink } from './my-schedule-back-link';
+import { CancelledBadge } from '@/components/cancelled-badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GetMinistrySchedule200 } from '@/infrastructure/api/churchAPI.schemas';
+import { STRUCK } from '@/lib/struck';
+import { cn } from '@/lib/utils';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { formatTimeOf } from '@/shared/utils/church-time';
@@ -48,11 +51,18 @@ function eventWhen({ start, end, timeZone }: EventWhenInput): string {
   return `${day} · ${formatTimeOf({ value: start, timeZone })}–${formatTimeOf({ value: end, timeZone })}`;
 }
 
+interface ShiftGroup {
+  label: string;
+  cancelled: boolean;
+  rows: ScheduleRow[];
+}
+
 function groupByShift(rows: ScheduleRow[]) {
-  const shifts = new Map<string, { label: string; rows: ScheduleRow[] }>();
+  const shifts = new Map<string, ShiftGroup>();
   for (const row of rows) {
     const shift = shifts.get(row.shiftId) ?? {
       label: row.shiftLabel,
+      cancelled: row.cancelled,
       rows: [],
     };
     shift.rows.push(row);
@@ -151,7 +161,17 @@ export function MyMinistrySchedulePage({
       {schedule.events.map((event) => (
         <Card key={event.eventId}>
           <CardHeader>
-            <h2 className="font-semibold text-base">{event.title}</h2>
+            <div className="flex items-center gap-2">
+              <h2
+                className={cn(
+                  'font-semibold text-base',
+                  event.cancelled && STRUCK,
+                )}
+              >
+                {event.title}
+              </h2>
+              {event.cancelled ? <CancelledBadge /> : null}
+            </div>
             <p className="text-muted-foreground text-sm tabular-nums">
               {eventWhen({
                 start: event.start,
@@ -163,7 +183,15 @@ export function MyMinistrySchedulePage({
           <CardContent className="space-y-4">
             {groupByShift(event.rows).map(([blockId, shift]) => (
               <section key={blockId} className="space-y-2">
-                <h3 className="font-medium">{shift.label}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className={cn('font-medium', shift.cancelled && STRUCK)}>
+                    {shift.label}
+                  </h3>
+                  {/* A cancelled Event already says it for all its Shifts. */}
+                  {shift.cancelled && !event.cancelled ? (
+                    <CancelledBadge />
+                  ) : null}
+                </div>
                 <ul className="space-y-1">
                   {shift.rows.map((row, index) => (
                     <li

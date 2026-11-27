@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
-import type { ChurchId } from '../domain/branded-ids';
 import {
   churchLogoKey,
   detectLogoFormat,
@@ -9,17 +8,16 @@ import {
   LOGO_MAX_LONGEST_SIDE,
   logoDimensionRefusal,
 } from '../domain/church-logo';
-import type { ObjectStorage } from '../domain/contracts/infrastructure/object-storage';
+import type {
+  NormaliseLogoInput,
+  StoreChurchLogoInput,
+} from '../domain/contracts/application/church-logo-pipeline';
 import {
   LogoBadAspectRatioError,
   LogoTooLargeError,
   LogoTooSmallError,
   LogoUnsupportedTypeError,
 } from '../domain/errors/church-logo';
-
-interface NormaliseLogoInput {
-  bytes: Uint8Array;
-}
 
 /** Decodes (sharp's pixel limit on), checks the rules and returns one ≤512 px PNG without metadata. */
 async function normaliseLogo({ bytes }: NormaliseLogoInput): Promise<Buffer> {
@@ -51,12 +49,6 @@ async function normaliseLogo({ bytes }: NormaliseLogoInput): Promise<Buffer> {
     if (String(error).includes('pixel limit')) throw new LogoTooLargeError();
     throw new LogoUnsupportedTypeError();
   }
-}
-
-interface StoreChurchLogoInput {
-  objectStorage: ObjectStorage;
-  churchId: ChurchId;
-  bytes: Uint8Array;
 }
 
 /** Normalises the upload and stores it under its content-hashed key; returns the key. */

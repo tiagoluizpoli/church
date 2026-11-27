@@ -15,12 +15,12 @@ import type {
   EventStatus,
   EventWithEventTimeBlocks,
 } from '../../entities/event';
-import type { CancellationScopeAssignment } from '../../services/event-cancellation';
+import type { CancellationScopeAssignment } from '../../services/planning/event-cancellation.types';
 import type {
   InstantBounds,
   MoveClashCandidate,
   MoveScopeAssignment,
-} from '../../services/event-move';
+} from '../../services/planning/event-move.types';
 import type { TransactionContext } from './transaction-context';
 
 export interface CreatePlanningEventInput {
@@ -46,6 +46,7 @@ export interface UpdatePlanningEventInput {
   start?: Date;
   end?: Date;
   status?: EventStatus;
+  isHidden?: boolean;
   tx?: TransactionContext;
 }
 
@@ -64,6 +65,8 @@ export interface DeletePlanningEventInput {
 export interface ListCycleEventsInput {
   churchId: ChurchId;
   cycleId: CycleId;
+  /** Leave out hidden Events and EventTimeBlocks, as every non-admin read does. */
+  shownOnly?: boolean;
   tx?: TransactionContext;
 }
 
@@ -181,6 +184,8 @@ export interface ListCancellationScopeAssignmentsInput {
 export interface CancelEventTimeBlockInput {
   churchId: ChurchId;
   eventTimeBlockId: EventTimeBlockId;
+  /** Absent: shown. */
+  isHidden?: boolean;
   tx: TransactionContext;
 }
 

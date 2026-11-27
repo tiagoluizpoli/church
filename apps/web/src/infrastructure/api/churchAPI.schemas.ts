@@ -384,6 +384,7 @@ export type GetCycle200EventsItemEvent = {
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+  isHidden: boolean;
 };
 
 export type GetCycle200EventsItemEventTimeBlocksItemStatus = typeof GetCycle200EventsItemEventTimeBlocksItemStatus[keyof typeof GetCycle200EventsItemEventTimeBlocksItemStatus];
@@ -419,6 +420,7 @@ export type GetCycle200EventsItemEventTimeBlocksItem = {
   placeAddressId: string | null;
   status: GetCycle200EventsItemEventTimeBlocksItemStatus;
   requirements: GetCycle200EventsItemEventTimeBlocksItemRequirementsItem[];
+  isHidden: boolean;
 };
 
 export type GetCycle200EventsItem = {
@@ -426,9 +428,23 @@ export type GetCycle200EventsItem = {
   eventTimeBlocks: GetCycle200EventsItemEventTimeBlocksItem[];
 };
 
+export type GetCycle200Counts = {
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  eventCount: number;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  eventTimeBlockCount: number;
+};
+
 export type GetCycle200 = {
   cycle: GetCycle200Cycle;
   events: GetCycle200EventsItem[];
+  counts: GetCycle200Counts;
 };
 
 export type UpdateCycleBody = {
@@ -702,6 +718,7 @@ export const CreateEventTemplate422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -984,6 +1001,7 @@ export const UpdateEventTemplate422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -1078,6 +1096,7 @@ export const ChangeTemplatePrecedence422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -1236,6 +1255,7 @@ export const CreatePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -1371,6 +1391,7 @@ export const UpdatePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -1505,6 +1526,7 @@ export const UpdatePlanningEventDetails422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -1584,6 +1606,7 @@ export const PreviewPlanningEventCancellation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -1598,6 +1621,7 @@ export type PreviewPlanningEventCancellation422 = {
 
 export type CancelPlanningEventBody = {
   confirmation: string;
+  hidden?: boolean;
 };
 
 export type CancelPlanningEvent200Scope = {
@@ -1667,6 +1691,7 @@ export const CancelPlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -1675,6 +1700,116 @@ export type CancelPlanningEvent422 = {
   error: CancelPlanningEvent422Error;
   message: string;
   reason?: CancelPlanningEvent422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type SetPlanningEventHiddenBody = {
+  hidden: boolean;
+};
+
+/**
+ * @nullable
+ */
+export type SetPlanningEventHidden204 = typeof SetPlanningEventHidden204[keyof typeof SetPlanningEventHidden204] | null;
+
+
+export const SetPlanningEventHidden204 = {
+} as const;
+
+export type SetPlanningEventHidden404 = {
+  error: string;
+  message: string;
+};
+
+export type SetPlanningEventHidden422Error = typeof SetPlanningEventHidden422Error[keyof typeof SetPlanningEventHidden422Error];
+
+
+export const SetPlanningEventHidden422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type SetPlanningEventHidden422Reason = typeof SetPlanningEventHidden422Reason[keyof typeof SetPlanningEventHidden422Reason];
+
+
+export const SetPlanningEventHidden422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
+} as const;
+
+export type SetPlanningEventHidden422 = {
+  error: SetPlanningEventHidden422Error;
+  message: string;
+  reason?: SetPlanningEventHidden422Reason;
+  field?: string;
+  issues?: unknown[];
+};
+
+export type SetPlanningEventTimeBlockHiddenBody = {
+  hidden: boolean;
+};
+
+/**
+ * @nullable
+ */
+export type SetPlanningEventTimeBlockHidden204 = typeof SetPlanningEventTimeBlockHidden204[keyof typeof SetPlanningEventTimeBlockHidden204] | null;
+
+
+export const SetPlanningEventTimeBlockHidden204 = {
+} as const;
+
+export type SetPlanningEventTimeBlockHidden404 = {
+  error: string;
+  message: string;
+};
+
+export type SetPlanningEventTimeBlockHidden422Error = typeof SetPlanningEventTimeBlockHidden422Error[keyof typeof SetPlanningEventTimeBlockHidden422Error];
+
+
+export const SetPlanningEventTimeBlockHidden422Error = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+} as const;
+
+export type SetPlanningEventTimeBlockHidden422Reason = typeof SetPlanningEventTimeBlockHidden422Reason[keyof typeof SetPlanningEventTimeBlockHidden422Reason];
+
+
+export const SetPlanningEventTimeBlockHidden422Reason = {
+  DUPLICATE_HEADCOUNT: 'DUPLICATE_HEADCOUNT',
+  DUPLICATE_TEMPLATE_NAME: 'DUPLICATE_TEMPLATE_NAME',
+  DUPLICATE_TEMPLATE_BLOCK_LABEL: 'DUPLICATE_TEMPLATE_BLOCK_LABEL',
+  USUAL_SETUP_EMPTY: 'USUAL_SETUP_EMPTY',
+  PREPARATION_EMPTY: 'PREPARATION_EMPTY',
+  INVALID_SHIFT_INDEX: 'INVALID_SHIFT_INDEX',
+  INVITATION_ROLE_REQUIRED: 'INVITATION_ROLE_REQUIRED',
+  INVALID_EVENT_BOUNDS: 'INVALID_EVENT_BOUNDS',
+  EVENT_TIME_BLOCK_OUT_OF_BOUNDS: 'EVENT_TIME_BLOCK_OUT_OF_BOUNDS',
+  EVENT_TIME_BLOCK_LABEL_REQUIRED: 'EVENT_TIME_BLOCK_LABEL_REQUIRED',
+  DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
+  DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
+  ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
+  CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
+  PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
+} as const;
+
+export type SetPlanningEventTimeBlockHidden422 = {
+  error: SetPlanningEventTimeBlockHidden422Error;
+  message: string;
+  reason?: SetPlanningEventTimeBlockHidden422Reason;
   field?: string;
   issues?: unknown[];
 };
@@ -1777,6 +1912,7 @@ export const PreviewPlanningEventMove422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -1910,6 +2046,7 @@ export const MovePlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -2057,6 +2194,7 @@ export const PreviewPlanningEventEdit422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -2209,6 +2347,7 @@ export const EditPlanningEvent422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -2293,6 +2432,7 @@ export const CreatePlanningEventTimeBlock422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -2408,6 +2548,7 @@ export const PreviewPlanningEventTimeBlockMove422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -2546,6 +2687,7 @@ export const MovePlanningEventTimeBlock422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -2630,6 +2772,7 @@ export const PreviewPlanningEventTimeBlockCancellation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -2644,6 +2787,7 @@ export type PreviewPlanningEventTimeBlockCancellation422 = {
 
 export type CancelPlanningEventTimeBlockBody = {
   confirmation: string;
+  hidden?: boolean;
 };
 
 export type CancelPlanningEventTimeBlock200Scope = {
@@ -2718,6 +2862,7 @@ export const CancelPlanningEventTimeBlock422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -2802,6 +2947,7 @@ export const UpdatePlanningEventTimeBlock422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -4784,6 +4930,7 @@ export const MintMinistryInvitation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -6144,6 +6291,7 @@ export const SaveEventTimeBlockPreparation422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -6218,6 +6366,7 @@ export const AskScheduleAvailability422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -6283,6 +6432,7 @@ export const SetAvailabilityDeadline422Reason = {
   DUPLICATE_EVENT_TIME_BLOCK_LABEL: 'DUPLICATE_EVENT_TIME_BLOCK_LABEL',
   DUPLICATE_EVENT_TIME_BLOCK_ID: 'DUPLICATE_EVENT_TIME_BLOCK_ID',
   ASK_NO_ELIGIBLE_VOLUNTEERS: 'ASK_NO_ELIGIBLE_VOLUNTEERS',
+  ASK_NO_LIVE_SHIFTS: 'ASK_NO_LIVE_SHIFTS',
   CANCEL_CONFIRMATION: 'CANCEL_CONFIRMATION',
   PLACE_ADDRESS_NOT_FOUND: 'PLACE_ADDRESS_NOT_FOUND',
 } as const;
@@ -7449,6 +7599,9 @@ export type GetNotifications200ItemsItem = {
   volunteerCount: number;
 })[];
 };
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  eventTimeBlockId?: string;
+  hidden?: boolean;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -7476,7 +7629,11 @@ export type GetNotifications200ItemsItem = {
   startsAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endsAt: string;
+  ministryName?: string;
 })[];
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  eventTimeBlockId?: string;
+  hidden?: boolean;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -9489,6 +9646,9 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   volunteerCount: number;
 })[];
 };
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  eventTimeBlockId?: string;
+  hidden?: boolean;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -9516,7 +9676,11 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   startsAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   endsAt: string;
+  ministryName?: string;
 })[];
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  eventTimeBlockId?: string;
+  hidden?: boolean;
 };
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   createdAt: string;
@@ -9680,6 +9844,7 @@ export type GetMinistrySchedule200EventsItemRowsItem = {
   shiftEnd: string;
   sectorName: string;
   roleName: string;
+  cancelled: boolean;
   volunteerDisplayName?: string;
 };
 
@@ -9690,6 +9855,7 @@ export type GetMinistrySchedule200EventsItem = {
   start: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   end: string;
+  cancelled: boolean;
   assignmentCount: number;
   rows: GetMinistrySchedule200EventsItemRowsItem[];
 };
@@ -9957,6 +10123,7 @@ export type GetPublishedVolunteerSchedule200AssignmentsItem = {
   roleId: string;
   roleName: string;
   status: GetPublishedVolunteerSchedule200AssignmentsItemStatus;
+  cancelled: boolean;
   swapRequested: boolean;
 };
 
@@ -10010,6 +10177,7 @@ export type GetPublishedVolunteerSchedule200Next = {
   roleId: string;
   roleName: string;
   status: GetPublishedVolunteerSchedule200NextStatus;
+  cancelled: boolean;
   swapRequested: boolean;
 } | null;
 

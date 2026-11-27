@@ -7,7 +7,7 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
-import type { InvitationVerificationCodeManager } from '@/domain/contracts/application/invitation-verification-code-manager';
+import type { IInvitationVerificationCodeManager } from '@/domain/contracts/application/invitation-verification-code-manager';
 import type {
   AcceptPendingMinistryInvitationInput,
   PublicRedemptionPreview,
@@ -24,7 +24,7 @@ import type { Church } from '@/domain/entities/church';
 import type { RedemptionBundle } from '@/domain/entities/redemption-bundle';
 import { CrossChurchVolunteerConflictError } from '@/domain/errors/cross-church-volunteer-conflict';
 import { VerificationCodeError } from '@/domain/errors/verification-code-error';
-import { reviewTokenFor } from '@/domain/services/redemption-review-token';
+import { reviewTokenFor } from '@/domain/services/invitations/redemption-review-token';
 
 const CHURCH_ID = ChurchId.from('11111111-1111-4111-8111-111111111111');
 const MINISTRY_INVITATION_ID = MinistryInvitationId.from(
@@ -60,7 +60,7 @@ interface RedemptionManagerHarness {
   manager: DbRedemptionManager;
   verificationCodeRepository: InvitationVerificationCodeRepository;
   recordChurchOnlyPartialAcceptance: ReturnType<typeof vi.fn>;
-  verificationCodeManager: InvitationVerificationCodeManager;
+  verificationCodeManager: IInvitationVerificationCodeManager;
 }
 
 interface CreateHarnessInput {
@@ -116,7 +116,7 @@ function createHarness({
     isChurchInvitationAddressedToUser: vi.fn().mockResolvedValue(true),
     findRedemptionBundle: vi.fn().mockResolvedValue(CHURCH_ONLY_BUNDLE),
   } as RedemptionManagerHarness['invitationRepository'];
-  const verificationCodeManager: InvitationVerificationCodeManager = {
+  const verificationCodeManager: IInvitationVerificationCodeManager = {
     issue: vi.fn(),
     verify: vi.fn().mockImplementation(verify),
   };

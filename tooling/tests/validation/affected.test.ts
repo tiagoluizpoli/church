@@ -2,7 +2,6 @@ import { describe, expect, it } from 'bun:test';
 import {
   classifyChanges,
   explainPlan,
-  formatTimingSummary,
   isScriptsOnlyAddition,
   parseArguments,
   readSeedImpactTrailers,
@@ -472,17 +471,29 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects only the notification-bell journey for the bell, inbox route, and inbox hook', () => {
+  it('selects only the notification-bell journey for the inbox route', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/routes/app/_active-church/notifications.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/volunteer-dashboard/us-notification-bell.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the notification-bell and planning handoff journeys for the notifications feature', () => {
     for (const changedPath of [
-      'apps/web/src/features/volunteers/components/notification-bell.tsx',
-      'apps/web/src/routes/app/_active-church/notifications.tsx',
-      'apps/web/src/features/volunteers/components/notifications-inbox-section.tsx',
-      'apps/web/src/features/volunteers/hooks/use-notification-inbox.ts',
-      'apps/web/src/features/volunteers/lib/notification-navigation.ts',
+      'apps/web/src/features/notifications/components/notification-bell.tsx',
+      'apps/web/src/features/notifications/components/notifications-inbox-section.tsx',
+      'apps/web/src/features/notifications/hooks/use-notification-inbox.ts',
     ]) {
       const plan = classifyChanges({ changedPaths: [changedPath] });
 
       expect(plan.e2eSpecPaths).toEqual([
+        'tests/scheduling/us1-admin-plan.spec.ts',
         'tests/volunteer-dashboard/us-notification-bell.spec.ts',
       ]);
       expect(plan.missingJourneyMappings).toEqual([]);
@@ -553,26 +564,13 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects the guard-matrix journey for the prepare route, and only the capability-index journey for the scheduling index route', () => {
+  it('selects the guard-matrix journey for the prepare route', () => {
     const preparePlan = classifyChanges({
       changedPaths: ['apps/web/src/routes/app/_active-church/schedules.tsx'],
     });
     expect(preparePlan.e2eSpecPaths).toContain(
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
     );
-
-    // #288 — the index route's own spec (capability-index.spec.ts) is the
-    // only one that navigates to the bare `/scheduling` route this file
-    // renders; it no longer pulls in smoke/schedule-publish/guard-matrix via
-    // the removed broad `.../scheduling` prefix.
-    const indexPlan = classifyChanges({
-      changedPaths: [
-        'apps/web/src/routes/app/_active-church/scheduling/index.tsx',
-      ],
-    });
-    expect(indexPlan.e2eSpecPaths).toEqual([
-      'tests/scheduling/capability-index.spec.ts',
-    ]);
   });
 
   it('selects the builder journey for the cycle-builder hooks, volunteer-pool hook, drag-scroll hook, and builder utils', () => {
@@ -1119,50 +1117,6 @@ describe('explainPlan', () => {
 
     expect(explanation).toContain('Tooling tests selected:');
     expect(explanation).toContain('(none)');
-  });
-});
-
-describe('formatTimingSummary', () => {
-  it('renders a markdown table with each check and its elapsed seconds', () => {
-    const summary = formatTimingSummary({
-      timings: [
-        { label: 'lint', ms: 1234 },
-        { label: 'typecheck', ms: 5000 },
-      ],
-    });
-
-    expect(summary).toBe(
-      [
-        '| Check | Elapsed |',
-        '| --- | --- |',
-        '| lint | 1.2s |',
-        '| typecheck | 5.0s |',
-      ].join('\n'),
-    );
-  });
-
-  it('renders just the header rows for no timings', () => {
-    expect(formatTimingSummary({ timings: [] })).toBe(
-      ['| Check | Elapsed |', '| --- | --- |'].join('\n'),
-    );
-  });
-
-  it('renders a skipped check as "skipped" instead of a zero duration', () => {
-    const summary = formatTimingSummary({
-      timings: [
-        { label: 'lint', ms: 0, skipped: true },
-        { label: 'typecheck', ms: 5000 },
-      ],
-    });
-
-    expect(summary).toBe(
-      [
-        '| Check | Elapsed |',
-        '| --- | --- |',
-        '| lint | skipped |',
-        '| typecheck | 5.0s |',
-      ].join('\n'),
-    );
   });
 });
 

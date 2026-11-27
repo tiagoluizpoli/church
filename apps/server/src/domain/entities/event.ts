@@ -7,6 +7,7 @@ import type {
   EventTemplateId,
   MinistryId,
 } from '../branded-ids';
+import { IllegalStateTransitionError } from '../errors/illegal-state-transition';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
 import type { EventTimeBlock } from './event-time-block';
 
@@ -28,6 +29,8 @@ export interface EventProps {
   start: Instant;
   end: Instant;
   status: EventStatus;
+  /** Only ever true on a cancelled Event. */
+  isHidden: boolean;
 }
 
 export interface EventWithEventTimeBlocks {
@@ -37,17 +40,22 @@ export interface EventWithEventTimeBlocks {
 
 export interface EventInput {
   props:
-    | (Omit<LooseProps<EventProps>, 'status'> &
-        Partial<Pick<LooseProps<EventProps>, 'status'>>)
+    | (Omit<LooseProps<EventProps>, 'status' | 'isHidden'> &
+        Partial<Pick<LooseProps<EventProps>, 'status' | 'isHidden'>>)
     | (Omit<
         LooseProps<EventProps>,
-        'cycleId' | 'sourceTemplateId' | 'status'
+        'cycleId' | 'sourceTemplateId' | 'status' | 'isHidden'
       > & {
         ministryId: MinistryId | string;
-      } & Partial<Pick<LooseProps<EventProps>, 'status'>>);
+      } & Partial<Pick<LooseProps<EventProps>, 'status' | 'isHidden'>>);
   id?: string;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+interface SetHiddenInput {
+  isHidden: boolean;
+  action: 'hide' | 'show';
 }
 
 export class Event extends Entity<EventProps, EventId> {
@@ -72,6 +80,7 @@ export class Event extends Entity<EventProps, EventId> {
       props: {
         ...normalizedProps,
         status: props.status ?? 'draft',
+        isHidden: props.isHidden ?? false,
       } as EventProps,
       id: id as EventId,
       createdAt,
@@ -115,6 +124,10 @@ export class Event extends Entity<EventProps, EventId> {
     return this._props.status;
   }
 
+  get isHidden(): boolean {
+    return this._props.isHidden;
+  }
+
   public markScheduled(): void {
     this._props.status = 'scheduled';
     this._updatedAt = toDate({ instant: now() });
@@ -122,6 +135,24 @@ export class Event extends Entity<EventProps, EventId> {
 
   public cancel(): void {
     this._props.status = 'cancelled';
+    this._updatedAt = toDate({ instant: now() });
+  }
+
+  /** Only cancelled work can be hidden or shown again. */
+  public hide(): void {
+    this.setHidden({ isHidden: true, action: 'hide' });
+  }
+
+  public show(): void {
+    this.setHidden({ isHidden: false, action: 'show' });
+  }
+
+  private setHidden({ isHidden, action }: SetHiddenInput): void {
+    const { status } = this._props;
+    if (status !== 'cancelled') {
+      throw new IllegalStateTransitionError({ from: status, to: action });
+    }
+    this._props.isHidden = isHidden;
     this._updatedAt = toDate({ instant: now() });
   }
 

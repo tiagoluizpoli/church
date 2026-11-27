@@ -1,16 +1,8 @@
-import type { volunteer } from '@church/db';
 import { fromDate } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type { ChurchId, UserId, VolunteerId } from '../../domain/branded-ids';
 import type { VolunteerProps } from '../../domain/entities/volunteer';
 import { Volunteer } from '../../domain/entities/volunteer';
-
-type VolunteerRow = InferSelectModel<typeof volunteer>;
-
-export interface MapVolunteerInput {
-  row: VolunteerRow;
-  name?: string | null;
-}
+import type { MapVolunteerInput } from './volunteer.mapper.types';
 
 export function mapVolunteer({ row, name }: MapVolunteerInput): Volunteer {
   const props: VolunteerProps = {

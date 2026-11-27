@@ -13,12 +13,9 @@ import type {
   SetupProgress,
   SetupProgressRepository,
 } from '../../domain/contracts/infrastructure/setup-progress.repository';
+import type { AnyDrizzleDb } from './drizzle-db.types';
+import type { DrizzleSetupProgressRepositoryInput } from './drizzle-setup-progress.repository.types';
 import { withChurchIsolation } from './helpers';
-import type { AnyDrizzleDb } from './types';
-
-interface DrizzleSetupProgressRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 /** Issued invitations: pending or accepted, never revoked or declined. */
 const ISSUED_INVITATION_STATUSES = ['pending', 'accepted'] as const;

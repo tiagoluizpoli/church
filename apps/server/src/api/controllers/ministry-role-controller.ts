@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { ChurchId, MinistryId, RoleId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryRoleManager } from '../../domain/contracts/application/ministry-role-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import { denyMinistryManagement } from '../auth/ministry-management-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
@@ -15,25 +15,16 @@ import {
   roleNameBodySchema,
   roleResponseSchema,
 } from '../dtos/ministry-role.dto';
+import type {
+  MinistryRoleControllerDependencies,
+  MinistryRoleRouteParams,
+  MinistryRolesRouteParams,
+} from './ministry-role-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-interface MinistryRolesRouteParams {
-  ministryId: string;
-}
-
-interface MinistryRoleRouteParams extends MinistryRolesRouteParams {
-  roleId: string;
-}
-
-interface MinistryRoleControllerDependencies {
-  ministryRoleManager: IMinistryRoleManager;
-  activeChurchResolver: IActiveChurchResolver;
-  authorityGuard: AuthorityGuard;
-}
 
 /**
  * The Role registry of a Ministry, for ChurchAdmins and the Ministry's own
@@ -44,7 +35,7 @@ export class MinistryRoleController implements FastifyController {
 
   private readonly ministryRoleManager: IMinistryRoleManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     ministryRoleManager,

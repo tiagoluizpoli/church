@@ -23,6 +23,7 @@ and task ordering.
 | Server types report (types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
+| Web bundle gzip budget (needs a built `apps/web/dist`) | `bun run validate:bundle-budget` |
 | Affected validation without Docker (pre-push) | `bun run validate:no-docker` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
@@ -66,7 +67,7 @@ reuse nor record a pass.
 
 `validate:affected` runs lint, its guards and typecheck first and stops on a
 failure; then unit tests run concurrently with integration tests, then E2E
-only if both lanes pass. `validate` runs lint → typecheck → unit tests
+only if both lanes pass. `validate` runs lint → typecheck → bundle budget → unit tests
 concurrently with integration tests, then E2E. Output
 lines carry a `[stage]` prefix and a final table reports each stage's status.
 
@@ -238,6 +239,20 @@ adds, renames or deletes a spec still fails on drift with the same
 diagnostics. It needs no browser, database or running application. Whether a
 mapping's source prefix is accurate stays a review decision
 ([ADR-0004](../adr/0004-test-strategy-and-ci-gate-policy.md)).
+
+## Bundle budget
+
+`bun run validate:bundle-budget` (`tooling/validation/bundle-budget.ts`)
+prints the gzip size of every JS and CSS chunk in `apps/web/dist/assets` and
+fails, naming the chunk, when the entry chunk, the entry CSS or a shared chunk
+(a `modulepreload` in `index.html`) is over its limit. Lazy chunks are printed
+only. It never builds: `validate` runs it right after the type check, which
+builds `dist`, and `validate:affected` and `validate:no-docker` do the same
+when `web` is affected. It is not part of `lint`. The limits are `LIMITS` in
+the script; raise one only on purpose and say why in the PR. `shared` is one
+limit for each shared chunk on its own, so a small chunk can grow up to it
+unnoticed. It does not name the module that grew: the build writes no stats
+file.
 
 ## Seed impact
 

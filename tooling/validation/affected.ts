@@ -37,7 +37,7 @@ import {
   type StepResult,
 } from './run-lanes';
 import { readSeedImpactTrailers, SEED_IMPACT_TRAILER } from './seed-impact';
-import { VALIDATE_SETUP_STEPS } from './validate';
+import { BUNDLE_BUDGET_STEP, VALIDATE_SETUP_STEPS } from './validate';
 import { formatLockWait, holdValidateLock } from './validate-lock';
 
 export { classifyChanges, isScriptsOnlyAddition } from './affected-plan';
@@ -477,6 +477,9 @@ export function buildValidationSteps({
         label: 'typecheck',
       });
     }
+    if (plan.workspaceNames.includes('web')) {
+      checkLane.push(BUNDLE_BUDGET_STEP);
+    }
 
     const tierLayers = noDocker ? UNIT_ONLY_LAYERS : ALL_TEST_LAYERS;
     for (const testLayer of tierLayers) {
@@ -501,6 +504,7 @@ export function buildValidationSteps({
       'presentation-text',
       'date-time-seam',
       'typecheck',
+      'bundle-budget',
       ...ALL_TEST_LAYERS,
     );
     if (plan.toolingTestPaths.length > 0) {

@@ -20,19 +20,31 @@ const webSteps = () =>
   });
 
 describe('gate step order', () => {
-  it('validate runs lint, typecheck, then unit tests', () => {
+  it('validate runs lint, typecheck, the bundle budget, then unit tests', () => {
     expect(LINT_TYPECHECK_UNIT_LANE.map(({ label }) => label)).toEqual([
       'lint',
       'typecheck',
+      'bundle-budget',
       'test:unit',
     ]);
   });
 
-  it('validate:affected ends the web check lane with typecheck', () => {
+  it('validate:affected ends the web check lane with the bundle budget', () => {
     expect(webSteps().checkLane.map(({ label }) => label)).toEqual([
       ...GUARD_LABELS,
       'typecheck',
+      'bundle-budget',
     ]);
+  });
+
+  it('plans no bundle budget when web is not affected', () => {
+    const { checkLane } = buildValidationSteps({
+      onlyE2e: false,
+      plan: makePlan({ workspaceNames: ['server'] }),
+      skipE2e: false,
+    });
+
+    expect(checkLane.map(({ label }) => label)).not.toContain('bundle-budget');
   });
 
   it('validate:affected reports these stages in the summary table', () => {
@@ -40,6 +52,7 @@ describe('gate step order', () => {
       'lint',
       ...GUARD_LABELS,
       'typecheck',
+      'bundle-budget',
       'test:unit',
       'test:integration',
     ]);

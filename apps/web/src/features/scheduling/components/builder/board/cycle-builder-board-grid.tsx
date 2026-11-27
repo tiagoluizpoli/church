@@ -27,13 +27,13 @@ import {
   isActiveAssignment,
   isCancelledEvent,
 } from '../../../utils/scheduling-rules';
-import { CancelledBadge } from '../../cancelled-badge';
 import {
   CycleBuilderCell,
   type CycleBuilderCellSelectInput,
   type MoveAssignmentInput,
 } from './cycle-builder-cell';
 import type { FailedAssignmentWrite } from './cycle-builder-cell-parts';
+import { CancelledBadge } from '@/components/cancelled-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';

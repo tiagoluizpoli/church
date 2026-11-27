@@ -1,5 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { compareInstants, now, parseInstant } from '@church/time';
+import { CancelledBadge } from '@/components/cancelled-badge';
 import { Badge } from '@/components/ui/badge';
 import type { GetPublishedVolunteerSchedule200AssignmentsItem as ScheduleAssignment } from '@/infrastructure/api/churchAPI.schemas';
 import { formatTimeOf } from '@/shared/utils/church-time';
@@ -39,7 +40,7 @@ export function assignmentRoleLine({
 const attentionBadge =
   'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200';
 
-/** In-progress and open Swap request tags. */
+/** Cancelled, in-progress and open Swap request tags. */
 export function AssignmentBadges({ assignment: a }: AssignmentInput) {
   const current = now();
   const inProgress =
@@ -53,7 +54,10 @@ export function AssignmentBadges({ assignment: a }: AssignmentInput) {
     }) < 0;
   return (
     <>
-      {inProgress ? <Badge>{m.my_schedule_in_progress()}</Badge> : null}
+      {a.cancelled ? <CancelledBadge /> : null}
+      {inProgress && !a.cancelled ? (
+        <Badge>{m.my_schedule_in_progress()}</Badge>
+      ) : null}
       {a.swapRequested ? (
         <Badge variant="outline" className={attentionBadge}>
           {m.my_schedule_swap_requested()}

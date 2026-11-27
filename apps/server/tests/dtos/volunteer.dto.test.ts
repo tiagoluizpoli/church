@@ -157,6 +157,7 @@ describe('volunteerMapper', () => {
             title: 'Sunday Service',
             start: '2026-05-15T09:00:00.000Z',
             end: '2026-05-15T11:00:00.000Z',
+            cancelled: false,
             assignmentCount: 1,
             rows: [
               {
@@ -166,6 +167,7 @@ describe('volunteerMapper', () => {
                 shiftEnd: '2026-05-15T10:00:00.000Z',
                 sectorName: 'Sanctuary',
                 roleName: 'Vocalist',
+                cancelled: false,
               },
             ],
           },

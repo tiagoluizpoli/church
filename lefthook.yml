@@ -30,4 +30,10 @@ pre-push:
 commit-msg:
   commands:
     commitlint:
-      run: npx commitlint --edit {1}
+      # Never `npx`: without node_modules it waits on an install prompt.
+      run: |
+        if [ ! -x node_modules/.bin/commitlint ]; then
+          echo 'Dependencies are missing here: run `bun run worktree:bootstrap`.'
+          exit 1
+        fi
+        node_modules/.bin/commitlint --edit {1}

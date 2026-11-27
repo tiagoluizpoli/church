@@ -11,7 +11,7 @@ import type {
   UserId,
   VolunteerId,
 } from '../../branded-ids';
-import type { Assignment, AssignmentStatus } from '../../entities/assignment';
+import type { Assignment } from '../../entities/assignment';
 import type { AvailabilityCheckState } from '../../entities/availability-check';
 import type { EventWithEventTimeBlocks } from '../../entities/event';
 import type { Notification } from '../../entities/notification';
@@ -105,6 +105,8 @@ export interface VolunteerScheduleAssignment {
   roleId: string;
   roleName: string;
   status: 'pending';
+  /** Its Event or EventTimeBlock is cancelled; listed until the Shift's start. */
+  cancelled: boolean;
   /** An open Swap request on a not-yet-started Shift. */
   swapRequested: boolean;
 }
@@ -150,6 +152,8 @@ export interface MinistryScheduleRow {
   shiftEnd: string;
   sectorName: string;
   roleName: string;
+  /** The Shift's Event or EventTimeBlock is cancelled. */
+  cancelled: boolean;
   /** Absent for an unfilled place ('Open'). */
   volunteerDisplayName?: string;
 }
@@ -159,6 +163,7 @@ export interface MinistryScheduleEvent {
   title: string;
   start: string;
   end: string;
+  cancelled: boolean;
   assignmentCount: number;
   rows: MinistryScheduleRow[];
 }
@@ -367,10 +372,6 @@ export interface ServingMonthsInput {
   count: number;
 }
 
-export interface RequirementCoverageStatusInput {
-  status: AssignmentStatus;
-}
-
 export interface RequirementCoverageInput {
   requirement: ShiftRequirement;
   assignments: Assignment[];
@@ -409,4 +410,20 @@ export interface DbVolunteerManagerDependencies {
   authorityManager: Pick<IAuthorityManager, 'decideAuthority'>;
   unitOfWork: UnitOfWork;
   config: AppConfig;
+}
+
+export interface ListedAssignmentInput {
+  assignment: Pick<Assignment, 'status' | 'reason'>;
+  /** Whether its Event or EventTimeBlock is cancelled. */
+  cancelled: boolean;
+}
+
+export interface ListedVolunteerAssignment {
+  assignment: Assignment;
+  cancelled: boolean;
+}
+
+export interface HasStartedInput {
+  startTime: Instant;
+  at: Instant;
 }

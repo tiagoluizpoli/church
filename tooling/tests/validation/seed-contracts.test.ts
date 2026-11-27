@@ -34,7 +34,7 @@ describe('buildSeedContractSteps', () => {
       ({ label }) => label === 'test:integration',
     );
     expect(integration.map(({ args }) => args.join(' '))).toEqual([
-      expect.stringContaining('--filter server --only -- tests/seeds/'),
+      expect.stringContaining('--filter @church/server --only -- tests/seeds/'),
       expect.stringContaining(
         '--filter @church/db --only -- tests/destructive-development-commands.test.ts',
       ),

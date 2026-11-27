@@ -214,7 +214,7 @@ function saveFrames(input: FramesInput): void {
 }
 
 function buildWeb(input: TargetInput): void {
-  execFileSync('bun', ['run', 'build', '--filter=web'], {
+  execFileSync('bun', ['run', 'build', '--filter=@church/web'], {
     cwd: input.target.root,
     env: { ...process.env, VITE_SERVER_URL: '/' },
     stdio: 'inherit',

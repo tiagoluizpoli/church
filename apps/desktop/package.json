@@ -3,13 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "turbo -F web build && electrobun dev",
+    "start": "turbo -F @church/web build && electrobun dev",
     "dev": "electrobun dev --watch",
     "dev:hmr": "concurrently \"bun run hmr\" \"bun run start\"",
-    "hmr": "turbo -F web dev",
-    "build": "turbo -F web build && electrobun build",
-    "build:stable": "turbo -F web build && electrobun build --env=stable",
-    "build:canary": "turbo -F web build && electrobun build --env=canary",
+    "hmr": "turbo -F @church/web dev",
+    "build": "turbo -F @church/web build && electrobun build",
+    "build:stable": "turbo -F @church/web build && electrobun build --env=stable",
+    "build:canary": "turbo -F @church/web build && electrobun build --env=canary",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

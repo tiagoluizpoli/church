@@ -78,6 +78,21 @@ interface AddMemberRequest {
 
 type AddMemberEndpoint = (input: AddMemberRequest) => Promise<unknown>;
 
+interface CreateInvitationRequestBody {
+  email: string;
+  organizationId: string;
+  role: string;
+}
+
+interface CreateInvitationRequest {
+  headers: Headers;
+  body: CreateInvitationRequestBody;
+}
+
+type CreateInvitationEndpoint = (
+  input: CreateInvitationRequest,
+) => Promise<unknown>;
+
 const drizzleTables: Record<string, PgTable> = {
   organization: organizationSchema.organization,
   member: organizationSchema.member,
@@ -91,6 +106,8 @@ const drizzleTables: Record<string, PgTable> = {
 const auth = createAuth({ database: testDb });
 
 const addMemberEndpoint = auth.api.addMember as unknown as AddMemberEndpoint;
+const createInvitationEndpoint = auth.api
+  .createInvitation as unknown as CreateInvitationEndpoint;
 
 function getOrganizationPlugin(): OrganizationPluginShape {
   const plugin = auth.options.plugins?.find(
@@ -276,17 +293,30 @@ describe('organization plugin', () => {
   it.each([
     'owner',
     'admin,owner',
-  ])('rejects %s through invite-member', async (role) => {
+  ])('rejects %s through the trusted create-invitation API', async (role) => {
+    await expect(
+      createInvitationEndpoint({
+        headers: new Headers({ cookie: fixture.adminCookie }),
+        body: {
+          email: 'invited@example.com',
+          organizationId: fixture.organizationId,
+          role,
+        },
+      }),
+    ).rejects.toThrow('Unknown organization role: owner');
+  });
+
+  it('does not expose invite-member over HTTP', async () => {
     const response = await requestOrganizationEndpoint({
       path: 'invite-member',
       cookie: fixture.adminCookie,
       body: {
         email: 'invited@example.com',
         organizationId: fixture.organizationId,
-        role,
+        role: 'member',
       },
     });
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(404);
   });
 
   it('leaves the invitation mailer unset so the plugin sends nothing', () => {

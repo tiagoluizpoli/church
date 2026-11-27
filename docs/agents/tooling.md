@@ -20,6 +20,7 @@ and task ordering.
 | Test placement guard | `bun run validate:test-placement` |
 | Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
 | Presentation-text guard (no hard-coded copy) | `bun run validate:presentation-text` (`-- <path>…` for files) |
+| Server types report (types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
 | Affected validation without Docker (pre-push) | `bun run validate:no-docker` |
@@ -96,6 +97,19 @@ on an inline object type in a parameter, variable, return or `as` position.
 to a dependency's API is exempt; a named function whose signature a framework
 controls carries `// named-parameters-ignore: <reason>` directly above its
 declaration. Details: [ADR-0010](../adr/0010-mechanical-rules-enforced-by-tooling.md).
+
+## Server types
+
+`bun run validate:server-types` (`tooling/validation/server-types-guard.ts`)
+lists every `interface` and `type` declared in a server implementation file,
+grouped by folder, with a total. It checks `apps/server/src/` `application/`,
+`infrastructure/`, `api/`, `domain/services/` and `main/`, and skips
+`.types.ts` siblings, `.d.ts` files and `api/dtos/`. Domain contracts, entities
+and errors sit outside those folders. It is report-only and exits 0, so the
+#1179 migrate batches can track their remaining work; `-- --fail` prints the
+report to stderr and exits 1 when anything is left. It is not part of `lint`
+until [#1191](https://github.com/tiagoluizpoli/church/issues/1191) switches it
+to failing.
 
 ## Presentation text
 
@@ -609,7 +623,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | VII. Named object parameters: at most one parameter, named `interface`/`type` shapes, no inline object types | Constitution, backend, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:named-parameters`, part of `lint` ([#539](https://github.com/tiagoluizpoli/church/issues/539), turned on by [#547](https://github.com/tiagoluizpoli/church/issues/547)) |
 | Business logic is separated from framework code | Constitution, backend | Judgement | — | Review: what counts as business logic is a judgement; the import shape is the row below |
 | Server layers import inward only (`api`/`application`/`infrastructure` → `domain`) | Backend | Mechanical | Biome rule | Enforced: `noRestrictedImports` overrides in `biome.json` |
-| Server implementation files declare no `interface`/`type`; each lives in its contract | Backend | Mechanical | Validation guard | Follow-up [#1129](https://github.com/tiagoluizpoli/church/issues/1129) |
+| Server implementation files declare no `interface`/`type`; each lives in its contract | Backend | Mechanical | Validation guard | Report-only: `bun run validate:server-types` ([#1180](https://github.com/tiagoluizpoli/church/issues/1180)); fails in `lint` after [#1191](https://github.com/tiagoluizpoli/church/issues/1191) |
 | Server classes are built in `main/di/` and injected, never `new`-ed inside another class | Backend | Mechanical | Validation guard | Follow-up [#1129](https://github.com/tiagoluizpoli/church/issues/1129) |
 | Web interfaces get their own file when large or several | Frontend | Judgement | — | Review: "large" and whether a split makes sense are judgements |
 | Shared packages hold only generic code; application code lives in `apps/server` | Constitution, backend | Judgement | — | Review: "application-specific" is a judgement about meaning |

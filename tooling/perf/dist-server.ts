@@ -74,6 +74,7 @@ const CONTENT_TYPES: Record<string, string> = {
   '.webp': 'image/webp',
   '.woff2': 'font/woff2',
 };
+const BAD_REQUEST = 400;
 const BAD_GATEWAY = 502;
 const NOT_FOUND = 404;
 // HTTP/1.1 connection headers, which HTTP/2 refuses.
@@ -137,8 +138,16 @@ function proxyToApi(input: ProxyInput): void {
 
 function serveFile(input: FileInput): void {
   const { incoming, outgoing, distDirectory } = input;
-  const [path = '/'] = (incoming.url ?? '/').split('?');
-  const requested = join(distDirectory, normalize(decodeURIComponent(path)));
+  const [rawPath = '/'] = (incoming.url ?? '/').split('?');
+  let path: string;
+  try {
+    path = decodeURIComponent(rawPath);
+  } catch {
+    outgoing.writeHead(BAD_REQUEST);
+    outgoing.end();
+    return;
+  }
+  const requested = join(distDirectory, normalize(path));
   const isHit =
     requested.startsWith(`${distDirectory}${sep}`) &&
     existsSync(requested) &&

@@ -472,17 +472,29 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects only the notification-bell journey for the bell, inbox route, and inbox hook', () => {
+  it('selects only the notification-bell journey for the inbox route', () => {
+    const plan = classifyChanges({
+      changedPaths: [
+        'apps/web/src/routes/app/_active-church/notifications.tsx',
+      ],
+    });
+
+    expect(plan.e2eSpecPaths).toEqual([
+      'tests/volunteer-dashboard/us-notification-bell.spec.ts',
+    ]);
+    expect(plan.missingJourneyMappings).toEqual([]);
+  });
+
+  it('selects the notification-bell and planning handoff journeys for the notifications feature', () => {
     for (const changedPath of [
-      'apps/web/src/features/volunteers/components/notification-bell.tsx',
-      'apps/web/src/routes/app/_active-church/notifications.tsx',
-      'apps/web/src/features/volunteers/components/notifications-inbox-section.tsx',
-      'apps/web/src/features/volunteers/hooks/use-notification-inbox.ts',
-      'apps/web/src/features/volunteers/lib/notification-navigation.ts',
+      'apps/web/src/features/notifications/components/notification-bell.tsx',
+      'apps/web/src/features/notifications/components/notifications-inbox-section.tsx',
+      'apps/web/src/features/notifications/hooks/use-notification-inbox.ts',
     ]) {
       const plan = classifyChanges({ changedPaths: [changedPath] });
 
       expect(plan.e2eSpecPaths).toEqual([
+        'tests/scheduling/us1-admin-plan.spec.ts',
         'tests/volunteer-dashboard/us-notification-bell.spec.ts',
       ]);
       expect(plan.missingJourneyMappings).toEqual([]);
@@ -553,26 +565,13 @@ describe('classifyChanges', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 
-  it('selects the guard-matrix journey for the prepare route, and only the capability-index journey for the scheduling index route', () => {
+  it('selects the guard-matrix journey for the prepare route', () => {
     const preparePlan = classifyChanges({
       changedPaths: ['apps/web/src/routes/app/_active-church/schedules.tsx'],
     });
     expect(preparePlan.e2eSpecPaths).toContain(
       'tests/scheduling/planning-role-guard-matrix.spec.ts',
     );
-
-    // #288 — the index route's own spec (capability-index.spec.ts) is the
-    // only one that navigates to the bare `/scheduling` route this file
-    // renders; it no longer pulls in smoke/schedule-publish/guard-matrix via
-    // the removed broad `.../scheduling` prefix.
-    const indexPlan = classifyChanges({
-      changedPaths: [
-        'apps/web/src/routes/app/_active-church/scheduling/index.tsx',
-      ],
-    });
-    expect(indexPlan.e2eSpecPaths).toEqual([
-      'tests/scheduling/capability-index.spec.ts',
-    ]);
   });
 
   it('selects the builder journey for the cycle-builder hooks, volunteer-pool hook, drag-scroll hook, and builder utils', () => {

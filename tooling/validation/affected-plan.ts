@@ -1,5 +1,6 @@
 import { type E2eImportGraph, selectSpecsReaching } from './e2e-import-graph';
 import { CRITICAL_SMOKE_SPEC_PATHS, JOURNEY_MAP } from './journey-map';
+import { isProductionSourcePath } from './production-path';
 import {
   assessSeedImpact,
   SEED_CONTRACT_TARGETS,
@@ -143,11 +144,6 @@ interface GetTestLayerInput {
 interface GetTestTargetInput {
   changedPath: string;
   workspace: Workspace;
-}
-
-interface IsProductionSourcePathInput {
-  changedPath: string;
-  workspaceName: string;
 }
 
 export const WORKSPACES: Workspace[] = [
@@ -356,10 +352,7 @@ export function classifyChanges({
       workspaceSelectionReasons,
     });
 
-    if (
-      !isSharedE2eInfrastructure &&
-      isProductionSourcePath({ changedPath, workspaceName: workspace.name })
-    ) {
+    if (!isSharedE2eInfrastructure && isProductionSourcePath({ changedPath })) {
       const journeyMappings = JOURNEY_MAP.filter(({ sourcePathPrefix }) =>
         changedPath.startsWith(sourcePathPrefix),
       );
@@ -481,24 +474,6 @@ function selectSeedContracts({
       workspaceName: 'server',
     });
   }
-}
-
-function isProductionSourcePath({
-  changedPath,
-  workspaceName,
-}: IsProductionSourcePathInput): boolean {
-  if (workspaceName !== 'web' && workspaceName !== 'server') return false;
-  // The web page itself and its stylesheets ship too: index.html paints the
-  // boot shell, and the CSS lays out every page.
-  const isWebPage =
-    workspaceName === 'web' &&
-    (changedPath === 'apps/web/index.html' ||
-      /^apps\/web\/src\/.+\.css$/.test(changedPath));
-  if (!/\.tsx?$/.test(changedPath) && !isWebPage) return false;
-  if (changedPath.includes('.test.')) return false;
-  if (changedPath.includes('/tests/')) return false;
-
-  return true;
 }
 
 function addWorkspaceAndDependents({

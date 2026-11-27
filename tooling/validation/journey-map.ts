@@ -407,7 +407,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: [...MINISTRIES_JOURNEY_SPEC_PATHS, ...CRITICAL_SMOKE_SPEC_PATHS],
   })),
   ...[
-    'apps/server/src/domain/contracts/application/participation-manager.ts',
     'apps/server/src/domain/contracts/infrastructure/ministry-participation.repository.ts',
     'apps/server/src/domain/entities/ministry-participation.ts',
     'apps/server/src/infrastructure/repositories/drizzle-ministry-participation.repository.ts',
@@ -536,17 +535,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   {
     sourcePathPrefix: 'apps/web/src/shared/utils/active-church-switch.ts',
     specPaths: ['tests/identity/active-church-switching.spec.ts'],
-  },
-  {
-    // #288 — this prefix used to be the bare `.../scheduling` ancestor,
-    // which (via startsWith) also matched every cycles/prepare/
-    // assign path below it, pulling smoke/schedule-publish/guard-matrix/
-    // capability-index into unrelated route changes. Narrowed to the exact
-    // index route file: capability-index.spec.ts is the only spec that
-    // navigates to the bare `/scheduling` landing page it renders.
-    sourcePathPrefix:
-      'apps/web/src/routes/app/_active-church/scheduling/index.tsx',
-    specPaths: ['tests/scheduling/capability-index.spec.ts'],
   },
   {
     // Rendered only within the planning-admin surface (planning-admin.tsx
@@ -865,7 +853,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
   },
   // J8 exercises publication, changes, Send updates and recipient bell details.
   ...[
-    'apps/server/src/application/db-participation-manager.ts',
     'apps/server/src/domain/schedule-changes.ts',
     'apps/server/src/domain/notification-kinds.ts',
     'apps/server/src/application/church-notifier.ts',
@@ -900,32 +887,10 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'tests/scheduling/us4-schedule-publish.spec.ts',
     ],
   },
-  // #218 — the notification bell (header, every page) and the /notifications
-  // inbox page, proven end to end by this one spec.
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/components/notification-bell.tsx',
-    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
-  },
+  // #218 — the /notifications inbox page, proven end to end by this one spec.
   {
     sourcePathPrefix:
       'apps/web/src/routes/app/_active-church/notifications.tsx',
-    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/components/notifications-inbox-section.tsx',
-    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
-  },
-  {
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/hooks/use-notification-inbox.ts',
-    specPaths: NOTIFICATION_BELL_SPEC_PATHS,
-  },
-  {
-    // Drives the deep-link the spec asserts on when clicking a notification.
-    sourcePathPrefix:
-      'apps/web/src/features/volunteers/lib/notification-navigation.ts',
     specPaths: NOTIFICATION_BELL_SPEC_PATHS,
   },
   {
@@ -986,7 +951,6 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     'apps/web/src/features/scheduling/components/planning-admin/event-cancel-dialog.tsx',
     'apps/web/src/features/scheduling/components/planning-admin/event-edit-page.tsx',
     'apps/server/src/api/utils/cancel-confirmation.ts',
-    'apps/server/src/application/cancel-assignment.ts',
     'apps/server/src/domain/services/event-cancellation.ts',
     'apps/server/src/domain/errors/admin-cancellation-window-closed.ts',
     'apps/server/src/domain/errors/cancel-confirmation-mismatch.ts',

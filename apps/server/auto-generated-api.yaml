@@ -22158,7 +22158,17 @@ paths:
       summary: List the caller's AvailabilityChecks
       tags:
         - volunteer
-      description: List the current Volunteer's AvailabilityChecks.
+      description: "List the current Volunteer's AvailabilityChecks. `state` narrows
+        `checks` only: `counts` covers every state."
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - pending
+              - confirmed
+          in: query
+          name: state
+          required: false
       responses:
         "200":
           description: Default Response

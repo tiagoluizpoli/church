@@ -8,6 +8,7 @@ import {
 import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import type {
   ListUnavailableShiftsByCheckInput,
+  ListUnavailableShiftsByChecksInput,
   ListUnavailableShiftsByParticipationInput,
   ListUnavailableShiftsByVolunteerForEventInput,
   ListUnavailableShiftsByVolunteersInput,
@@ -140,6 +141,21 @@ export class DrizzleUnavailableShiftRepository
         eq(unavailableShift.availabilityCheckId, input.availabilityCheckId),
       ],
       tx: input.tx,
+    });
+  }
+
+  async listUnavailableShiftsByChecks({
+    churchId,
+    availabilityCheckIds,
+    tx,
+  }: ListUnavailableShiftsByChecksInput): Promise<UnavailableShift[]> {
+    if (availabilityCheckIds.length === 0) return [];
+    return this.rows({
+      churchId,
+      conditions: [
+        inArray(unavailableShift.availabilityCheckId, availabilityCheckIds),
+      ],
+      tx,
     });
   }
 

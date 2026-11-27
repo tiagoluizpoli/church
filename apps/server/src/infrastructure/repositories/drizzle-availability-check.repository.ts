@@ -49,12 +49,16 @@ import type {
   AvailabilityCheckRepository,
   CheckContext,
   CheckMarkCountRow,
+  CheckShiftOfCheckRow,
   CheckShiftRow,
+  CheckStateCountRow,
   ConfirmCheckInput,
+  CountChecksByVolunteerInput,
   CreateAskRecordInput,
   CreateChecksInput,
   GetCheckContextInput,
   ListActiveMembershipsInput,
+  ListCheckShiftsByChecksInput,
   ListCheckShiftsInput,
   ListChecksByCycleInput,
   ListChecksByVolunteerInput,
@@ -84,6 +88,15 @@ export const actionable = () =>
   and(
     isNull(availabilityCheck.withdrawnAt),
     eq(ministryMembership.status, 'active'),
+  );
+
+/** A Volunteer's own checks that still matter: actionable, outside Past Cycles (membership and Cycle joined by the caller). */
+const ofVolunteer = ({ churchId, volunteerId }: CountChecksByVolunteerInput) =>
+  and(
+    eq(ministryMembership.volunteerId, volunteerId),
+    ne(cycle.state, 'past'),
+    actionable(),
+    withChurchIsolation({ table: availabilityCheck, churchId }),
   );
 
 /** In a transaction, waits out a concurrent removal and re-reads the membership after it. */
@@ -593,13 +606,8 @@ export class DrizzleAvailabilityCheckRepository
       )
       .where(
         and(
-          eq(ministryMembership.volunteerId, input.volunteerId),
-          ne(cycle.state, 'past'),
-          actionable(),
-          withChurchIsolation({
-            table: availabilityCheck,
-            churchId: input.churchId,
-          }),
+          ofVolunteer(input),
+          input.state ? eq(availabilityCheck.state, input.state) : undefined,
         ),
       )
       // Enum order puts pending first, by nearest Deadline (undated last) then
@@ -624,10 +632,40 @@ export class DrizzleAvailabilityCheckRepository
     }));
   }
 
-  async listCheckShifts(input: ListCheckShiftsInput): Promise<CheckShiftRow[]> {
+  async countByVolunteer(
+    input: CountChecksByVolunteerInput,
+  ): Promise<CheckStateCountRow[]> {
+    return getClient({ db: this.db, tx: input.tx })
+      .select({ state: availabilityCheck.state, checkCount: count() })
+      .from(availabilityCheck)
+      .innerJoin(
+        ministryMembership,
+        eq(ministryMembership.id, availabilityCheck.ministryMembershipId),
+      )
+      .innerJoin(cycle, eq(cycle.id, availabilityCheck.cycleId))
+      .where(ofVolunteer(input))
+      .groupBy(availabilityCheck.state);
+  }
+
+  async listCheckShifts({
+    checkId,
+    ...input
+  }: ListCheckShiftsInput): Promise<CheckShiftRow[]> {
+    const rows = await this.listCheckShiftsByChecks({
+      ...input,
+      checkIds: [checkId],
+    });
+    return rows.map(({ availabilityCheckId: _, ...row }) => row);
+  }
+
+  async listCheckShiftsByChecks(
+    input: ListCheckShiftsByChecksInput,
+  ): Promise<CheckShiftOfCheckRow[]> {
+    if (input.checkIds.length === 0) return [];
     const db = getClient({ db: this.db, tx: input.tx });
     const rows = await db
       .select({
+        availabilityCheckId: availabilityCheck.id,
         shiftId: shift.id,
         eventId: event.id,
         eventTitle: event.title,
@@ -672,7 +710,7 @@ export class DrizzleAvailabilityCheckRepository
       .innerJoin(eventTimeBlock, eq(eventTimeBlock.id, shift.eventTimeBlockId))
       .where(
         and(
-          eq(availabilityCheck.id, input.checkId),
+          inArray(availabilityCheck.id, input.checkIds),
           // Cancelled work leaves the check: no Shift of a cancelled Event or block.
           liveEventTimeBlock(),
           input.heldRolesOnly
@@ -704,6 +742,7 @@ export class DrizzleAvailabilityCheckRepository
       .orderBy(asc(shift.startTime), asc(shift.id));
 
     return rows.map((row) => ({
+      availabilityCheckId: row.availabilityCheckId as AvailabilityCheckId,
       shiftId: row.shiftId as ShiftId,
       eventId: row.eventId as EventId,
       eventTitle: row.eventTitle,

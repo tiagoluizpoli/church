@@ -15,6 +15,12 @@ export interface ListUnavailableShiftsByCheckInput {
   tx?: TransactionContext;
 }
 
+export interface ListUnavailableShiftsByChecksInput {
+  churchId: ChurchId;
+  availabilityCheckIds: AvailabilityCheckId[];
+  tx?: TransactionContext;
+}
+
 export interface ListUnavailableShiftsByParticipationInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
@@ -59,6 +65,10 @@ export interface UnavailableShiftRepository {
 
   listUnavailableShiftsByCheck(
     input: ListUnavailableShiftsByCheckInput,
+  ): Promise<UnavailableShift[]>;
+
+  listUnavailableShiftsByChecks(
+    input: ListUnavailableShiftsByChecksInput,
   ): Promise<UnavailableShift[]>;
 
   /** Replaces the check's full set of unavailable shifts (PUT semantics). */

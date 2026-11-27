@@ -47,6 +47,7 @@ import {
 import type { AvailabilityEmail } from '@/domain/contracts/infrastructure/email-sender';
 import type { CreateNotificationInput } from '@/domain/contracts/infrastructure/notification.repository';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
+import { CycleEventGenerator } from '@/domain/services/planning/cycle-event-generator';
 import {
   DrizzleAvailabilityCheckRepository,
   DrizzleChurchRepository,
@@ -288,6 +289,7 @@ async function outboxRows() {
 /** The planning manager wired to the real repositories and the outbox. */
 function buildPlanningManager() {
   return new DbPlanningEventManager({
+    cycleEventGenerator: new CycleEventGenerator(),
     cycleRepository: new DrizzleCycleRepository({ db: schedulingTestDb }),
     eventRepository: new DrizzlePlanningEventRepository({
       db: schedulingTestDb,

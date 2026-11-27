@@ -1,6 +1,13 @@
 // biome-ignore-all lint/style/useNamingConvention: Sentry event fields are snake_case on the wire
+
 import { z } from 'zod';
 import type { ReportedRequest } from '../../domain/contracts/infrastructure/error-reporter';
+import type {
+  AllowedHeadersInput,
+  RedactUrlInput,
+  ScrubEventInput,
+} from '../../domain/contracts/infrastructure/privacy';
+import type { ScrubbedEvent } from './privacy.types';
 
 /**
  * The one server privacy module (ADR 0014). Framework-free so log shipping and
@@ -33,10 +40,6 @@ const ALLOWED_HEADERS: ReadonlySet<string> = new Set([
   'x-request-id',
 ]);
 
-export interface RedactUrlInput {
-  url: string;
-}
-
 /** The route path only: no query string or fragment, token segments masked. */
 export function redactUrl({ url }: RedactUrlInput): string {
   const path = url.split(/[?#]/, 1)[0] ?? '';
@@ -44,10 +47,6 @@ export function redactUrl({ url }: RedactUrlInput): string {
     (result, pattern) => result.replace(pattern, `$1${MASK}`),
     path,
   );
-}
-
-export interface AllowedHeadersInput {
-  headers: Record<string, unknown>;
 }
 
 /** Only allowlisted headers. */
@@ -120,7 +119,7 @@ const frameSchema = z.object({
   in_app: z.boolean().optional(),
 });
 
-const reportEventSchema = z.object({
+export const reportEventSchema = z.object({
   event_id: z.string().optional(),
   timestamp: z.number().optional(),
   level: z.string().optional(),
@@ -157,12 +156,6 @@ const reportEventSchema = z.object({
     })
     .optional(),
 });
-
-export type ScrubbedEvent = z.infer<typeof reportEventSchema>;
-
-export interface ScrubEventInput {
-  event: unknown;
-}
 
 /**
  * An error-tracker event reduced to ids, error type and stack (ADR 0014), or

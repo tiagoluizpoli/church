@@ -1,9 +1,6 @@
-import type { sector } from '@church/db';
-import type { InferSelectModel } from 'drizzle-orm';
 import type { ChurchId, MinistryId } from '../../domain/branded-ids';
 import { Sector } from '../../domain/entities/sector';
-
-type SectorRow = InferSelectModel<typeof sector>;
+import type { SectorRow } from './sector.mapper.types';
 
 export function mapSector(row: SectorRow): Sector {
   return new Sector({

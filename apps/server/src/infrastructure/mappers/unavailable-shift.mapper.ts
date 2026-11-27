@@ -1,6 +1,4 @@
-import type { unavailableShift } from '@church/db';
 import { fromDate } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AvailabilityCheckId,
   ChurchId,
@@ -9,19 +7,7 @@ import type {
 } from '../../domain/branded-ids';
 import type { UnavailableShiftProps } from '../../domain/entities/unavailable-shift';
 import { UnavailableShift } from '../../domain/entities/unavailable-shift';
-
-type UnavailableShiftRow = InferSelectModel<typeof unavailableShift>;
-
-export interface AvailabilityJoinedRow {
-  volunteerId: string;
-  shiftStartTime: Date;
-  shiftEndTime: Date;
-}
-
-export interface MapUnavailableShiftInput {
-  row: UnavailableShiftRow;
-  joined: AvailabilityJoinedRow;
-}
+import type { MapUnavailableShiftInput } from './unavailable-shift.mapper.types';
 
 export function mapUnavailableShift({
   row,

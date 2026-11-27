@@ -5,6 +5,9 @@ import type {
 import type { ChurchContact } from '../../church-contact';
 import type { RegularActivity } from '../../entities/regular-activity';
 import type { ChurchSocialLink } from '../../social-link';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type { ChurchProgrammeRepository } from '@/domain/contracts/infrastructure/church-programme.repository';
+import type { ObjectStorage } from '@/domain/contracts/infrastructure/object-storage';
 
 export interface GetPublicChurchProfileInput {
   /** A live or old Church Slug, as the visitor typed it. */
@@ -45,4 +48,10 @@ export interface IPublicChurchProfileManager {
   getProfile(
     input: GetPublicChurchProfileInput,
   ): Promise<PublicChurchProfile | null>;
+}
+
+export interface DbPublicChurchProfileManagerDependencies {
+  churchRepository: ChurchRepository;
+  objectStorage: ObjectStorage;
+  programmeRepository: ChurchProgrammeRepository;
 }

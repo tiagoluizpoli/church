@@ -1,6 +1,14 @@
 import type { ChurchAccessLevel } from '../../authority/types';
 import type { ChurchId, UserId } from '../../branded-ids';
 import type { ActiveChurchResolution } from './active-church-resolver';
+import type { IActiveChurchResolver } from '@/domain/contracts/application/active-church-resolver';
+import type { IAuthorityManager } from '@/domain/contracts/application/authority-manager';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type {
+  ChurchMembershipComparison,
+  ChurchMembershipRepository,
+} from '@/domain/contracts/infrastructure/church-membership.repository';
+import type { ObjectStorage } from '@/domain/contracts/infrastructure/object-storage';
 
 /** An application surface the caller may reach once that Church is Active — mirrors the nav-visibility signal `useCallerRoles` derives client-side, computed here per candidate Church instead of only the current one. */
 export const APPLICATION_AREA_OPTIONS = ['dashboard', 'scheduling'] as const;
@@ -52,4 +60,23 @@ export interface IActiveChurchSelectionManager {
   ): Promise<ActiveChurchResolution>;
   /** The resolved Church's IANA Church Timezone, for the entry gate to hand the client once (ADR-0003). */
   getChurchTimezone(input: GetChurchTimezoneInput): Promise<string>;
+}
+
+export interface ToSelectionOptionInput {
+  comparison: ChurchMembershipComparison;
+  objectStorage: Pick<ObjectStorage, 'publicUrl'>;
+  availableAreas: ApplicationArea[];
+}
+
+export interface ResolveAvailableAreasInput {
+  userId: ListSelectableChurchesInput['userId'];
+  churchId: ChurchId;
+}
+
+export interface DbActiveChurchSelectionManagerDependencies {
+  membershipRepository: ChurchMembershipRepository;
+  authorityManager: IAuthorityManager;
+  activeChurchResolver: IActiveChurchResolver;
+  churchRepository: ChurchRepository;
+  objectStorage: Pick<ObjectStorage, 'publicUrl'>;
 }

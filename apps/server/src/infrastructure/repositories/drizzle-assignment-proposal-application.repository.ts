@@ -13,15 +13,13 @@ import type {
   CreateAssignmentProposalApplicationInput,
   FindAssignmentProposalApplicationInput,
 } from '../../domain/contracts/infrastructure/assignment-proposal-application.repository';
-import type { AppliedProposalAddition } from '../../domain/services/assignment-proposal';
+import type { AppliedProposalAddition } from '../../domain/services/scheduling/assignment-proposal.types';
+import type {
+  ApplicationRow,
+  DrizzleAssignmentProposalApplicationRepositoryInput,
+} from './drizzle-assignment-proposal-application.repository.types';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
-
-interface DrizzleAssignmentProposalApplicationRepositoryInput {
-  db: AnyDrizzleDb;
-}
-
-type ApplicationRow = typeof assignmentProposalApplication.$inferSelect;
 
 function toApplication(row: ApplicationRow): AssignmentProposalApplication {
   return {

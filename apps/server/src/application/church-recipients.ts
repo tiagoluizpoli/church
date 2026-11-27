@@ -1,6 +1,7 @@
 import type { MinistryId, UserId } from '../domain/branded-ids';
 import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
 import type {
+  ChurchRecipientsDependencies,
   EventChangedRecipient,
   EventChangedRecipientsInput,
   IChurchRecipients,
@@ -8,11 +9,6 @@ import type {
 } from '../domain/contracts/application/church-recipients';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
-
-interface ChurchRecipientsDependencies {
-  churchRepository: ChurchRepository;
-  volunteerRepository: VolunteerRepository;
-}
 
 export class ChurchRecipients implements IChurchRecipients {
   private readonly churchRepository: ChurchRepository;

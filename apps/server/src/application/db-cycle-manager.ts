@@ -58,7 +58,7 @@ import {
   InvalidCycleEventsError,
   OverlappingCycleError,
 } from '../domain/errors';
-import { assertEventGraph } from '../domain/services/event-graph';
+import { assertEventGraph } from '../domain/services/planning/event-graph';
 
 /** The day after the latest Cycle, never before this month, to its month's end. */
 export function suggestNextCycle({

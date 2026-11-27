@@ -1,9 +1,12 @@
 import type { CalendarDay, Instant } from '@church/time';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
+import type { EmailSendError } from '../../errors/email-send-error';
 import type {
   NotificationDataOf,
   TransferDigestDeliveryFacts,
 } from '../../notification-kinds';
+import type { PlatformBranding } from '@/domain/contracts/infrastructure/email-templates';
+import type { RuntimeConfigurationRepository } from '@/domain/contracts/infrastructure/runtime-configuration.repository';
 
 /**
  * Typed per-kind email payloads for invitation delivery (issue #56) and
@@ -432,4 +435,55 @@ export interface EmailTransport {
  */
 export interface EmailSender extends EmailPreparer, EmailTransport {
   send(input: SendEmailInput): Promise<SendEmailResult>;
+}
+
+export interface CaptureEmailSenderOptions {
+  appName: string;
+  platform?: PlatformBranding;
+}
+
+export interface DeliveryModeEmailSenderInput {
+  mailpit: EmailSender;
+  resend: EmailSender;
+  runtimeConfiguration: RuntimeConfigurationRepository;
+}
+
+export interface DestinationsForInput {
+  frozenMode: unknown;
+}
+
+export interface DestinationFailure {
+  destination: EmailDestination;
+  error: EmailSendError;
+}
+
+export interface PasswordResetMailInput {
+  user: { email: string };
+  token: string;
+}
+
+export interface ResendEmailSenderOptions {
+  apiKey: string;
+  from: string;
+  appName: string;
+  platform?: PlatformBranding;
+}
+
+export interface IsRetryableInput {
+  name: string;
+  statusCode: number;
+}
+
+export interface SmtpEmailSenderOptions {
+  host: string;
+  port: number;
+  /** Implicit TLS (port 465); otherwise STARTTLS is used when offered. */
+  secure: boolean;
+  /** Fail instead of sending in plaintext when STARTTLS is not offered. */
+  requireTls?: boolean;
+  user?: string;
+  password?: string;
+  from: string;
+  appName: string;
+  platform?: PlatformBranding;
 }

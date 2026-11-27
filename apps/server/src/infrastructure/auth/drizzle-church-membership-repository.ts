@@ -12,10 +12,7 @@ import type {
 } from '../../domain/contracts/infrastructure/church-membership.repository';
 import { getClient } from '../repositories/helpers';
 import type { AnyDrizzleDb } from '../repositories/types';
-
-interface DrizzleChurchMembershipRepositoryInput {
-  db: AnyDrizzleDb;
-}
+import type { DrizzleChurchMembershipRepositoryInput } from './drizzle-church-membership-repository.types';
 
 /**
  * Reads Better Auth's `member` table directly — the same source

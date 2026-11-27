@@ -2,25 +2,17 @@ import { Resend } from 'resend';
 import type {
   DeliverEmailInput,
   EmailSender,
+  IsRetryableInput,
   PreparedEmail,
   PrepareEmailInput,
+  ResendEmailSenderOptions,
   SendEmailInput,
   SendEmailResult,
 } from '../../domain/contracts/infrastructure/email-sender';
+import type { PlatformBranding } from '../../domain/contracts/infrastructure/email-templates';
 import { EmailSendError } from '../../domain/errors/email-send-error';
-import { type PlatformBranding, prepareEmail } from './email-templates';
-
-export interface ResendEmailSenderOptions {
-  apiKey: string;
-  from: string;
-  appName: string;
-  platform?: PlatformBranding;
-}
-
-interface SendViaResendInput {
-  request: Parameters<Resend['emails']['send']>[0];
-  idempotencyKey?: string;
-}
+import { prepareEmail } from './email-templates';
+import type { SendViaResendInput } from './resend-email-sender.types';
 
 /**
  * Status codes Resend documents as non-retryable (bad request, auth, invalid
@@ -114,11 +106,6 @@ export class ResendEmailSender implements EmailSender {
       });
     }
   }
-}
-
-interface IsRetryableInput {
-  name: string;
-  statusCode: number;
 }
 
 function isRetryable({ name, statusCode }: IsRetryableInput): boolean {

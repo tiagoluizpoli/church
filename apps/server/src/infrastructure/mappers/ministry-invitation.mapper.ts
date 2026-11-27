@@ -1,23 +1,14 @@
-import type { ministryInvitation } from '@church/db';
 import { fromDate } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
   MinistryId,
   MinistryInvitationId,
-  RoleId,
   UserId,
 } from '../../domain/branded-ids';
 import type { MinistryInvitationProps } from '../../domain/entities/ministry-invitation';
 import { MinistryInvitation } from '../../domain/entities/ministry-invitation';
 import type { MinistryAccessLevel } from '../../domain/entities/ministry-membership';
-
-type MinistryInvitationRow = InferSelectModel<typeof ministryInvitation>;
-
-export interface MapMinistryInvitationInput {
-  row: MinistryInvitationRow;
-  roleIds?: RoleId[];
-}
+import type { MapMinistryInvitationInput } from './ministry-invitation.mapper.types';
 
 export function mapMinistryInvitation({
   row,

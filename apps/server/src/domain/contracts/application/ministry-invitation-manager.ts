@@ -1,3 +1,4 @@
+import type { AppConfig } from '@church/app-config';
 import type { Instant } from '@church/time';
 import type {
   ChurchId,
@@ -8,6 +9,16 @@ import type {
 } from '../../branded-ids';
 import type { MinistryInvitation } from '../../entities/ministry-invitation';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
+import type { ResendThrottleState } from '../../services/invitations/resend-throttle.types';
+import type { IAuthorityManager } from './authority-manager';
+import type { ChurchIdentitySnapshotter } from './church-identity-snapshotter';
+import type { IChurchNotifications } from './church-notifications';
+import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
+import type { MinistryInvitationRepository } from '@/domain/contracts/infrastructure/ministry-invitation.repository';
+import type { OutboxRepository } from '@/domain/contracts/infrastructure/outbox.repository';
+import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
 /**
  * The minting API's own delivery-status vocabulary (spec #56 §6.4) — kept
@@ -109,4 +120,71 @@ export interface IMinistryInvitationManager {
   getDeliveryStatus(
     input: GetMinistryInvitationDeliveryStatusInput,
   ): Promise<MinistryInvitationDeliveryStatus>;
+}
+
+export interface ExpiryFromInput {
+  milliseconds: number;
+  from?: Instant;
+}
+
+export interface EnsureMintableScopeInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  callerId: UserId;
+}
+
+export interface EnsureOfferAuthorityInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  callerId: UserId;
+  /** The offer's stored (or, on mint, requested) Ministry Access Level. */
+  ministryAccessLevel: MinistryAccessLevel;
+  tx?: TransactionContext;
+}
+
+export interface MintForExistingMemberInput
+  extends MintMinistryInvitationInput {
+  inviteeUserId: UserId;
+  tx: TransactionContext;
+}
+
+export interface MintChainedInput extends MintMinistryInvitationInput {
+  tx: TransactionContext;
+}
+
+export interface ResolveChainedChurchInvitationInput {
+  churchId: MintMinistryInvitationInput['churchId'];
+  email: string;
+  inviterId: UserId;
+  tx: TransactionContext;
+}
+
+export interface EnqueueMemberNotificationInput {
+  churchId: ChurchId;
+  userId: UserId;
+  ministryInvitationId: string;
+  tx: TransactionContext;
+}
+
+export interface EnsureResendAllowedInput {
+  throttleState: ResendThrottleState;
+  now: Instant;
+}
+
+export interface LockActiveMinistryForMintInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  tx: TransactionContext;
+}
+
+export interface DbMinistryInvitationManagerDependencies {
+  repo: MinistryInvitationRepository;
+  roleRepository: RoleRepository;
+  ministryRepository: MinistryRepository;
+  authorityManager: IAuthorityManager;
+  unitOfWork: UnitOfWork;
+  outboxRepository: OutboxRepository;
+  notifications: IChurchNotifications;
+  churchIdentity: ChurchIdentitySnapshotter;
+  config: AppConfig;
 }

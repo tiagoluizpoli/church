@@ -1,10 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { AuthorityService } from '../domain/authority/authority-service';
-import type {
-  AuthorityDecision,
-  MinistryMembershipOperation,
-} from '../domain/authority/types';
-import type { ChurchId, UserId } from '../domain/branded-ids';
+import type { AuthorityDecision } from '../domain/authority/types';
 import type {
   CallerCapabilitiesProjection,
   CanManageChurchInput,
@@ -15,12 +11,14 @@ import type {
   CanManageMinistryMembershipsInput,
   CanManageParticipationInput,
   CanManageShiftInput,
+  DbAuthorityManagerDependencies,
   DecideAuthorityInput,
   DecideManageMinistryMembershipInput,
   HasSchedulingAccessInput,
   IAuthorityManager,
+  MinistryMembershipHintInput,
   MinistryMembershipHints,
-  MinistryMembershipHintTarget,
+  ResolveActorInput,
   ResolveCallerCapabilitiesInput,
 } from '../domain/contracts/application/authority-manager';
 import type { AuthorityActorRepository } from '../domain/contracts/infrastructure/authority-actor.repository';
@@ -28,26 +26,6 @@ import type { EventRepository } from '../domain/contracts/infrastructure/event.r
 import type { EventTimeBlockRepository } from '../domain/contracts/infrastructure/event-time-block.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { SchedulingScopeRepository } from '../domain/contracts/infrastructure/scheduling-scope.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
-
-interface MinistryMembershipHintInput {
-  target: MinistryMembershipHintTarget;
-  operation: MinistryMembershipOperation;
-}
-
-interface ResolveActorInput {
-  churchId: ChurchId;
-  userId: UserId;
-  tx?: TransactionContext;
-}
-
-interface DbAuthorityManagerDependencies {
-  actorRepository: AuthorityActorRepository;
-  scopeRepository: SchedulingScopeRepository;
-  eventRepository: EventRepository;
-  eventTimeBlockRepository: EventTimeBlockRepository;
-  ministryRepository: MinistryRepository;
-}
 
 export class DbAuthorityManager implements IAuthorityManager {
   private readonly actorRepository: AuthorityActorRepository;

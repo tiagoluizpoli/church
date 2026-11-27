@@ -32,6 +32,8 @@ import {
   LastRemainingEventTimeBlockError,
   OverlappingCycleError,
 } from '@/domain/errors';
+import { ProfileSeeder } from '@/domain/services/church-identity/profile-seeder';
+import { CycleEventGenerator } from '@/domain/services/planning/cycle-event-generator';
 import {
   createChurchRepositoryFake,
   createCycleRepositoryFake,
@@ -76,6 +78,7 @@ function createPlanningDependencies() {
   const ministryRepository = createMinistryRepositoryFake();
   const unitOfWork = createUnitOfWorkFake({ tx });
   const staffingSeeder = new UsualSetupStaffingSeeder({
+    profileSeeder: new ProfileSeeder(),
     participationRepository,
     shiftRepository,
     usualSetupRepository,
@@ -180,6 +183,7 @@ function createPlanningEventHarness() {
   eventTimeBlockRepository.create.mockResolvedValue(makeBlock());
   eventTimeBlockRepository.update.mockResolvedValue(makeBlock());
   const manager = new DbPlanningEventManager({
+    cycleEventGenerator: new CycleEventGenerator(),
     ...dependencies,
     templateRepository,
     precedenceRepository: {

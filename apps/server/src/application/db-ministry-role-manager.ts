@@ -1,31 +1,19 @@
 import { NotFoundError } from '@church/core';
 import { now } from '@church/time';
-import type { ChurchId, MinistryId } from '../domain/branded-ids';
 import type {
   ArchiveMinistryRoleInput,
   CreateMinistryRoleInput,
+  DbMinistryRoleManagerDependencies,
+  EnsureActiveMinistryInput,
   IMinistryRoleManager,
   ListMinistryRolesInput,
   RenameMinistryRoleInput,
 } from '../domain/contracts/application/ministry-role-manager';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { Role } from '../domain/entities/role';
 import { RoleInUseError } from '../domain/errors/role-in-use';
-
-interface DbMinistryRoleManagerDependencies {
-  ministryRepository: MinistryRepository;
-  roleRepository: RoleRepository;
-  unitOfWork: UnitOfWork;
-}
-
-interface EnsureActiveMinistryInput {
-  churchId: ChurchId;
-  ministryId: MinistryId;
-  tx?: TransactionContext;
-}
 
 export class DbMinistryRoleManager implements IMinistryRoleManager {
   private readonly ministryRepository: MinistryRepository;

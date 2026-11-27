@@ -1,6 +1,4 @@
-import type { availabilityCheck } from '@church/db';
 import { fromDate } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AvailabilityCheckId,
   ChurchId,
@@ -8,8 +6,7 @@ import type {
 } from '../../domain/branded-ids';
 import type { AvailabilityCheckProps } from '../../domain/entities/availability-check';
 import { AvailabilityCheck } from '../../domain/entities/availability-check';
-
-type AvailabilityCheckRow = InferSelectModel<typeof availabilityCheck>;
+import type { AvailabilityCheckRow } from './availability-check.mapper.types';
 
 export function mapAvailabilityCheck(
   row: AvailabilityCheckRow,

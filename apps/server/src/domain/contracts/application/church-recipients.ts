@@ -1,6 +1,8 @@
 import type { ChurchId, MinistryId, UserId } from '../../branded-ids';
 import type { ChurchRecipient } from './church-notifications';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
 import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
 
 export interface MinistryLeadersOrAdminsInput {
   /** The change's own transaction, so the set matches what the change commits. */
@@ -43,4 +45,9 @@ export interface IChurchRecipients {
   ministryLeadersOrAdmins(
     input: MinistryLeadersOrAdminsInput,
   ): Promise<ChurchRecipient[]>;
+}
+
+export interface ChurchRecipientsDependencies {
+  churchRepository: ChurchRepository;
+  volunteerRepository: VolunteerRepository;
 }

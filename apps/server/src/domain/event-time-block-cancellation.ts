@@ -4,7 +4,7 @@ import {
   EventCancelledError,
   EventTimeBlockCancelledError,
 } from './errors/event-cancelled';
-import type { ShiftCancellation } from './services/assignment-eligibility.types';
+import type { ShiftCancellation } from './services/scheduling/assignment-eligibility.types';
 
 interface EventTimeBlockCancellationInput {
   event: { status: EventStatus };

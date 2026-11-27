@@ -5,6 +5,7 @@ import { isChurchLogoKey } from '../domain/church-logo';
 import type { ChurchSlugAvailability } from '../domain/church-settings';
 import type {
   ChurchSettingsView,
+  DbChurchSettingsManagerDependencies,
   GetChurchAddressUsageInput,
   GetChurchSettingsInput,
   IChurchSettingsManager,
@@ -19,14 +20,6 @@ import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work
 import { LogoKeyInvalidError } from '../domain/errors/church-logo';
 import { storeChurchLogo } from './church-logo-pipeline';
 import { churchLogoUrl } from './church-logo-url';
-
-interface DbChurchSettingsManagerDependencies {
-  churchRepository: ChurchRepository;
-  unitOfWork: UnitOfWork;
-  objectStorage: ObjectStorage;
-  /** The web app's origin, under which the public Church page lives. */
-  publicOrigin: string;
-}
 
 export class DbChurchSettingsManager implements IChurchSettingsManager {
   private readonly churchRepository: ChurchRepository;

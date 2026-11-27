@@ -8,8 +8,8 @@ import {
   UserId,
 } from '../../domain/branded-ids';
 import type {
+  IRedemptionManager,
   PublicRedemptionPreview,
-  RedemptionManager,
 } from '../../domain/contracts/application/redemption-manager';
 import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import type { RedemptionBundleMinistry } from '../../domain/entities/redemption-bundle';
@@ -59,7 +59,7 @@ import type {
 export class RedemptionController implements FastifyController {
   readonly prefix = '/redemption';
 
-  private readonly redemptionManager: RedemptionManager;
+  private readonly redemptionManager: IRedemptionManager;
   private readonly volunteerTransferManager: IVolunteerTransferManager;
   private readonly rateLimit: AppConfig['redemptionRateLimit'];
 

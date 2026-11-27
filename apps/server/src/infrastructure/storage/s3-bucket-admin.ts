@@ -3,27 +3,16 @@ import {
   HeadBucketCommand,
   ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
+import type {
+  S3Bucket,
+  S3BucketConfig,
+} from '../../domain/contracts/infrastructure/object-storage';
 import { s3Client } from './s3-client';
 
 /**
  * The environment reset's handle on the configured bucket; the app itself
  * only sees `ObjectStorage`. (Worktree buckets are tooling/worktree's.)
  */
-
-export interface S3BucketConfig {
-  endpoint: string;
-  region: string;
-  bucket: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-}
-
-export interface S3Bucket {
-  /** Fails when the bucket cannot be reached. */
-  assertReachable(): Promise<void>;
-  /** Deletes every object; the bucket and its policy stay. */
-  deleteAll(): Promise<void>;
-}
 
 export function s3Bucket({ bucket, ...config }: S3BucketConfig): S3Bucket {
   const client = s3Client(config);

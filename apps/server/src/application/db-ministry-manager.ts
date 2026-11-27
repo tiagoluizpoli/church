@@ -4,6 +4,7 @@ import type { ChurchId, MinistryId } from '../domain/branded-ids';
 import type {
   ArchiveMinistryInput,
   CreateMinistryInput,
+  DbMinistryManagerDependencies,
   GetActiveMinistryInput,
   IMinistryManager,
   ListMinistriesByLeaderInput,
@@ -11,8 +12,10 @@ import type {
   MinistryPage,
   MinistrySummary,
   RenameMinistryInput,
+  ReviewIdsInput,
   SetDefaultDirectionInput,
   SummarizeMinistriesInput,
+  SummarizeWithInput,
 } from '../domain/contracts/application/ministry-manager';
 import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
@@ -24,27 +27,8 @@ import type { UsualSetupRepository } from '../domain/contracts/infrastructure/us
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Ministry } from '../domain/entities/ministry';
 import { MinistryInUseError } from '../domain/errors/ministry-in-use';
-import { usualSetupNeedsReview } from '../domain/services/usual-setup-planner';
+import { usualSetupNeedsReview } from '../domain/services/scheduling/usual-setup-planner';
 import { revokeMinistryHalf } from './invitation-revocation';
-
-interface ReviewIdsInput {
-  churchId: ChurchId;
-}
-
-interface SummarizeWithInput extends SummarizeMinistriesInput {
-  reviewIds: ReadonlySet<MinistryId>;
-}
-
-interface DbMinistryManagerDependencies {
-  ministryRepo: MinistryRepository;
-  volunteerRepo: VolunteerRepository;
-  invitationRepo: MinistryInvitationRepository;
-  unitOfWork: UnitOfWork;
-  sectorRepo: SectorRepository;
-  roleRepo: RoleRepository;
-  usualSetupRepo: UsualSetupRepository;
-  templateRepo: EventTemplateRepository;
-}
 
 export class DbMinistryManager implements IMinistryManager {
   private readonly ministryRepo: MinistryRepository;

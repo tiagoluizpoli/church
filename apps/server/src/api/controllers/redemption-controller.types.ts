@@ -2,7 +2,7 @@ import type { AppConfig } from '@church/app-config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { z } from 'zod';
 import type { UserId } from '../../domain/branded-ids';
-import type { RedemptionManager } from '../../domain/contracts/application/redemption-manager';
+import type { IRedemptionManager } from '../../domain/contracts/application/redemption-manager';
 import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import type {
   acceptExistingMemberBodySchema,
@@ -41,7 +41,7 @@ export interface InvitationPreviewFields {
 }
 
 export interface RedemptionControllerDependencies {
-  redemptionManager: RedemptionManager;
+  redemptionManager: IRedemptionManager;
   volunteerTransferManager: IVolunteerTransferManager;
   config: AppConfig;
 }

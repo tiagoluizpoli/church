@@ -41,6 +41,8 @@ import {
   VolunteerId,
 } from '@/domain/branded-ids';
 import type { Recurrence } from '@/domain/recurrence';
+import { ProfileSeeder } from '@/domain/services/church-identity/profile-seeder';
+import { CycleEventGenerator } from '@/domain/services/planning/cycle-event-generator';
 import { toStoredPrecedence } from '@/domain/template-precedence';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
@@ -100,6 +102,7 @@ beforeAll(async () => {
   });
   const templateRepository = new DrizzleEventTemplateRepository({ db });
   const staffingSeeder = new UsualSetupStaffingSeeder({
+    profileSeeder: new ProfileSeeder(),
     participationRepository,
     shiftRepository: new DrizzleShiftRepository({ db }),
     usualSetupRepository: new DrizzleUsualSetupRepository({ db }),
@@ -126,6 +129,7 @@ beforeAll(async () => {
       }),
     }),
     planningEventManager: new DbPlanningEventManager({
+      cycleEventGenerator: new CycleEventGenerator(),
       cycleRepository,
       eventRepository,
       precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),

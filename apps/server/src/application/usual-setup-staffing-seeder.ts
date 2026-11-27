@@ -16,11 +16,11 @@ import type { MinistryParticipationRepository } from '../domain/contracts/infras
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import { Shift } from '../domain/entities/shift';
-import {
-  type ParticipationSeedPlan,
-  ProfileSeeder,
-  type ProfileSeederEntry,
-} from '../domain/services/profile-seeder';
+import type {
+  IProfileSeeder,
+  ParticipationSeedPlan,
+  ProfileSeederEntry,
+} from '../domain/services/church-identity/profile-seeder.types';
 
 /**
  * Pre-fills inclusions, Shifts and positive ShiftRequirements from the Usual
@@ -28,7 +28,7 @@ import {
  * Apply on an already-Sent Cycle uses it for the blocks it adds.
  */
 export class UsualSetupStaffingSeeder implements IUsualSetupStaffingSeeder {
-  private readonly profileSeeder = new ProfileSeeder();
+  private readonly profileSeeder: IProfileSeeder;
   private readonly participationRepository: MinistryParticipationRepository;
   private readonly shiftRepository: ShiftRepository;
   private readonly usualSetupRepository: UsualSetupRepository;
@@ -39,7 +39,9 @@ export class UsualSetupStaffingSeeder implements IUsualSetupStaffingSeeder {
     shiftRepository,
     usualSetupRepository,
     ministryRepository,
+    profileSeeder,
   }: UsualSetupStaffingSeederDependencies) {
+    this.profileSeeder = profileSeeder;
     this.participationRepository = participationRepository;
     this.shiftRepository = shiftRepository;
     this.usualSetupRepository = usualSetupRepository;

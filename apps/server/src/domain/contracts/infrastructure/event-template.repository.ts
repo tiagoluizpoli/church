@@ -73,3 +73,15 @@ export interface EventTemplateRepository {
   getByIds(input: GetEventTemplatesByIdsInput): Promise<EventTemplate[]>;
   getUsage(input: GetEventTemplateInput): Promise<EventTemplateUsage>;
 }
+
+export interface RefuseUniqueViolationsInput<T> {
+  write: Promise<T>;
+}
+
+export interface TemplateNotFoundInput {
+  templateId: string;
+}
+
+export type RetainedBlockInput = EventTemplateTimeBlockInput & {
+  id: TemplateTimeBlockId;
+};

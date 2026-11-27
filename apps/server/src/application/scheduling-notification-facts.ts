@@ -1,7 +1,12 @@
 import { NotFoundError } from '@church/core';
 import { compareCalendarDays, now, today } from '@church/time';
 import { CycleId, MinistryId } from '../domain/branded-ids';
-import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
+import type {
+  ISchedulingNotificationFacts,
+  ResolveAvailabilityInput,
+  ResolveCycleReadyToPrepareInput,
+  SchedulingNotificationFactsDependencies,
+} from '../domain/contracts/application/scheduling-notification-facts';
 import type { AvailabilityCheckRepository } from '../domain/contracts/infrastructure/availability-check.repository';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
@@ -10,30 +15,8 @@ import type { PlanningEventRepository } from '../domain/contracts/infrastructure
 import type {
   AvailabilityDeliveryFacts,
   CycleReadyToPrepareDeliveryFacts,
-  NotificationRequestDataOf,
 } from '../domain/notification-kinds';
-import { webLink } from '../domain/services/web-link';
-
-interface SchedulingNotificationFactsDependencies {
-  churchRepository: ChurchRepository;
-  ministryRepository: MinistryRepository;
-  cycleRepository: CycleRepository;
-  eventRepository: PlanningEventRepository;
-  availabilityCheckRepository: AvailabilityCheckRepository;
-  /** Base URL of the web app, for deep links. */
-  webBaseUrl: string;
-}
-
-interface ResolveAvailabilityInput {
-  churchId: ChurchRecipient['churchId'];
-  userId: ChurchRecipient['userId'];
-  data: NotificationRequestDataOf<'availability_opened'>;
-}
-
-interface ResolveCycleReadyToPrepareInput {
-  churchId: ChurchRecipient['churchId'];
-  data: NotificationRequestDataOf<'cycle_ready_to_prepare'>;
-}
+import { webLink } from '../domain/services/notifications/web-link';
 
 /**
  * The display facts of the retained scheduling kinds, read at delivery from
@@ -41,7 +24,9 @@ interface ResolveCycleReadyToPrepareInput {
  * no longer exists: the history cannot be rendered, so the row fails
  * terminally rather than retrying.
  */
-export class SchedulingNotificationFacts {
+export class SchedulingNotificationFacts
+  implements ISchedulingNotificationFacts
+{
   private readonly churchRepository: ChurchRepository;
   private readonly ministryRepository: MinistryRepository;
   private readonly cycleRepository: CycleRepository;

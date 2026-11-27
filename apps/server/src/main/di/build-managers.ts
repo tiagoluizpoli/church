@@ -42,13 +42,16 @@ import {
   AssignmentLifecycle,
 } from '../../application/assignment-lifecycle';
 import { ChurchNotifications } from '../../application/church-notifications';
-import { buildChurchNotifier } from '../../application/church-notifier';
 import { ChurchRecipients } from '../../application/church-recipients';
 import { DbChurchIdentitySnapshotter } from '../../application/db-church-identity-snapshotter';
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
 import { UsualSetupStaffingSeeder } from '../../application/usual-setup-staffing-seeder';
+import { ProfileSeeder } from '../../domain/services/church-identity/profile-seeder';
+import { CycleEventGenerator } from '../../domain/services/planning/cycle-event-generator';
+import { ShiftSplitter } from '../../domain/services/scheduling/shift-splitter';
 import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
 import type { Auth } from './build-auth';
+import { buildChurchNotifier } from './build-church-notifier';
 import type { Repositories } from './build-repositories';
 import type { Services } from './build-services';
 import type { CompositionRootDependencies } from './dependencies';
@@ -313,6 +316,7 @@ export function buildManagers({
       tracing,
     });
   const staffingSeeder = new UsualSetupStaffingSeeder({
+    profileSeeder: new ProfileSeeder(),
     participationRepository: ministryParticipationRepository,
     shiftRepository,
     usualSetupRepository,
@@ -333,6 +337,7 @@ export function buildManagers({
   const planningEventManager =
     overrides.planningEventManager ??
     new DbPlanningEventManager({
+      cycleEventGenerator: new CycleEventGenerator(),
       cycleRepository: cycleRepository,
       eventRepository: planningEventRepository,
       templateRepository: eventTemplateRepository,
@@ -412,6 +417,7 @@ export function buildManagers({
   const prepareManager =
     overrides.prepareManager ??
     new DbPrepareManager({
+      shiftSplitter: new ShiftSplitter(),
       assignmentRepository,
       churchRepository,
       cycleRepository,

@@ -7,31 +7,43 @@ import {
   nowAsDate,
   toDate,
 } from '@church/time';
-import type { ChurchId } from '../domain/branded-ids';
-import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
+import type { ChurchNotifier } from '../domain/contracts/application/church-notifier';
 import type {
+  DbOutboxDrainerDependencies,
+  DeliverEmailInput,
   DrainOnceInput,
   DrainOnceResult,
+  EmailIdempotencyKeyForInput,
+  FailTerminallyInput,
   IOutboxDrainer,
+  LoadDeliveryFactsInput,
+  LoadPendingInvitationFactsInput,
+  LoadTransferDigestFactsInput,
+  LocaleForInput,
+  MarkSentInput,
+  MinistryInvitationSubject,
+  PrepareAndDeliverInput,
+  ProcessChurchOfferMessageInput,
+  ProcessInvitationMessageInput,
+  ProcessNotificationMessageInput,
+  ProcessOneInput,
+  ReportFailureInput,
+  RetryOrFailInput,
+  SkipDeliveryInput,
 } from '../domain/contracts/application/outbox-drainer';
+import type { ISchedulingNotificationFacts } from '../domain/contracts/application/scheduling-notification-facts';
 import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
 import type {
   ChainedInvitationEmail,
   ChurchBootstrapInvitationEmail,
   EmailLocale,
-  EmailPayload,
   EmailSender,
 } from '../domain/contracts/infrastructure/email-sender';
 import type { ErrorReporter } from '../domain/contracts/infrastructure/error-reporter';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type {
-  ChainedInvitationOutboxMessage,
   ChannelOutcomes,
-  ChurchBootstrapOutboxMessage,
-  NotificationOutboxMessage,
-  OutboxEmailDelivery,
-  OutboxMessage,
   OutboxRepository,
 } from '../domain/contracts/infrastructure/outbox.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
@@ -47,16 +59,15 @@ import {
   notificationRequestDataSchemas,
   type TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
-import { redemptionPathFor } from '../domain/services/ministry-invitation-redemption-path';
+import { redemptionPathFor } from '../domain/services/invitations/ministry-invitation-redemption-path';
 import {
   hasExhaustedRetries,
   nextRetryAt,
-} from '../domain/services/outbox-retry-policy';
-import { recipientLocale } from '../domain/services/recipient-locale';
-import { webLink } from '../domain/services/web-link';
-import { CHURCH_SINK_NAMES, type ChurchNotifier } from './church-notifier';
+} from '../domain/services/notifications/outbox-retry-policy';
+import { recipientLocale } from '../domain/services/notifications/recipient-locale';
+import { webLink } from '../domain/services/notifications/web-link';
+import { CHURCH_SINK_NAMES } from './church-notifier';
 import { emailRoutingFor } from './email-routing';
-import type { SchedulingNotificationFacts } from './scheduling-notification-facts';
 
 /** The tracker sees the row id and kind; the reason may quote an email. */
 class OutboxDeliveryFailedError extends Error {
@@ -72,7 +83,7 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   private readonly volunteerTransferRepository: VolunteerTransferRepository;
   private readonly emailSender: EmailSender;
   private readonly notifier: ChurchNotifier;
-  private readonly schedulingFacts: SchedulingNotificationFacts;
+  private readonly schedulingFacts: ISchedulingNotificationFacts;
   private readonly unitOfWork: UnitOfWork;
   private readonly errorReporter: ErrorReporter;
   private readonly tracing: Tracing;
@@ -835,99 +846,6 @@ export class DbOutboxDrainer implements IOutboxDrainer {
   }
 }
 
-interface MinistryInvitationSubject {
-  ministryInvitationId: string;
-}
-
-interface DbOutboxDrainerDependencies {
-  config: AppConfig;
-  outboxRepository: OutboxRepository;
-  invitationRepository: MinistryInvitationRepository;
-  churchRepository: ChurchRepository;
-  ministryRepository: MinistryRepository;
-  roleRepository: RoleRepository;
-  volunteerTransferRepository: VolunteerTransferRepository;
-  emailSender: EmailSender;
-  notifier: ChurchNotifier;
-  schedulingFacts: SchedulingNotificationFacts;
-  unitOfWork: UnitOfWork;
-  /** Base URL of the web app, for deep links in emails. */
-  webBaseUrl: string;
-  errorReporter: ErrorReporter;
-  tracing: Tracing;
-}
-
-interface ReportFailureInput {
-  message: OutboxMessage;
-}
-
-interface LocaleForInput {
-  email: string;
-}
-
-interface ProcessOneInput {
-  message: OutboxMessage;
-}
-
-interface ProcessInvitationMessageInput {
-  message: ChainedInvitationOutboxMessage;
-}
-
-interface ProcessChurchOfferMessageInput {
-  message: ChurchBootstrapOutboxMessage;
-}
-
-interface LoadPendingInvitationFactsInput {
-  churchId: ChurchId;
-  ministryInvitationId: string;
-  churchLogoUrl?: string | null;
-  churchAccent?: string | null;
-  churchLocality?: string;
-}
-
-interface LoadDeliveryFactsInput {
-  churchId: ChurchId;
-  to: ChurchRecipient;
-  request: NotificationRequest;
-}
-
-interface LoadTransferDigestFactsInput {
-  churchId: ChurchId;
-  to: ChurchRecipient;
-  request: Extract<
-    NotificationRequest,
-    { kind: 'transfer_ministry_digest' | 'transfer_leaderless_ministry' }
-  >;
-}
-
-interface ProcessNotificationMessageInput {
-  message: NotificationOutboxMessage;
-}
-
-interface PrepareAndDeliverInput {
-  message: OutboxMessage;
-  payload: EmailPayload;
-  locale: EmailLocale;
-}
-
-interface DeliverEmailInput {
-  message: OutboxMessage;
-  delivery: OutboxEmailDelivery;
-}
-
-interface SkipDeliveryInput {
-  message: NotificationOutboxMessage;
-  why: string;
-}
-
-interface MarkSentInput {
-  message: OutboxMessage;
-}
-
-interface EmailIdempotencyKeyForInput {
-  message: OutboxMessage;
-}
-
 /** One key per outbox row: every replay of the row reuses it. */
 function emailIdempotencyKeyFor({
   message,
@@ -938,16 +856,4 @@ function emailIdempotencyKeyFor({
 /** The greeting's name: the first word of the User's display name. */
 function firstNameOf(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
-}
-
-interface RetryOrFailInput {
-  message: OutboxMessage;
-  reason: string;
-  retryable: boolean;
-}
-
-interface FailTerminallyInput {
-  message: OutboxMessage;
-  reason: string;
-  attempts?: number;
 }

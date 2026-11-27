@@ -40,6 +40,10 @@ import {
   runStages,
   type StepResult,
 } from './run-lanes';
+import {
+  type Acknowledgements,
+  readAcknowledgements,
+} from './seed-acknowledgements';
 import { readSeedImpactTrailers, SEED_IMPACT_TRAILER } from './seed-impact';
 import { VALIDATE_SETUP_STEPS } from './validate';
 import { formatLockWait, holdValidateLock } from './validate-lock';
@@ -61,8 +65,6 @@ interface CollectChangedPathsResult {
   changedPaths: string[];
   /** Changed paths with no file in the working tree. */
   deletedPaths: string[];
-  /** Messages of the commits the branch adds over the base. */
-  commitMessages: string[];
   /** Root package.json only gained scripts versus the merge base. */
   packageJsonScriptsOnlyAddition: boolean;
 }
@@ -231,15 +233,6 @@ function collectChangedPaths({
     (path, index, paths) => path.length > 0 && paths.indexOf(path) === index,
   );
 
-  const commitMessages = resolvedBaseRef
-    ? runCommand({
-        args: ['log', '--format=%B%x00', `${resolvedBaseRef}..HEAD`],
-        command: 'git',
-      })
-        .join('\n')
-        .split('\0')
-    : [];
-
   let packageJsonScriptsOnlyAddition = false;
   if (resolvedBaseRef && changedPaths.includes('package.json')) {
     try {
@@ -260,7 +253,6 @@ function collectChangedPaths({
   return {
     baseRef: resolvedBaseRef,
     changedPaths,
-    commitMessages,
     packageJsonScriptsOnlyAddition,
     deletedPaths: changedPaths.filter((path) => !existsSync(path)),
   };
@@ -780,7 +772,9 @@ function buildTurboStep({
 
 interface ExplainPlanInput {
   baseRef: string | undefined;
+  journeyAcknowledgements?: Acknowledgements;
   plan: ValidationPlan;
+  seedAcknowledgements?: Acknowledgements;
   tier?: ValidationTier;
   wholeUnitSuites?: boolean;
 }
@@ -788,6 +782,8 @@ interface ExplainPlanInput {
 export function explainPlan({
   baseRef,
   plan,
+  journeyAcknowledgements,
+  seedAcknowledgements,
   tier = 'affected',
   wholeUnitSuites = false,
 }: ExplainPlanInput): string {
@@ -848,12 +844,7 @@ export function explainPlan({
     }
   }
 
-  if (plan.journeyImpactAcknowledgements.length > 0) {
-    lines.push('', 'Journey impact: acknowledged, journeys skipped');
-    for (const reason of plan.journeyImpactAcknowledgements) {
-      lines.push(`  acknowledged: ${reason}`);
-    }
-  }
+  lines.push(...explainJourneyImpact({ plan, journeyAcknowledgements }));
 
   lines.push('', 'Tooling tests selected:');
   if (plan.toolingTestPaths.length === 0) {
@@ -862,7 +853,7 @@ export function explainPlan({
     for (const path of plan.toolingTestPaths) lines.push(`  - ${path}`);
   }
 
-  lines.push('', ...explainSeedImpact({ plan }));
+  lines.push('', ...explainSeedImpact({ plan, seedAcknowledgements }));
 
   if (plan.missingJourneyMappings.length > 0) {
     lines.push(
@@ -883,11 +874,78 @@ export function explainPlan({
   return lines.join('\n');
 }
 
-interface ExplainSeedImpactInput {
-  plan: ValidationPlan;
+/** A reason with no commit did not come from a trailer. */
+function explainAcknowledged({
+  reasons,
+  accepted,
+}: {
+  reasons: string[];
+  accepted: Acknowledgements['accepted'];
+}): string[] {
+  return [...new Set(reasons)].map((reason) => {
+    const shas = accepted
+      .filter((acknowledgement) => acknowledgement.reason === reason)
+      .map(({ sha }) => sha);
+    const source = shas.length > 0 ? ` (commit ${shas.join(', ')})` : '';
+    return `  acknowledged: ${reason}${source}`;
+  });
 }
 
-function explainSeedImpact({ plan }: ExplainSeedImpactInput): string[] {
+function explainRefused({
+  borrowed,
+  ownBaseRef,
+}: {
+  borrowed: Acknowledgements['borrowed'];
+  ownBaseRef: string | undefined;
+}): string[] {
+  return borrowed.map(
+    ({ reason, sha }) =>
+      `  refused: ${reason} (commit ${sha}) is not one of this branch's own commits (above ${ownBaseRef}).`,
+  );
+}
+
+function explainJourneyImpact({
+  plan,
+  journeyAcknowledgements,
+}: {
+  plan: ValidationPlan;
+  journeyAcknowledgements?: Acknowledgements;
+}): string[] {
+  const {
+    accepted = [],
+    borrowed = [],
+    ownBaseRef,
+  } = journeyAcknowledgements ?? {};
+  const reasons = plan.journeyImpactAcknowledgements;
+  if (reasons.length > 0) {
+    return [
+      '',
+      'Journey impact: acknowledged, journeys skipped',
+      ...explainAcknowledged({ reasons, accepted }),
+    ];
+  }
+  if (borrowed.length === 0) return [];
+  return [
+    '',
+    'Journey impact: trailer refused, journeys run',
+    ...explainRefused({ borrowed, ownBaseRef }),
+  ];
+}
+
+interface ExplainSeedImpactInput {
+  plan: ValidationPlan;
+  seedAcknowledgements?: Acknowledgements;
+}
+
+function explainSeedImpact({
+  plan,
+  seedAcknowledgements,
+}: ExplainSeedImpactInput): string[] {
+  const {
+    accepted = [],
+    borrowed = [],
+    ownBaseRef,
+  } = seedAcknowledgements ?? {};
   const { acknowledgements, changes, decision } = plan.seedImpact;
   if (decision === 'not-applicable') return ['Seed impact: none selected'];
 
@@ -899,10 +957,14 @@ function explainSeedImpact({ plan }: ExplainSeedImpactInput): string[] {
   for (const { area, changedPath } of changes) {
     lines.push(`  - ${area} <- ${changedPath}`);
   }
-  for (const reason of acknowledgements) {
-    lines.push(`  acknowledged: ${reason}`);
+  // A reason with no commit came from --no-seed-impact.
+  lines.push(...explainAcknowledged({ reasons: acknowledgements, accepted }));
+  if (accepted.length > 0 || borrowed.length > 0) {
+    lines.push(`  own commits: above ${ownBaseRef}`);
   }
   if (decision === 'undecided') {
+    lines.push(...explainRefused({ borrowed, ownBaseRef }));
+    if (borrowed.length > 0) lines.push('  Add the trailer on this branch.');
     lines.push(
       '  Update apps/server/seeds (and its contracts) in this change, or',
       `  acknowledge it with a commit trailer "${SEED_IMPACT_TRAILER}"`,
@@ -928,23 +990,35 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
   const {
     baseRef,
     changedPaths,
-    commitMessages,
     deletedPaths,
     packageJsonScriptsOnlyAddition,
   } = collectChangedPaths({ baseRef: argumentsResult.baseRef });
+  const seedAcknowledgements = readAcknowledgements({
+    baseRef,
+    readReasons: readSeedImpactTrailers,
+  });
+  const journeyAcknowledgements = readAcknowledgements({
+    baseRef,
+    readReasons: readJourneyImpactTrailers,
+  });
+  const explained = {
+    baseRef,
+    journeyAcknowledgements,
+    seedAcknowledgements,
+  };
   const plan = classifyChanges({
     changedPaths,
     dailyGate: argumentsResult.dailyGate,
     deletedPaths,
     e2eImportGraph: readE2eImportGraph(),
     e2eSpecPaths: argumentsResult.e2eSpecPaths,
-    journeyImpactAcknowledgements: readJourneyImpactTrailers({
-      messages: commitMessages,
-    }),
+    journeyImpactAcknowledgements: journeyAcknowledgements.accepted.map(
+      ({ reason }) => reason,
+    ),
     packageJsonScriptsOnlyAddition,
     seedImpactAcknowledgements: [
       ...argumentsResult.seedImpactAcknowledgements,
-      ...readSeedImpactTrailers({ messages: commitMessages }),
+      ...seedAcknowledgements.accepted.map(({ reason }) => reason),
     ],
   });
 
@@ -961,7 +1035,7 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
   // Only a run that would validate refuses: --dry-run stays a pure plan whose
   // JSON other CI steps parse, and the gate that runs validation enforces it.
   if (plan.seedImpact.decision === 'undecided' && !argumentsResult.dryRun) {
-    console.error(explainPlan({ baseRef, plan }));
+    console.error(explainPlan({ ...explained, plan }));
     console.error(
       '\nSeed impact is undecided: this change touches schema, persistence, authentication, tenancy or scheduling. Nothing was validated.',
     );
@@ -973,7 +1047,7 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
     // Bun (see ci.yml's "Determine affected plan" step) — the explanation
     // must stay off stdout so that stays valid JSON.
     console.error('');
-    console.error(explainPlan({ baseRef, plan }));
+    console.error(explainPlan({ ...explained, plan }));
   } else {
     const mergeBase =
       baseRef && isWholeLocalRun({ argumentsResult, ci: process.env.CI })
@@ -1006,7 +1080,7 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
     }
     ending.timings = timings;
     const explanation = explainPlan({
-      baseRef,
+      ...explained,
       plan,
       tier,
       wholeUnitSuites: argumentsResult.dailyGate,

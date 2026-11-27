@@ -49,7 +49,8 @@ export interface ClassifyChangesInput {
   /**
    * `turbo.json` differs from the base only in one package's own task entries
    * (see `readTurboNarrowing`). It then stays a tooling-test input but selects
-   * that package alone, without its dependents.
+   * that package alone, without its dependents, if the package has a test
+   * layer; one without stays root infrastructure.
    */
   turboNarrowing?: TurboNarrowing;
 }
@@ -80,6 +81,8 @@ export interface ValidationPlan {
   toolingTestPaths: string[];
   /** Set when a one-package `turbo.json` change selected that package alone. */
   turboNarrowing?: TurboNarrowing;
+  /** A one-package change not narrowed: the package has no test layer. */
+  turboNarrowingRefused?: TurboNarrowing;
   workspaceNames: string[];
   workspaceSelectionReasons: WorkspaceSelectionReason[];
 }
@@ -315,6 +318,11 @@ export function classifyChanges({
   turboNarrowing,
 }: ClassifyChangesInput): ValidationPlan {
   const deletedPathSet = new Set(deletedPaths);
+  // Narrowing to a package with no test layer would run no tests at all.
+  const runsTests =
+    turboNarrowing !== undefined &&
+    getTestLayersForWorkspace(turboNarrowing).length > 0;
+  const narrowed = runsTests ? turboNarrowing : undefined;
   const workspaceNames = new Set<string>();
   const testLayers = new Set<TestLayer>();
   let testTargets: TestTarget[] = [];
@@ -341,8 +349,8 @@ export function classifyChanges({
   }
 
   for (const changedPath of changedPaths) {
-    if (changedPath === 'turbo.json' && turboNarrowing) {
-      const { workspaceName } = turboNarrowing;
+    if (changedPath === 'turbo.json' && narrowed) {
+      const { workspaceName } = narrowed;
       workspaceNames.add(workspaceName);
       workspaceSelectionReasons.push({
         changedPath,
@@ -537,7 +545,8 @@ export function classifyChanges({
     testLayers: TEST_LAYERS.filter((testLayer) => testLayers.has(testLayer)),
     testTargets,
     toolingTestPaths: [...toolingTestPaths].sort(),
-    turboNarrowing,
+    turboNarrowing: narrowed,
+    turboNarrowingRefused: runsTests ? undefined : turboNarrowing,
     workspaceNames: [...workspaceNames].sort(),
     workspaceSelectionReasons,
   };

@@ -852,6 +852,14 @@ export function explainPlan({
     );
   }
 
+  if (plan.turboNarrowingRefused) {
+    const { taskNames, workspaceName } = plan.turboNarrowingRefused;
+    lines.push(
+      '',
+      `turbo.json not narrowed: ${workspaceName} has no test layer in the plan, so every workspace is selected (${taskNames.join(', ')})`,
+    );
+  }
+
   lines.push('', 'Test layers selected:');
   if (plan.testLayers.length === 0) lines.push('  (none)');
   for (const testLayer of plan.testLayers) {

@@ -204,3 +204,25 @@ describe('a turbo.json change confined to one package', () => {
     expect(dryRun().plan.workspaceNames).toEqual(EVERY_WORKSPACE);
   });
 });
+
+describe('a turbo.json change confined to a package with no test layer', () => {
+  it.each([
+    '@church/config',
+    '@church/env',
+    '@church/time',
+  ])('selects every workspace for %s and says why', (workspaceName) => {
+    writeTurbo(
+      withTasks({
+        tasks: { [`${workspaceName}#build`]: { cache: false } },
+      }),
+    );
+
+    const { explanation, plan } = dryRun();
+
+    expect(plan.workspaceNames).toEqual(EVERY_WORKSPACE);
+    expect(plan.testLayers).toEqual(['test:unit', 'test:integration']);
+    expect(explanation).toContain(
+      `turbo.json not narrowed: ${workspaceName} has no test layer in the plan, so every workspace is selected (${workspaceName}#build)`,
+    );
+  });
+});

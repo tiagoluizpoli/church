@@ -53,6 +53,7 @@ import type {
   PreviewPlanningEditManagerInput,
   PreviewPlanningMoveManagerInput,
   PublicFieldsPatch,
+  SetPlanningHiddenManagerInput,
   UpdatePlanningEventDetailsManagerInput,
   UpdatePlanningEventManagerInput,
   UpdatePlanningEventTimeBlockManagerInput,
@@ -1491,7 +1492,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     input: ConfirmPlanningCancellationManagerInput,
   ): Promise<CancellationImpact> {
     const church = await this.churchRepository.getById({ id: input.churchId });
-    const { churchId, eventId, scope, actingUserId } = input;
+    const { churchId, eventId, scope, actingUserId, hidden = false } = input;
 
     return this.unitOfWork.run(async (tx) => {
       // Move's lock order: Assignment creation takes the Church lock, removal
@@ -1537,16 +1538,65 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           churchId,
           eventId,
           status: 'cancelled',
+          isHidden: hidden,
           tx,
         });
       } else {
         await this.eventRepository.cancelEventTimeBlock({
           churchId,
           eventTimeBlockId: scope.eventTimeBlockId,
+          isHidden: hidden,
           tx,
         });
       }
       return { ...impact, openSwapRequestCount };
+    });
+  }
+
+  async setHidden(input: SetPlanningHiddenManagerInput): Promise<void> {
+    const { churchId, eventId, scope, hidden } = input;
+    const action = hidden ? 'hide' : 'show';
+
+    // A cancellation is final, so a scope read as cancelled stays so: no lock.
+    await this.unitOfWork.run(async (tx) => {
+      // 404 for a foreign Cycle; no writability check: any Cycle state.
+      await this.cycleRepository.getById({ ...input, tx });
+      const event = await this.getCycleEvent({ input, tx });
+      if (scope.kind === 'event') {
+        const { status } = event;
+        if (status !== 'cancelled') {
+          throw new IllegalStateTransitionError({ from: status, to: action });
+        }
+        await this.eventRepository.updateEvent({
+          churchId,
+          eventId,
+          isHidden: hidden,
+          tx,
+        });
+        return;
+      }
+      const { eventTimeBlockId } = scope;
+      const eventTimeBlocks = await this.eventTimeBlockRepository.listByEvent({
+        churchId,
+        eventId,
+        tx,
+      });
+      const block = eventTimeBlocks.find(({ id }) => id === eventTimeBlockId);
+      if (!block) {
+        throw new NotFoundError(
+          `EventTimeBlock not found: ${eventTimeBlockId}`,
+        );
+      }
+      const { status } = block;
+      if (status !== 'cancelled') {
+        throw new IllegalStateTransitionError({ from: status, to: action });
+      }
+      await this.eventRepository.setEventTimeBlockHidden({
+        churchId,
+        eventTimeBlockId,
+        isHidden: hidden,
+        tx,
+      });
     });
   }
 

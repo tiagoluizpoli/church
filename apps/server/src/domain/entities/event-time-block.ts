@@ -25,18 +25,20 @@ export interface EventTimeBlockProps {
   /** A Church Address as the place; exclusive with `place`. */
   placeAddressId?: string;
   status: EventTimeBlockStatus;
+  /** The block's own choice, only ever true on a cancelled block. */
+  isHidden: boolean;
   requirements: ShiftRequirement[];
 }
 
 export interface EventTimeBlockInput {
   props: Omit<
     LooseProps<EventTimeBlockProps>,
-    'status' | 'requirements' | 'isPublic'
+    'status' | 'requirements' | 'isPublic' | 'isHidden'
   > &
     Partial<
       Pick<
         LooseProps<EventTimeBlockProps>,
-        'status' | 'requirements' | 'isPublic'
+        'status' | 'requirements' | 'isPublic' | 'isHidden'
       >
     >;
   id?: string;
@@ -62,6 +64,7 @@ export class EventTimeBlock extends Entity<
         ...props,
         isPublic: props.isPublic ?? false,
         status: props.status ?? 'active',
+        isHidden: props.isHidden ?? false,
         requirements: props.requirements ?? [],
       } as unknown as EventTimeBlockProps,
       id: id as EventTimeBlockId,
@@ -108,6 +111,10 @@ export class EventTimeBlock extends Entity<
 
   get status(): EventTimeBlockStatus {
     return this._props.status;
+  }
+
+  get isHidden(): boolean {
+    return this._props.isHidden;
   }
 
   get requirements(): ShiftRequirement[] {

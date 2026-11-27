@@ -833,6 +833,8 @@ paths:
                               type: string
                               format: date-time
                               pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$
+                            isHidden:
+                              type: boolean
                           required:
                             - id
                             - churchId
@@ -843,6 +845,7 @@ paths:
                             - status
                             - createdAt
                             - updatedAt
+                            - isHidden
                           additionalProperties: false
                         eventTimeBlocks:
                           type: array
@@ -902,6 +905,8 @@ paths:
                                     - sectorId
                                     - peopleNeeded
                                   additionalProperties: false
+                              isHidden:
+                                type: boolean
                             required:
                               - id
                               - churchId
@@ -913,6 +918,7 @@ paths:
                               - placeAddressId
                               - status
                               - requirements
+                              - isHidden
                             additionalProperties: false
                       required:
                         - event
@@ -3898,6 +3904,8 @@ paths:
               properties:
                 confirmation:
                   type: string
+                hidden:
+                  type: boolean
               required:
                 - confirmation
       parameters:
@@ -3998,6 +4006,217 @@ paths:
                   - ministryCount
                   - ministries
                   - openSwapRequestCount
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/admin/cycles/{cycleId}/events/{eventId}/hidden:
+    put:
+      operationId: setPlanningEventHidden
+      summary: Hide or show a cancelled Event
+      tags:
+        - planning
+      description: Hide a cancelled Event, with every EventTimeBlock in it, from
+        everyone but ChurchAdmins planning the Cycle, or show it again. Allowed
+        at any time, after its start too, and sends nothing. Refuses an Event
+        that is not cancelled (ILLEGAL_STATE_TRANSITION); an unknown, foreign or
+        wrong-Cycle Event is 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hidden:
+                  type: boolean
+              required:
+                - hidden
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          in: path
+          name: eventId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                    enum:
+                      - DUPLICATE_HEADCOUNT
+                      - DUPLICATE_TEMPLATE_NAME
+                      - DUPLICATE_TEMPLATE_BLOCK_LABEL
+                      - USUAL_SETUP_EMPTY
+                      - PREPARATION_EMPTY
+                      - INVALID_SHIFT_INDEX
+                      - INVITATION_ROLE_REQUIRED
+                      - INVALID_EVENT_BOUNDS
+                      - EVENT_TIME_BLOCK_OUT_OF_BOUNDS
+                      - EVENT_TIME_BLOCK_LABEL_REQUIRED
+                      - DUPLICATE_EVENT_TIME_BLOCK_LABEL
+                      - DUPLICATE_EVENT_TIME_BLOCK_ID
+                      - ASK_NO_ELIGIBLE_VOLUNTEERS
+                      - CANCEL_CONFIRMATION
+                      - PLACE_ADDRESS_NOT_FOUND
+                  field:
+                    type: string
+                  issues:
+                    type: array
+                    items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/admin/cycles/{cycleId}/events/{eventId}/event-time-blocks/{eventTimeBlockId}/hidden:
+    put:
+      operationId: setPlanningEventTimeBlockHidden
+      summary: Hide or show a cancelled EventTimeBlock
+      tags:
+        - planning
+      description: Set a cancelled EventTimeBlock's own hidden choice; a block of a
+        hidden Event stays hidden whatever its own. Allowed at any time and
+        sends nothing. Refuses a block that is not itself cancelled
+        (ILLEGAL_STATE_TRANSITION); an unknown, foreign or wrong-Cycle block is
+        404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hidden:
+                  type: boolean
+              required:
+                - hidden
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          in: path
+          name: cycleId
+          required: true
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          in: path
+          name: eventId
+          required: true
+        - schema:
+            type: string
+            format: uuid
+            pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
+          in: path
+          name: eventTimeBlockId
+          required: true
+      responses:
+        "204":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "422":
           description: Default Response
@@ -6050,6 +6269,8 @@ paths:
               properties:
                 confirmation:
                   type: string
+                hidden:
+                  type: boolean
               required:
                 - confirmation
       parameters:

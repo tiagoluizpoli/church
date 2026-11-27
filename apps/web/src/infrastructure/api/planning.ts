@@ -49,6 +49,10 @@ import type {
   SendCycle204,
   SetMinistryDefaultDirection200,
   SetMinistryDefaultDirectionBody,
+  SetPlanningEventHidden204,
+  SetPlanningEventHiddenBody,
+  SetPlanningEventTimeBlockHidden204,
+  SetPlanningEventTimeBlockHiddenBody,
   UpdateCycle200,
   UpdateCycleBody,
   UpdateEventTemplate200,
@@ -379,6 +383,39 @@ const cancelPlanningEvent = (
       );
     }
   /**
+ * Hide a cancelled Event, with every EventTimeBlock in it, from everyone but ChurchAdmins planning the Cycle, or show it again. Allowed at any time, after its start too, and sends nothing. Refuses an Event that is not cancelled (ILLEGAL_STATE_TRANSITION); an unknown, foreign or wrong-Cycle Event is 404.
+ * @summary Hide or show a cancelled Event
+ */
+const setPlanningEventHidden = (
+    cycleId: string,
+    eventId: string,
+    setPlanningEventHiddenBody: SetPlanningEventHiddenBody,
+ ) => {
+      return apiClient<SetPlanningEventHidden204>(
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/hidden`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: setPlanningEventHiddenBody
+    },
+      );
+    }
+  /**
+ * Set a cancelled EventTimeBlock's own hidden choice; a block of a hidden Event stays hidden whatever its own. Allowed at any time and sends nothing. Refuses a block that is not itself cancelled (ILLEGAL_STATE_TRANSITION); an unknown, foreign or wrong-Cycle block is 404.
+ * @summary Hide or show a cancelled EventTimeBlock
+ */
+const setPlanningEventTimeBlockHidden = (
+    cycleId: string,
+    eventId: string,
+    eventTimeBlockId: string,
+    setPlanningEventTimeBlockHiddenBody: SetPlanningEventTimeBlockHiddenBody,
+ ) => {
+      return apiClient<SetPlanningEventTimeBlockHidden204>(
+      {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${eventTimeBlockId}/hidden`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: setPlanningEventTimeBlockHiddenBody
+    },
+      );
+    }
+  /**
  * Preview moving a scheduled Event of a Sent Cycle to a new start, writing and sending nothing. Returns the proposed Event and EventTimeBlock bounds (duration preserved, one delta for the Event, its EventTimeBlocks and Shifts) and a typed clash row, with Volunteer and Ministry identities, for each active Assignment that would strictly overlap another active Assignment of the Church (touching ends are compatible). Advisory only: a later confirm recalculates. Refuses a Past Cycle or non-scheduled Event (ILLEGAL_STATE_TRANSITION), an Event that has started or a target start that is not in the future (MOVE_WINDOW_CLOSED) and a final start day outside the inclusive Cycle (EVENT_OUTSIDE_CYCLE); the end may spill.
  * @summary Preview moving an Event
  */
@@ -569,7 +606,7 @@ const setMinistryDefaultDirection = (
     },
       );
     }
-  return {createCycle,listCycles,getCycleAnchors,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,listTemplatePrecedences,changeTemplatePrecedence,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,previewPlanningEventCancellation,cancelPlanningEvent,previewPlanningEventMove,movePlanningEvent,previewPlanningEventEdit,editPlanningEvent,createPlanningEventTimeBlock,previewPlanningEventTimeBlockMove,movePlanningEventTimeBlock,previewPlanningEventTimeBlockCancellation,cancelPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
+  return {createCycle,listCycles,getCycleAnchors,getCycle,updateCycle,deleteCycle,getCycleSendSummary,sendCycle,createEventTemplate,listEventTemplates,getEventTemplate,updateEventTemplate,deleteEventTemplate,getEventTemplateUsage,listTemplatePrecedences,changeTemplatePrecedence,applyPlanningTemplates,createPlanningEvent,updatePlanningEvent,deletePlanningEvent,updatePlanningEventDetails,previewPlanningEventCancellation,cancelPlanningEvent,setPlanningEventHidden,setPlanningEventTimeBlockHidden,previewPlanningEventMove,movePlanningEvent,previewPlanningEventEdit,editPlanningEvent,createPlanningEventTimeBlock,previewPlanningEventTimeBlockMove,movePlanningEventTimeBlock,previewPlanningEventTimeBlockCancellation,cancelPlanningEventTimeBlock,updatePlanningEventTimeBlock,deletePlanningEventTimeBlock,setMinistryDefaultDirection}};
 export type CreateCycleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['createCycle']>>>
 export type ListCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['listCycles']>>>
 export type GetCycleAnchorsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['getCycleAnchors']>>>
@@ -593,6 +630,8 @@ export type DeletePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnTyp
 export type UpdatePlanningEventDetailsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['updatePlanningEventDetails']>>>
 export type PreviewPlanningEventCancellationResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['previewPlanningEventCancellation']>>>
 export type CancelPlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['cancelPlanningEvent']>>>
+export type SetPlanningEventHiddenResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['setPlanningEventHidden']>>>
+export type SetPlanningEventTimeBlockHiddenResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['setPlanningEventTimeBlockHidden']>>>
 export type PreviewPlanningEventMoveResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['previewPlanningEventMove']>>>
 export type MovePlanningEventResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['movePlanningEvent']>>>
 export type PreviewPlanningEventEditResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getPlanning>['previewPlanningEventEdit']>>>

@@ -6,10 +6,13 @@ import type {
   CycleAnchors,
   CycleList,
 } from '../../domain/entities/cycle';
+import type { EventWithEventTimeBlocks } from '../../domain/entities/event';
+import { isEventTimeBlockHidden } from '../../domain/event-time-block-cancellation';
+import { eventMapper, eventResponseSchema } from './event.dto';
 import {
-  eventGraphMapper,
-  eventGraphResponseSchema,
-} from './planning-event.dto';
+  eventTimeBlockMapper,
+  eventTimeBlockResponseSchema,
+} from './event-time-block.dto';
 
 /** Matches the `cycle.name` column length. */
 const CYCLE_NAME_MAX_LENGTH = 255;
@@ -143,9 +146,31 @@ export const cycleAnchorsResponseSchema = z.object({
   next: cycleResponseSchema.nullable(),
 });
 
+/** The Planning read alone carries the hidden flags: only ChurchAdmins read it. */
+const plannedEventGraphResponseSchema = z.object({
+  event: eventResponseSchema.extend({ isHidden: z.boolean() }),
+  eventTimeBlocks: z.array(
+    eventTimeBlockResponseSchema.extend({
+      /** Hidden itself or through its Event. */
+      isHidden: z.boolean(),
+    }),
+  ),
+});
+
+function toPlannedEventGraph(graph: EventWithEventTimeBlocks) {
+  const { event, eventTimeBlocks } = graph;
+  return {
+    event: { ...eventMapper.toResponse(event), isHidden: event.isHidden },
+    eventTimeBlocks: eventTimeBlocks.map((eventTimeBlock) => ({
+      ...eventTimeBlockMapper.toResponse(eventTimeBlock),
+      isHidden: isEventTimeBlockHidden({ event, eventTimeBlock }),
+    })),
+  };
+}
+
 export const cycleDetailsResponseSchema = z.object({
   cycle: cycleResponseSchema,
-  events: z.array(eventGraphResponseSchema),
+  events: z.array(plannedEventGraphResponseSchema),
   /** Events and EventTimeBlocks that are not cancelled. */
   counts: z.object({
     eventCount: z.number().int(),
@@ -198,7 +223,7 @@ export const cycleMapper = {
   detailsToResponse(details: CycleDetails) {
     return {
       cycle: toCycleResponse(details.cycle),
-      events: details.events.map(eventGraphMapper.toResponse),
+      events: details.events.map(toPlannedEventGraph),
       counts: details.counts,
     };
   },

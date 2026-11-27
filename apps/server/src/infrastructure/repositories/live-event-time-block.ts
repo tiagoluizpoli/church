@@ -14,3 +14,15 @@ export function liveEventTimeBlock(): SQL {
     eq(eventTimeBlock.status, 'active'),
   ) as SQL;
 }
+
+/**
+ * The query condition for an EventTimeBlock that is not hidden, neither itself
+ * nor through its Event; cancelled but shown blocks pass. Same joins as above.
+ * The in-memory twin is `isEventTimeBlockHidden`.
+ */
+export function shownEventTimeBlock(): SQL {
+  return and(
+    eq(event.isHidden, false),
+    eq(eventTimeBlock.isHidden, false),
+  ) as SQL;
+}

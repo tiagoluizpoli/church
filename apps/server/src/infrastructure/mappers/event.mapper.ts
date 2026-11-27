@@ -19,6 +19,7 @@ export function mapEvent(row: EventRow): Event {
     start: fromDate({ date: row.start }),
     end: fromDate({ date: row.end }),
     status: row.status as EventProps['status'],
+    isHidden: row.isHidden,
   };
 
   return new Event({

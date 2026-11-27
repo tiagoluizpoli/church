@@ -9874,6 +9874,18 @@ export type GetMinistrySchedule404 = {
   message: string;
 };
 
+export type ListAvailabilityChecksParams = {
+state?: ListAvailabilityChecksState;
+};
+
+export type ListAvailabilityChecksState = typeof ListAvailabilityChecksState[keyof typeof ListAvailabilityChecksState];
+
+
+export const ListAvailabilityChecksState = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+} as const;
+
 export type ListAvailabilityChecks200ChecksItemState = typeof ListAvailabilityChecks200ChecksItemState[keyof typeof ListAvailabilityChecks200ChecksItemState];
 
 

@@ -19,7 +19,9 @@ import type {
   AnswerAvailabilityCheckInput,
   AssignmentDetail,
   CapUpcomingAssignmentsInput,
+  CheckStateInput,
   CompareTextInput,
+  CountAvailabilityChecksInput,
   DashboardAssignmentGroup,
   DashboardAssignmentGroupDraft,
   DashboardAssignmentItem,
@@ -42,6 +44,7 @@ import type {
   ScheduleShiftLabelInput,
   ServingMonthsInput,
   VolunteerAvailabilityCheckDetail,
+  VolunteerAvailabilityCheckStateCounts,
   VolunteerAvailabilityCheckSummary,
   VolunteerCheckShift,
   VolunteerDashboard,
@@ -1150,46 +1153,68 @@ export class DbVolunteerManager implements IVolunteerManager {
     const contexts = await this.availabilityCheckRepo.listByVolunteer({
       churchId: input.churchId,
       volunteerId: input.volunteerId,
+      state: input.state,
     });
-
-    return Promise.all(
-      contexts.map(async (context) => {
-        const checkId = context.check.id;
-        const [shifts, unavailableShifts] = await Promise.all([
-          this.availabilityCheckRepo.listCheckShifts({
-            churchId: input.churchId,
-            checkId,
-            heldRolesOnly: true,
-          }),
-          this.unavailableShiftRepo.listUnavailableShiftsByCheck({
-            churchId: input.churchId,
-            availabilityCheckId: checkId,
-          }),
-        ]);
-        const now = nowInstant();
-        const openShifts = shifts.filter((shift) =>
-          isShiftAnswerable({ readOnly: context.readOnly, shift, now }),
-        );
-        // While Shifts are open the summary counts those, like the detail page;
-        // once none are, it reports the whole answer as it stands.
-        const countedShifts = openShifts.length > 0 ? openShifts : shifts;
-
-        return {
-          id: checkId as string,
-          cycleId: context.check.cycleId as string,
-          cycleName: context.cycleName,
-          ministryId: context.ministryId as string,
-          ministryName: context.ministryName,
-          state: context.check.state,
-          confirmedAt: context.check.confirmedAt,
-          answerBy: context.answerBy,
-          totalShiftCount: countedShifts.length,
-          unavailableShiftCount: countedShifts.filter((shift) =>
-            unavailableShifts.some((mark) => mark.shiftId === shift.shiftId),
-          ).length,
-        };
+    const checkIds = contexts.map((context) => context.check.id);
+    const [allShifts, allMarks] = await Promise.all([
+      this.availabilityCheckRepo.listCheckShiftsByChecks({
+        churchId: input.churchId,
+        checkIds,
+        heldRolesOnly: true,
       }),
-    );
+      this.unavailableShiftRepo.listUnavailableShiftsByChecks({
+        churchId: input.churchId,
+        availabilityCheckIds: checkIds,
+      }),
+    ]);
+
+    return contexts.map((context) => {
+      const checkId = context.check.id;
+      const shifts = allShifts.filter(
+        (shift) => shift.availabilityCheckId === checkId,
+      );
+      const markedShiftIds = new Set(
+        allMarks
+          .filter((mark) => mark.availabilityCheckId === checkId)
+          .map((mark) => mark.shiftId),
+      );
+      const now = nowInstant();
+      const openShifts = shifts.filter((shift) =>
+        isShiftAnswerable({ readOnly: context.readOnly, shift, now }),
+      );
+      // While Shifts are open the summary counts those, like the detail page;
+      // once none are, it reports the whole answer as it stands.
+      const countedShifts = openShifts.length > 0 ? openShifts : shifts;
+
+      return {
+        id: checkId as string,
+        cycleId: context.check.cycleId as string,
+        cycleName: context.cycleName,
+        ministryId: context.ministryId as string,
+        ministryName: context.ministryName,
+        state: context.check.state,
+        confirmedAt: context.check.confirmedAt,
+        answerBy: context.answerBy,
+        totalShiftCount: countedShifts.length,
+        unavailableShiftCount: countedShifts.filter((shift) =>
+          markedShiftIds.has(shift.shiftId),
+        ).length,
+      };
+    });
+  }
+
+  async countAvailabilityChecks(
+    input: CountAvailabilityChecksInput,
+  ): Promise<VolunteerAvailabilityCheckStateCounts> {
+    const rows = await this.availabilityCheckRepo.countByVolunteer({
+      churchId: input.churchId,
+      volunteerId: input.volunteerId,
+    });
+    const countOf = ({ state }: CheckStateInput) =>
+      rows.find((row) => row.state === state)?.checkCount ?? 0;
+    const pending = countOf({ state: 'pending' });
+    const confirmed = countOf({ state: 'confirmed' });
+    return { total: pending + confirmed, pending, confirmed };
   }
 
   async getAvailabilityCheck(

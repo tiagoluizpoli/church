@@ -179,6 +179,7 @@ function createRepos(): Repos {
     listByVolunteers: vi.fn(async () => []),
     listByParticipation: vi.fn(),
     listUnavailableShiftsByCheck: vi.fn(),
+    listUnavailableShiftsByChecks: vi.fn(),
     replaceUnavailableShiftsForCheck: vi.fn(),
   };
 

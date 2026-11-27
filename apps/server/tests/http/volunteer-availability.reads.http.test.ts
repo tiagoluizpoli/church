@@ -605,7 +605,10 @@ describe('Volunteer availability reads through PostgreSQL', () => {
 
     const { small, large } = await compareStatementCounts({
       app,
-      requests: [{ method: 'GET', url: ROOT }],
+      requests: [
+        { method: 'GET', url: ROOT },
+        { method: 'GET', url: `${ROOT}?state=pending` },
+      ],
       grow: async () => {
         for (const month of ['10', '11', '12']) {
           await seedFurtherCheck({ ...seeded, month });
@@ -630,9 +633,44 @@ describe('Volunteer availability reads through PostgreSQL', () => {
       ['Month 11', 1, 1],
       ['Month 12', 1, 1],
     ]);
-    // Two reads per check on top of the request's own.
-    expect(small[0]?.statements).toBe(7);
-    expect(large[0]?.statements).toBe(13);
+    expect(large[1]?.response.json().checks).toHaveLength(4);
+    expect(small.map(({ statements }) => statements)).toEqual([8, 8]);
+    expect(large.map(({ statements }) => statements)).toEqual([8, 8]);
+  });
+
+  it('returns only the checks in the requested state, with counts over every state', async () => {
+    const seeded = await seedCheck();
+    await db
+      .update(availabilityCheck)
+      .set({
+        state: 'confirmed',
+        confirmedAt: new Date('2026-08-02T12:00:00Z'),
+      })
+      .where(eq(availabilityCheck.id, seeded.check.id));
+    await seedFurtherCheck({ ...seeded, month: '10' });
+
+    const all = await app.inject({ method: 'GET', url: ROOT });
+    const [pendingRow, confirmedRow] = all.json().checks;
+    const counts = { total: 2, pending: 1, confirmed: 1 };
+
+    for (const [state, row] of [
+      ['pending', pendingRow],
+      ['confirmed', confirmedRow],
+    ]) {
+      const filtered = await app.inject({
+        method: 'GET',
+        url: `${ROOT}?state=${state}`,
+      });
+      expect(filtered.statusCode).toBe(200);
+      expect(row.state).toBe(state);
+      expect(filtered.json()).toEqual({ checks: [row], counts });
+    }
+
+    const unknown = await app.inject({
+      method: 'GET',
+      url: `${ROOT}?state=withdrawn`,
+    });
+    expect(unknown.statusCode).toBe(422);
   });
 
   it('keeps Deadlines scoped to each Ministry of the Cycle and hides another Church’s checks', async () => {

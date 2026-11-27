@@ -21,6 +21,10 @@ import {
   recordPass,
 } from './gate-pass';
 import {
+  JOURNEY_IMPACT_TRAILER,
+  readJourneyImpactTrailers,
+} from './journey-impact';
+import {
   hasFailure,
   type LaneStep,
   type OutputSink,
@@ -838,6 +842,13 @@ export function explainPlan({
     }
   }
 
+  if (plan.journeyImpactAcknowledgements.length > 0) {
+    lines.push('', 'Journey impact: acknowledged, journeys skipped');
+    for (const reason of plan.journeyImpactAcknowledgements) {
+      lines.push(`  acknowledged: ${reason}`);
+    }
+  }
+
   lines.push('', 'Tooling tests selected:');
   if (plan.toolingTestPaths.length === 0) {
     lines.push('  (none)');
@@ -853,6 +864,14 @@ export function explainPlan({
       'Missing journey mappings (fell back to critical smoke set):',
     );
     for (const path of plan.missingJourneyMappings) lines.push(`  - ${path}`);
+    lines.push(
+      `  A pure refactor may skip journeys with a commit trailer "${JOURNEY_IMPACT_TRAILER}".`,
+    );
+  }
+
+  if (plan.ignoredPaths.length > 0) {
+    lines.push('', 'Changed files ignored by journey selection:');
+    for (const path of plan.ignoredPaths) lines.push(`  - ${path}`);
   }
 
   return lines.join('\n');
@@ -928,6 +947,9 @@ if (import.meta.main) {
     deletedPaths,
     e2eImportGraph: readE2eImportGraph(),
     e2eSpecPaths: argumentsResult.e2eSpecPaths,
+    journeyImpactAcknowledgements: readJourneyImpactTrailers({
+      messages: commitMessages,
+    }),
     packageJsonScriptsOnlyAddition,
     seedImpactAcknowledgements: [
       ...argumentsResult.seedImpactAcknowledgements,
@@ -1004,6 +1026,14 @@ if (import.meta.main) {
       );
     }
     if (failed) process.exitCode = 1;
-    else if (tree && mergeBase) recordPass({ base: mergeBase, tier, tree });
+    // A pass is keyed by tree, which a reworded trailer keeps: never record
+    // one whose journeys a trailer skipped.
+    else if (
+      tree &&
+      mergeBase &&
+      (tier === 'no-docker' || plan.journeyImpactAcknowledgements.length === 0)
+    ) {
+      recordPass({ base: mergeBase, tier, tree });
+    }
   }
 }

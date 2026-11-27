@@ -37,6 +37,8 @@ export interface ClassifyChangesInput {
   e2eSpecPaths?: string[];
   /** Web test file imports, so a changed fixture selects the specs reaching it. */
   e2eImportGraph?: E2eImportGraph;
+  /** Reasons from `Journey-Impact` trailers: a pure refactor skips journeys. */
+  journeyImpactAcknowledgements?: string[];
   /**
    * Reasons from `Seed-Impact: none - <reason>` commit trailers or
    * `--no-seed-impact`: the explicit decision that a seed-relevant change
@@ -49,6 +51,10 @@ export interface ValidationPlan {
   /** Changed paths with no file left, sorted. */
   deletedPaths?: string[];
   e2eSpecPaths: string[];
+  /** Changed paths that selected no browser journey, sorted. */
+  ignoredPaths: string[];
+  /** Non-blank `Journey-Impact` reasons; any one skips the selected journeys. */
+  journeyImpactAcknowledgements: string[];
   journeySelectionReasons: JourneySelectionReason[];
   lintPaths: string[];
   missingJourneyMappings: string[];
@@ -245,6 +251,7 @@ export function classifyChanges({
   deletedPaths = [],
   e2eImportGraph = {},
   e2eSpecPaths = [],
+  journeyImpactAcknowledgements = [],
   packageJsonScriptsOnlyAddition = false,
   seedImpactAcknowledgements = [],
 }: ClassifyChangesInput): ValidationPlan {
@@ -263,6 +270,7 @@ export function classifyChanges({
   const toolingTestPaths = new Set<string>();
   let requiresFullE2e = false;
   let hasUnmappedProductionChange = false;
+  const sharedE2ePaths = new Set<string>();
 
   for (const changedPath of [...changedPaths, ...deletedPaths]) {
     if (
@@ -300,6 +308,7 @@ export function classifyChanges({
 
     const isSharedE2eInfrastructure = FULL_E2E_PATHS.has(changedPath);
     if (isSharedE2eInfrastructure) {
+      sharedE2ePaths.add(changedPath);
       if (dailyGate) {
         // Daily gate never escalates to the full suite, but a shared
         // E2E-infrastructure change still needs *some* E2E coverage — the
@@ -385,6 +394,26 @@ export function classifyChanges({
     }
   }
 
+  const journeyPaths = new Set([
+    ...sharedE2ePaths,
+    ...missingJourneyMappings,
+    ...journeySelectionReasons.map(({ changedPath }) => changedPath),
+  ]);
+  const ignoredPaths = [...new Set([...changedPaths, ...deletedPaths])]
+    .filter((changedPath) => !journeyPaths.has(changedPath))
+    .sort();
+
+  const journeyAcknowledgements = journeyImpactAcknowledgements
+    .map((reason) => reason.trim())
+    .filter((reason) => reason.length > 0);
+  const skipsJourneys = journeyAcknowledgements.length > 0;
+  if (skipsJourneys) {
+    selectedE2eSpecPaths.clear();
+    for (const specPath of e2eSpecPaths) selectedE2eSpecPaths.add(specPath);
+    missingJourneyMappings.clear();
+    requiresFullE2e = false;
+  }
+
   // A workspace stays narrowed only when its changed test files alone selected it.
   const wholeLayerWorkspaces = new Set(
     workspaceSelectionReasons
@@ -418,7 +447,11 @@ export function classifyChanges({
   return {
     deletedPaths: [...deletedPathSet].sort(),
     e2eSpecPaths: [...selectedE2eSpecPaths].sort(),
-    journeySelectionReasons,
+    ignoredPaths,
+    journeyImpactAcknowledgements: journeyAcknowledgements,
+    journeySelectionReasons: skipsJourneys
+      ? journeySelectionReasons.filter(({ detail }) => detail === 'explicit')
+      : journeySelectionReasons,
     lintPaths: changedPaths.filter(isLintablePath),
     missingJourneyMappings: [...missingJourneyMappings].sort(),
     requiresFullE2e,

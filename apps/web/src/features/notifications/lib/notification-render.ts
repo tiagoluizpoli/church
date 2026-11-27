@@ -13,7 +13,7 @@ import {
   formatDayLabel,
   formatDayMonthShort,
   formatTimeOfDay,
-  formatWeekday,
+  formatWeekdayInSentence,
   parseInstant,
   today,
   toTimeOfDay,
@@ -498,9 +498,7 @@ function weekdayOfStart({ start, timeZone }: WeekdayOfStartInput): string {
   const startInstant = parseInstant({ value: start });
   const startDay = today({ instant: startInstant, timeZone });
   const locale = getLocale();
-  const weekday = formatWeekday({ day: startDay, locale });
-  // pt-BR writes weekdays in lower case.
-  return locale === 'pt-BR' ? weekday.toLowerCase() : weekday;
+  return formatWeekdayInSentence({ day: startDay, locale });
 }
 
 /** What stands in for a hidden Event's title: `Friday event`. */

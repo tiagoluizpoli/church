@@ -6,7 +6,7 @@ import {
   formatDayMonthShort,
   formatInstant,
   formatTimeOfDay,
-  formatWeekday,
+  formatWeekdayInSentence,
   today,
   toTimeOfDay,
 } from '@church/time';
@@ -591,10 +591,7 @@ function eventCancelledTitle({
 }: EventCancelledTitleInput): string {
   const startDay = today({ instant: start, timeZone });
   if (hidden) {
-    const weekdayName = formatWeekday({ day: startDay, locale });
-    // Mid-sentence: pt-BR writes weekdays in lower case.
-    const weekday =
-      locale === 'pt-BR' ? weekdayName.toLowerCase() : weekdayName;
+    const weekday = formatWeekdayInSentence({ day: startDay, locale });
     const startTime = toTimeOfDay({ instant: start, timeZone });
     const time = formatTimeOfDay({ time: startTime });
     if (eventTimeBlockId) {

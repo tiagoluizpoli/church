@@ -1,4 +1,3 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -7,11 +6,11 @@ import {
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { ISectorManager } from '../../domain/contracts/application/sector-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
 import {
@@ -22,31 +21,17 @@ import {
   sectorResponseSchema,
 } from '../dtos/sector.dto';
 import { refuse } from '../utils/refuse';
+import type {
+  ResolveManagedMinistryInput,
+  SectorControllerDependencies,
+  SectorRouteParams,
+  SectorsRouteParams,
+} from './sector-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-interface SectorsRouteParams {
-  ministryId: string;
-}
-
-interface SectorRouteParams extends SectorsRouteParams {
-  sectorId: string;
-}
-
-interface ResolveManagedMinistryInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-}
-
-interface SectorControllerDependencies {
-  ministryManager: IMinistryManager;
-  sectorManager: ISectorManager;
-  activeChurchResolver: IActiveChurchResolver;
-  authorityGuard: AuthorityGuard;
-}
 
 /** A Ministry's Sector registry, for ChurchAdmins and the Ministry's own leaders. */
 export class SectorController implements FastifyController {
@@ -55,7 +40,7 @@ export class SectorController implements FastifyController {
   private readonly ministryManager: IMinistryManager;
   private readonly sectorManager: ISectorManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     ministryManager,

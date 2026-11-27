@@ -125,3 +125,8 @@ export interface CycleRepository {
   delete(input: DeleteCycleInput): Promise<void>;
   acquireChurchLock(input: AcquireCycleChurchLockInput): Promise<void>;
 }
+
+export interface RefuseExclusionRaceInput {
+  error: unknown;
+  range: Omit<FindOverlappingCyclesInput, 'tx'>;
+}

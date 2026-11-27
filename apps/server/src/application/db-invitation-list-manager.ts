@@ -2,18 +2,12 @@ import { nowAsDate } from '@church/time';
 import type { MinistryId } from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type {
+  DbInvitationListManagerDependencies,
   IInvitationListManager,
   ListInvitationsRequest,
 } from '../domain/contracts/application/invitation-list-manager';
 import type { InvitationListRepository } from '../domain/contracts/infrastructure/invitation-list.repository';
 import type { InvitationListPage } from '../domain/entities/invitation-list-item';
-
-interface DbInvitationListManagerDependencies {
-  invitationListRepository: InvitationListRepository;
-  authorityManager: IAuthorityManager;
-  /** Page size when the caller names none (validated central config). */
-  defaultPageSize: number;
-}
 
 export class DbInvitationListManager implements IInvitationListManager {
   private readonly invitationListRepository: InvitationListRepository;

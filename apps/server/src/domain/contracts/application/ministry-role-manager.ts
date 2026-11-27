@@ -1,5 +1,9 @@
 import type { ChurchId, MinistryId, RoleId } from '../../branded-ids';
 import type { Role } from '../../entities/role';
+import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
+import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
 export interface ListMinistryRolesInput {
   churchId: ChurchId;
@@ -43,4 +47,16 @@ export interface IMinistryRoleManager {
    * requirements and Assignments are kept and never block.
    */
   archive(input: ArchiveMinistryRoleInput): Promise<void>;
+}
+
+export interface DbMinistryRoleManagerDependencies {
+  ministryRepository: MinistryRepository;
+  roleRepository: RoleRepository;
+  unitOfWork: UnitOfWork;
+}
+
+export interface EnsureActiveMinistryInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  tx?: TransactionContext;
 }

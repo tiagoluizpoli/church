@@ -25,12 +25,9 @@ import type {
 import { mapEvent } from '../mappers/event.mapper';
 import { mapEventTimeBlock } from '../mappers/event-time-block.mapper';
 import { mapShiftRequirement } from '../mappers/shift-requirement.mapper';
+import type { DrizzleEventRepositoryInput } from './drizzle-event.repository.types';
 import { getClient, isValidUuid, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
-
-interface DrizzleEventRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 export class DrizzleEventRepository implements EventRepository {
   constructor({ db }: DrizzleEventRepositoryInput) {

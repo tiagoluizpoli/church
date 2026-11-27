@@ -8,10 +8,10 @@ import {
   UserId,
 } from '../../domain/branded-ids';
 import type {
+  IRedemptionManager,
   PublicRedemptionPreview,
-  RedemptionManager,
 } from '../../domain/contracts/application/redemption-manager';
-import type { VolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
+import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import type { RedemptionBundleMinistry } from '../../domain/entities/redemption-bundle';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
 import { auth } from '../../main/di/server-auth';
@@ -71,8 +71,8 @@ interface InvitationPreviewFields {
 }
 
 interface RedemptionControllerDependencies {
-  redemptionManager: RedemptionManager;
-  volunteerTransferManager: VolunteerTransferManager;
+  redemptionManager: IRedemptionManager;
+  volunteerTransferManager: IVolunteerTransferManager;
   config: AppConfig;
 }
 
@@ -85,8 +85,8 @@ interface ControllerRateLimitInput {
 export class RedemptionController implements FastifyController {
   readonly prefix = '/redemption';
 
-  private readonly redemptionManager: RedemptionManager;
-  private readonly volunteerTransferManager: VolunteerTransferManager;
+  private readonly redemptionManager: IRedemptionManager;
+  private readonly volunteerTransferManager: IVolunteerTransferManager;
   private readonly rateLimit: AppConfig['redemptionRateLimit'];
 
   constructor({

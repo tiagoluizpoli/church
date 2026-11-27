@@ -22,12 +22,9 @@ import type {
 } from '../../domain/contracts/infrastructure/assignment-audit.repository';
 import type { AssignmentAudit } from '../../domain/entities/assignment-audit';
 import { mapAssignmentAudit } from '../mappers/assignment-audit.mapper';
+import type { DrizzleAssignmentAuditRepositoryInput } from './drizzle-assignment-audit.repository.types';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
-
-interface DrizzleAssignmentAuditRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 export class DrizzleAssignmentAuditRepository
   implements AssignmentAuditRepository

@@ -7,61 +7,27 @@ import {
   nowAsDate,
   toDate,
 } from '@church/time';
-import type { ChurchId, ChurchInvitationId } from '../domain/branded-ids';
 import type { ChurchIdentitySnapshotter } from '../domain/contracts/application/church-identity-snapshotter';
-import type { InvitationVerificationCodeManager as InvitationVerificationCodeManagerContract } from '../domain/contracts/application/invitation-verification-code-manager';
+import type {
+  HashVerificationCodeInput,
+  IInvitationVerificationCodeManager,
+  IssueInvitationVerificationCodeInput,
+  SameKeyReplayInput,
+  VerificationCodeManagerDependencies,
+  VerificationCodeValidationErrorInput,
+  VerifyInvitationVerificationCodeInput,
+  VerifyVerificationCodeHashInput,
+} from '../domain/contracts/application/invitation-verification-code-manager';
 import type { EmailSender } from '../domain/contracts/infrastructure/email-sender';
 import type { InvitationVerificationCodeRepository } from '../domain/contracts/infrastructure/invitation-verification-code.repository';
-import {
-  type VerificationCodeState,
-  validateVerificationCode,
-} from '../domain/entities/invitation-verification-code';
+import { validateVerificationCode } from '../domain/entities/invitation-verification-code';
 import { VerificationCodeError } from '../domain/errors/verification-code-error';
 import { recipientLocale } from '../domain/services/notifications/recipient-locale';
 
 const MS_PER_MINUTE = 60_000;
 
-export interface IssueVerificationCodeInput {
-  churchId: ChurchId;
-  churchInvitationId: ChurchInvitationId;
-  recipientEmail: string;
-  churchName: string;
-  now?: Date;
-}
-
-export interface VerifyInvitationCodeInput {
-  churchInvitationId: ChurchInvitationId;
-  code: string;
-  idempotencyKey?: string;
-  now?: Date;
-}
-
-interface VerificationCodeManagerDependencies {
-  repository: InvitationVerificationCodeRepository;
-  /** Sends directly: a Transactional email with no outbox row to key on. */
-  emailSender: Pick<EmailSender, 'send'>;
-  churchIdentity: ChurchIdentitySnapshotter;
-  generateCode?: () => string;
-  verificationCodeSecret: string;
-  config: AppConfig;
-}
-
-export interface HashVerificationCodeInput {
-  code: string;
-  secret: string;
-}
-
-export interface VerifyVerificationCodeHashInput {
-  candidateHash: string;
-  codeHash: string;
-}
-
-interface VerificationCodeValidationErrorInput {
-  status: ReturnType<typeof validateVerificationCode>['status'];
-}
-
 export class InvitationVerificationCodeManager
-  implements InvitationVerificationCodeManagerContract
+  implements IInvitationVerificationCodeManager
 {
   private readonly repository: InvitationVerificationCodeRepository;
   private readonly emailSender: Pick<EmailSender, 'send'>;
@@ -102,7 +68,7 @@ export class InvitationVerificationCodeManager
     recipientEmail,
     churchName,
     now = nowAsDate(),
-  }: IssueVerificationCodeInput): Promise<void> {
+  }: IssueInvitationVerificationCodeInput): Promise<void> {
     const code = this.generateCode();
     const codeHash = hashVerificationCode({
       code,
@@ -155,7 +121,7 @@ export class InvitationVerificationCodeManager
     code,
     idempotencyKey,
     now = nowAsDate(),
-  }: VerifyInvitationCodeInput): Promise<void> {
+  }: VerifyInvitationVerificationCodeInput): Promise<void> {
     const nowInstant = fromDate({ date: now });
     const state = await this.repository.find({ churchInvitationId });
     if (!state)
@@ -223,13 +189,6 @@ export class InvitationVerificationCodeManager
       code: toErrorCode({ status: currentOutcome.status }),
     });
   }
-}
-
-interface SameKeyReplayInput {
-  state: VerificationCodeState;
-  idempotencyKey: string | undefined;
-  candidateHash: string;
-  nowInstant: ReturnType<typeof fromDate>;
 }
 
 /** The code was already consumed by this very request key: a retry or a concurrent twin. */

@@ -1,7 +1,6 @@
 import {
   addCalendarDays,
   addCalendarMonths,
-  type CalendarDay,
   compareCalendarDays,
   firstOfMonth,
   fromDateColumn,
@@ -11,24 +10,25 @@ import {
   today,
   toInstant,
 } from '@church/time';
-import type {
-  ChurchId,
-  CycleId,
-  MinistryId,
-  UserId,
-} from '../domain/branded-ids';
+import type { MinistryId, UserId } from '../domain/branded-ids';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type {
   CreateCycleManagerInput,
   CycleDetails,
   CycleSendSummary,
+  DbCycleManagerDependencies,
   DeleteCycleManagerInput,
+  EnqueueCycleReadyInput,
+  EnsureResolvedCycleInput,
   GetCycleAnchorsManagerInput,
   GetCycleManagerInput,
   GetSendSummaryManagerInput,
   ICycleManager,
   ListCyclesManagerInput,
+  LoadSendableCycleInput,
+  SendableCycle,
   SendCycleManagerInput,
+  SuggestNextCycleInput,
   UpdateCycleManagerInput,
 } from '../domain/contracts/application/cycle-manager';
 import type {
@@ -39,7 +39,6 @@ import type { ChurchRepository } from '../domain/contracts/infrastructure/church
 import type { CycleRepository } from '../domain/contracts/infrastructure/cycle.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import {
@@ -60,11 +59,6 @@ import {
   OverlappingCycleError,
 } from '../domain/errors';
 import { assertEventGraph } from '../domain/services/planning/event-graph';
-
-interface SuggestNextCycleInput {
-  latestEnd: CalendarDay | null;
-  churchToday: CalendarDay;
-}
 
 /** The day after the latest Cycle, never before this month, to its month's end. */
 export function suggestNextCycle({
@@ -97,42 +91,6 @@ const PERIOD_STATES: Record<CyclePeriod, CycleState[]> = {
   current: ['draft', 'sent'],
   past: ['past'],
 };
-
-interface EnsureResolvedCycleInput {
-  cycle: Cycle;
-  churchTimeZone: string;
-  /** A write's open transaction, so its rollback undoes the Past flip. */
-  tx?: TransactionContext;
-}
-
-interface LoadSendableCycleInput {
-  churchId: ChurchId;
-  cycleId: CycleId;
-  timeZone: string;
-  tx: TransactionContext;
-}
-
-interface SendableCycle {
-  cycle: Cycle;
-  draftEvents: EventWithEventTimeBlocks[];
-}
-
-interface EnqueueCycleReadyInput {
-  churchId: ChurchId;
-  cycleId: CycleId;
-  tx: TransactionContext;
-}
-
-interface DbCycleManagerDependencies {
-  cycleRepository: CycleRepository;
-  eventRepository: PlanningEventRepository;
-  churchRepository: ChurchRepository;
-  unitOfWork: UnitOfWork;
-  participationRepository: MinistryParticipationRepository;
-  staffingSeeder: IUsualSetupStaffingSeeder;
-  volunteerRepository: VolunteerRepository;
-  notifications: IChurchNotifications;
-}
 
 /** The pre-fill input for every block of the Events Send schedules. */
 function seedBlocksOf(

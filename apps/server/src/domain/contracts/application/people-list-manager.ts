@@ -1,3 +1,4 @@
+import type { AppConfig } from '@church/app-config';
 import type { ChurchId, UserId } from '../../branded-ids';
 import type {
   PeopleListFilters,
@@ -5,6 +6,8 @@ import type {
   PeopleListScope,
   PersonDetailView,
 } from '../../entities/people-list-item';
+import type { IAuthorityManager } from './authority-manager';
+import type { PeopleListRepository } from '@/domain/contracts/infrastructure/people-list.repository';
 
 export interface ListPeopleRequest {
   churchId: ChurchId;
@@ -31,4 +34,10 @@ export interface PersonDetailResult {
 export interface IPeopleListManager {
   get(input: GetPersonRequest): Promise<PersonDetailResult | undefined>;
   list(input: ListPeopleRequest): Promise<PeopleListPage>;
+}
+
+export interface DbPeopleListManagerDependencies {
+  peopleListRepository: PeopleListRepository;
+  authorityManager: IAuthorityManager;
+  config: Pick<AppConfig, 'people'>;
 }

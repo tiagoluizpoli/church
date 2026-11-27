@@ -14,7 +14,7 @@ import type {
   IEventManager,
   IEventTemplateManager,
   IInvitationListManager,
-  InvitationVerificationCodeManager as IInvitationVerificationCodeManager,
+  IInvitationVerificationCodeManager,
   IMinistryInvitationManager,
   IMinistryManager,
   IMinistryMembershipManager,
@@ -26,6 +26,7 @@ import type {
   IPrepareManager,
   IPublicChurchProfileManager,
   IPublicEventManager,
+  IRedemptionManager,
   IScheduleBuilderReader,
   ISchedulePublisher,
   IScheduleReadModel,
@@ -35,8 +36,7 @@ import type {
   ISwapRequestManager,
   IUsualSetupManager,
   IVolunteerManager,
-  RedemptionManager,
-  VolunteerTransferManager,
+  IVolunteerTransferManager,
 } from '../../domain/contracts/application';
 import type {
   AssignmentAuditRepository,
@@ -158,8 +158,8 @@ export interface CompositionRootDependencies {
   ministryRoleManager: IMinistryRoleManager;
   sectorManager: ISectorManager;
   invitationVerificationCodeManager: IInvitationVerificationCodeManager;
-  redemptionManager: RedemptionManager;
-  volunteerTransferManager: VolunteerTransferManager;
+  redemptionManager: IRedemptionManager;
+  volunteerTransferManager: IVolunteerTransferManager;
   outboxDrainer: IOutboxDrainer;
   prepareManager: IPrepareManager;
   usualSetupManager: IUsualSetupManager;

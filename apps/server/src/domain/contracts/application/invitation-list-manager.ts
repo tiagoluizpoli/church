@@ -4,6 +4,8 @@ import type {
   InvitationListPage,
   InvitationListScope,
 } from '../../entities/invitation-list-item';
+import type { IAuthorityManager } from './authority-manager';
+import type { InvitationListRepository } from '@/domain/contracts/infrastructure/invitation-list.repository';
 
 export interface ListInvitationsRequest {
   churchId: ChurchId;
@@ -18,4 +20,11 @@ export interface ListInvitationsRequest {
 
 export interface IInvitationListManager {
   list(input: ListInvitationsRequest): Promise<InvitationListPage>;
+}
+
+export interface DbInvitationListManagerDependencies {
+  invitationListRepository: InvitationListRepository;
+  authorityManager: IAuthorityManager;
+  /** Page size when the caller names none (validated central config). */
+  defaultPageSize: number;
 }

@@ -25,7 +25,6 @@ import {
 } from '@church/db';
 import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import {
-  type ChurchId,
   MinistryId,
   UserId,
   type VolunteerId,
@@ -43,16 +42,19 @@ import type {
   VolunteerTransferResult,
 } from '../../domain/contracts/infrastructure/volunteer-transfer.repository';
 import { ACTIVE_ASSIGNMENT_STATUSES } from '../../domain/entities/assignment';
+import type {
+  DrizzleVolunteerTransferRepositoryInput,
+  FindExistingTransferInput,
+  ListActiveLeaderUserIdsInput,
+  ListChurchAdminUserIdsInput,
+  VolunteerTransferRow,
+} from './drizzle-volunteer-transfer.repository.types';
 import { getClient, withChurchIsolation } from './helpers';
 import {
   grantMinistryMembershipRoles,
   insertMinistryMembership,
 } from './ministry-grant';
 import type { AnyDrizzleDb } from './types';
-
-interface DrizzleVolunteerTransferRepositoryInput {
-  db: AnyDrizzleDb;
-}
 
 /**
  * Every step of spec §8.5, inside the caller's transaction. The old
@@ -592,12 +594,6 @@ export class DrizzleVolunteerTransferRepository
   }
 }
 
-interface ListActiveLeaderUserIdsInput {
-  db: AnyDrizzleDb;
-  churchId: ChurchId;
-  ministryId: string;
-}
-
 async function listActiveLeaderUserIds({
   db,
   churchId,
@@ -618,11 +614,6 @@ async function listActiveLeaderUserIds({
   return rows.map(({ userId }) => UserId.from(userId));
 }
 
-interface ListChurchAdminUserIdsInput {
-  db: AnyDrizzleDb;
-  churchId: ChurchId;
-}
-
 async function listChurchAdminUserIds({
   db,
   churchId,
@@ -632,20 +623,6 @@ async function listChurchAdminUserIds({
     .from(member)
     .where(and(eq(member.organizationId, churchId), eq(member.role, 'admin')));
   return rows.map(({ userId }) => UserId.from(userId));
-}
-
-interface VolunteerTransferRow {
-  id: string;
-  sourceVolunteerId: string;
-  destinationVolunteerId: string;
-  withdrawnAssignmentCount: number;
-  endedMembershipCount: number;
-}
-
-interface FindExistingTransferInput {
-  db: AnyDrizzleDb;
-  userId: ExecuteVolunteerTransferInput['userId'];
-  ministryInvitationId: ExecuteVolunteerTransferInput['ministryInvitationId'];
 }
 
 /** The `(userId, ministryInvitationId)` idempotency key lookup (spec §8.6). */

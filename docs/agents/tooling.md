@@ -156,17 +156,7 @@ failures name their fix; follow it and commit again.
 | `spec-registration` | `*.spec.ts` under `apps/web/tests/`, `e2e-lanes.ts`, `journey-map.ts` | `validate:e2e-lanes`, then `validate:journey-map` |
 
 Type errors are caught at pre-push, whose `validate:no-docker` runs `typecheck`, so commits stay
-fast. `bun run validate:staged-types -- <files>` (`tooling/validation/staged-typecheck.ts`) runs
-the staged check on demand:
-
-- Checks the workspace as it is on disk, unstaged edits included.
-- Does not check dependent workspaces, `tooling/` or `apps/desktop`; the gate
-  runs `typecheck`.
-- Reads generated sources as they are: after adding or moving a route, the
-  tracked `routeTree.gen.ts` must be current.
-- Is incremental (`node_modules/.cache/pre-commit.tsbuildinfo` per workspace):
-  the first web or server check in a worktree takes 45–55 s, later ones about
-  13 s, and over 30 s on a loaded machine.
+fast.
 
 HTML is not formatted: Biome's HTML formatter is off in `biome.json`.
 
@@ -914,7 +904,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | IV. Only Varlock loads values: no `--env-file`, no `dotenv`, no package value files | Constitution, tooling, ADR-0005 | Mechanical | Validation guard | Enforced: `tooling/tests/env/legacy-env-loading.test.ts` (`test:validation`), and `env:local` refuses package value files |
 | IV. Never commit secrets | Constitution | Judgement | — | Review: a secret is not a fixed pattern |
 | V. Biome lints and formats; it passes before every commit | Constitution | Mechanical | Biome rule | Enforced: Lefthook `pre-commit` runs Biome on staged files (CSS read-only); `lint` in CI |
-| TypeScript type-checks before it is pushed | Tooling | Mechanical | tsc setting | Enforced: Lefthook `pre-push` `validate:no-docker` (typecheck); `bun run validate:staged-types` on demand |
+| TypeScript type-checks before it is pushed | Tooling | Mechanical | tsc setting | Enforced: Lefthook `pre-push` `validate:no-docker` (typecheck) |
 | V. Conventional commits | Constitution | Mechanical | Validation guard | Enforced: commitlint in Lefthook `commit-msg` |
 | `commit-msg` fails at once without `node_modules`; it never waits on an install prompt | Tooling | Mechanical | Validation guard | Enforced: `tooling/tests/validation/commit-time-tooling.test.ts` (`test:validation`) |
 | `lint` writes nothing; fixing stays in `lint:fix` and the pre-commit Biome job | Tooling | Mechanical | Validation guard | Enforced: `tooling/tests/validation/commit-time-tooling.test.ts` (`test:validation`) |

@@ -77,7 +77,6 @@
     "validate:api-generated": "bun tooling/validation/api-generated-guard.ts",
     "validate:journey-map": "bun tooling/validation/journey-map-guard.ts",
     "validate:e2e-lanes": "bun tooling/validation/e2e-lanes-guard.ts",
-    "validate:staged-types": "bun tooling/validation/staged-typecheck.ts",
     "perf:sign-in": "bun tooling/perf/sign-in.ts",
     "validate:bundle-budget": "bun tooling/validation/bundle-budget.ts",
     "validate:dev-module-cap": "bun tooling/validation/dev-module-cap.ts",

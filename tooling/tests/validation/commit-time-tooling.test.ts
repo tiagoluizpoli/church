@@ -111,14 +111,11 @@ describe('pre-commit checks', () => {
   );
 
   // Type errors are caught at pre-push (validate:no-docker runs typecheck), keeping commits fast.
-  it('leaves type checking to pre-push and keeps the staged check on demand', () => {
+  it('leaves type checking to pre-push', () => {
     expect(jobs.has('typecheck')).toBe(false);
     expect(lefthook['pre-push'].jobs.map((job) => job.run)).toEqual([
       'bun run validate:no-docker',
     ]);
-    expect(scripts['validate:staged-types']).toBe(
-      'bun tooling/validation/staged-typecheck.ts',
-    );
   });
 
   it('refuses unformatted CSS without rewriting it, naming the fix', () => {

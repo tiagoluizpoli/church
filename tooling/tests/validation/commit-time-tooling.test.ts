@@ -15,8 +15,9 @@ const COMMITLINT_TIMEOUT_MS = 60_000;
 const FAIL_FAST_MS = 5000;
 
 interface LefthookJob {
+  name?: string;
   run: string;
-  glob?: string;
+  glob?: string | string[];
 }
 
 interface LefthookConfig {
@@ -103,6 +104,47 @@ describe('commit-msg hook', () => {
   });
 });
 
+describe('pre-commit checks', () => {
+  const jobs = new Map(
+    lefthook['pre-commit'].jobs.map((job) => [job.name, job]),
+  );
+
+  it('type-checks the staged TypeScript', () => {
+    expect(jobs.get('typecheck')).toEqual({
+      name: 'typecheck',
+      glob: '*.{ts,tsx}',
+      run: 'bun run validate:staged-types -- {staged_files}',
+    });
+    expect(scripts['validate:staged-types']).toBe(
+      'bun tooling/validation/staged-typecheck.ts',
+    );
+  });
+
+  it('refuses unformatted CSS without rewriting it, naming the fix', () => {
+    expect(Object.entries(jobs.get('css') ?? {})).toEqual([
+      ['name', 'css'],
+      ['glob', '*.css'],
+      ['run', 'bun run lint:files -- {staged_files}'],
+      [
+        'fail_text',
+        'Unformatted or invalid CSS: run `bun run lint:fix`, then stage the result.',
+      ],
+    ]);
+  });
+
+  it('checks spec registration when a spec or either list is staged', () => {
+    expect(jobs.get('spec-registration')).toEqual({
+      name: 'spec-registration',
+      glob: [
+        'apps/web/tests/**.spec.ts',
+        'apps/web/tests/fixtures/e2e-lanes.ts',
+        'tooling/validation/journey-map.ts',
+      ],
+      run: 'bun run validate:e2e-lanes && bun run validate:journey-map',
+    });
+  });
+});
+
 describe('lint scripts', () => {
   it('lint only reads', () => {
     expect(scripts['lint:files']).toBe(
@@ -120,6 +162,7 @@ describe('lint scripts', () => {
       'bun run validate:i18n-parity',
       'bun run validate:named-parameters',
       'bun run validate:journey-map',
+      'bun run validate:e2e-lanes',
       'bun run validate:presentation-text',
       'bun run validate:date-time-seam',
     ]);

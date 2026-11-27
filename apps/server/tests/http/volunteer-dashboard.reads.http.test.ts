@@ -319,7 +319,7 @@ describe('GET /volunteer/dashboard reads (database-backed)', () => {
     ]);
   });
 
-  it('grows its statements with the Volunteer history', async () => {
+  it('costs the same statements for little and long history', async () => {
     const { serve } = await seedWorld();
     await serve({ title: 'June', start: '2030-06-02T12:00:00.000Z' });
     await serve({ title: 'Next', start: '2030-07-20T12:00:00.000Z' });
@@ -354,6 +354,6 @@ describe('GET /volunteer/dashboard reads (database-backed)', () => {
 
     expect(small[0]?.response.statusCode).toBe(200);
     expect(large[0]?.response.statusCode).toBe(200);
-    expect([small[0]?.statements, large[0]?.statements]).toEqual([24, 64]);
+    expect([small[0]?.statements, large[0]?.statements]).toEqual([15, 15]);
   });
 });

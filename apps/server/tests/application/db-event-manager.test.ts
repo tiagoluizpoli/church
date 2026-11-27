@@ -165,6 +165,7 @@ function createRepos(): Repos {
     listByParticipation: vi.fn(async () => []),
     listByShift: vi.fn(),
     listByVolunteer: vi.fn(),
+    listPublishedByVolunteer: vi.fn(),
     listByVolunteers: vi.fn(),
     listByVolunteerInRange: vi.fn(),
     listByRange: vi.fn(),

@@ -423,9 +423,12 @@ describe('volunteer dashboard', () => {
         eventTimeBlocks: [],
       });
       f.unavailableShiftRepo.listByVolunteerForEvent.mockResolvedValue([]);
-      f.assignmentRepo.listByVolunteer.mockResolvedValue([assignment]);
+      f.assignmentRepo.listPublishedByVolunteer.mockResolvedValue([
+        { assignment, cancelled: false },
+      ]);
       f.participationRepo.listByIds.mockResolvedValue([participation]);
-      f.shiftRepo.getById.mockResolvedValue(shift);
+      f.eventRepo.listByIds.mockResolvedValue([event]);
+      f.shiftRepo.listByIds.mockResolvedValue([shift]);
       // Every Assignment's requirement exists (non-null FK), with its Sector.
       f.shiftRepo.listRequirementsByIds.mockResolvedValue([
         new ShiftRequirement({
@@ -442,12 +445,12 @@ describe('volunteer dashboard', () => {
           },
         }),
       ]);
-      f.roleRepo.getById.mockResolvedValue(
+      f.roleRepo.listByIds.mockResolvedValue([
         new Role({
           id: RoleId.from('role'),
           props: { churchId, ministryId, name: 'Singer' },
         }),
-      );
+      ]);
       f.notificationRepo.countUnread.mockResolvedValue(2);
       f.notificationRepo.list.mockResolvedValue({ items: [notification] });
       const dashboard = await f.manager.getDashboard({
@@ -526,8 +529,10 @@ describe('volunteer dashboard', () => {
         new Ministry({ id: ministryId, props: { churchId, name: 'Music' } }),
       ]);
       f.participationRepo.listByMinistry.mockResolvedValue([participation]);
-      f.assignmentRepo.listByVolunteer.mockResolvedValue(
-        ['far', 'ended', 'running'].map(makeAssignment),
+      f.assignmentRepo.listPublishedByVolunteer.mockResolvedValue(
+        ['far', 'ended', 'running']
+          .map(makeAssignment)
+          .map((assignment) => ({ assignment, cancelled: false })),
       );
       f.participationRepo.listByIds.mockResolvedValue([participation]);
       f.eventRepo.getById.mockResolvedValue(event);

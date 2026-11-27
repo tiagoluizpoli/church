@@ -56,6 +56,8 @@ export function createAssignmentRepositoryFake() {
     listByParticipation: vi.fn<AssignmentRepository['listByParticipation']>(),
     listByShift: vi.fn<AssignmentRepository['listByShift']>(),
     listByVolunteer: vi.fn<AssignmentRepository['listByVolunteer']>(),
+    listPublishedByVolunteer:
+      vi.fn<AssignmentRepository['listPublishedByVolunteer']>(),
     listByVolunteers: vi.fn<AssignmentRepository['listByVolunteers']>(),
     listByVolunteerInRange:
       vi.fn<AssignmentRepository['listByVolunteerInRange']>(),

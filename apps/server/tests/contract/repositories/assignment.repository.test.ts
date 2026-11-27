@@ -24,6 +24,7 @@ import type {
   ListAssignmentsByVolunteerInRangeInput,
   ListAssignmentsByVolunteersInput,
   MoveAssignmentRepositoryInput,
+  PublishedAssignment,
   UpdateAssignmentStatusRepositoryInput,
 } from '@/domain/contracts/infrastructure/assignment.repository';
 import { Assignment } from '@/domain/entities/assignment';
@@ -181,6 +182,10 @@ class MockAssignmentRepository implements AssignmentRepository {
     return Array.from(this.assignments.values()).filter(
       (a) => a.churchId === churchId && a.volunteerId === volunteerId,
     );
+  }
+
+  async listPublishedByVolunteer(): Promise<PublishedAssignment[]> {
+    return [];
   }
 
   async listByParticipation({

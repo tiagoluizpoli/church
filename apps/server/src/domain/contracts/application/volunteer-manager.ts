@@ -438,11 +438,6 @@ export interface ListedAssignmentInput {
   cancelled: boolean;
 }
 
-export interface ListedVolunteerAssignment {
-  assignment: Assignment;
-  cancelled: boolean;
-}
-
 export interface HasStartedInput {
   startTime: Instant;
   at: Instant;

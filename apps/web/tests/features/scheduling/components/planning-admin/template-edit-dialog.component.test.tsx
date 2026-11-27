@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TemplateEditDialog } from '@/features/scheduling/components/planning-admin/template-edit-dialog';
 import { USUAL_SETUP_QUERY_KEY } from '@/features/scheduling/components/planning-admin/template-query-keys';
+import { waitForDialogFocus } from '@/tests/setup/dialog';
 import { startHangingRefetch } from '@/tests/setup/refetch';
 import { renderWithProviders } from '@/tests/setup/render';
 
@@ -111,6 +112,7 @@ async function renderLoaded(queryClient?: QueryClient) {
     queryClient,
   });
   await screen.findByDisplayValue('Sunday');
+  await waitForDialogFocus();
   return user;
 }
 

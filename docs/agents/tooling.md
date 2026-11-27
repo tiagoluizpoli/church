@@ -25,6 +25,7 @@ and task ordering.
 | Journey-map integrity guard | `bun run validate:journey-map` |
 | Sign-in load times and filmstrip ([harness](#sign-in-load-harness)) | `bun run perf:sign-in` |
 | Web bundle gzip budget (needs a built `apps/web/dist`) | `bun run validate:bundle-budget` |
+| `/login` module requests under `vite dev` ([cap](#dev-module-cap)) | `bun run validate:dev-module-cap` |
 | Affected validation without Docker (pre-push) | `bun run validate:no-docker` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
@@ -631,6 +632,32 @@ Facts it encodes, for any other browser measurement:
   one never ends. The harness loads them, as a visitor does.
 - **HTTP/2 matters.** Over HTTP/1.1 the same build measured LCP ~2.3 s instead
   of ~1.4 s.
+
+## Dev module cap
+
+`bun run validate:dev-module-cap` (`tooling/validation/dev-module-cap.ts`)
+loads `/login` from `vite dev` in system Chrome, counts the script requests to
+vite, and fails above the cap, printing the count and the cap. `vite dev`
+serves modules unbundled, so one change can add thousands: compiling
+translations to one module per message took the page from about 200 requests to
+2,503 ([#1121](https://github.com/tiagoluizpoli/church/pull/1121)).
+
+It runs **on demand only**: run it after a change to how dev compiles or
+resolves modules (translations, Vite config or plugins), to dependencies, or to
+what the sign-in page imports. It is not part of `validate` or
+`validate:affected`: it takes about 30 s, almost all of it starting the two dev
+servers, and it needs system Chrome and a generated `.env.local`, neither of
+which the CI Release Gate's container has.
+
+It needs what the [sign-in load harness](#sign-in-load-harness) needs, except
+`openssl`. It uses the servers already on `CHURCH_SERVER_PORT` and
+`CHURCH_WEB_PORT`, else starts `dev:server` and `dev:web` and stops them
+afterwards. It counts the page's last load (vite reloads it after optimizing a
+new dependency), with the service worker blocked, until the form shows and
+requests stop for 3 s.
+
+The cap is `CAP` in the script: 220, from 201 requests on 2026-11-27 plus about
+10%. Raise it only on purpose and say why in the PR.
 
 ## Failure bundles
 

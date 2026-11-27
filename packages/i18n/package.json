@@ -18,7 +18,7 @@
     "paraglide": "paraglide-js compile --project ./project.inlang --strategy cookie custom-app-default-locale baseLocale --silent",
     "compile:locale-modules": "bun run paraglide --outdir ./src/paraglide --output-structure locale-modules --emit-ts-declarations",
     "compile:message-modules": "bun run paraglide --outdir ./src/paraglide-message-modules --output-structure message-modules",
-    "compile": "bun run compile:locale-modules && bun run compile:message-modules",
+    "compile": "bun ../../tooling/i18n/compile.ts",
     "dev": "bun run compile:locale-modules --watch",
     "typecheck": "bun run compile",
     "test:unit": "bun run compile",

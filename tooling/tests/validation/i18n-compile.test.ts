@@ -94,4 +94,26 @@ describe('@church/i18n compile', () => {
     expect(result.output).toContain('SyntaxError: bad catalog');
     expect(result.calls).toEqual([LOCALE_MODULES]);
   });
+
+  const LIX_TIMEOUT = 'LixError: Lix open did not settle within 30000ms';
+
+  it('retries once on the Lix open timeout, then succeeds', () => {
+    const result = compile({ failures: 1, error: LIX_TIMEOUT });
+
+    expect(result.status).toBe(0);
+    expect(result.calls).toEqual([
+      LOCALE_MODULES,
+      LOCALE_MODULES,
+      MESSAGE_MODULES,
+    ]);
+    expect(result.output).toContain(LIX_TIMEOUT);
+    expect(result.output).toContain('retrying once');
+  });
+
+  it('gives up when the retry times out too', () => {
+    const result = compile({ failures: 2, error: LIX_TIMEOUT });
+
+    expect(result.status).toBe(1);
+    expect(result.calls).toEqual([LOCALE_MODULES, LOCALE_MODULES]);
+  });
 });

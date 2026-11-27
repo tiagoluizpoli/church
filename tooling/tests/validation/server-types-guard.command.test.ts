@@ -96,3 +96,40 @@ describe('server types guard command', () => {
     expect(stderr).toBe('');
   });
 });
+
+// The script `bun run lint` and the affected gate run, on the real tree.
+describe('server types lint step', () => {
+  const planted = 'apps/server/src/application/zz-planted-type.ts';
+
+  const runScript = () => {
+    const result = Bun.spawnSync(['bun', 'run', 'validate:server-types'], {
+      cwd: REPO_ROOT,
+      stderr: 'pipe',
+      stdout: 'pipe',
+    });
+    return { exitCode: result.exitCode, stderr: result.stderr.toString() };
+  };
+
+  afterEach(() => {
+    rmSync(join(REPO_ROOT, planted), { force: true });
+  });
+
+  it('passes on the real tree', () => {
+    expect(runScript().exitCode).toBe(0);
+  });
+
+  it('fails on an interface planted in an application file, with no baseline', () => {
+    writeFileSync(
+      join(REPO_ROOT, planted),
+      'export interface Planted { id: string }\n',
+    );
+
+    const { exitCode, stderr } = runScript();
+
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain(`  ${planted}:1: interface Planted\n`);
+    expect(stderr).toContain(
+      '1 type declarations in server implementation files',
+    );
+  });
+});

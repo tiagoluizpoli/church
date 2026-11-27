@@ -162,6 +162,7 @@ describe('lint scripts', () => {
       'bun run validate:test-placement',
       'bun run validate:i18n-parity',
       'bun run validate:named-parameters',
+      'bun run validate:server-types',
       'bun run validate:journey-map',
       'bun run validate:e2e-lanes',
       'bun run validate:presentation-text',

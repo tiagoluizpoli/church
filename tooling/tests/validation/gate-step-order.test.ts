@@ -7,6 +7,7 @@ const GUARD_LABELS = [
   'test-placement',
   'i18n-parity',
   'named-parameters',
+  'server-types',
   'journey-map',
   'presentation-text',
   'date-time-seam',

@@ -23,6 +23,12 @@ const NAMED_PARAMETERS_STEP = {
   label: 'named-parameters',
 };
 
+const SERVER_TYPES_STEP = {
+  args: ['run', 'validate:server-types'],
+  command: 'bun',
+  label: 'server-types',
+};
+
 const JOURNEY_MAP_STEP = {
   args: ['run', 'validate:journey-map'],
   command: 'bun',
@@ -63,6 +69,7 @@ describe('buildValidationSteps', () => {
       TEST_PLACEMENT_STEP,
       I18N_PARITY_STEP,
       NAMED_PARAMETERS_STEP,
+      SERVER_TYPES_STEP,
       JOURNEY_MAP_STEP,
       PRESENTATION_TEXT_STEP,
       DATE_TIME_SEAM_STEP,
@@ -70,6 +77,7 @@ describe('buildValidationSteps', () => {
     expect(steps.checkedLabels).toContain('test-placement');
     expect(steps.checkedLabels).toContain('i18n-parity');
     expect(steps.checkedLabels).toContain('named-parameters');
+    expect(steps.checkedLabels).toContain('server-types');
     expect(steps.checkedLabels).toContain('journey-map');
     expect(steps.checkedLabels).toContain('presentation-text');
     expect(steps.checkedLabels).toContain('date-time-seam');
@@ -110,6 +118,7 @@ describe('buildValidationSteps', () => {
       TEST_PLACEMENT_STEP,
       I18N_PARITY_STEP,
       NAMED_PARAMETERS_STEP,
+      SERVER_TYPES_STEP,
       JOURNEY_MAP_STEP,
       PRESENTATION_TEXT_STEP,
       DATE_TIME_SEAM_STEP,

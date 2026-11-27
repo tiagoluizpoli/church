@@ -1,7 +1,10 @@
 import { NotFoundError } from '@church/core';
 import { compareCalendarDays, fromDateColumn, now, today } from '@church/time';
 import type { CycleId } from '../domain/branded-ids';
-import type { IScheduleChangeReader } from '../domain/contracts/application/schedule-change-reader';
+import type {
+  IScheduleChangeReader,
+  ParticipationStaffingView,
+} from '../domain/contracts/application/schedule-change-reader';
 import type {
   DbScheduleReadModelDependencies,
   GetParticipationCompletionInput,
@@ -51,6 +54,14 @@ const SCHEDULE_LIST_PERIOD_CYCLE_STATES: Record<
   all: ['sent', 'past'],
 };
 
+/** The completion facts alone: `gapCount` is for the publisher. */
+function toCompletionView({
+  gapCount: _gapCount,
+  ...completion
+}: ParticipationStaffingView): ParticipationCompletionView {
+  return completion;
+}
+
 export class DbScheduleReadModel implements IScheduleReadModel {
   private readonly churchRepository: ChurchRepository;
   private readonly ministryRepository: MinistryRepository;
@@ -75,15 +86,14 @@ export class DbScheduleReadModel implements IScheduleReadModel {
   async getCompletion(
     input: GetParticipationCompletionInput,
   ): Promise<ParticipationCompletionView> {
-    const { gapCount: _gapCount, ...completion } = await this.unitOfWork.run(
-      (tx) =>
-        this.scheduleChangeReader.readParticipationCompletion({
-          churchId: input.churchId,
-          participationId: input.participationId,
-          tx,
-        }),
+    const staffing = await this.unitOfWork.run((tx) =>
+      this.scheduleChangeReader.readParticipationCompletion({
+        churchId: input.churchId,
+        participationId: input.participationId,
+        tx,
+      }),
     );
-    return completion;
+    return toCompletionView(staffing);
   }
 
   async listScheduleSummaries(

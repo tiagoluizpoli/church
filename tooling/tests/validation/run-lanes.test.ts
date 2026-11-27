@@ -170,6 +170,31 @@ describe('runLanes', () => {
     ]);
   });
 
+  // GitHub reads a workflow command (an annotation) only at the start of a
+  // line (#1162), so a step label in front of it would hide it.
+  it('leaves a GitHub workflow command at the start of its line', async () => {
+    const annotation =
+      '::error file=apps/web/tests/a.unit.test.ts,line=4,title=a > fails::boom';
+    const output = captureOutput();
+    await runLanes({
+      lanes: [
+        [
+          scriptStep({
+            code: `console.log('before'); console.log(${JSON.stringify(annotation)}); console.error('::warning::slow')`,
+            label: 'test:unit',
+          }),
+        ],
+      ],
+      output,
+    });
+
+    expect(output.stdoutLines).toEqual([
+      '[test:unit] before\n',
+      `${annotation}\n`,
+    ]);
+    expect(output.stderrLines).toEqual(['::warning::slow\n']);
+  });
+
   it('keeps each line under its own step prefix when steps print concurrently', async () => {
     const output = captureOutput();
     const chatty = ({ label }: LabelInput): LaneStep =>

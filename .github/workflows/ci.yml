@@ -103,6 +103,7 @@ jobs:
         run: bun run validate:api-generated
 
       - name: Validation tests (affected-plan, date-time seam fixture)
+        shell: bash tooling/ci/record-test-output.sh {0}
         run: bun run test:validation
 
       - name: Fast + affected gate (lint, typecheck, unit, integration)
@@ -111,6 +112,7 @@ jobs:
         # suite is release-gate-only (develop to master). --skip-e2e: any
         # affected browser journeys run in the sibling develop-browser job
         # instead, concurrently.
+        shell: bash tooling/ci/record-test-output.sh {0}
         run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --skip-e2e
 
       - id: report-failure-phase
@@ -272,6 +274,7 @@ jobs:
         # so this step — and therefore the job — still succeeds without
         # waiting on browser setup.
         if: steps.plan.outputs.needs_e2e == 'true'
+        shell: bash tooling/ci/record-test-output.sh {0}
         run: bun run validate:affected -- --base "origin/${{ github.base_ref }}" --daily-gate --only-e2e
 
       - id: report-failure-phase
@@ -439,12 +442,14 @@ jobs:
         run: bun run validate:bundle-budget
 
       - name: Unit tests
+        shell: bash tooling/ci/record-test-output.sh {0}
         run: bun run test:unit
 
       - name: Create the storage bucket
         run: bun tooling/worktree/storage-buckets.ts church-unspecified
 
       - name: Full E2E
+        shell: bash tooling/ci/record-test-output.sh {0}
         run: bun run test:e2e
 
       - id: report-failure-phase
@@ -547,6 +552,7 @@ jobs:
         run: bun tooling/worktree/storage-buckets.ts church-unspecified
 
       - name: Integration tests
+        shell: bash tooling/ci/record-test-output.sh {0}
         run: bun run test:integration
 
       - id: report-failure-phase
@@ -645,11 +651,13 @@ jobs:
         run: bun run lint
 
       - name: Validation tests (affected-plan, date-time seam fixture)
+        shell: bash tooling/ci/record-test-output.sh {0}
         run: bun run test:validation
 
       # shortcut: no --coverage. i18n's compile rejects the flag and server
       # coverage is far below its thresholds; re-add once coverage is restored.
       - name: Run tests
+        shell: bash tooling/ci/record-test-output.sh {0}
         run: bunx turbo test:unit test:integration
 
       - id: report-failure-phase
@@ -763,6 +771,7 @@ jobs:
         run: bun tooling/worktree/storage-buckets.ts church-unspecified
 
       - name: Run E2E tests
+        shell: bash tooling/ci/record-test-output.sh {0}
         run: bun run test:e2e
 
       - id: report-failure-phase

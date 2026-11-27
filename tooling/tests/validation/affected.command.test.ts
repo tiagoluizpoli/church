@@ -220,3 +220,45 @@ describe('affected.ts --dry-run against a temporary Git history', () => {
     expect(plan.missingJourneyMappings).toEqual([]);
   });
 });
+
+describe('Journey-Impact trailer on the branch’s own commits', () => {
+  const MAPPED = 'apps/web/src/shared/utils/active-church-switch.ts';
+  const SWITCHING = ['tests/identity/active-church-switching.spec.ts'];
+
+  const commitChange = (message: string) => {
+    writeRepoFile(MAPPED);
+    commitAll(message);
+  };
+
+  it('is accepted from a commit above the base', () => {
+    commitChange('refactor: move it\n\nJourney-Impact: none - pure rename');
+
+    const { plan, stderr } = runAffected();
+
+    expect(plan.e2eSpecPaths).toEqual([]);
+    expect(stderr).toContain('acknowledged: pure rename');
+  });
+
+  it('is refused without a reason, even with another trailer below it', () => {
+    commitChange(
+      'refactor: move it\n\nJourney-Impact: none -\nSeed-Impact: none - n/a',
+    );
+
+    expect(runAffected().plan.e2eSpecPaths).toEqual(SWITCHING);
+  });
+
+  it('is not borrowed from the configured validate base', () => {
+    git(['checkout', '--quiet', '-b', 'spec/9-integration', 'develop']);
+    writeRepoFile('apps/web/src/earlier.ts');
+    commitAll('refactor: earlier\n\nJourney-Impact: none - lower branch');
+    git(['checkout', '--quiet', '-b', 'feature/stacked']);
+    git([
+      'config',
+      'branch.feature/stacked.validateBase',
+      'spec/9-integration',
+    ]);
+    commitChange('feat: change behaviour');
+
+    expect(runAffected().plan.e2eSpecPaths).toEqual(SWITCHING);
+  });
+});

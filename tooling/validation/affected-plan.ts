@@ -1,5 +1,6 @@
 import { type E2eImportGraph, selectSpecsReaching } from './e2e-import-graph';
 import { CRITICAL_SMOKE_SPEC_PATHS, JOURNEY_MAP } from './journey-map';
+import { isProductionSourcePath } from './production-path';
 import {
   assessSeedImpact,
   SEED_CONTRACT_TARGETS,
@@ -36,6 +37,8 @@ export interface ClassifyChangesInput {
   e2eSpecPaths?: string[];
   /** Web test file imports, so a changed fixture selects the specs reaching it. */
   e2eImportGraph?: E2eImportGraph;
+  /** Reasons from `Journey-Impact` trailers: a pure refactor skips journeys. */
+  journeyImpactAcknowledgements?: string[];
   /**
    * Reasons from `Seed-Impact: none - <reason>` commit trailers or
    * `--no-seed-impact`: the explicit decision that a seed-relevant change
@@ -48,6 +51,10 @@ export interface ValidationPlan {
   /** Changed paths with no file left, sorted. */
   deletedPaths?: string[];
   e2eSpecPaths: string[];
+  /** Changed paths that selected no browser journey, sorted. */
+  ignoredPaths: string[];
+  /** Non-blank `Journey-Impact` reasons; any one skips the selected journeys. */
+  journeyImpactAcknowledgements: string[];
   journeySelectionReasons: JourneySelectionReason[];
   lintPaths: string[];
   missingJourneyMappings: string[];
@@ -143,11 +150,6 @@ interface GetTestLayerInput {
 interface GetTestTargetInput {
   changedPath: string;
   workspace: Workspace;
-}
-
-interface IsProductionSourcePathInput {
-  changedPath: string;
-  workspaceName: string;
 }
 
 export const WORKSPACES: Workspace[] = [
@@ -249,6 +251,7 @@ export function classifyChanges({
   deletedPaths = [],
   e2eImportGraph = {},
   e2eSpecPaths = [],
+  journeyImpactAcknowledgements = [],
   packageJsonScriptsOnlyAddition = false,
   seedImpactAcknowledgements = [],
 }: ClassifyChangesInput): ValidationPlan {
@@ -267,6 +270,7 @@ export function classifyChanges({
   const toolingTestPaths = new Set<string>();
   let requiresFullE2e = false;
   let hasUnmappedProductionChange = false;
+  const sharedE2ePaths = new Set<string>();
 
   for (const changedPath of [...changedPaths, ...deletedPaths]) {
     if (
@@ -304,6 +308,7 @@ export function classifyChanges({
 
     const isSharedE2eInfrastructure = FULL_E2E_PATHS.has(changedPath);
     if (isSharedE2eInfrastructure) {
+      sharedE2ePaths.add(changedPath);
       if (dailyGate) {
         // Daily gate never escalates to the full suite, but a shared
         // E2E-infrastructure change still needs *some* E2E coverage — the
@@ -356,10 +361,7 @@ export function classifyChanges({
       workspaceSelectionReasons,
     });
 
-    if (
-      !isSharedE2eInfrastructure &&
-      isProductionSourcePath({ changedPath, workspaceName: workspace.name })
-    ) {
+    if (!isSharedE2eInfrastructure && isProductionSourcePath({ changedPath })) {
       const journeyMappings = JOURNEY_MAP.filter(({ sourcePathPrefix }) =>
         changedPath.startsWith(sourcePathPrefix),
       );
@@ -390,6 +392,26 @@ export function classifyChanges({
         specPath,
       });
     }
+  }
+
+  const journeyPaths = new Set([
+    ...sharedE2ePaths,
+    ...missingJourneyMappings,
+    ...journeySelectionReasons.map(({ changedPath }) => changedPath),
+  ]);
+  const ignoredPaths = [...new Set([...changedPaths, ...deletedPaths])]
+    .filter((changedPath) => !journeyPaths.has(changedPath))
+    .sort();
+
+  const journeyAcknowledgements = journeyImpactAcknowledgements
+    .map((reason) => reason.trim())
+    .filter((reason) => reason.length > 0);
+  const skipsJourneys = journeyAcknowledgements.length > 0;
+  if (skipsJourneys) {
+    selectedE2eSpecPaths.clear();
+    for (const specPath of e2eSpecPaths) selectedE2eSpecPaths.add(specPath);
+    missingJourneyMappings.clear();
+    requiresFullE2e = false;
   }
 
   // A workspace stays narrowed only when its changed test files alone selected it.
@@ -425,7 +447,11 @@ export function classifyChanges({
   return {
     deletedPaths: [...deletedPathSet].sort(),
     e2eSpecPaths: [...selectedE2eSpecPaths].sort(),
-    journeySelectionReasons,
+    ignoredPaths,
+    journeyImpactAcknowledgements: journeyAcknowledgements,
+    journeySelectionReasons: skipsJourneys
+      ? journeySelectionReasons.filter(({ detail }) => detail === 'explicit')
+      : journeySelectionReasons,
     lintPaths: changedPaths.filter(isLintablePath),
     missingJourneyMappings: [...missingJourneyMappings].sort(),
     requiresFullE2e,
@@ -481,24 +507,6 @@ function selectSeedContracts({
       workspaceName: 'server',
     });
   }
-}
-
-function isProductionSourcePath({
-  changedPath,
-  workspaceName,
-}: IsProductionSourcePathInput): boolean {
-  if (workspaceName !== 'web' && workspaceName !== 'server') return false;
-  // The web page itself and its stylesheets ship too: index.html paints the
-  // boot shell, and the CSS lays out every page.
-  const isWebPage =
-    workspaceName === 'web' &&
-    (changedPath === 'apps/web/index.html' ||
-      /^apps\/web\/src\/.+\.css$/.test(changedPath));
-  if (!/\.tsx?$/.test(changedPath) && !isWebPage) return false;
-  if (changedPath.includes('.test.')) return false;
-  if (changedPath.includes('/tests/')) return false;
-
-  return true;
 }
 
 function addWorkspaceAndDependents({

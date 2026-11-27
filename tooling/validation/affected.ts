@@ -29,6 +29,10 @@ import {
   formatGateSummary,
 } from './gate-summary';
 import {
+  JOURNEY_IMPACT_TRAILER,
+  readJourneyImpactTrailers,
+} from './journey-impact';
+import {
   hasFailure,
   type LaneStep,
   type OutputSink,
@@ -37,8 +41,8 @@ import {
   type StepResult,
 } from './run-lanes';
 import {
-  readSeedAcknowledgements,
-  type SeedAcknowledgements,
+  type Acknowledgements,
+  readAcknowledgements,
 } from './seed-acknowledgements';
 import { readSeedImpactTrailers, SEED_IMPACT_TRAILER } from './seed-impact';
 import { BUNDLE_BUDGET_STEP, VALIDATE_SETUP_STEPS } from './validate';
@@ -500,8 +504,10 @@ export function buildValidationSteps({
       ...ALL_TEST_LAYERS,
     );
     if (plan.toolingTestPaths.length > 0) {
+      // The script, not a bare `bun test`: on GitHub Actions it annotates
+      // each failed test (#1162).
       unitLane.push({
-        args: ['test', 'tooling'],
+        args: ['run', 'test:validation'],
         command: 'bun',
         label: 'test:tooling',
       });
@@ -772,8 +778,9 @@ function buildTurboStep({
 
 interface ExplainPlanInput {
   baseRef: string | undefined;
+  journeyAcknowledgements?: Acknowledgements;
   plan: ValidationPlan;
-  seedAcknowledgements?: SeedAcknowledgements;
+  seedAcknowledgements?: Acknowledgements;
   tier?: ValidationTier;
   wholeUnitSuites?: boolean;
 }
@@ -781,6 +788,7 @@ interface ExplainPlanInput {
 export function explainPlan({
   baseRef,
   plan,
+  journeyAcknowledgements,
   seedAcknowledgements,
   tier = 'affected',
   wholeUnitSuites = false,
@@ -842,6 +850,8 @@ export function explainPlan({
     }
   }
 
+  lines.push(...explainJourneyImpact({ plan, journeyAcknowledgements }));
+
   lines.push('', 'Tooling tests selected:');
   if (plan.toolingTestPaths.length === 0) {
     lines.push('  (none)');
@@ -857,14 +867,80 @@ export function explainPlan({
       'Missing journey mappings (fell back to critical smoke set):',
     );
     for (const path of plan.missingJourneyMappings) lines.push(`  - ${path}`);
+    lines.push(
+      `  A pure refactor may skip journeys with a commit trailer "${JOURNEY_IMPACT_TRAILER}".`,
+    );
+  }
+
+  if (plan.ignoredPaths.length > 0) {
+    lines.push('', 'Changed files ignored by journey selection:');
+    for (const path of plan.ignoredPaths) lines.push(`  - ${path}`);
   }
 
   return lines.join('\n');
 }
 
+/** A reason with no commit did not come from a trailer. */
+function explainAcknowledged({
+  reasons,
+  accepted,
+}: {
+  reasons: string[];
+  accepted: Acknowledgements['accepted'];
+}): string[] {
+  return [...new Set(reasons)].map((reason) => {
+    const shas = accepted
+      .filter((acknowledgement) => acknowledgement.reason === reason)
+      .map(({ sha }) => sha);
+    const source = shas.length > 0 ? ` (commit ${shas.join(', ')})` : '';
+    return `  acknowledged: ${reason}${source}`;
+  });
+}
+
+function explainRefused({
+  borrowed,
+  ownBaseRef,
+}: {
+  borrowed: Acknowledgements['borrowed'];
+  ownBaseRef: string | undefined;
+}): string[] {
+  return borrowed.map(
+    ({ reason, sha }) =>
+      `  refused: ${reason} (commit ${sha}) is not one of this branch's own commits (above ${ownBaseRef}).`,
+  );
+}
+
+function explainJourneyImpact({
+  plan,
+  journeyAcknowledgements,
+}: {
+  plan: ValidationPlan;
+  journeyAcknowledgements?: Acknowledgements;
+}): string[] {
+  const {
+    accepted = [],
+    borrowed = [],
+    ownBaseRef,
+  } = journeyAcknowledgements ?? {};
+  const reasons = plan.journeyImpactAcknowledgements;
+  if (reasons.length > 0) {
+    return [
+      '',
+      'Journey impact: acknowledged, journeys skipped',
+      ...explainAcknowledged({ reasons, accepted }),
+    ];
+  }
+  if (borrowed.length === 0) return [];
+  return [
+    '',
+    'Journey impact: trailer refused, journeys run',
+    ...explainRefused({ borrowed, ownBaseRef }),
+  ];
+}
+
 interface ExplainSeedImpactInput {
   plan: ValidationPlan;
-  seedAcknowledgements?: SeedAcknowledgements;
+  seedAcknowledgements?: Acknowledgements;
 }
 
 function explainSeedImpact({
@@ -888,22 +964,12 @@ function explainSeedImpact({
     lines.push(`  - ${area} <- ${changedPath}`);
   }
   // A reason with no commit came from --no-seed-impact.
-  for (const reason of new Set(acknowledgements)) {
-    const shas = accepted
-      .filter((acknowledgement) => acknowledgement.reason === reason)
-      .map(({ sha }) => sha);
-    const source = shas.length > 0 ? ` (commit ${shas.join(', ')})` : '';
-    lines.push(`  acknowledged: ${reason}${source}`);
-  }
+  lines.push(...explainAcknowledged({ reasons: acknowledgements, accepted }));
   if (accepted.length > 0 || borrowed.length > 0) {
     lines.push(`  own commits: above ${ownBaseRef}`);
   }
   if (decision === 'undecided') {
-    for (const { reason, sha } of borrowed) {
-      lines.push(
-        `  refused: ${reason} (commit ${sha}) is not one of this branch's own commits (above ${ownBaseRef}).`,
-      );
-    }
+    lines.push(...explainRefused({ borrowed, ownBaseRef }));
     if (borrowed.length > 0) lines.push('  Add the trailer on this branch.');
     lines.push(
       '  Update apps/server/seeds (and its contracts) in this change, or',
@@ -933,13 +999,28 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
     deletedPaths,
     packageJsonScriptsOnlyAddition,
   } = collectChangedPaths({ baseRef: argumentsResult.baseRef });
-  const seedAcknowledgements = readSeedAcknowledgements({ baseRef });
+  const seedAcknowledgements = readAcknowledgements({
+    baseRef,
+    readReasons: readSeedImpactTrailers,
+  });
+  const journeyAcknowledgements = readAcknowledgements({
+    baseRef,
+    readReasons: readJourneyImpactTrailers,
+  });
+  const explained = {
+    baseRef,
+    journeyAcknowledgements,
+    seedAcknowledgements,
+  };
   const plan = classifyChanges({
     changedPaths,
     dailyGate: argumentsResult.dailyGate,
     deletedPaths,
     e2eImportGraph: readE2eImportGraph(),
     e2eSpecPaths: argumentsResult.e2eSpecPaths,
+    journeyImpactAcknowledgements: journeyAcknowledgements.accepted.map(
+      ({ reason }) => reason,
+    ),
     packageJsonScriptsOnlyAddition,
     seedImpactAcknowledgements: [
       ...argumentsResult.seedImpactAcknowledgements,
@@ -960,7 +1041,7 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
   // Only a run that would validate refuses: --dry-run stays a pure plan whose
   // JSON other CI steps parse, and the gate that runs validation enforces it.
   if (plan.seedImpact.decision === 'undecided' && !argumentsResult.dryRun) {
-    console.error(explainPlan({ baseRef, plan, seedAcknowledgements }));
+    console.error(explainPlan({ ...explained, plan }));
     console.error(
       '\nSeed impact is undecided: this change touches schema, persistence, authentication, tenancy or scheduling. Nothing was validated.',
     );
@@ -972,7 +1053,7 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
     // Bun (see ci.yml's "Determine affected plan" step) — the explanation
     // must stay off stdout so that stays valid JSON.
     console.error('');
-    console.error(explainPlan({ baseRef, plan, seedAcknowledgements }));
+    console.error(explainPlan({ ...explained, plan }));
   } else {
     const mergeBase =
       baseRef && isWholeLocalRun({ argumentsResult, ci: process.env.CI })
@@ -1005,9 +1086,8 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
     }
     ending.timings = timings;
     const explanation = explainPlan({
-      baseRef,
+      ...explained,
       plan,
-      seedAcknowledgements,
       tier,
       wholeUnitSuites: argumentsResult.dailyGate,
     });
@@ -1023,7 +1103,15 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
       );
     }
     if (failed) process.exitCode = 1;
-    else if (tree && mergeBase) recordPass({ base: mergeBase, tier, tree });
+    // A pass is keyed by tree, which a reworded trailer keeps: never record
+    // one whose journeys a trailer skipped.
+    else if (
+      tree &&
+      mergeBase &&
+      (tier === 'no-docker' || plan.journeyImpactAcknowledgements.length === 0)
+    ) {
+      recordPass({ base: mergeBase, tier, tree });
+    }
   }
 }
 

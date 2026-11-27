@@ -6,6 +6,7 @@ import { AxiosError, type AxiosResponse } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EventEditPreview } from '@/features/scheduling/components/planning-admin/event-edit-preview';
 import { TimezoneProvider } from '@/shared/components/timezone-provider';
+import { waitForDialogFocus } from '@/tests/setup/dialog';
 import { renderWithProviders } from '@/tests/setup/render';
 
 const previewPlanningEventEdit = vi.fn();
@@ -96,6 +97,7 @@ async function openEditor() {
       name: m.event_edit_preview_action_label({ title: 'Sunday' }),
     }),
   );
+  await waitForDialogFocus();
   return user;
 }
 

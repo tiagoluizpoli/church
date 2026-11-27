@@ -17,6 +17,8 @@ import {
 } from '../../validation/journey-map';
 import {
   discoverPlaywrightSpecPaths,
+  discoverProductionPaths,
+  getDeadMappingFailures,
   getDeliberateFallbackFailures,
   getJourneyMapFailures,
 } from '../../validation/journey-map-guard';
@@ -203,6 +205,51 @@ describe('deliberate smoke fallback guard', () => {
   });
 });
 
+describe('dead mapping guard', () => {
+  const at = (sourcePathPrefix: string) => ({
+    sourcePathPrefix,
+    specPaths: [A],
+  });
+
+  it('fails each prefix no production path matches, once, in order', () => {
+    expect(
+      getDeadMappingFailures({
+        journeyMap: [
+          at('apps/web/src/gone.ts'),
+          at('apps/web/src/'),
+          at('apps/web/src/gone.ts'),
+          // Exists, but the plan never maps a test or a Markdown file.
+          at('apps/web/tests/lib/x.test.ts'),
+          at('apps/server/src/NOTES.md'),
+        ],
+        paths: [
+          'apps/web/src/main.tsx',
+          'apps/web/tests/lib/x.test.ts',
+          'apps/server/src/NOTES.md',
+        ],
+      }),
+    ).toEqual(
+      [
+        'apps/server/src/NOTES.md',
+        'apps/web/src/gone.ts',
+        'apps/web/tests/lib/x.test.ts',
+      ].map(
+        (prefix) =>
+          `${prefix}: dead JOURNEY_MAP sourcePathPrefix: no production path matches it`,
+      ),
+    );
+  });
+
+  it('passes the real map', () => {
+    expect(
+      getDeadMappingFailures({
+        journeyMap: JOURNEY_MAP,
+        paths: discoverProductionPaths(),
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe('journey map guard command', () => {
   let webRoot: string;
 
@@ -318,7 +365,11 @@ describe('journey map guard in standard validation', () => {
     // new spec nobody mapped.
     const root = mkdtempSync(join(tmpdir(), 'journey-map-lane-test-'));
     try {
-      for (const file of ['journey-map-guard.ts', 'journey-map.ts']) {
+      for (const file of [
+        'journey-map-guard.ts',
+        'journey-map.ts',
+        'production-path.ts',
+      ]) {
         mkdirSync(join(root, 'tooling/validation'), { recursive: true });
         copyFileSync(
           join(REPO_ROOT, 'tooling/validation', file),

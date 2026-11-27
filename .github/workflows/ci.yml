@@ -412,6 +412,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+          # The constitution version guard in lint compares against the base branch.
+          fetch-depth: 0
 
       # The checkout is the host runner's; the container runs as root. Owning
       # it keeps git's ownership check passing for every process, including
@@ -632,6 +634,8 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
+          # The constitution version guard in lint compares against the base branch.
+          fetch-depth: 0
 
       - id: setup
         name: Shared CI setup

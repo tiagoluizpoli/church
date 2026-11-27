@@ -363,6 +363,8 @@ export interface EnqueueEventCancelledInput {
   actingUserId: UserId;
   church: Church;
   computed: ComputedCancellation;
+  scope: ConfirmPlanningCancellationManagerInput['scope'];
+  hidden: boolean;
   tx: TransactionContext;
 }
 

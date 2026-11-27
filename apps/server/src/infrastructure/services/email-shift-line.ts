@@ -11,9 +11,10 @@ import type { EmailLocale } from '../../domain/contracts/infrastructure/email-se
 export interface ShiftLineInput {
   startsAt: Instant;
   endsAt: Instant;
-  eventTitle: string;
+  /** An anonymised line puts the Ministry here, or nothing. */
+  eventTitle?: string;
   roleName: string;
-  sectorName: string;
+  sectorName?: string;
   churchTimezone: string;
   locale: EmailLocale;
 }
@@ -45,7 +46,9 @@ export function formatShiftLine({
     eventTitle,
     roleName,
     sectorName,
-  ].join(' · ');
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 export interface EventWhenInput {

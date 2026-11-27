@@ -1505,7 +1505,14 @@ export class DbPlanningEventManager implements IPlanningEventManager {
       const { impact, cycle, resolved, scopeAssignments } = computed;
       // Frozen before any write: the Shifts and counts the rows carry are
       // exactly what the writes below cancel.
-      await this.enqueueEventCancelled({ actingUserId, church, computed, tx });
+      await this.enqueueEventCancelled({
+        actingUserId,
+        church,
+        computed,
+        scope,
+        hidden,
+        tx,
+      });
 
       // A request raised while confirm waited is closed too: count closures.
       let openSwapRequestCount = 0;
@@ -1609,9 +1616,17 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     actingUserId,
     church,
     computed: { impact, cycle, event, resolved, scopeAssignments },
+    scope,
+    hidden,
     tx,
   }: EnqueueEventCancelledInput): Promise<void> {
     const churchId = church.id;
+    const hideable = {
+      ...(scope.kind === 'eventTimeBlock' && {
+        eventTimeBlockId: scope.eventTimeBlockId,
+      }),
+      ...(hidden && { hidden }),
+    };
     const shiftsByUser = new Map<UserId, CancellationScopeAssignment[]>();
     for (const row of scopeAssignments.filter(({ published }) => published)) {
       shiftsByUser.set(row.userId, [
@@ -1628,11 +1643,13 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           cycleId: cycle.id,
           eventId: event.id,
           eventTitle: event.title,
+          ...hideable,
           start: resolved.start,
           churchName: church.name,
           churchTimezone: church.timezone,
           shifts: rows.map((row) => ({
             eventTitle: event.title,
+            ministryName: row.ministryName,
             roleName: row.roleName,
             sectorName: row.sectorName,
             startsAt: row.shiftStart,
@@ -1668,6 +1685,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
           cycleName: cycle.name,
           eventId: event.id,
           eventTitle: event.title,
+          ...hideable,
           adminName,
           churchName: church.name,
           churchTimezone: church.timezone,

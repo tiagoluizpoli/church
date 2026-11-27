@@ -5,6 +5,7 @@ import {
   formatCalendarDayWithWeekday,
   formatDayAndMonth,
   formatDayLabel,
+  formatDayMonthShort,
   formatInstant,
   formatInstantPrecise,
   formatLongCalendarDay,
@@ -488,6 +489,17 @@ describe('formatDayLabel', () => {
     expect(formatDayLabel({ day: day('2026-10-04'), locale: 'en' })).toBe(
       'Sun 4 Oct',
     );
+  });
+});
+
+describe('formatDayMonthShort', () => {
+  it('reads like `4 Oct` / `4 out`, without padding or a dot', () => {
+    expect(formatDayMonthShort({ day: day('2026-10-04'), locale: 'en' })).toBe(
+      '4 Oct',
+    );
+    expect(
+      formatDayMonthShort({ day: day('2026-10-04'), locale: 'pt-BR' }),
+    ).toBe('4 out');
   });
 });
 

@@ -169,6 +169,15 @@ export function formatDayLabel({
   return locale === 'pt-BR' ? plain.toLowerCase() : plain;
 }
 
+/** `12 Oct` / `12 out`: day of month and month; no dot, no zero pad. */
+export function formatDayMonthShort({
+  day,
+  locale,
+}: CalendarDayLocaleInput): string {
+  const dayOfMonth = Number(splitCalendarDay({ day }).dayOfMonth);
+  return `${dayOfMonth} ${formatMonthShort({ day, locale })}`;
+}
+
 /** `October 2026` / `Outubro 2026`: the month and year of the day. */
 export function formatMonthYear({
   day,

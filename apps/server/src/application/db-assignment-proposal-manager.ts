@@ -42,14 +42,16 @@ import {
   isEventTimeBlockCancelled,
 } from '../domain/event-time-block-cancellation';
 import {
-  type AppliedProposalAddition,
   findStaleAdditions,
-  type ProposalAssignment,
-  type ProposalVolunteer,
   proposalReviewTokenFor,
   proposeAssignments,
-  type ReviewedAddition,
-} from '../domain/services/assignment-proposal';
+} from '../domain/services/scheduling/assignment-proposal';
+import type {
+  AppliedProposalAddition,
+  ProposalAssignment,
+  ProposalVolunteer,
+  ReviewedAddition,
+} from '../domain/services/scheduling/assignment-proposal.types';
 
 /** One entry per Assignment, with its Shift. */
 function toProposalAssignments({

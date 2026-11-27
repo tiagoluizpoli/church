@@ -12,7 +12,7 @@ import type {
   CycleReadyToPrepareDeliveryFacts,
   NotificationRequestDataOf,
 } from '../domain/notification-kinds';
-import { webLink } from '../domain/services/web-link';
+import { webLink } from '../domain/services/notifications/web-link';
 
 interface SchedulingNotificationFactsDependencies {
   churchRepository: ChurchRepository;

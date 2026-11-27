@@ -76,36 +76,36 @@ import {
   LastRemainingEventTimeBlockError,
   PublicInfoLockedError,
 } from '../domain/errors';
+import { eventTimeBlockEnvelope } from '../domain/services/planning/cycle-event-generator';
+import type {
+  ExistingGeneratedEventTimeBlockFingerprint,
+  ICycleEventGenerator,
+} from '../domain/services/planning/cycle-event-generator.types';
 import {
-  CycleEventGenerator,
-  type ExistingGeneratedEventTimeBlockFingerprint,
-  eventTimeBlockEnvelope,
-} from '../domain/services/cycle-event-generator';
-import {
-  type CancellationImpact,
-  type CancellationScopeAssignment,
   resolveCancellationScope,
   summarizeCancellationImpact,
-} from '../domain/services/event-cancellation';
+} from '../domain/services/planning/event-cancellation';
+import type {
+  CancellationImpact,
+  CancellationScopeAssignment,
+} from '../domain/services/planning/event-cancellation.types';
 import {
   findEditClashes,
   proposeEdit,
   proposeShiftBounds,
-} from '../domain/services/event-edit';
+} from '../domain/services/planning/event-edit';
+import { assertEventGraph } from '../domain/services/planning/event-graph';
+import type {
+  EventGraph,
+  EventGraphTimeBlock,
+} from '../domain/services/planning/event-graph.types';
 import {
-  assertEventGraph,
-  type EventGraph,
-  type EventGraphTimeBlock,
-} from '../domain/services/event-graph';
-import {
-  type BoundsPair,
   findMoveClashes,
   proposeMove,
-} from '../domain/services/event-move';
-import {
-  listLosingEventTimeBlocks,
-  type PrecedencePair,
-} from '../domain/services/template-precedence-application';
+} from '../domain/services/planning/event-move';
+import type { BoundsPair } from '../domain/services/planning/event-move.types';
+import { listLosingEventTimeBlocks } from '../domain/services/planning/template-precedence-application';
+import type { PrecedencePair } from '../domain/services/planning/template-precedence-application.types';
 import type { TemplatePrecedence } from '../domain/template-precedence';
 
 const sameBounds = ({ left, right }: BoundsPair) =>
@@ -118,8 +118,6 @@ const sameBounds = ({ left, right }: BoundsPair) =>
  * Event writes serialize.
  */
 export class DbPlanningEventManager implements IPlanningEventManager {
-  private readonly generator = new CycleEventGenerator();
-
   private readonly cycleRepository: CycleRepository;
   private readonly eventRepository: PlanningEventRepository;
   private readonly templateRepository: EventTemplateRepository;
@@ -130,6 +128,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly assignmentLifecycle: IAssignmentLifecycle;
   private readonly recipients: IChurchRecipients;
   private readonly notifications: IChurchNotifications;
+  private readonly generator: ICycleEventGenerator;
 
   constructor({
     cycleRepository,
@@ -142,7 +141,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     assignmentLifecycle,
     recipients,
     notifications,
+    cycleEventGenerator,
   }: DbPlanningEventManagerDependencies) {
+    this.generator = cycleEventGenerator;
     this.cycleRepository = cycleRepository;
     this.eventRepository = eventRepository;
     this.templateRepository = templateRepository;

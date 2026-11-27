@@ -1,6 +1,6 @@
 import type { Instant } from '@church/time';
 import type { ChurchId, CycleId, MinistryId, UserId } from '../../branded-ids';
-import type { AppliedProposalAddition } from '../../services/assignment-proposal';
+import type { AppliedProposalAddition } from '../../services/scheduling/assignment-proposal.types';
 import type { TransactionContext } from './transaction-context';
 
 /** One committed Apply and its outcome (ADR 0013). */

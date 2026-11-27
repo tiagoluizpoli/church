@@ -5,7 +5,7 @@ import { MINISTRY_INVITATION_DELIVERY_STATUS_OPTIONS } from '../../domain/contra
 import type { MinistryInvitation } from '../../domain/entities/ministry-invitation';
 import { MINISTRY_INVITATION_STATUS_OPTIONS } from '../../domain/entities/ministry-invitation';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
-import { redemptionPathFor } from '../../domain/services/ministry-invitation-redemption-path';
+import { redemptionPathFor } from '../../domain/services/invitations/ministry-invitation-redemption-path';
 import { validationErrorResponseSchema } from './validation-error.dto';
 
 export const mintMinistryInvitationBodySchema = z.object({

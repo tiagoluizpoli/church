@@ -27,7 +27,7 @@ import type { UsualSetupRepository } from '../domain/contracts/infrastructure/us
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Ministry } from '../domain/entities/ministry';
 import { MinistryInUseError } from '../domain/errors/ministry-in-use';
-import { usualSetupNeedsReview } from '../domain/services/usual-setup-planner';
+import { usualSetupNeedsReview } from '../domain/services/scheduling/usual-setup-planner';
 import { revokeMinistryHalf } from './invitation-revocation';
 
 export class DbMinistryManager implements IMinistryManager {

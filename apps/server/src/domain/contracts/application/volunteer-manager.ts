@@ -16,7 +16,7 @@ import type { AvailabilityCheckState } from '../../entities/availability-check';
 import type { EventWithEventTimeBlocks } from '../../entities/event';
 import type { Notification } from '../../entities/notification';
 import type { ShiftRequirement } from '../../entities/shift-requirement';
-import type { CheckDayState } from '../../services/availability-check-days';
+import type { CheckDayState } from '../../services/scheduling/availability-check-days.types';
 import type { IAuthorityManager } from './authority-manager';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
 import type {

@@ -1,5 +1,5 @@
 import type { Instant } from '@church/time';
-import type { EventTimeBlockMovePath } from '../services/event-time-block-move-path';
+import type { EventTimeBlockMovePath } from '../services/planning/event-time-block-move-path.types';
 
 /** One public EventTimeBlock as visitors see it. */
 export interface PublicEventBlock {

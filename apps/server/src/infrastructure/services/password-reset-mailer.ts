@@ -3,7 +3,7 @@ import type {
   EmailDuration,
   EmailSender,
 } from '../../domain/contracts/infrastructure/email-sender';
-import { recipientLocale } from '../../domain/services/recipient-locale';
+import { recipientLocale } from '../../domain/services/notifications/recipient-locale';
 
 const MS_PER_MINUTE = 60_000;
 const MINUTES_PER_HOUR = 60;

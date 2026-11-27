@@ -46,7 +46,7 @@ import {
   encodeInvitationListCursor,
   type InvitationListCursorPosition,
 } from '../../domain/invitation-list-cursor';
-import { projectInvitationEmailDelivery } from '../../domain/services/invitation-email-delivery';
+import { projectInvitationEmailDelivery } from '../../domain/services/invitations/invitation-email-delivery';
 import { containsPattern, getClient } from './helpers';
 import type { AnyDrizzleDb } from './types';
 

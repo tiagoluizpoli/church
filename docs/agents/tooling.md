@@ -72,7 +72,8 @@ reuse nor record a pass.
 failure; then unit tests run concurrently with integration tests, then E2E
 only if both lanes pass. `validate` runs lint → typecheck → bundle budget →
 unit tests concurrently with integration tests, then E2E. Output
-lines carry a `[stage]` prefix and a final table reports each stage's status.
+lines carry a `[stage]` prefix, except GitHub workflow commands (annotations),
+which must start their line, and a final table reports each stage's status.
 
 ### How the affected gate's log ends
 
@@ -99,6 +100,35 @@ are the totals Vitest, Bun and Playwright print. A run that ends before any
 stage (reused pass, undecided seed impact, busy slot, bad base) says
 `No stage results.`. After a failure, `bun run` itself appends one
 `error: script "validate:affected" exited with code <code>` line below `EXIT`.
+
+### When a CI gate is red
+
+Look in this order:
+
+1. **Annotations.** Each failed test is an `::error` annotation on the PR
+   with its file:line, title and error; `gh run view <run>` lists them under
+   ANNOTATIONS. GitHub keeps at most 10 error annotations per step and 50 per
+   job.
+2. **Job summary.** On the run page, or the failed "Report failed phase"
+   step in `gh run view <run> --log-failed`: `CI failure phase` names the
+   failed setup step or `test-command`; for `test-command`, `Failed tests`
+   lists every annotated test (title, file:line, first eight error lines; 30
+   at most). Vitest adds its own `Vitest Test Report` counts.
+3. **Failure bundles** of integration and E2E runs (see "Failure bundles"),
+   then the job log.
+
+The runners annotate only under `GITHUB_ACTIONS`; local output is unchanged.
+Vitest adds its `github-actions` reporter by default there. Playwright's
+`github` reporter runs before `list` (`apps/web/tests/fixtures/e2e-reporters.ts`),
+because `list` ends a row only when the next output arrives.
+`bun run test:validation` runs `bun test` through `tooling/ci/bun-test.ts`,
+which turns its JUnit report into annotations. Annotations reach GitHub only
+at the start of a line: Turbo prefixes nothing under GitHub Actions, and
+`run-managed.ts` and Varlock pass lines through. Each CI step that runs tests
+uses `shell: bash tooling/ci/record-test-output.sh {0}`, which copies its
+output to `$CHURCH_TEST_OUTPUT_LOG`, where `report-failure-phase.sh` finds
+the annotated tests for the summary. A new test step needs that shell too
+(`tooling/tests/ci/record-test-output.test.ts`).
 
 Every command that reads configuration runs through Varlock from its
 package directory, so the root and the package directory resolve the same
@@ -873,6 +903,8 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | User-facing copy comes from the `@church/i18n` catalog, never a literal | Spec #837, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:presentation-text`, part of `lint` and `validate:affected`. Copy reached only through calls or unrelated names stays with review (see Presentation text) |
 | Seed-relevant changes carry a seed decision | Tooling, ADR-0006 | Mechanical | Validation guard | Enforced: `tooling/validation/seed-impact.ts` in `validate:affected` |
 | A `Seed-Impact` acknowledgement comes from the branch's own commits | Spec #1161 | Mechanical | Validation guard | Enforced: `tooling/validation/seed-acknowledgements.ts` in `validate:affected` |
+| A CI step that runs tests records its output for the failed-tests summary | Spec #1161 | Mechanical | Validation guard | Enforced: `tooling/tests/ci/record-test-output.test.ts` (`test:validation`) |
+| Annotations start their line through the gate's `[stage]` prefix and Playwright's `list` reporter | Spec #1161 | Mechanical | Validation guard | Enforced: `tooling/tests/validation/run-lanes.test.ts`, `apps/web/tests/fixtures/e2e-reporters.unit.test.ts` |
 | Destructive database commands refuse any target but their own | Tooling, ADR-0005 | Mechanical | Validation guard | Enforced: runtime preflight of the database resolver |
 | No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |
 | The API client and `auto-generated-api.yaml` are generated, never hand-edited | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:api-generated`, run by the `develop-fast` and `fast-gate` CI jobs |

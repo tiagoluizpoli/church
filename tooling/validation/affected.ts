@@ -504,8 +504,10 @@ export function buildValidationSteps({
       ...ALL_TEST_LAYERS,
     );
     if (plan.toolingTestPaths.length > 0) {
+      // The script, not a bare `bun test`: on GitHub Actions it annotates
+      // each failed test (#1162).
       unitLane.push({
-        args: ['test', 'tooling'],
+        args: ['run', 'test:validation'],
         command: 'bun',
         label: 'test:tooling',
       });

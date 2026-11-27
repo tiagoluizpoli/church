@@ -1,15 +1,6 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
-import { ChurchId, type MinistryId, UserId } from '../../domain/branded-ids';
+import { ChurchId, UserId } from '../../domain/branded-ids';
 import { refuse } from '../utils/refuse';
-import type { AuthorityGuard } from './authority-guard';
-
-export interface DenyMinistryManagementInput {
-  authorityGuard: AuthorityGuard;
-  request: FastifyRequest;
-  reply: FastifyReply;
-  /** Omit for the function-level check only (403); pass for the object check too (404). */
-  ministryId?: MinistryId;
-}
+import type { DenyMinistryManagementInput } from './ministry-management-access.types';
 
 /**
  * Whether the caller was refused managing a Ministry's setup: 403 without

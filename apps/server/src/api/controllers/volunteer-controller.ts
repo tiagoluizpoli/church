@@ -1,5 +1,4 @@
 import { NotFoundError } from '@church/core';
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   AssignmentId,
@@ -33,33 +32,17 @@ import {
   volunteerMapper,
 } from '../dtos/volunteer.dto';
 import { refuse } from '../utils/refuse';
-
-interface MinistryRouteParams {
-  ministryId: string;
-}
+import type {
+  AssignmentRouteParams,
+  AvailabilityCheckRouteParams,
+  MinistryRouteParams,
+  PrivateObjectOperationInput,
+  VolunteerControllerDependencies,
+} from './volunteer-controller.types';
 
 const ministryScheduleQuerySchema = z.object({
   cycleId: z.string().uuid(),
 });
-
-interface AvailabilityCheckRouteParams {
-  checkId: string;
-}
-
-interface AssignmentRouteParams {
-  assignmentId: string;
-}
-
-interface VolunteerControllerDependencies {
-  volunteerManager: IVolunteerManager;
-  activeChurchResolver: IActiveChurchResolver;
-}
-
-interface PrivateObjectOperationInput<T> {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  operation: () => Promise<T>;
-}
 
 const notFoundResponseSchema = z.object({
   error: z.string(),

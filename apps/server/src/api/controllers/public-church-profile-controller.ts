@@ -19,42 +19,13 @@ import {
 import { renderChurchPageHead } from '../utils/church-page-head';
 import { isRateLimited } from '../utils/rate-limit';
 import { refuse } from '../utils/refuse';
-
-interface LimitedInput {
-  bucket:
-    | 'public-church-profile'
-    | 'public-church-events'
-    | 'public-church-page';
-  ip: string;
-}
-
-type PublicChurchProfileParams = z.infer<
-  typeof publicChurchProfileParamsSchema
->;
-
-interface ChurchPageInput {
-  ip: string;
-  slug: string;
-}
-
-interface ChurchPageRedirect {
-  redirectTo: string;
-}
-
-interface ChurchPageShell {
-  status: number;
-  /** Absent: the unfilled SPA shell. */
-  html?: string;
-}
-
-type ChurchPageAnswer = ChurchPageRedirect | ChurchPageShell;
-
-interface PublicChurchProfileControllerDependencies {
-  publicChurchProfileManager: IPublicChurchProfileManager;
-  publicEventManager: IPublicEventManager;
-  webShell: WebShell;
-  config: AppConfig;
-}
+import type {
+  ChurchPageAnswer,
+  ChurchPageInput,
+  LimitedInput,
+  PublicChurchProfileControllerDependencies,
+  PublicChurchProfileParams,
+} from './public-church-profile-controller.types';
 
 /** Sign-in-free reads of the Public Church Profile, rate limited per client IP. */
 export class PublicChurchProfileController implements FastifyController {

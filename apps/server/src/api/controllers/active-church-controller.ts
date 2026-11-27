@@ -1,10 +1,6 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { ChurchId, UserId } from '../../domain/branded-ids';
-import type {
-  ActiveChurchResolution,
-  IActiveChurchResolver,
-} from '../../domain/contracts/application/active-church-resolver';
+import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IActiveChurchSelectionManager } from '../../domain/contracts/application/active-church-selection-manager';
 import { auth } from '../../main/di/server-auth';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
@@ -19,6 +15,12 @@ import {
 } from '../dtos/active-church.dto';
 import { headersFromRequest } from '../utils/headers';
 import { refuse } from '../utils/refuse';
+import type {
+  ActiveChurchControllerDependencies,
+  AuthenticatedSession,
+  BuildStatusResponseInput,
+  RequireSessionInput,
+} from './active-church-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -29,20 +31,6 @@ const errorResponseSchema = z.object({
 const internalErrorResponseSchema = errorResponseSchema.extend({
   requestId: z.string(),
 });
-
-interface BuildStatusResponseInput {
-  resolution: ActiveChurchResolution;
-}
-
-interface RequireSessionInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-}
-
-interface AuthenticatedSession {
-  userId: string;
-  activeOrganizationId: string | null;
-}
 
 /**
  * Every route here needs a session but none may assume an Active Church
@@ -65,17 +53,6 @@ async function requireSession({
     userId: session.user.id,
     activeOrganizationId: session.session.activeOrganizationId ?? null,
   };
-}
-
-/**
- * Entry-gate status and the compare-access selector (spec.md §1.5). Deliberately
- * outside `createActiveChurchPreValidation`'s hook: every route here must work
- * *before* an Active Church exists — `selection_required` is this controller's
- * normal, 200-status result, never a denial.
- */
-interface ActiveChurchControllerDependencies {
-  activeChurchResolver: IActiveChurchResolver;
-  selectionManager: IActiveChurchSelectionManager;
 }
 
 export class ActiveChurchController implements FastifyController {

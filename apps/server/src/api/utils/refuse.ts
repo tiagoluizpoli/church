@@ -1,11 +1,6 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
-import { ERROR_TABLE, errorMessage, type RefusalCode } from './error-table';
-
-interface RefuseInput {
-  reply: FastifyReply;
-  request: FastifyRequest;
-  code: RefusalCode;
-}
+import type { FastifyReply } from 'fastify';
+import { ERROR_TABLE, errorMessage } from './error-table';
+import type { RefuseInput } from './refuse.types';
 
 /** The one way a controller refuses: `{ error, message }` in the request locale. */
 export function refuse({ reply, request, code }: RefuseInput): FastifyReply {

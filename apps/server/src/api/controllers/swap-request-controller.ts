@@ -12,15 +12,10 @@ import {
   swapRequestResponseSchema,
 } from '../dtos/swap-request.dto';
 import { refuse } from '../utils/refuse';
-
-interface SwapRequestControllerDependencies {
-  swapRequestManager: ISwapRequestManager;
-  activeChurchResolver: IActiveChurchResolver;
-}
-
-interface AssignmentRouteParams {
-  assignmentId: string;
-}
+import type {
+  AssignmentRouteParams,
+  SwapRequestControllerDependencies,
+} from './swap-request-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),

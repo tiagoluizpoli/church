@@ -44,43 +44,17 @@ import { debugEndpointsEnabled } from '../utils/debug-endpoints';
 import { headersFromRequest } from '../utils/headers';
 import { isRateLimited } from '../utils/rate-limit';
 import { refuse } from '../utils/refuse';
-
-type RedemptionParams = z.infer<typeof redemptionParamsSchema>;
-type RedeemNewUserBody = z.infer<typeof redeemNewUserBodySchema>;
-type AcceptExistingMemberBody = z.infer<typeof acceptExistingMemberBodySchema>;
-
-interface AuthenticatedRedeemer {
-  userId: ReturnType<typeof UserId.from>;
-  /** The caller's own cookie header, forwarded as-is to Better Auth — never minted here. */
-  sessionCookie: string;
-}
-
-interface RequireRedeemerInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-}
-
-/** The restricted preview field set the existing-member route exposes (spec §7.1). */
-interface InvitationPreviewFields {
-  email: string;
-  churchName: string;
-  ministryName: string;
-  ministryAccessLevel: 'volunteer' | 'leader';
-  roleNames: string[];
-  expiresAt: Date;
-}
-
-interface RedemptionControllerDependencies {
-  redemptionManager: IRedemptionManager;
-  volunteerTransferManager: IVolunteerTransferManager;
-  config: AppConfig;
-}
-
-type ConfirmTransferBody = z.infer<typeof confirmTransferBodySchema>;
-
-interface ControllerRateLimitInput {
-  key: string;
-}
+import type {
+  AcceptExistingMemberBody,
+  AuthenticatedRedeemer,
+  ConfirmTransferBody,
+  ControllerRateLimitInput,
+  InvitationPreviewFields,
+  RedeemNewUserBody,
+  RedemptionControllerDependencies,
+  RedemptionParams,
+  RequireRedeemerInput,
+} from './redemption-controller.types';
 
 export class RedemptionController implements FastifyController {
   readonly prefix = '/redemption';

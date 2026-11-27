@@ -1,5 +1,4 @@
 import { NotFoundError } from '@church/core';
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -11,6 +10,7 @@ import {
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { ICycleManager } from '../../domain/contracts/application/cycle-manager';
 import type { IEventTemplateManager } from '../../domain/contracts/application/event-template-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
@@ -18,7 +18,6 @@ import type { IPlanningEventManager } from '../../domain/contracts/application/p
 import type { ISetupProgressManager } from '../../domain/contracts/application/setup-progress-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   createCycleBodySchema,
@@ -94,10 +93,12 @@ import {
   dateFromInstantString,
   optionalDateFromInstantString,
 } from '../utils/request-time';
-
-interface EditInputInput {
-  body: EditPlanningEventBody;
-}
+import type {
+  ChurchAdminControllerDependencies,
+  EditInputInput,
+  NestedObjectOperationInput,
+  PrecedenceBody,
+} from './church-admin-controller.types';
 
 /** The edit body as the manager reads it: the same for preview and apply. */
 function editInput({ body }: EditInputInput) {
@@ -131,10 +132,6 @@ const cycleEventTimeBlockParamsSchema = z.object({
 });
 const ministryParamsSchema = z.object({ ministryId: z.guid() });
 
-type PrecedenceBody = z.infer<
-  typeof createEventTemplateBodySchema
->['precedences'];
-
 function precedenceAnswers(precedences: PrecedenceBody) {
   return precedences?.map((precedence) => ({
     otherTemplateId: EventTemplateId.from(precedence.otherTemplateId),
@@ -147,22 +144,6 @@ const notFoundResponseSchema = z.object({
   message: z.string(),
 });
 
-interface ChurchAdminControllerDependencies {
-  cycleManager: ICycleManager;
-  eventTemplateManager: IEventTemplateManager;
-  planningEventManager: IPlanningEventManager;
-  activeChurchResolver: IActiveChurchResolver;
-  ministryManager: IMinistryManager;
-  setupProgressManager: ISetupProgressManager;
-  authorityGuard: AuthorityGuard;
-}
-
-interface NestedObjectOperationInput<T> {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  operation: () => Promise<T>;
-}
-
 export class ChurchAdminController implements FastifyController {
   readonly prefix = '/admin';
 
@@ -172,7 +153,7 @@ export class ChurchAdminController implements FastifyController {
   private readonly activeChurchResolver: IActiveChurchResolver;
   private readonly ministryManager: IMinistryManager;
   private readonly setupProgressManager: ISetupProgressManager;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     cycleManager,

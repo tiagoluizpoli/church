@@ -9,11 +9,7 @@ import {
   volunteerScheduleQuerystringSchema,
   volunteerScheduleResponseSchema,
 } from '../dtos/volunteer.dto';
-
-interface VolunteerScheduleControllerDependencies {
-  volunteerManager: IVolunteerManager;
-  activeChurchResolver: IActiveChurchResolver;
-}
+import type { VolunteerScheduleControllerDependencies } from './volunteer-schedule-controller.types';
 
 export class VolunteerScheduleController implements FastifyController {
   readonly prefix = '/volunteer';

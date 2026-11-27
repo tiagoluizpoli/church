@@ -1,6 +1,5 @@
 import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   AssignmentId,
@@ -16,13 +15,13 @@ import {
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAssignmentManager } from '../../domain/contracts/application/assignment-manager';
 import type { IAssignmentProposalManager } from '../../domain/contracts/application/assignment-proposal-manager';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IScheduleBuilderReader } from '../../domain/contracts/application/schedule-builder-reader';
 import type { ISchedulePublisher } from '../../domain/contracts/application/schedule-publisher';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
 import type { Assignment } from '../../domain/entities/assignment';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   applyAssignmentProposalBodySchema,
@@ -50,27 +49,33 @@ import {
   publishCycleResponseSchema,
 } from '../dtos/cycle-builder.dto';
 import { refuse } from '../utils/refuse';
+import type {
+  ApplyAssignmentProposalBody,
+  AssignControllerDependencies,
+  CreateParticipationAssignmentBody,
+  CycleMinistryQuery,
+  DenyAuthorityDecisionInput,
+  DenyParticipationScopeInput,
+  DenyShiftScopeInput,
+  MoveAssignmentBody,
+  PublishCycleBody,
+  ReassignAssignmentBody,
+  ResolveOwnedAssignmentInput,
+  ResolveOwnedAssignmentResult,
+  ResolveScheduleShiftInput,
+  ReviewedPairBody,
+} from './assign-controller.types';
 
 const shiftParamsSchema = z.object({ shiftId: z.guid() });
 const assignmentParamsSchema = z.object({ assignmentId: z.guid() });
 const participationParamsSchema = z.object({ participationId: z.guid() });
 
 const cycleMinistryQuerySchema = z.object({ ministryId: z.guid() });
-type CycleMinistryQuery = z.infer<typeof cycleMinistryQuerySchema>;
 
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-type CreateParticipationAssignmentBody = z.infer<
-  typeof createParticipationAssignmentBodySchema
->;
-type PublishCycleBody = z.infer<typeof publishCycleBodySchema>;
-type ApplyAssignmentProposalBody = z.infer<
-  typeof applyAssignmentProposalBodySchema
->;
-type ReviewedPairBody = ApplyAssignmentProposalBody['additions'][number];
 
 const toReviewedAddition = ({
   shiftRequirementId,
@@ -79,54 +84,6 @@ const toReviewedAddition = ({
   shiftRequirementId: ShiftRequirementId.from({ raw: shiftRequirementId }),
   volunteerId: VolunteerId.from(volunteerId),
 });
-type MoveAssignmentBody = z.infer<typeof moveAssignmentBodySchema>;
-type ReassignAssignmentBody = z.infer<typeof reassignAssignmentBodySchema>;
-
-interface ResolveOwnedAssignmentInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  assignmentId: string;
-}
-
-interface ResolveOwnedAssignmentResult {
-  assignment?: Assignment;
-  denied: boolean;
-}
-
-interface ResolveScheduleShiftInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  shiftId: string;
-}
-
-interface DenyAuthorityDecisionInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  allowed: boolean;
-}
-
-interface DenyParticipationScopeInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  participationId: string;
-}
-
-interface DenyShiftScopeInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  shiftId: string;
-}
-
-interface AssignControllerDependencies {
-  scheduleBuilderReader: IScheduleBuilderReader;
-  assignmentProposalManager: IAssignmentProposalManager;
-  scheduleReadModel: IScheduleReadModel;
-  schedulePublisher: ISchedulePublisher;
-  assignmentManager: IAssignmentManager;
-  activeChurchResolver: IActiveChurchResolver;
-  authorityGuard: AuthorityGuard;
-  config: AppConfig;
-}
 
 export class AssignController implements FastifyController {
   readonly prefix = '/assign';
@@ -137,7 +94,7 @@ export class AssignController implements FastifyController {
   private readonly schedulePublisher: ISchedulePublisher;
   private readonly assignmentManager: IAssignmentManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
 
   private readonly parked: AppConfig['parked'];
 

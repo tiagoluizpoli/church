@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import { ChurchId, MinistryId, UserId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IInvitationListManager } from '../../domain/contracts/application/invitation-list-manager';
 import type { IMinistryInvitationManager } from '../../domain/contracts/application/ministry-invitation-manager';
 import type { InvitationListScope } from '../../domain/entities/invitation-list-item';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   adminInvitationMapper,
@@ -25,29 +25,16 @@ import {
 } from '../dtos/invitation-list.dto';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import { refuse } from '../utils/refuse';
+import type {
+  ChurchInvitationParams,
+  InvitationControllerDependencies,
+  ListLimitQuery,
+} from './invitation-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-interface ChurchInvitationParams {
-  invitationId: string;
-}
-
-/** The page size the route's own schema bounds by the configured maximum. */
-interface ListLimitQuery {
-  limit?: number;
-}
-
-interface InvitationControllerDependencies {
-  invitationListManager: IInvitationListManager;
-  ministryInvitationManager: IMinistryInvitationManager;
-  activeChurchResolver: IActiveChurchResolver;
-  authorityGuard: AuthorityGuard;
-  /** Most invitations one page may ask for (validated central config). */
-  maxPageSize: number;
-}
 
 /** The Invitations management page: the Active Church's offers within the caller's authority. */
 export class InvitationController implements FastifyController {
@@ -56,7 +43,7 @@ export class InvitationController implements FastifyController {
   private readonly invitationListManager: IInvitationListManager;
   private readonly ministryInvitationManager: IMinistryInvitationManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
   private readonly maxPageSize: number;
 
   constructor({

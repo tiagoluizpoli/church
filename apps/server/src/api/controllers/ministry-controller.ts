@@ -1,5 +1,3 @@
-import type { AppConfig } from '@church/app-config';
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -10,11 +8,11 @@ import {
   VolunteerId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryInvitationManager } from '../../domain/contracts/application/ministry-invitation-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
 import {
@@ -35,46 +33,21 @@ import {
 } from '../dtos/ministry-invitation.dto';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import { refuse } from '../utils/refuse';
+import type {
+  DenyMissingMinistryFunctionInput,
+  DenyNonAdminInput,
+  DenyUnmanagedMinistryInput,
+  MinistryControllerDependencies,
+  MinistryInvitationActionRouteParams,
+  MinistryInvitationRouteParams,
+  MinistryPageLimitQuery,
+  MinistryRouteParams,
+} from './ministry-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
-
-/** The page size the route's own schema defaults and bounds by config. */
-interface MinistryPageLimitQuery {
-  limit: number;
-}
-
-interface MinistryRouteParams {
-  ministryId: string;
-}
-
-type MinistryInvitationRouteParams = MinistryRouteParams;
-
-interface MinistryInvitationActionRouteParams {
-  ministryId: string;
-  invitationId: string;
-}
-
-interface DenyMissingMinistryFunctionInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-}
-
-type DenyNonAdminInput = DenyMissingMinistryFunctionInput;
-
-interface DenyUnmanagedMinistryInput extends DenyMissingMinistryFunctionInput {
-  ministryId: MinistryId;
-}
-
-interface MinistryControllerDependencies {
-  ministryManager: IMinistryManager;
-  ministryInvitationManager: IMinistryInvitationManager;
-  activeChurchResolver: IActiveChurchResolver;
-  authorityGuard: AuthorityGuard;
-  config: Pick<AppConfig, 'ministries'>;
-}
 
 export class MinistryController implements FastifyController {
   readonly prefix = '/ministries';
@@ -82,7 +55,7 @@ export class MinistryController implements FastifyController {
   private readonly ministryManager: IMinistryManager;
   private readonly ministryInvitationManager: IMinistryInvitationManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
   private readonly pageSize: number;
   private readonly maxPageSize: number;
 

@@ -2,7 +2,6 @@ import { m } from '@church/i18n/messages';
 import type { Instant } from '@church/time';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
-import { CancelledBadge } from '../cancelled-badge';
 import { EventCancelDialog } from './event-cancel-dialog';
 import { EventEditPreview } from './event-edit-preview';
 import { EventMovePreview } from './event-move-preview';
@@ -16,6 +15,7 @@ import {
   eventStatusLabel,
   timeBlockCountLabel,
 } from './planning-admin.utils';
+import { CancelledBadge } from '@/components/cancelled-badge';
 import {
   AlertDialog,
   AlertDialogAction,

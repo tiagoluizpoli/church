@@ -374,6 +374,7 @@ describe('EventCancelDialog hidden option', () => {
         name: m.event_cancel_action_label({ title: 'Sunday' }),
       }),
     );
+    await waitForDialogFocus();
     await screen.findByTestId('event-cancel-impact');
     const option = screen.getByRole('checkbox', { name: label });
     expect(option).not.toBeChecked();

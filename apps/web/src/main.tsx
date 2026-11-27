@@ -1,3 +1,6 @@
+import * as SentryProof from '@sentry/react';
+
+(globalThis as Record<string, unknown>).sentryProof = SentryProof;
 import './default-locale-strategy';
 import { entryStylesheetLoaded } from 'virtual:entry-stylesheet';
 import { QueryClientProvider } from '@tanstack/react-query';

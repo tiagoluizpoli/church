@@ -2,10 +2,10 @@ import {
   type ExecFileSyncOptionsWithStringEncoding,
   execFileSync,
 } from 'node:child_process';
-import { readSeedImpactTrailers } from './seed-impact';
 
 /**
- * Which commit supplied each `Seed-Impact` trailer, and whether it is one of
+ * Which commit supplied each `Seed-Impact` or `Journey-Impact` trailer, and
+ * whether it is one of
  * the branch's own: above the open PR's base or, without a PR, above the
  * validate base. CI sees only those once a lower stacked PR merges (#1164).
  */
@@ -15,13 +15,16 @@ export interface CommitAcknowledgement {
   sha: string;
 }
 
-export interface SeedAcknowledgements {
+export interface Acknowledgements {
   accepted: CommitAcknowledgement[];
   /** Trailers from commits below the branch's own. */
   borrowed: CommitAcknowledgement[];
   /** The ref the branch's own commits sit above. */
   ownBaseRef: string | undefined;
 }
+
+/** The reasons of one kind of trailer in a commit message. */
+type ReadReasons = (input: { messages: string[] }) => string[];
 
 const QUIET: ExecFileSyncOptionsWithStringEncoding = {
   encoding: 'utf8',
@@ -67,7 +70,13 @@ function resolvePullRequestBase({ name }: { name: string }): string {
   return ref;
 }
 
-function readTrailers({ baseRef }: { baseRef: string }) {
+function readTrailers({
+  baseRef,
+  readReasons,
+}: {
+  baseRef: string;
+  readReasons: ReadReasons;
+}) {
   const log = execFileSync(
     'git',
     ['log', '--format=%x01%h%x00%B', `${baseRef}..HEAD`],
@@ -78,19 +87,21 @@ function readTrailers({ baseRef }: { baseRef: string }) {
     .slice(1)
     .flatMap((entry) => {
       const [sha = '', message = ''] = entry.split('\0');
-      return readSeedImpactTrailers({ messages: [message] }).map(
+      return readReasons({ messages: [message] }).map(
         (reason): CommitAcknowledgement => ({ reason, sha }),
       );
     });
 }
 
 /** `baseRef` is the validate base: the range the trailers are read from. */
-export function readSeedAcknowledgements({
+export function readAcknowledgements({
   baseRef,
+  readReasons,
 }: {
   baseRef: string | undefined;
-}): SeedAcknowledgements {
-  const trailers = baseRef ? readTrailers({ baseRef }) : [];
+  readReasons: ReadReasons;
+}): Acknowledgements {
+  const trailers = baseRef ? readTrailers({ baseRef, readReasons }) : [];
   // Nothing to attribute: don't pay for the PR lookup.
   if (!baseRef || trailers.length === 0) {
     return { accepted: [], borrowed: [], ownBaseRef: baseRef };

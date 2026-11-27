@@ -1,14 +1,11 @@
-import type { assignmentAudit } from '@church/db';
 import { fromDate } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type { AssignmentId, ChurchId, UserId } from '../../domain/branded-ids';
 import type {
   AssignmentAuditId,
   AssignmentAuditProps,
 } from '../../domain/entities/assignment-audit';
 import { AssignmentAudit } from '../../domain/entities/assignment-audit';
-
-type AssignmentAuditRow = InferSelectModel<typeof assignmentAudit>;
+import type { AssignmentAuditRow } from './assignment-audit.mapper.types';
 
 export function mapAssignmentAudit(row: AssignmentAuditRow): AssignmentAudit {
   const props: AssignmentAuditProps = {

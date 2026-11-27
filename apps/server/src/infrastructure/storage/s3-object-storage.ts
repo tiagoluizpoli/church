@@ -9,18 +9,9 @@ import type {
   ObjectKeyInput,
   ObjectStorage,
   PutObjectInput,
+  S3ObjectStorageConfig,
 } from '../../domain/contracts/infrastructure/object-storage';
 import { s3Client } from './s3-client';
-
-export interface S3ObjectStorageConfig {
-  endpoint: string;
-  region: string;
-  bucket: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  /** Base the public URL of a key is built on, e.g. `https://host/<bucket>`. */
-  publicUrl: string;
-}
 
 /** `ObjectStorage` on any S3-compatible host (RustFS), path-style addressed. */
 export class S3ObjectStorage implements ObjectStorage {

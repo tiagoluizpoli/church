@@ -1,6 +1,4 @@
-import type { shift } from '@church/db';
 import { fromDate } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
   EventTimeBlockId,
@@ -9,8 +7,7 @@ import type {
 } from '../../domain/branded-ids';
 import type { ShiftProps } from '../../domain/entities/shift';
 import { Shift } from '../../domain/entities/shift';
-
-type ShiftRow = InferSelectModel<typeof shift>;
+import type { ShiftRow } from './shift.mapper.types';
 
 export function mapShift(row: ShiftRow): Shift {
   const props: ShiftProps = {

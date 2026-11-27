@@ -1,18 +1,15 @@
-import type { AppConfig } from '@church/app-config';
 import type { ChurchRecipient } from '../domain/contracts/application/church-notifications';
 import type {
-  INotifier,
-  NotificationTemplate,
+  RegisterChurchSinksInput,
+  TemplatesByKind,
+  TransferDigestEmailInput,
+} from '../domain/contracts/application/church-notifier';
+import type { EmailRecipientAddress } from '../domain/contracts/application/email-notification-sink';
+import type {
+  RegisteredSink,
   SinkRegistration,
 } from '../domain/contracts/application/notifier';
-import type { ChurchRepository } from '../domain/contracts/infrastructure/church.repository';
-import type {
-  EmailPayload,
-  EmailSender,
-} from '../domain/contracts/infrastructure/email-sender';
-import type { NotificationRepository } from '../domain/contracts/infrastructure/notification.repository';
-import type { OutboxRepository } from '../domain/contracts/infrastructure/outbox.repository';
-import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import type { EmailPayload } from '../domain/contracts/infrastructure/email-sender';
 import {
   type AvailabilityDeliveryFacts,
   availabilityNotificationDataSchema,
@@ -21,41 +18,18 @@ import {
   eventChangedNotificationDataSchema,
   ministryInvitationNotificationDataSchema,
   type NotificationDeliveryData,
-  type NotificationDeliveryDataByKind,
   type NotificationPayload,
   type NotificationRequestKind,
   schedulePublishedNotificationDataSchema,
   scheduleUpdatedNotificationDataSchema,
   swapRequestAnsweredNotificationDataSchema,
   swapRequestNotificationDataSchema,
-  type TransferDigestDeliveryFacts,
 } from '../domain/notification-kinds';
 import { recipientLocale } from '../domain/services/notifications/recipient-locale';
-import {
-  EmailNotificationSink,
-  type EmailRecipientAddress,
-} from './email-notification-sink';
-import { InboxNotificationSink } from './inbox-notification-sink';
-import { Notifier, registerSink } from './notifier';
+import { registerSink } from './notifier';
 
 /** The registered sinks; a row's `channelOutcomes` is keyed by these. */
 export const CHURCH_SINK_NAMES = { email: 'email', inbox: 'inbox' } as const;
-
-/** The Notifier with the Church's recipient, kinds and delivery facts fixed. */
-export type ChurchNotifier = INotifier<
-  ChurchRecipient,
-  NotificationRequestKind,
-  NotificationDeliveryData
->;
-
-/** Each kind's template sees that kind's own delivery facts. */
-type TemplatesByKind<TAddress, TContent> = {
-  [K in NotificationRequestKind]?: NotificationTemplate<
-    NotificationDeliveryDataByKind[K],
-    TAddress,
-    TContent
-  >;
-};
 
 /** The drainer resolves `data` from the row's own kind, so each template only
  * ever receives its kind's facts. */
@@ -77,12 +51,6 @@ function byKind<TAddress, TContent>(
   >['templates'];
 }
 
-interface TransferDigestEmailInput {
-  kind: 'transfer.ministry-digest' | 'transfer.leaderless-ministry';
-  data: TransferDigestDeliveryFacts;
-  address: EmailRecipientAddress;
-}
-
 /** One private email per recipient: never a shared recipient list. */
 function transferDigestEmail({
   kind,
@@ -92,27 +60,20 @@ function transferDigestEmail({
   return { kind, to: [address.email], ...data };
 }
 
-export interface BuildChurchNotifierInput {
-  config: AppConfig;
-  churchRepository: ChurchRepository;
-  notificationRepository: NotificationRepository;
-  outboxRepository: OutboxRepository;
-  emailSender: EmailSender;
-  unitOfWork: UnitOfWork;
-}
-
 /**
  * Registers the email and inbox sinks once. Each lookup searches only within
  * the recipient's Church, so a non-member gets nothing on either channel.
  */
-export function buildChurchNotifier({
+export function registerChurchSinks({
   config,
   churchRepository,
-  notificationRepository,
-  outboxRepository,
-  emailSender,
-  unitOfWork,
-}: BuildChurchNotifierInput): ChurchNotifier {
+  emailSink,
+  inboxSink,
+}: RegisterChurchSinksInput): RegisteredSink<
+  ChurchRecipient,
+  NotificationRequestKind,
+  NotificationDeliveryData
+>[] {
   const email = registerSink<
     ChurchRecipient,
     NotificationRequestKind,
@@ -292,12 +253,7 @@ export function buildChurchNotifier({
           address,
         }),
     }),
-    sink: new EmailNotificationSink({
-      emailSender,
-      outboxRepository,
-      unitOfWork,
-      emailIdempotencyRetentionMs: config.outbox.emailIdempotencyRetentionMs,
-    }),
+    sink: emailSink,
   });
 
   const inbox = registerSink<
@@ -369,10 +325,10 @@ export function buildChurchNotifier({
         data: eventCancelledNotificationDataSchema.parse(data),
       }),
     }),
-    sink: new InboxNotificationSink({ notificationRepository }),
+    sink: inboxSink,
   });
 
-  return new Notifier({ sinks: [email, inbox] });
+  return [email, inbox];
 }
 
 /** The facts both availability emails render. */

@@ -1,5 +1,8 @@
 import type {
   DeliverEmailInput,
+  DeliveryModeEmailSenderInput,
+  DestinationFailure,
+  DestinationsForInput,
   EmailDestination,
   EmailSender,
   PreparedEmail,
@@ -16,21 +19,6 @@ const DESTINATIONS_BY_MODE: Record<string, EmailDestination[]> = {
   both: ['mailpit', 'resend'],
 };
 const SAFE_DESTINATIONS: EmailDestination[] = ['mailpit'];
-
-export interface DeliveryModeEmailSenderInput {
-  mailpit: EmailSender;
-  resend: EmailSender;
-  runtimeConfiguration: RuntimeConfigurationRepository;
-}
-
-interface DestinationsForInput {
-  frozenMode: unknown;
-}
-
-interface DestinationFailure {
-  destination: EmailDestination;
-  error: EmailSendError;
-}
 
 /**
  * Development/staging delivery: routes each email to Mailpit, Resend or both

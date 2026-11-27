@@ -1,6 +1,4 @@
-import type { assignment } from '@church/db';
 import { fromDate } from '@church/time';
-import type { InferSelectModel } from 'drizzle-orm';
 import type {
   AssignmentId,
   ChurchId,
@@ -14,13 +12,7 @@ import type {
 } from '../../domain/branded-ids';
 import type { AssignmentProps } from '../../domain/entities/assignment';
 import { Assignment } from '../../domain/entities/assignment';
-
-type AssignmentRow = InferSelectModel<typeof assignment>;
-
-export interface MapAssignmentInput {
-  row: AssignmentRow;
-  eventTimeBlockId?: string;
-}
+import type { MapAssignmentInput } from './assignment.mapper.types';
 
 export function mapAssignment({
   row,

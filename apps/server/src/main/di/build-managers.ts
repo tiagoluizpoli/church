@@ -42,7 +42,6 @@ import {
   AssignmentLifecycle,
 } from '../../application/assignment-lifecycle';
 import { ChurchNotifications } from '../../application/church-notifications';
-import { buildChurchNotifier } from '../../application/church-notifier';
 import { ChurchRecipients } from '../../application/church-recipients';
 import { DbChurchIdentitySnapshotter } from '../../application/db-church-identity-snapshotter';
 import { SchedulingNotificationFacts } from '../../application/scheduling-notification-facts';
@@ -51,6 +50,7 @@ import { ProfileSeeder } from '../../domain/services/church-identity/profile-see
 import { CycleEventGenerator } from '../../domain/services/planning/cycle-event-generator';
 import { ShiftSplitter } from '../../domain/services/scheduling/shift-splitter';
 import { ConsoleRedemptionFailureLog } from '../../infrastructure/services/console-redemption-failure-log';
+import { buildChurchNotifier } from './build-church-notifier';
 import type { BuildManagersInput, Managers } from './build-managers.types';
 
 export function buildManagers({

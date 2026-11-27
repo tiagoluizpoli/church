@@ -3,6 +3,7 @@ import type {
   NotificationOwner,
   NotificationPage,
 } from '../../entities/notification';
+import type { NotificationRepository } from '@/domain/contracts/infrastructure/notification.repository';
 
 export interface ListMemberNotificationsInput extends NotificationOwner {
   cursor?: string;
@@ -24,4 +25,10 @@ export interface INotificationManager {
   /** Throws NotFoundError for a missing, foreign-User or foreign-Church Notification alike. */
   markRead(input: MarkMemberNotificationReadInput): Promise<void>;
   markAllRead(input: NotificationOwner): Promise<void>;
+}
+
+export interface DbNotificationManagerDependencies {
+  notificationRepository: NotificationRepository;
+  /** Page size when the caller names none (validated central config). */
+  defaultPageSize: number;
 }

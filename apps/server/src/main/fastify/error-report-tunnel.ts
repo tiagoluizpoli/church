@@ -1,6 +1,6 @@
 import { isRateLimited } from '../../api/utils/rate-limit';
+import type { EnvelopeRefusal } from '../../domain/contracts/infrastructure/error-report-tunnel';
 import {
-  type EnvelopeRefusal,
   envelopeUrl,
   forwardEnvelope,
   parseErrorEnvelope,

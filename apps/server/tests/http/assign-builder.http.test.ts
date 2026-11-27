@@ -348,6 +348,37 @@ describe('builder read', () => {
     });
   });
 
+  it('leaves hidden scopes out and brings them back marked cancelled', async () => {
+    const { live, cancelledEvent, cancelledBlock, sibling, readBoard } =
+      await seedCancelledBoard();
+    const setHidden = async (isHidden: boolean) => {
+      await db
+        .update(event)
+        .set({ isHidden })
+        .where(eq(event.id, cancelledEvent.event.id));
+      await db
+        .update(eventTimeBlock)
+        .set({ isHidden })
+        .where(eq(eventTimeBlock.id, cancelledBlock.eventTimeBlock.id));
+    };
+
+    await setHidden(true);
+    expect(await readBoard()).toEqual({
+      Live: [[live.eventTimeBlock.id, false]],
+      'Cancelled Block': [[sibling.id, false]],
+    });
+
+    await setHidden(false);
+    expect(await readBoard()).toEqual({
+      Live: [[live.eventTimeBlock.id, false]],
+      'Cancelled Event': [[cancelledEvent.eventTimeBlock.id, true]],
+      'Cancelled Block': [
+        [cancelledBlock.eventTimeBlock.id, true],
+        [sibling.id, false],
+      ],
+    });
+  });
+
   it('preserves signed-out, non-manager and other-Ministry leader access decisions', async () => {
     const seed = await seedSchedulingPhase3Base();
     const cycle = await createSchedulingPhase3Cycle({

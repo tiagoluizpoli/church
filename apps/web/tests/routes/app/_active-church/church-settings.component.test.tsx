@@ -1635,6 +1635,15 @@ describe('Church Settings addresses', () => {
       }),
     );
     const dialog = await screen.findByRole('dialog');
+    // The dialog moves focus to its first control a frame after it opens; typing
+    // before then sends the rest of the street to that control.
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('button', {
+          name: m.church_settings_address_search_again(),
+        }),
+      ).toHaveFocus(),
+    );
     const street = within(dialog).getByRole('textbox', {
       name: m.church_settings_address_street(),
     });

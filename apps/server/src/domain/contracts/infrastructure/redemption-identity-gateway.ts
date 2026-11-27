@@ -62,3 +62,7 @@ export interface RedemptionIdentityGateway {
   /** Opens a fresh session for a committed User; null when the credentials are wrong. */
   signIn(input: VerifyPasswordInput): Promise<string | null>;
 }
+
+export interface AuthForInput {
+  tx?: TransactionContext;
+}

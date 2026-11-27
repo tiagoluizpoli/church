@@ -1,5 +1,3 @@
-import type { shiftRequirement } from '@church/db';
-import type { InferSelectModel } from 'drizzle-orm';
 import type {
   ChurchId,
   EventTimeBlockId,
@@ -13,15 +11,7 @@ import type {
   ShiftRequirementProps,
 } from '../../domain/entities/shift-requirement';
 import { ShiftRequirement } from '../../domain/entities/shift-requirement';
-
-type ShiftRequirementRow = InferSelectModel<typeof shiftRequirement>;
-
-export interface MapShiftRequirementInput {
-  row: ShiftRequirementRow;
-  eventTimeBlockId?: string;
-  /** The joined Sector's name. */
-  sectorName: string;
-}
+import type { MapShiftRequirementInput } from './shift-requirement.mapper.types';
 
 export function mapShiftRequirement({
   row,

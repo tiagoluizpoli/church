@@ -4,15 +4,7 @@ import type {
   ErrorReporter,
 } from '../../domain/contracts/infrastructure/error-reporter';
 import { scrubEvent } from '../privacy/privacy';
-
-export interface InitErrorReportingInput {
-  dsn: string | undefined;
-  enabled: boolean;
-  environment: string;
-  revision: string;
-  /** Tests capture envelopes in memory instead of sending them. */
-  transport?: Sentry.BunOptions['transport'];
-}
+import type { InitErrorReportingInput } from './sentry-error-reporter.types';
 
 /**
  * Errors only: no tracing, no default integrations (reports are captured

@@ -10,23 +10,12 @@ import type {
   PrepareEmailInput,
   SendEmailInput,
   SendEmailResult,
+  SmtpEmailSenderOptions,
 } from '../../domain/contracts/infrastructure/email-sender';
+import type { PlatformBranding } from '../../domain/contracts/infrastructure/email-templates';
 import { EmailSendError } from '../../domain/errors/email-send-error';
-import { type PlatformBranding, prepareEmail } from './email-templates';
-
-export interface SmtpEmailSenderOptions {
-  host: string;
-  port: number;
-  /** Implicit TLS (port 465); otherwise STARTTLS is used when offered. */
-  secure: boolean;
-  /** Fail instead of sending in plaintext when STARTTLS is not offered. */
-  requireTls?: boolean;
-  user?: string;
-  password?: string;
-  from: string;
-  appName: string;
-  platform?: PlatformBranding;
-}
+import { prepareEmail } from './email-templates';
+import type { SmtpDelivery } from './smtp-email-sender.types';
 
 const CONNECTION_TIMEOUT_MS = 5000;
 const GREETING_TIMEOUT_MS = 5000;
@@ -41,13 +30,6 @@ function isPermanentReply(code: number | undefined): boolean {
     code >= PERMANENT_REPLY_MIN &&
     code <= PERMANENT_REPLY_MAX
   );
-}
-
-/** The fields of nodemailer's SMTP result this sender relies on. */
-interface SmtpDelivery {
-  messageId: string;
-  rejected?: Array<string | { address: string }>;
-  rejectedErrors?: unknown[];
 }
 
 /** Reads `responseCode` off an unknown thrown value without trusting its type. */

@@ -3,11 +3,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 /**
- * `bun tooling/ci/bun-test.ts <bun test arguments...>`: runs `bun test` with
- * its output untouched and keeps its exit status. `bun test` has no GitHub
- * reporter, so on GitHub Actions it also writes a JUnit report and prints
- * one `::error` annotation per failed test from it (#1162): file, failing
- * line, title, and the error.
+ * `bun tooling/ci/bun-test.ts <bun test arguments...>`: runs `bun test` and
+ * keeps its exit status. On GitHub Actions it also writes a JUnit report and
+ * prints one `::error` annotation per failed test from it (#1162): file,
+ * failing line, title, and the error. `bun test` annotates too, without the
+ * test's name and titled by the error's first line, so its `::error` lines
+ * are held back and printed only for a file the report has no failure for
+ * (one that did not load). The rest of its output is untouched.
  */
 
 interface FailedTest {
@@ -145,33 +147,86 @@ function formatAnnotation({ failedTest }: FormatAnnotationInput): string {
   return `::error ${properties}::${escapeData({ text: message })}`;
 }
 
-interface RunBunTestInput {
-  args: string[];
+/** A `::error` line `bun test` printed, with the file whose group held it. */
+interface NativeAnnotation {
+  file: string;
+  text: string;
 }
 
-const runBunTest = ({ args }: RunBunTestInput): Promise<number> =>
-  Bun.spawn([process.execPath, 'test', ...args], {
-    stdio: ['inherit', 'inherit', 'inherit'],
-  }).exited;
+interface HoldNativeAnnotationsInput {
+  exited: Promise<number>;
+  stream: ReadableStream<Uint8Array>;
+}
+
+const FILE_GROUP = /^::group::(.*):$/;
+// A process a test left running can keep stderr open after bun test exits.
+const DRAIN_GRACE_MS = 2000;
+
+/** Forwards stderr line by line, holding back the `::error` lines. */
+async function holdNativeAnnotations({
+  exited,
+  stream,
+}: HoldNativeAnnotationsInput): Promise<NativeAnnotation[]> {
+  const held: NativeAnnotation[] = [];
+  const decoder = new TextDecoder();
+  const reader = stream.getReader();
+  exited.then(() => setTimeout(() => reader.cancel(), DRAIN_GRACE_MS).unref());
+  let file = '';
+  let pending = '';
+
+  const forward = ({ text }: EscapeInput) => {
+    file = FILE_GROUP.exec(text.trimEnd())?.[1] ?? file;
+    if (text.startsWith('::error ')) held.push({ file, text });
+    else process.stderr.write(text);
+  };
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    pending += decoder.decode(value, { stream: true });
+    const lines = pending.split('\n');
+    pending = lines.pop() ?? '';
+    for (const line of lines) forward({ text: `${line}\n` });
+  }
+  if (pending) forward({ text: pending });
+  return held;
+}
 
 async function main(): Promise<number> {
   const args = process.argv.slice(2);
-  if (process.env.GITHUB_ACTIONS !== 'true') return runBunTest({ args });
+  if (process.env.GITHUB_ACTIONS !== 'true') {
+    return Bun.spawn([process.execPath, 'test', ...args], {
+      stdio: ['inherit', 'inherit', 'inherit'],
+    }).exited;
+  }
 
   const reportDirectory = mkdtempSync(join(tmpdir(), 'church-bun-test-junit-'));
   const reportPath = join(reportDirectory, 'junit.xml');
   try {
-    const exitCode = await runBunTest({
-      args: [...args, '--reporter=junit', `--reporter-outfile=${reportPath}`],
-    });
-    if (exitCode !== 0) {
-      // A run that crashed before writing its report has nothing to annotate.
-      const xml = await Bun.file(reportPath)
-        .text()
-        .catch(() => '');
-      for (const failedTest of readFailedTests({ xml })) {
-        console.log(formatAnnotation({ failedTest }));
-      }
+    const child = Bun.spawn(
+      [
+        process.execPath,
+        'test',
+        ...args,
+        '--reporter=junit',
+        `--reporter-outfile=${reportPath}`,
+      ],
+      { stdio: ['inherit', 'inherit', 'pipe'] },
+    );
+    const { exited, stderr: stream } = child;
+    const held = await holdNativeAnnotations({ exited, stream });
+    const exitCode = await exited;
+    // A run that crashed before writing its report has nothing to read.
+    const xml = await Bun.file(reportPath)
+      .text()
+      .catch(() => '');
+    const failedTests = exitCode === 0 ? [] : readFailedTests({ xml });
+    const annotatedFiles = new Set(failedTests.map(({ file }) => file));
+    for (const { file, text } of held) {
+      if (!annotatedFiles.has(file)) process.stderr.write(text);
+    }
+    for (const failedTest of failedTests) {
+      console.log(formatAnnotation({ failedTest }));
     }
     return exitCode;
   } finally {

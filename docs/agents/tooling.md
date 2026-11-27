@@ -123,7 +123,9 @@ Vitest adds its `github-actions` reporter by default there. Playwright's
 `github` reporter runs before `list` (`apps/web/tests/fixtures/e2e-reporters.ts`),
 because `list` ends a row only when the next output arrives.
 `bun run test:validation` runs `bun test` through `tooling/ci/bun-test.ts`,
-which turns its JUnit report into annotations. Annotations reach GitHub only
+which turns its JUnit report into annotations and holds back the `::error`
+lines `bun test` prints itself, keeping them only for a file that did not load,
+so each failure has one annotation. Annotations reach GitHub only
 at the start of a line: Turbo prefixes nothing under GitHub Actions, and
 `run-managed.ts` and Varlock pass lines through. Each CI step that runs tests
 uses `shell: bash tooling/ci/record-test-output.sh {0}`, which copies its

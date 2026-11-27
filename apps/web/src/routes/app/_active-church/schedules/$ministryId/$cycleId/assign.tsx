@@ -128,6 +128,10 @@ function EventBuilderRoute() {
         isSendingUpdates={sendUpdates.isPending}
         onSendUpdates={() => sendUpdates.mutate()}
         onPublish={(confirmBelowFull) => publish.mutate(confirmBelowFull)}
+        refusedGapCount={
+          publish.data?.published === false ? publish.data.gapCount : undefined
+        }
+        onDismissRefusal={publish.reset}
         createAssignment={createAssignment}
         deleteAssignment={deleteAssignment}
         reassignAssignment={reassignAssignment}

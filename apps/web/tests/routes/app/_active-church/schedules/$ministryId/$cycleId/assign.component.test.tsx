@@ -571,4 +571,63 @@ describe('Assign board route: publish', () => {
     );
     expect(toastSuccess).not.toHaveBeenCalled();
   });
+
+  it('asks to confirm with the server gap count when publish is refused', async () => {
+    getCycleBuilderData.mockResolvedValue(
+      publishableBoard({ assignedVolunteerIds: ['ana'] }),
+    );
+    publishCycle
+      .mockResolvedValueOnce({ published: false, gapCount: 2 })
+      .mockResolvedValueOnce({ published: true });
+
+    const user = await publishFromBoard();
+
+    const confirmation = await screen.findByRole('dialog');
+    expect(
+      within(confirmation).getByText(m.prepare_publish_gaps({ count: 2 })),
+    ).toBeVisible();
+    expect(getCycleBuilderData).toHaveBeenCalledTimes(2);
+    expect(toastWarning).not.toHaveBeenCalled();
+    await user.click(
+      within(confirmation).getByRole('button', {
+        name: m.builder_ui_publish(),
+      }),
+    );
+
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledOnce());
+    expect(publishCycle).toHaveBeenCalledTimes(2);
+    expect(publishCycle).toHaveBeenLastCalledWith(
+      'cycle-1',
+      { confirmBelowFull: true },
+      { ministryId: 'ministry-1' },
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('forgets the refusal when the leader cancels the confirmation', async () => {
+    getCycleBuilderData.mockResolvedValue(
+      publishableBoard({ assignedVolunteerIds: ['ana'] }),
+    );
+    publishCycle.mockResolvedValue({ published: false, gapCount: 2 });
+
+    const user = await publishFromBoard();
+    const refusal = await screen.findByRole('dialog');
+    await within(refusal).findByText(m.prepare_publish_gaps({ count: 2 }));
+    await user.click(
+      within(refusal).getByRole('button', { name: m.builder_ui_cancel() }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    await user.click(
+      screen.getByRole('button', { name: m.builder_ui_publish() }),
+    );
+
+    expect(
+      within(await screen.findByRole('dialog')).getByText(
+        m.builder_ui_publish_full(),
+      ),
+    ).toBeVisible();
+    expect(publishCycle).toHaveBeenCalledOnce();
+  });
 });

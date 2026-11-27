@@ -55,6 +55,7 @@ import type {
   ListParticipationsByMinistriesInput,
   ListParticipationsByMinistryInput,
   ListScheduleLastToldInput,
+  ListSchedulePairFactsInput,
   ListScheduleRowsInput,
   ListScheduleSummariesInput,
   ListSchedulesFactsInput,
@@ -100,6 +101,7 @@ import type { AnyDrizzleDb } from './drizzle-db.types';
 import type {
   AfterPositionInput,
   DrizzleMinistryParticipationRepositoryInput,
+  InSchedulesInput,
   StepCaseInput,
 } from './drizzle-ministry-participation.repository.types';
 import {
@@ -128,6 +130,21 @@ function caseOfStep({ step, literalOf }: StepCaseInput): SQL {
     ),
     sql` `,
   )} else ${sql.raw(literalOf(NOT_SERVING))} end`;
+}
+
+/** Rows of exactly these (Ministry, Cycle) pairs. */
+function inSchedules({
+  ministryColumn,
+  cycleColumn,
+  schedules,
+}: InSchedulesInput): SQL {
+  const pairs = sql.join(
+    schedules.map(
+      ({ ministryId, cycleId }) => sql`(${ministryId}::uuid, ${cycleId}::uuid)`,
+    ),
+    sql`, `,
+  );
+  return sql`(${ministryColumn}, ${cycleColumn}) in (${pairs})`;
 }
 
 /** Assignments of one requirement row in the given statuses; correlated, so a grouped query sums it. */
@@ -189,21 +206,19 @@ export class DrizzleMinistryParticipationRepository
 
   async listScheduleLastToldBySchedules({
     churchId,
-    ministryIds,
-    cycleIds,
+    schedules,
     tx,
-  }: ListSchedulesFactsInput): Promise<ScheduleLastToldBySchedulesRow[]> {
-    if (ministryIds.length === 0 || cycleIds.length === 0) return [];
+  }: ListSchedulePairFactsInput): Promise<ScheduleLastToldBySchedulesRow[]> {
+    if (schedules.length === 0) return [];
+    const asked = inSchedules({
+      ministryColumn: scheduleLastTold.ministryId,
+      cycleColumn: scheduleLastTold.cycleId,
+      schedules,
+    });
     const rows = await getClient({ db: this.db, tx })
       .select()
       .from(scheduleLastTold)
-      .where(
-        and(
-          eq(scheduleLastTold.churchId, churchId),
-          inArray(scheduleLastTold.ministryId, ministryIds),
-          inArray(scheduleLastTold.cycleId, cycleIds),
-        ),
-      )
+      .where(and(eq(scheduleLastTold.churchId, churchId), asked))
       .orderBy(
         asc(scheduleLastTold.ministryId),
         asc(scheduleLastTold.cycleId),
@@ -221,11 +236,15 @@ export class DrizzleMinistryParticipationRepository
 
   async listPublishedScheduleParticipations({
     churchId,
-    ministryIds,
-    cycleIds,
+    schedules,
     tx,
-  }: ListSchedulesFactsInput): Promise<PublishedScheduleParticipation[]> {
-    if (ministryIds.length === 0 || cycleIds.length === 0) return [];
+  }: ListSchedulePairFactsInput): Promise<PublishedScheduleParticipation[]> {
+    if (schedules.length === 0) return [];
+    const asked = inSchedules({
+      ministryColumn: ministryParticipation.ministryId,
+      cycleColumn: event.cycleId,
+      schedules,
+    });
     const rows = await getClient({ db: this.db, tx })
       .select({ participation: ministryParticipation, event })
       .from(ministryParticipation)
@@ -234,8 +253,7 @@ export class DrizzleMinistryParticipationRepository
         and(
           withChurchIsolation({ table: ministryParticipation, churchId }),
           withChurchIsolation({ table: event, churchId }),
-          inArray(ministryParticipation.ministryId, ministryIds),
-          inArray(event.cycleId, cycleIds),
+          asked,
           eq(ministryParticipation.state, 'published'),
           ne(event.status, 'cancelled'),
         ),

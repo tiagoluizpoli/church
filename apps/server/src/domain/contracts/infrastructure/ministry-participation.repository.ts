@@ -202,6 +202,19 @@ export interface ListSchedulesFactsInput {
   tx?: TransactionContext;
 }
 
+/** One Ministry's part of one Cycle. */
+export interface SchedulePair {
+  ministryId: MinistryId;
+  cycleId: CycleId;
+}
+
+/** Facts of exactly these Schedules, not of every Ministry × Cycle among them. */
+export interface ListSchedulePairFactsInput {
+  churchId: ChurchId;
+  schedules: SchedulePair[];
+  tx?: TransactionContext;
+}
+
 /** One distinct MinistryParticipation state serving a block of a Schedule. */
 export interface ScheduleServingStateRow {
   ministryId: string;
@@ -302,16 +315,16 @@ export interface MinistryParticipationRepository {
   listScheduleLastTold(
     input: ListScheduleLastToldInput,
   ): Promise<ScheduleLastToldRow[]>;
-  /** Last-told rows of every Ministry × Cycle in scope, in one read. */
+  /** Last-told rows of the Schedules, in one read. */
   listScheduleLastToldBySchedules(
-    input: ListSchedulesFactsInput,
+    input: ListSchedulePairFactsInput,
   ): Promise<ScheduleLastToldBySchedulesRow[]>;
   /**
-   * Published participations of every Ministry × Cycle in scope whose Event is
-   * not cancelled, in one read: earliest Event first, as `listCycleEvents`.
+   * Published participations of the Schedules whose Event is not cancelled, in
+   * one read: earliest Event first, as `listCycleEvents`.
    */
   listPublishedScheduleParticipations(
-    input: ListSchedulesFactsInput,
+    input: ListSchedulePairFactsInput,
   ): Promise<PublishedScheduleParticipation[]>;
   saveScheduleLastTold(input: SaveScheduleLastToldInput): Promise<void>;
   getById(input: GetParticipationInput): Promise<MinistryParticipation>;

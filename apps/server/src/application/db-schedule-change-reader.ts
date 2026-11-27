@@ -131,21 +131,12 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
     schedules,
     tx,
   }: CountScheduleChangesBySchedulesInput): Promise<ScheduleChangeCount[]> {
-    const wanted = new Set(schedules.map(scheduleKey));
-    const published = (
+    const published =
       await this.participationRepository.listPublishedScheduleParticipations({
         churchId,
-        ...scheduleScope(schedules),
+        schedules,
         tx,
-      })
-    ).filter(({ participation, event }) =>
-      wanted.has(
-        scheduleKey({
-          ministryId: participation.ministryId,
-          cycleId: event.cycleId,
-        }),
-      ),
-    );
+      });
     if (published.length === 0) return [];
     const keyOfParticipation = new Map(
       published.map(({ participation, event }) => [
@@ -164,7 +155,8 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
       };
       publishedSchedules.set(scheduleKey(schedule), schedule);
     }
-    const scope = scheduleScope([...publishedSchedules.values()]);
+    const toldSchedules = [...publishedSchedules.values()];
+    const cycleIds = unique(toldSchedules.map(({ cycleId }) => cycleId));
     const [snapshots, lastTold, cancellations] = await Promise.all([
       this.collectAssignmentSnapshots({
         churchId,
@@ -174,12 +166,12 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
       }),
       this.participationRepository.listScheduleLastToldBySchedules({
         churchId,
-        ...scope,
+        schedules: toldSchedules,
         tx,
       }),
       this.eventRepository.listCycleCancellations({
         churchId,
-        cycleIds: scope.cycleIds,
+        cycleIds,
         tx,
       }),
     ]);
@@ -434,14 +426,6 @@ function toAssignmentSnapshot({
 
 function scheduleKey({ ministryId, cycleId }: ScheduleKey): string {
   return `${ministryId}:${cycleId}`;
-}
-
-/** The Ministries and Cycles of the Schedules, each once. */
-function scheduleScope(schedules: ScheduleKey[]) {
-  return {
-    ministryIds: unique(schedules.map(({ ministryId }) => ministryId)),
-    cycleIds: unique(schedules.map(({ cycleId }) => cycleId)),
-  };
 }
 
 function unique<T>(items: T[]): T[] {

@@ -28,6 +28,7 @@ import type {
   FindLatestCycleEndInput,
   FindOverlappingCyclesInput,
   GetCycleInput,
+  ListCyclesByIdsInput,
   ListCyclesInput,
   RefuseExclusionRaceInput,
   ResolveElapsedCyclesInput,
@@ -215,6 +216,25 @@ export class DrizzleCycleRepository implements CycleRepository {
     }
 
     return mapCycle(row);
+  }
+
+  async listByIds({
+    churchId,
+    cycleIds,
+    tx,
+  }: ListCyclesByIdsInput): Promise<Cycle[]> {
+    if (cycleIds.length === 0) return [];
+    const rows = await getClient({ db: this.db, tx })
+      .select()
+      .from(cycle)
+      .where(
+        and(
+          inArray(cycle.id, cycleIds),
+          withChurchIsolation({ table: cycle, churchId }),
+        ),
+      )
+      .orderBy(desc(cycle.startDate), desc(cycle.endDate), cycle.id);
+    return rows.map(mapCycle);
   }
 
   async findOverlapping(input: FindOverlappingCyclesInput): Promise<Cycle[]> {

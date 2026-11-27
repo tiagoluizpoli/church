@@ -4,12 +4,21 @@ import type { ChurchId, MinistryId, RoleId } from '../../branded-ids';
 import type { Role } from '../../entities/role';
 import type { TransactionContext } from './transaction-context';
 
+export interface ListRolesByIdsInput {
+  churchId: ChurchId;
+  roleIds: RoleId[];
+  tx?: TransactionContext;
+}
+
 /**
- * `getById` and `listByMinistry` are historical reads: they resolve archived
- * Roles too. Fresh use goes through `listActiveByMinistry` or
+ * `getById`, `listByIds` and `listByMinistry` are historical reads: they resolve
+ * archived Roles too. Fresh use goes through `listActiveByMinistry` or
  * `lockActiveForUse`.
  */
 export interface RoleRepository {
+  /** The Church's Roles among the ids, in one read, by name; archived included. */
+  listByIds(input: ListRolesByIdsInput): Promise<Role[]>;
+
   getById(input: GetRoleByIdInput): Promise<Role>;
 
   listByMinistry(input: ListRolesByMinistryInput): Promise<Role[]>;

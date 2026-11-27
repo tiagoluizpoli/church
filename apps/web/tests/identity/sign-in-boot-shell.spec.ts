@@ -241,6 +241,8 @@ test.describe('sign-in boot shell', () => {
     { stored: 'dark', scheme: 'light', expected: 'dark' },
     { stored: 'system', scheme: 'dark', expected: 'dark' },
     { stored: 'system', scheme: 'light', expected: 'light' },
+    { stored: 'not a theme', scheme: 'dark', expected: 'light' },
+    { stored: 'blue', scheme: 'dark', expected: 'light' },
   ] as const) {
     test(`a stored theme of ${stored} on a ${scheme} system: boot shell and app paint ${expected}`, async ({
       page,

@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ThemeProvider } from '@/components/theme-provider';
 
@@ -37,5 +37,36 @@ describe('ThemeProvider stored theme', () => {
 
     expect(root.className).toBe(painted);
     expect(localStorage.getItem(STORAGE_KEY)).toBe(stored);
+  });
+
+  it.each([
+    'not a theme',
+    'blue',
+    'Dark',
+  ])('reads an unknown stored %s as light', (stored) => {
+    localStorage.setItem(STORAGE_KEY, stored);
+
+    renderProvider();
+
+    expect(root.className).toBe('light');
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('light');
+  });
+
+  it('reads an unknown theme written by another tab as light', () => {
+    localStorage.setItem(STORAGE_KEY, 'dark');
+    renderProvider();
+
+    localStorage.setItem(STORAGE_KEY, 'not a theme');
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: STORAGE_KEY,
+          newValue: 'not a theme',
+        }),
+      );
+    });
+
+    expect(root.className).toBe('light');
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('light');
   });
 });

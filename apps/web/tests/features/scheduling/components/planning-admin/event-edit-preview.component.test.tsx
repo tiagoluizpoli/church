@@ -209,6 +209,10 @@ describe('EventEditPreview', () => {
 
   it('shows the Event date once and a same-day block as times, revealing its dates on Outro dia', async () => {
     const user = await openEditor();
+    // The dialog focuses its first field a frame later; wait so it can't pull focus back.
+    await vi.waitFor(() =>
+      expect(screen.getByTestId('event-edit-start-date')).toHaveFocus(),
+    );
 
     expect(screen.getByTestId('event-edit-start-date')).toBeInTheDocument();
     expect(screen.getByTestId('event-edit-end-time')).toBeInTheDocument();

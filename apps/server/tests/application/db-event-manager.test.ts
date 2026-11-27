@@ -163,6 +163,7 @@ function createRepos(): Repos {
     listByEventTimeBlock: vi.fn(),
     listByEvent: vi.fn(async () => []),
     listByParticipation: vi.fn(async () => []),
+    listByParticipations: vi.fn(),
     listByShift: vi.fn(),
     listByVolunteer: vi.fn(),
     listByVolunteers: vi.fn(),
@@ -223,6 +224,8 @@ function createRepos(): Repos {
   const ministryParticipationRepo: MinistryParticipationRepository = {
     saveScheduleLastTold: vi.fn(),
     listScheduleLastTold: vi.fn().mockResolvedValue([]),
+    listScheduleLastToldBySchedules: vi.fn(),
+    listPublishedScheduleParticipations: vi.fn(),
     getById: vi.fn(),
     lockById: vi.fn(),
     lockSchedule: vi.fn(),

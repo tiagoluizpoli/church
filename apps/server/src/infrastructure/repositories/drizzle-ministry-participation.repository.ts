@@ -62,11 +62,13 @@ import type {
   MinistryParticipationRepository,
   MinistryStaffingRow,
   OpenSwapRequestCountsInput,
+  PublishedScheduleParticipation,
   RemoveInclusionInput,
   RequirementStaffingScopeInput,
   SaveScheduleLastToldInput,
   ScheduleCheckCountRow,
   ScheduleCountRow,
+  ScheduleLastToldBySchedulesRow,
   ScheduleLastToldRow,
   ScheduleRowsPage,
   ScheduleServingStateRow,
@@ -87,6 +89,7 @@ import {
 import type { ParticipationEventTimeBlockInclusion } from '../../domain/entities/participation-event-time-block-inclusion';
 import { SCHEDULE_LIST_PAST_BUCKET } from '../../domain/schedule-list-cursor';
 import { mapCycle } from '../mappers/cycle.mapper';
+import { mapEvent } from '../mappers/event.mapper';
 import { mapMinistry } from '../mappers/ministry.mapper';
 import {
   mapMinistryParticipation,
@@ -180,6 +183,72 @@ export class DrizzleMinistryParticipationRepository
       volunteerId: row.volunteerId as ScheduleLastToldRow['volunteerId'],
       assignments: row.assignments as ScheduleLastToldRow['assignments'],
       toldAt: fromDate({ date: row.toldAt }),
+    }));
+  }
+
+  async listScheduleLastToldBySchedules({
+    churchId,
+    ministryIds,
+    cycleIds,
+    tx,
+  }: ListSchedulesFactsInput): Promise<ScheduleLastToldBySchedulesRow[]> {
+    if (ministryIds.length === 0 || cycleIds.length === 0) return [];
+    const rows = await getClient({ db: this.db, tx })
+      .select()
+      .from(scheduleLastTold)
+      .where(
+        and(
+          eq(scheduleLastTold.churchId, churchId),
+          inArray(scheduleLastTold.ministryId, ministryIds),
+          inArray(scheduleLastTold.cycleId, cycleIds),
+        ),
+      )
+      .orderBy(
+        asc(scheduleLastTold.ministryId),
+        asc(scheduleLastTold.cycleId),
+        asc(scheduleLastTold.volunteerId),
+      );
+    return rows.map((row) => ({
+      ministryId:
+        row.ministryId as ScheduleLastToldBySchedulesRow['ministryId'],
+      cycleId: row.cycleId as ScheduleLastToldBySchedulesRow['cycleId'],
+      volunteerId: row.volunteerId as ScheduleLastToldRow['volunteerId'],
+      assignments: row.assignments as ScheduleLastToldRow['assignments'],
+      toldAt: fromDate({ date: row.toldAt }),
+    }));
+  }
+
+  async listPublishedScheduleParticipations({
+    churchId,
+    ministryIds,
+    cycleIds,
+    tx,
+  }: ListSchedulesFactsInput): Promise<PublishedScheduleParticipation[]> {
+    if (ministryIds.length === 0 || cycleIds.length === 0) return [];
+    const rows = await getClient({ db: this.db, tx })
+      .select({ participation: ministryParticipation, event })
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .where(
+        and(
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          withChurchIsolation({ table: event, churchId }),
+          inArray(ministryParticipation.ministryId, ministryIds),
+          inArray(event.cycleId, cycleIds),
+          eq(ministryParticipation.state, 'published'),
+          ne(event.status, 'cancelled'),
+        ),
+      )
+      .orderBy(
+        asc(event.start),
+        asc(event.end),
+        asc(event.title),
+        asc(event.id),
+        asc(ministryParticipation.id),
+      );
+    return rows.map((row) => ({
+      participation: mapMinistryParticipation(row.participation),
+      event: mapEvent(row.event),
     }));
   }
 

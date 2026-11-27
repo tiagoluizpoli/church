@@ -26,6 +26,7 @@ import type {
   FindAssignmentByEventTimeBlockAndVolunteerInput,
   GetAssignmentInput,
   ListAssignmentsByParticipationInput,
+  ListAssignmentsByParticipationsInput,
   ListAssignmentsByRangeInput,
   ListAssignmentsByShiftInput,
   ListAssignmentsByVolunteerInput,
@@ -34,7 +35,10 @@ import type {
   MoveAssignmentRepositoryInput,
   UpdateAssignmentStatusRepositoryInput,
 } from '../../domain/contracts/infrastructure/assignment.repository';
-import type { Assignment } from '../../domain/entities/assignment';
+import {
+  ACTIVE_ASSIGNMENT_STATUSES,
+  type Assignment,
+} from '../../domain/entities/assignment';
 import { mapAssignment } from '../mappers/assignment.mapper';
 import type {
   DrizzleAssignmentRepositoryInput,
@@ -234,6 +238,21 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       conditions: [eq(assignment.participationId, participationId)],
       tx,
     });
+  }
+
+  async listByParticipations({
+    churchId,
+    participationIds,
+    activeOnly,
+    tx,
+  }: ListAssignmentsByParticipationsInput): Promise<Assignment[]> {
+    if (participationIds.length === 0) return [];
+    const conditions: SQL[] = [
+      inArray(assignment.participationId, participationIds),
+    ];
+    if (activeOnly)
+      conditions.push(inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES));
+    return this.rows({ churchId, conditions, tx });
   }
 
   listByShift({

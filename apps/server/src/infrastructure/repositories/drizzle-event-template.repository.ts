@@ -14,6 +14,9 @@ import type {
   GetEventTemplateInput,
   GetEventTemplatesByIdsInput,
   ListEventTemplatesInput,
+  RefuseUniqueViolationsInput,
+  RetainedBlockInput,
+  TemplateNotFoundInput,
   UpdateEventTemplateInput,
 } from '../../domain/contracts/infrastructure/event-template.repository';
 import type {
@@ -23,6 +26,10 @@ import type {
 import { DuplicateTemplateBlockLabelError } from '../../domain/errors/duplicate-template-block-label';
 import { DuplicateTemplateNameError } from '../../domain/errors/duplicate-template-name';
 import { mapEventTemplate } from '../mappers/event-template.mapper';
+import type {
+  DrizzleEventTemplateRepositoryInput,
+  MapTemplateGraphsInput,
+} from './drizzle-event-template.repository.types';
 import {
   assertPlaceAddresses,
   getClient,
@@ -32,17 +39,8 @@ import {
 import type { AnyDrizzleDb } from './types';
 import { isUniqueViolation } from './unique-violation';
 
-interface MapTemplateGraphsInput {
-  templates: (typeof eventTemplate.$inferSelect)[];
-  tx?: CreateEventTemplateInput['tx'];
-}
-
 const NAME_UNIQUE_CONSTRAINT = 'event_template_church_name_idx';
 const BLOCK_LABEL_UNIQUE_CONSTRAINT = 'template_time_block_template_label_idx';
-
-interface RefuseUniqueViolationsInput<T> {
-  write: Promise<T>;
-}
 
 /**
  * Turns the case-insensitive name and block-label index violations, including
@@ -66,28 +64,16 @@ async function refuseUniqueViolations<T>({
   }
 }
 
-interface TemplateNotFoundInput {
-  templateId: string;
-}
-
 function templateNotFound({
   templateId,
 }: TemplateNotFoundInput): NotFoundError {
   return new NotFoundError(`Event template not found: ${templateId}`);
 }
 
-type RetainedBlockInput = EventTemplateTimeBlockInput & {
-  id: TemplateTimeBlockId;
-};
-
 function isRetainedBlock(
   block: EventTemplateTimeBlockInput,
 ): block is RetainedBlockInput {
   return block.id !== undefined;
-}
-
-interface DrizzleEventTemplateRepositoryInput {
-  db: AnyDrizzleDb;
 }
 
 export class DrizzleEventTemplateRepository implements EventTemplateRepository {

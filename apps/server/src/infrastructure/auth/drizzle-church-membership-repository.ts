@@ -1,6 +1,6 @@
 import { church, churchAddress, member, organization } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import type { ChurchAccessLevel } from '../../domain/authority/types';
 import type { ChurchId } from '../../domain/branded-ids';
 import type {
@@ -69,7 +69,12 @@ export class DrizzleChurchMembershipRepository
           eq(churchAddress.isMain, true),
         ),
       )
-      .where(eq(member.userId, input.userId));
+      .where(eq(member.userId, input.userId))
+      .orderBy(
+        asc(sql`lower(${organization.name})`),
+        asc(member.organizationId),
+        asc(member.id),
+      );
 
     return rows.map((row) => ({
       churchId: row.organizationId as ChurchId,

@@ -349,18 +349,12 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
     const order = new Map<MinistryParticipationId | undefined, number>(
       participations.map(({ id }, index) => [id, index]),
     );
-    const assignments = (
-      await this.assignmentRepository.listByParticipations({
-        churchId,
-        participationIds: participations.map(({ id }) => id),
-        activeOnly: true,
-        tx,
-      })
-    ).sort(
-      (left, right) =>
-        (order.get(left.participationId) ?? 0) -
-        (order.get(right.participationId) ?? 0),
-    );
+    const assignments = await this.assignmentRepository.listByParticipations({
+      churchId,
+      participationIds: participations.map(({ id }) => id),
+      activeOnly: true,
+      tx,
+    });
     if (assignments.length === 0) return [];
     const [shifts, requirements, roles] = await Promise.all([
       this.shiftRepository.listByIds({

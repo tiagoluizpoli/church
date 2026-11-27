@@ -68,9 +68,11 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
 
   private readonly db: AnyDrizzleDb;
 
+  /** `leadingOrder` sorts ahead of the usual earliest-Shift-first order. */
   private async rows({
     churchId,
     conditions,
+    leadingOrder = [],
     tx,
   }: RowsInput): Promise<Assignment[]> {
     const rows = await getClient({ db: this.db, tx })
@@ -85,7 +87,7 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
           ...conditions,
         ),
       )
-      .orderBy(asc(shift.startTime), asc(assignment.id));
+      .orderBy(...leadingOrder, asc(shift.startTime), asc(assignment.id));
     return rows.map((row) =>
       mapAssignment({
         row: row.assignment,
@@ -264,7 +266,17 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     ];
     if (activeOnly)
       conditions.push(inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES));
-    return this.rows({ churchId, conditions, tx });
+    const askedOrder = sql.join(
+      participationIds.map((id) => sql`${id}::uuid`),
+      sql`, `,
+    );
+    const position = sql`array_position(array[${askedOrder}], ${assignment.participationId})`;
+    return this.rows({
+      churchId,
+      conditions,
+      leadingOrder: [asc(position)],
+      tx,
+    });
   }
 
   listByShift({

@@ -9,15 +9,22 @@ import {
   MinistryId,
   MinistryParticipationId,
   ShiftId,
+  UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import { DrizzleAuthorityActorResolver } from '@/infrastructure/auth/drizzle-authority-actor-resolver';
+import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle-church-membership-repository';
+import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
+import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
+import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
 import { DrizzleUsualSetupRepository } from '@/infrastructure/repositories/drizzle-usual-setup.repository';
 import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzle-volunteer.repository';
+import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
 import {
   buildMinistry,
   buildRole,
@@ -652,6 +659,243 @@ describe('repository list ordering', () => {
         uuid(1),
         uuid(2),
         uuid(3),
+      ]);
+    });
+  });
+
+  describe('caller and Church picker reads', () => {
+    it('resolveActor returns memberships by ministry name (case-insensitive), then id', async () => {
+      const { churchId, seed } = await seedBase();
+      for (const [n, name] of [
+        [2, 'zeta'],
+        [1, 'Alpha'],
+      ] as const) {
+        const m = await buildMinistry({
+          db,
+          churchId: seed.churchAId,
+          id: uuid(n),
+          name,
+        });
+        await buildMinistryMembership({
+          db,
+          churchId: seed.churchAId,
+          volunteerId: seed.adminVolunteerId,
+          ministryId: m.id,
+          ministryAccessLevel: 'leader',
+          roleIds: [],
+        });
+      }
+      const resolver = new DrizzleAuthorityActorResolver({ db });
+      const actor = await resolver.resolveActor({
+        userId: UserId.from(seed.adminUserId),
+        activeChurchId: churchId,
+      });
+      expect(actor.ministryMemberships.map((m) => m.ministryName)).toEqual([
+        'Alpha',
+        'Scheduling Ministry A',
+        'zeta',
+      ]);
+    });
+
+    /** The seeded admin joins two more Churches, inserted last name first. */
+    async function seedChurches() {
+      const { seed } = await seedBase();
+      for (const [n, name] of [
+        [2, 'zeta church'],
+        [1, 'Alpha church'],
+      ] as const) {
+        await buildChurch({
+          db,
+          id: uuid(n),
+          name,
+          slug: `ordering-${n}`,
+          timezone: 'UTC',
+        });
+        await buildChurchMembership({
+          db,
+          churchId: uuid(n),
+          userId: seed.adminUserId,
+          accessLevel: 'member',
+        });
+      }
+      return seed;
+    }
+
+    it('listComparisonsByUserId returns Churches by name (case-insensitive), then id', async () => {
+      const seed = await seedChurches();
+      const repo = new DrizzleChurchMembershipRepository({ db });
+      const rows = await repo.listComparisonsByUserId({
+        userId: UserId.from(seed.adminUserId),
+      });
+      expect(rows.map((r) => r.churchName)).toEqual([
+        'Alpha church',
+        'Scheduling Church A',
+        'zeta church',
+      ]);
+    });
+
+    it('listSchedulingScopes returns Churches by id', async () => {
+      const seed = await seedChurches();
+      const ids = [seed.churchAId, uuid(2), uuid(1)];
+      const repo = new DrizzleSchedulingScopeResolver({ db });
+      const rows = await repo.listSchedulingScopes({
+        userId: UserId.from(seed.adminUserId),
+        churchIds: ids.map((id) => ChurchId.from(id)),
+      });
+      expect(rows.map((r) => r.churchId)).toEqual([...ids].sort());
+    });
+  });
+
+  describe('ministries needing review', () => {
+    it('listNeedingReviewIds returns ministry ids in id order', async () => {
+      const base = await seedBase();
+      const churchId = base.seed.churchAId;
+      const { blocks } = await buildEventTemplate({
+        db,
+        churchId,
+        name: 'Sunday',
+        recurrence: { kind: 'weekly', weekdays: [0] },
+        blocks: [
+          {
+            label: 'Morning',
+            startTime: parseTimeOfDay({ value: '09:00' }),
+            endTime: parseTimeOfDay({ value: '11:00' }),
+          },
+        ],
+      });
+      const [block] = blocks;
+      if (!block) throw new Error('one block needed');
+      // A span outside its block is what flags a Ministry.
+      const outside = {
+        startTime: parseTimeOfDay({ value: '02:00' }),
+        endTime: parseTimeOfDay({ value: '03:00' }),
+      };
+      for (const n of [3, 1, 2]) {
+        await buildMinistry({ db, churchId, id: uuid(n), name: `m${n}` });
+        await buildUsualSetup({
+          db,
+          churchId,
+          ministryId: uuid(n),
+          sourceTemplateTimeBlockId: block.id,
+          id: uuid(n + 10),
+          serves: true,
+          shiftSplit: { kind: 'manual', spans: [outside] },
+          headcounts: [],
+        });
+      }
+      const repo = new DrizzleMinistryRepository({ db });
+      const ids = await repo.listNeedingReviewIds({
+        churchId: base.churchId,
+        ministryIds: [2, 3, 1].map((n) => MinistryId.from(uuid(n))),
+      });
+      expect(ids).toEqual([uuid(1), uuid(2), uuid(3)]);
+    });
+  });
+
+  describe('volunteer counts and assignments', () => {
+    it('countByVolunteer returns counts in state order', async () => {
+      const base = await seedBase();
+      const churchId = base.seed.churchAId;
+      const membership = await buildMinistryMembership({
+        db,
+        churchId,
+        volunteerId: base.seed.adminVolunteerId,
+        ministryId: base.seed.ministryAId,
+        ministryAccessLevel: 'volunteer',
+        roleIds: [],
+      });
+      const second = await createSchedulingPhase3Cycle({
+        churchId,
+        name: 'Later cycle',
+        startDate: new Date('2026-10-01T00:00:00.000Z'),
+        endDate: new Date('2026-10-31T00:00:00.000Z'),
+      });
+      for (const [cycleId, state] of [
+        [base.cycleId, 'confirmed'],
+        [second.id, 'pending'],
+      ] as const) {
+        await buildAvailabilityCheck({
+          db,
+          churchId,
+          cycleId,
+          ministryMembershipId: membership.id,
+          state,
+        });
+      }
+      const repo = new DrizzleAvailabilityCheckRepository({ db });
+      const rows = await repo.countByVolunteer({
+        churchId: base.churchId,
+        volunteerId: VolunteerId.from(base.seed.adminVolunteerId),
+      });
+      expect(rows).toEqual([
+        { state: 'pending', checkCount: 1 },
+        { state: 'confirmed', checkCount: 1 },
+      ]);
+    });
+
+    it('listByParticipations follows the given participations, then shift start', async () => {
+      const base = await seedBase();
+      const churchId = base.seed.churchAId;
+      const role = await buildRole({
+        db,
+        churchId,
+        ministryId: base.seed.ministryAId,
+        name: 'Singer',
+      });
+      const participationIds: string[] = [];
+      // The first participation asked for holds the later Shifts.
+      for (const starts of [
+        ['03T11:00', '03T09:00'],
+        ['02T11:00', '02T09:00'],
+      ]) {
+        const event = await seedEvent(base);
+        const participation = await buildMinistryParticipation({
+          db,
+          churchId,
+          ministryId: base.seed.ministryAId,
+          eventId: event.id,
+          state: 'preparing',
+          eventTimeBlockIds: [],
+        });
+        participationIds.push(participation.id);
+        for (const start of starts) {
+          await buildAssignedShift({
+            db,
+            churchId,
+            eventId: event.id,
+            participationId: participation.id,
+            volunteerId: base.seed.adminVolunteerId,
+            roleId: role.id,
+            start: at(start),
+            end: at('04T13:00'),
+            status: 'pending',
+          });
+        }
+      }
+      const repo = new DrizzleAssignmentRepository({ db });
+      const asked = participationIds.map((id) =>
+        MinistryParticipationId.from(id),
+      );
+      const rows = await repo.listByParticipations({
+        churchId: base.churchId,
+        participationIds: asked,
+      });
+      const shiftRepository = new DrizzleShiftRepository({ db });
+      const shifts = await shiftRepository.listByIds({
+        churchId: base.churchId,
+        shiftIds: rows.map((row) => ShiftId.from(row.shiftId as string)),
+      });
+      const startOfShift = new Map(shifts.map((s) => [s.id, s.startTime]));
+      expect(
+        rows.map((row) => [
+          row.participationId,
+          startOfShift.get(row.shiftId as ShiftId),
+        ]),
+      ).toEqual([
+        [participationIds[0], at('03T09:00')],
+        [participationIds[0], at('03T11:00')],
+        [participationIds[1], at('02T09:00')],
+        [participationIds[1], at('02T11:00')],
       ]);
     });
   });

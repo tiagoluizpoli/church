@@ -160,7 +160,10 @@ export interface AssignmentRepository {
   listByParticipation(
     input: ListAssignmentsByParticipationInput,
   ): Promise<Assignment[]>;
-  /** One read for every participation; earliest Shift first, as `listByParticipation`. */
+  /**
+   * One read for every participation: in the order of `participationIds`, then
+   * earliest Shift first, as `listByParticipation`.
+   */
   listByParticipations(
     input: ListAssignmentsByParticipationsInput,
   ): Promise<Assignment[]>;

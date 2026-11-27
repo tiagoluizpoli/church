@@ -644,7 +644,8 @@ export class DrizzleAvailabilityCheckRepository
       )
       .innerJoin(cycle, eq(cycle.id, availabilityCheck.cycleId))
       .where(ofVolunteer(input))
-      .groupBy(availabilityCheck.state);
+      .groupBy(availabilityCheck.state)
+      .orderBy(asc(availabilityCheck.state));
   }
 
   async listCheckShifts({

@@ -5,7 +5,7 @@ import {
   ministryMembershipRole,
   volunteer,
 } from '@church/db';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type {
   AuthorityActor,
   ChurchAccessLevel,
@@ -153,6 +153,12 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
           eq(ministryMembership.churchId, churchId),
           eq(ministryMembership.status, 'active'),
         ),
+      )
+      // Ministry name order: the caller capabilities list led Ministries as read.
+      .orderBy(
+        asc(sql`lower(${ministry.name})`),
+        asc(ministry.id),
+        asc(ministryMembership.id),
       );
 
     if (rows.length === 0) {

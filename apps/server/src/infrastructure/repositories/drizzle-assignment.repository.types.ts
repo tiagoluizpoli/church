@@ -17,5 +17,6 @@ export interface ListRangeInput {
 export interface RowsInput {
   churchId: ChurchId;
   conditions: SQL[];
+  leadingOrder?: SQL[];
   tx?: TransactionContext;
 }

@@ -6,7 +6,7 @@ import {
   shift,
   volunteer,
 } from '@church/db';
-import { and, eq, exists, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, exists, inArray, isNull, sql } from 'drizzle-orm';
 import type { ChurchAccessLevel } from '../../domain/authority/types';
 import type { ChurchId, MinistryId } from '../../domain/branded-ids';
 import type {
@@ -115,7 +115,8 @@ export class DrizzleSchedulingScopeResolver
           eq(member.userId, userId),
           inArray(member.organizationId, churchIds),
         ),
-      );
+      )
+      .orderBy(asc(member.organizationId), asc(member.id));
     return rows.map((row) => ({
       churchId: row.churchId as ChurchId,
       churchAccessLevel: row.role as ChurchAccessLevel,

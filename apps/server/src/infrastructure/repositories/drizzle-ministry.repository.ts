@@ -206,7 +206,8 @@ export class DrizzleMinistryRepository implements MinistryRepository {
           inArray(ministry.id, ministryIds),
           ministryNeedsReview({ client, churchId }),
         ),
-      );
+      )
+      .orderBy(asc(ministry.id));
     return rows.map((row) => row.id as MinistryId);
   }
 

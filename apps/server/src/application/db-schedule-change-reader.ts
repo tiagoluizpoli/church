@@ -1,6 +1,8 @@
 import { NotFoundError } from '@church/core';
 import { now } from '@church/time';
 import type {
+  CycleId,
+  MinistryId,
   MinistryParticipationId,
   VolunteerId,
 } from '../domain/branded-ids';
@@ -17,24 +19,18 @@ import type {
   ParticipationStaffingView,
   ReadParticipationCompletionInput,
   ScheduleChangeCount,
-  ScheduleKey,
+  ScheduleComparison,
+  ScheduledParticipation,
   ScheduleVolunteerChanges,
   ToAssignmentSnapshotInput,
 } from '../domain/contracts/application/schedule-change-reader';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
-import type {
-  MinistryParticipationRepository,
-  ScheduleLastToldRow,
-} from '../domain/contracts/infrastructure/ministry-participation.repository';
+import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import { isActiveAssignmentStatus } from '../domain/entities/assignment';
-import type { Event } from '../domain/entities/event';
-import {
-  calculateCompletionPercent,
-  type MinistryParticipation,
-} from '../domain/entities/ministry-participation';
+import { calculateCompletionPercent } from '../domain/entities/ministry-participation';
 import { isEventTimeBlockCancelled } from '../domain/event-time-block-cancellation';
 import { scheduleChanges } from '../domain/schedule-changes';
 import type { ScheduleAssignmentSnapshot } from '../domain/schedule-last-told';
@@ -131,40 +127,36 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
     schedules,
     tx,
   }: CountScheduleChangesBySchedulesInput): Promise<ScheduleChangeCount[]> {
-    const wanted = new Set(schedules.map(scheduleKey));
-    const published = (
+    const published =
       await this.participationRepository.listPublishedScheduleParticipations({
         churchId,
-        ...scheduleScope(schedules),
+        schedules,
         tx,
-      })
-    ).filter(({ participation, event }) =>
-      wanted.has(
-        scheduleKey({
-          ministryId: participation.ministryId,
-          cycleId: event.cycleId,
-        }),
-      ),
-    );
+      });
     if (published.length === 0) return [];
-    const keyOfParticipation = new Map(
-      published.map(({ participation, event }) => [
-        participation.id,
-        scheduleKey({
-          ministryId: participation.ministryId,
-          cycleId: event.cycleId,
-        }),
-      ]),
-    );
-    const publishedSchedules = new Map<string, ScheduleKey>();
+    const comparisons: ScheduleComparison[] = [];
+    const byMinistry = new Map<MinistryId, Map<CycleId, ScheduleComparison>>();
+    const byParticipation = new Map<
+      MinistryParticipationId,
+      ScheduleComparison
+    >();
     for (const { participation, event } of published) {
-      const schedule = {
-        ministryId: participation.ministryId,
-        cycleId: event.cycleId,
-      };
-      publishedSchedules.set(scheduleKey(schedule), schedule);
+      const { ministryId } = participation;
+      const { cycleId } = event;
+      const byCycle =
+        byMinistry.get(ministryId) ?? new Map<CycleId, ScheduleComparison>();
+      byMinistry.set(ministryId, byCycle);
+      let comparison = byCycle.get(cycleId);
+      if (!comparison) {
+        const schedule = { ministryId, cycleId };
+        comparison = { schedule, baseline: [], current: new Map() };
+        byCycle.set(cycleId, comparison);
+        comparisons.push(comparison);
+      }
+      byParticipation.set(participation.id, comparison);
     }
-    const scope = scheduleScope([...publishedSchedules.values()]);
+    const toldSchedules = comparisons.map(({ schedule }) => schedule);
+    const cycleIds = [...new Set(toldSchedules.map(({ cycleId }) => cycleId))];
     const [snapshots, lastTold, cancellations] = await Promise.all([
       this.collectAssignmentSnapshots({
         churchId,
@@ -174,46 +166,38 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
       }),
       this.participationRepository.listScheduleLastToldBySchedules({
         churchId,
-        ...scope,
+        schedules: toldSchedules,
         tx,
       }),
       this.eventRepository.listCycleCancellations({
         churchId,
-        cycleIds: scope.cycleIds,
+        cycleIds,
         tx,
       }),
     ]);
-    const current = new Map<
-      string,
-      Map<VolunteerId, ScheduleAssignmentSnapshot[]>
-    >();
     for (const { participationId, volunteerId, snapshot } of snapshots) {
-      const key = keyOfParticipation.get(participationId) as string;
-      const byVolunteer = current.get(key) ?? new Map();
-      byVolunteer.set(volunteerId, [
-        ...(byVolunteer.get(volunteerId) ?? []),
-        snapshot,
-      ]);
-      current.set(key, byVolunteer);
+      const comparison = byParticipation.get(participationId);
+      if (!comparison) throw new NotFoundError('Schedule not found');
+      const own = comparison.current.get(volunteerId) ?? [];
+      comparison.current.set(volunteerId, [...own, snapshot]);
     }
-    const baseline = new Map<string, ScheduleLastToldRow[]>();
     for (const row of lastTold) {
-      const key = scheduleKey(row);
-      baseline.set(key, [...(baseline.get(key) ?? []), row]);
+      const { ministryId, cycleId } = row;
+      byMinistry.get(ministryId)?.get(cycleId)?.baseline.push(row);
     }
     const cancelledByCycle = new Map(
       cancellations.map((cancelled) => [cancelled.cycleId, cancelled]),
     );
     const at = now();
-    return [...publishedSchedules].map(([key, schedule]) => {
+    return comparisons.map(({ schedule, baseline, current }) => {
       const cancelled = cancelledByCycle.get(schedule.cycleId);
       return {
         ...schedule,
         count: this.compareLiveScheduleAssignments({
           cancelledEventIds: new Set(cancelled?.eventIds ?? []),
           cancelledShiftIds: new Set(cancelled?.shiftIds ?? []),
-          baseline: baseline.get(key) ?? [],
-          current: current.get(key) ?? new Map(),
+          baseline,
+          current,
           at,
         }).length,
       };
@@ -229,7 +213,7 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
       this.shiftRepository.listRequirementsByParticipation({
         churchId,
         participationId,
-        liveOnly: true,
+        requirements: 'live',
         tx,
       }),
       this.assignmentRepository.listByParticipation({
@@ -275,6 +259,7 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
     };
   }
 
+  // SQL twin: `listCycleCancellations` (drizzle-planning-event.repository.ts).
   compareScheduleAssignments({
     events,
     baseline,
@@ -344,44 +329,50 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
     ParticipationAssignmentSnapshot[]
   > {
     const eventsById = new Map(events.map((event) => [event.id, event]));
-    if (participations.some(({ eventId }) => !eventsById.has(eventId)))
-      throw new NotFoundError('Schedule Event not found');
-    const order = new Map<MinistryParticipationId | undefined, number>(
-      participations.map(({ id }, index) => [id, index]),
+    const scheduled = new Map<
+      MinistryParticipationId | undefined,
+      ScheduledParticipation
+    >(
+      participations.map((participation) => {
+        const event = eventsById.get(participation.eventId);
+        if (!event) throw new NotFoundError('Schedule Event not found');
+        return [participation.id, { participation, event }];
+      }),
     );
-    const assignments = (
-      await this.assignmentRepository.listByParticipations({
-        churchId,
-        participationIds: participations.map(({ id }) => id),
-        activeOnly: true,
-        tx,
-      })
-    ).sort(
-      (left, right) =>
-        (order.get(left.participationId) ?? 0) -
-        (order.get(right.participationId) ?? 0),
-    );
+    const assignments = await this.assignmentRepository.listByParticipations({
+      churchId,
+      participationIds: participations.map(({ id }) => id),
+      assignments: 'active',
+      tx,
+    });
     if (assignments.length === 0) return [];
+    const shiftIds = [
+      ...new Set(
+        assignments.flatMap(({ shiftId }) => (shiftId ? [shiftId] : [])),
+      ),
+    ];
+    const shiftRequirementIds = [
+      ...new Set(
+        assignments.flatMap(({ shiftRequirementId }) =>
+          shiftRequirementId ? [shiftRequirementId] : [],
+        ),
+      ),
+    ];
+    const roleIds = [...new Set(assignments.map(({ roleId }) => roleId))];
     const [shifts, requirements, roles] = await Promise.all([
       this.shiftRepository.listByIds({
         churchId,
-        shiftIds: unique(
-          assignments.flatMap(({ shiftId }) => (shiftId ? [shiftId] : [])),
-        ),
+        shiftIds,
         tx,
       }),
       this.shiftRepository.listRequirementsByIds({
         churchId,
-        shiftRequirementIds: unique(
-          assignments.flatMap(({ shiftRequirementId }) =>
-            shiftRequirementId ? [shiftRequirementId] : [],
-          ),
-        ),
+        shiftRequirementIds,
         tx,
       }),
       this.roleRepository.listByIds({
         churchId,
-        roleIds: unique(assignments.map(({ roleId }) => roleId)),
+        roleIds,
         tx,
       }),
     ]);
@@ -391,9 +382,9 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
     );
     const rolesById = new Map(roles.map((role) => [role.id, role]));
     return assignments.map((assignment) => {
-      const participation = participations[
-        order.get(assignment.participationId) ?? 0
-      ] as MinistryParticipation;
+      const found = scheduled.get(assignment.participationId);
+      if (!found) throw new NotFoundError('Schedule Event not found');
+      const { participation, event } = found;
       const role = rolesById.get(assignment.roleId);
       if (!role) throw new NotFoundError('Assignment Role not found');
       return {
@@ -401,7 +392,7 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
         volunteerId: assignment.volunteerId,
         snapshot: toAssignmentSnapshot({
           assignment,
-          event: eventsById.get(participation.eventId) as Event,
+          event,
           shift: assignment.shiftId && shiftsById.get(assignment.shiftId),
           requirement:
             assignment.shiftRequirementId &&
@@ -436,20 +427,4 @@ function toAssignmentSnapshot({
     sectorId: requirement.sectorId,
     sectorName: requirement.sectorName,
   };
-}
-
-function scheduleKey({ ministryId, cycleId }: ScheduleKey): string {
-  return `${ministryId}:${cycleId}`;
-}
-
-/** The Ministries and Cycles of the Schedules, each once. */
-function scheduleScope(schedules: ScheduleKey[]) {
-  return {
-    ministryIds: unique(schedules.map(({ ministryId }) => ministryId)),
-    cycleIds: unique(schedules.map(({ cycleId }) => cycleId)),
-  };
-}
-
-function unique<T>(items: T[]): T[] {
-  return [...new Set(items)];
 }

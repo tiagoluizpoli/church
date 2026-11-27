@@ -35,7 +35,6 @@ import type {
   ListAssignmentsByParticipationsInput,
   ListAssignmentsByRangeInput,
   ListAssignmentsByShiftInput,
-  ListAssignmentsByVolunteerInput,
   ListAssignmentsByVolunteerInRangeInput,
   ListAssignmentsByVolunteersInput,
   ListPublishedAssignmentsByVolunteerInput,
@@ -68,9 +67,11 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
 
   private readonly db: AnyDrizzleDb;
 
+  /** `leadingOrder` sorts ahead of the usual earliest-Shift-first order. */
   private async rows({
     churchId,
     conditions,
+    leadingOrder = [],
     tx,
   }: RowsInput): Promise<Assignment[]> {
     const rows = await getClient({ db: this.db, tx })
@@ -85,7 +86,7 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
           ...conditions,
         ),
       )
-      .orderBy(asc(shift.startTime), asc(assignment.id));
+      .orderBy(...leadingOrder, asc(shift.startTime), asc(assignment.id));
     return rows.map((row) =>
       mapAssignment({
         row: row.assignment,
@@ -255,16 +256,26 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
   async listByParticipations({
     churchId,
     participationIds,
-    activeOnly,
+    assignments,
     tx,
   }: ListAssignmentsByParticipationsInput): Promise<Assignment[]> {
     if (participationIds.length === 0) return [];
     const conditions: SQL[] = [
       inArray(assignment.participationId, participationIds),
     ];
-    if (activeOnly)
+    if (assignments === 'active')
       conditions.push(inArray(assignment.status, ACTIVE_ASSIGNMENT_STATUSES));
-    return this.rows({ churchId, conditions, tx });
+    const askedOrder = sql.join(
+      participationIds.map((id) => sql`${id}::uuid`),
+      sql`, `,
+    );
+    const position = sql`array_position(array[${askedOrder}], ${assignment.participationId})`;
+    return this.rows({
+      churchId,
+      conditions,
+      leadingOrder: [asc(position)],
+      tx,
+    });
   }
 
   listByShift({
@@ -279,25 +290,10 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     });
   }
 
-  listByVolunteer({
-    churchId,
-    volunteerId,
-    shownOnly,
-    tx,
-  }: ListAssignmentsByVolunteerInput): Promise<Assignment[]> {
-    const conditions: SQL[] = [eq(assignment.volunteerId, volunteerId)];
-    if (shownOnly) conditions.push(shownEventTimeBlock());
-    return this.rows({
-      churchId,
-      conditions,
-      tx,
-    });
-  }
-
   async listPublishedByVolunteer({
     churchId,
     volunteerId,
-    liveOnly,
+    cancelledWork,
     endingAfter,
     tx,
   }: ListPublishedAssignmentsByVolunteerInput): Promise<PublishedAssignment[]> {
@@ -305,14 +301,16 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     const published = inArray(assignment.status, [
       ...PUBLISHED_ASSIGNMENT_STATUSES,
     ]);
+    // TS twin: `isListedAssignment` (domain/services/scheduling/listed-assignment.ts).
     const cancelledWithItsScope = and(
       cancelledScope,
       eq(assignment.status, 'cancelled'),
       or(isNull(assignment.reason), eq(assignment.reason, '')),
     );
-    const listed = liveOnly
-      ? and(published, liveEventTimeBlock())
-      : or(published, cancelledWithItsScope);
+    const listed =
+      cancelledWork === 'left-out'
+        ? and(published, liveEventTimeBlock())
+        : or(published, cancelledWithItsScope);
     const conditions = [
       withChurchIsolation({ table: assignment, churchId }),
       eq(assignment.volunteerId, volunteerId),

@@ -37,7 +37,6 @@ import type {
   InCancelledScopeInput,
   IVolunteerManager,
   ListAvailabilityChecksInput,
-  ListedAssignmentInput,
   MinistrySchedule,
   RequirementCoverageInput,
   ResolveCheckDetailInput,
@@ -85,6 +84,7 @@ import {
   groupCheckDays,
   isShiftAnswerable,
 } from '../domain/services/scheduling/availability-check-days';
+import { isListedAssignment } from '../domain/services/scheduling/listed-assignment';
 import {
   assertUnavailableShiftsWithinScope,
   expandWholeDayShiftIds,
@@ -143,18 +143,6 @@ function servingMonths({
 
 function isPublishedStatus(status: AssignmentStatus): status is 'pending' {
   return status === 'pending';
-}
-
-/**
- * Published work, plus what an Event or EventTimeBlock cancellation cancelled.
- * A `reason` marks a Volunteer Transfer's own cancellation, which stays hidden.
- */
-function isListedAssignment({
-  assignment: { status, reason },
-  cancelled,
-}: ListedAssignmentInput): boolean {
-  if (isPublishedStatus(status)) return true;
-  return cancelled && status === 'cancelled' && !reason;
 }
 
 function hasStarted({ startTime, at }: HasStartedInput): boolean {
@@ -286,7 +274,7 @@ export class DbVolunteerManager implements IVolunteerManager {
     const published = await this.assignmentRepo.listPublishedByVolunteer({
       churchId,
       volunteerId,
-      liveOnly: true,
+      cancelledWork: 'left-out',
       endingAfter: historyStart,
     });
     const allAssignments = published.map(({ assignment }) => assignment);
@@ -1090,7 +1078,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       this.availabilityCheckRepo.listCheckShifts({
         churchId: input.churchId,
         checkId: input.checkId,
-        heldRolesOnly: true,
+        shifts: 'held-roles',
       }),
       this.unavailableShiftRepo.listUnavailableShiftsByCheck({
         churchId: input.churchId,
@@ -1156,7 +1144,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       this.availabilityCheckRepo.listCheckShiftsByChecks({
         churchId: input.churchId,
         checkIds,
-        heldRolesOnly: true,
+        shifts: 'held-roles',
       }),
       this.unavailableShiftRepo.listUnavailableShiftsByChecks({
         churchId: input.churchId,
@@ -1242,7 +1230,7 @@ export class DbVolunteerManager implements IVolunteerManager {
       const shifts = await this.availabilityCheckRepo.listCheckShifts({
         churchId: input.churchId,
         checkId: input.checkId,
-        heldRolesOnly: true,
+        shifts: 'held-roles',
         tx,
       });
 

@@ -182,7 +182,7 @@ interface Option {
   availableAreas: string[];
 }
 
-/** The listing has no total order, so areas are compared by Church name. */
+/** Areas by Church name; the listing's order is pinned in list-ordering. */
 function areasByChurch(churches: Option[]) {
   return Object.fromEntries(
     churches.map(({ name, availableAreas }) => [name, availableAreas]),

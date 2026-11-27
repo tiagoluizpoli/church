@@ -87,16 +87,23 @@ export interface CheckStateCountRow {
   checkCount: number;
 }
 
+/**
+ * Which of the scope's Shifts: `held-roles` keeps those needing a Role the
+ * membership holds. Read projections use it; legacy writes keep `any-role`.
+ */
+export type CheckShiftSelection = 'held-roles' | 'any-role';
+
 export interface ListCheckShiftsInput {
-  /** Read projections use held Roles; legacy writes retain their original scope. */
-  heldRolesOnly?: boolean;
+  /** Omitted: `any-role`. */
+  shifts?: CheckShiftSelection;
   churchId: ChurchId;
   checkId: AvailabilityCheckId;
   tx?: TransactionContext;
 }
 
 export interface ListCheckShiftsByChecksInput {
-  heldRolesOnly?: boolean;
+  /** Omitted: `any-role`. */
+  shifts?: CheckShiftSelection;
   churchId: ChurchId;
   checkIds: AvailabilityCheckId[];
   tx?: TransactionContext;

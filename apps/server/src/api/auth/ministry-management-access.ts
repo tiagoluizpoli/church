@@ -1,5 +1,5 @@
-import { ChurchId, UserId } from '../../domain/branded-ids';
 import { refuse } from '../utils/refuse';
+import { requestCaller } from '../utils/request-caller';
 import type { DenyMinistryManagementInput } from './ministry-management-access.types';
 
 /**
@@ -14,22 +14,15 @@ export async function denyMinistryManagement({
   reply,
   ministryId,
 }: DenyMinistryManagementInput): Promise<boolean> {
-  const churchId = ChurchId.from(request.churchId);
-  const userId = UserId.from(request.userId);
-  const capability = await authorityGuard.decideManageAnyMinistry({
-    churchId,
-    userId,
-    actor: request.actor,
-  });
+  const caller = requestCaller({ request });
+  const capability = await authorityGuard.decideManageAnyMinistry(caller);
   if (!capability.allowed) {
     refuse({ reply, request, code: 'FORBIDDEN' });
     return true;
   }
   if (!ministryId) return false;
   const decision = await authorityGuard.decideManageMinistry({
-    churchId,
-    userId,
-    actor: request.actor,
+    ...caller,
     ministryId,
   });
   if (decision.allowed) return false;

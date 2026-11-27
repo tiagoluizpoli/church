@@ -72,11 +72,20 @@ export interface ListAssignmentsByParticipationInput {
   tx?: TransactionContext;
 }
 
+/** `active` is the Assignments that hold a seat (`ACTIVE_ASSIGNMENT_STATUSES`). */
+export type AssignmentSelection = 'active' | 'all';
+
+/**
+ * What a listing does with work an Event or EventTimeBlock cancellation touched:
+ * `listed` keeps it, marked; `left-out` drops it.
+ */
+export type CancelledWork = 'listed' | 'left-out';
+
 export interface ListAssignmentsByParticipationsInput {
   churchId: ChurchId;
   participationIds: MinistryParticipationId[];
-  /** Only the Assignments that hold a seat (`ACTIVE_ASSIGNMENT_STATUSES`). */
-  activeOnly?: boolean;
+  /** Omitted: `all`. */
+  assignments?: AssignmentSelection;
   tx?: TransactionContext;
 }
 
@@ -86,19 +95,11 @@ export interface ListAssignmentsByShiftInput {
   tx?: TransactionContext;
 }
 
-export interface ListAssignmentsByVolunteerInput {
-  churchId: ChurchId;
-  volunteerId: VolunteerId;
-  /** Leave out hidden Events and EventTimeBlocks, as every non-admin read does. */
-  shownOnly?: boolean;
-  tx?: TransactionContext;
-}
-
 export interface ListPublishedAssignmentsByVolunteerInput {
   churchId: ChurchId;
   volunteerId: VolunteerId;
-  /** Leaves out the work an Event or EventTimeBlock cancellation touched. */
-  liveOnly?: boolean;
+  /** Omitted: `listed`. */
+  cancelledWork?: CancelledWork;
   /** Only Shifts that end after this Instant. */
   endingAfter?: Instant;
   tx?: TransactionContext;
@@ -160,14 +161,14 @@ export interface AssignmentRepository {
   listByParticipation(
     input: ListAssignmentsByParticipationInput,
   ): Promise<Assignment[]>;
-  /** One read for every participation; earliest Shift first, as `listByParticipation`. */
+  /**
+   * One read for every participation: in the order of `participationIds`, then
+   * earliest Shift first, as `listByParticipation`.
+   */
   listByParticipations(
     input: ListAssignmentsByParticipationsInput,
   ): Promise<Assignment[]>;
   listByShift(input: ListAssignmentsByShiftInput): Promise<Assignment[]>;
-  listByVolunteer(
-    input: ListAssignmentsByVolunteerInput,
-  ): Promise<Assignment[]>;
   /**
    * The Volunteer's Assignments on published participations, hidden work left
    * out: the published ones, plus what an Event or EventTimeBlock cancellation

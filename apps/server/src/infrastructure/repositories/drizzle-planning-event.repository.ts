@@ -281,6 +281,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     );
   }
 
+  // TS twin: `compareScheduleAssignments` (application/db-schedule-change-reader.ts).
   async listCycleCancellations({
     churchId,
     cycleIds,

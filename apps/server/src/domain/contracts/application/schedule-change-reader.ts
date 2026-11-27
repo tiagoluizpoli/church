@@ -84,6 +84,19 @@ export interface CountScheduleChangesBySchedulesInput {
   tx?: TransactionContext;
 }
 
+/** What one published Schedule's change count compares: told against current. */
+export interface ScheduleComparison {
+  schedule: ScheduleKey;
+  baseline: ScheduleLastToldRow[];
+  current: Map<VolunteerId, ScheduleAssignmentSnapshot[]>;
+}
+
+/** One participation with its Event. */
+export interface ScheduledParticipation {
+  participation: MinistryParticipation;
+  event: Event;
+}
+
 /** A published Schedule's count of Volunteers with untold changes. */
 export interface ScheduleChangeCount extends ScheduleKey {
   count: number;

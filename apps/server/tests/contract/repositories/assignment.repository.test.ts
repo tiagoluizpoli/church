@@ -21,7 +21,6 @@ import type {
   ListAssignmentsByParticipationsInput,
   ListAssignmentsByRangeInput,
   ListAssignmentsByShiftInput,
-  ListAssignmentsByVolunteerInput,
   ListAssignmentsByVolunteerInRangeInput,
   ListAssignmentsByVolunteersInput,
   MoveAssignmentRepositoryInput,
@@ -179,15 +178,6 @@ class MockAssignmentRepository implements AssignmentRepository {
     return [];
   }
 
-  async listByVolunteer({
-    churchId,
-    volunteerId,
-  }: ListAssignmentsByVolunteerInput): Promise<Assignment[]> {
-    return Array.from(this.assignments.values()).filter(
-      (a) => a.churchId === churchId && a.volunteerId === volunteerId,
-    );
-  }
-
   async listPublishedByVolunteer(): Promise<PublishedAssignment[]> {
     return [];
   }
@@ -204,7 +194,7 @@ class MockAssignmentRepository implements AssignmentRepository {
   async listByParticipations({
     churchId,
     participationIds,
-    activeOnly,
+    assignments,
   }: ListAssignmentsByParticipationsInput): Promise<Assignment[]> {
     const participationIdSet = new Set(participationIds);
     return Array.from(this.assignments.values()).filter(
@@ -212,7 +202,7 @@ class MockAssignmentRepository implements AssignmentRepository {
         a.churchId === churchId &&
         a.participationId !== undefined &&
         participationIdSet.has(a.participationId) &&
-        (!activeOnly || isActiveAssignmentStatus(a.status)),
+        (assignments !== 'active' || isActiveAssignmentStatus(a.status)),
     );
   }
 

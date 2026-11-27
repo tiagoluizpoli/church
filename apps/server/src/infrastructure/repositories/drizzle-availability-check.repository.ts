@@ -644,7 +644,8 @@ export class DrizzleAvailabilityCheckRepository
       )
       .innerJoin(cycle, eq(cycle.id, availabilityCheck.cycleId))
       .where(ofVolunteer(input))
-      .groupBy(availabilityCheck.state);
+      .groupBy(availabilityCheck.state)
+      .orderBy(asc(availabilityCheck.state));
   }
 
   async listCheckShifts({
@@ -713,7 +714,7 @@ export class DrizzleAvailabilityCheckRepository
           inArray(availabilityCheck.id, input.checkIds),
           // Cancelled work leaves the check: no Shift of a cancelled Event or block.
           liveEventTimeBlock(),
-          input.heldRolesOnly
+          input.shifts === 'held-roles'
             ? exists(
                 db
                   .select({ id: shiftRequirement.id })

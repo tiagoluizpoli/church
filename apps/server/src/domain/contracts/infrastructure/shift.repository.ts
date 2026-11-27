@@ -92,11 +92,14 @@ export interface DeleteShiftRequirementsInput {
   tx?: TransactionContext;
 }
 
+/** `live` leaves out the requirements of a cancelled EventTimeBlock or Event. */
+export type RequirementSelection = 'live' | 'all';
+
 export interface ListRequirementsByParticipationInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
-  /** Leaves out the requirements of a cancelled EventTimeBlock or Event. */
-  liveOnly?: boolean;
+  /** Omitted: `all`. */
+  requirements?: RequirementSelection;
   tx?: TransactionContext;
 }
 

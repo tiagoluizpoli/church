@@ -432,12 +432,6 @@ export interface DbVolunteerManagerDependencies {
   config: AppConfig;
 }
 
-export interface ListedAssignmentInput {
-  assignment: Pick<Assignment, 'status' | 'reason'>;
-  /** Whether its Event or EventTimeBlock is cancelled. */
-  cancelled: boolean;
-}
-
 export interface HasStartedInput {
   startTime: Instant;
   at: Instant;

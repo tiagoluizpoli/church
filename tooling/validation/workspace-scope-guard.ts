@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export interface Workspace {
@@ -24,15 +24,10 @@ function readWorkspaces(): Workspace[] {
   for (const dir of ['apps', 'packages']) {
     const entries = readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const pkgPath = join(dir, entry.name, 'package.json');
-        try {
-          const content = readFileSync(pkgPath, 'utf-8');
-          const pkg = JSON.parse(content);
-          workspaces.push({ path: pkgPath, name: pkg.name });
-        } catch {
-          // Skip if package.json doesn't exist or can't be read
-        }
+      const pkgPath = join(dir, entry.name, 'package.json');
+      if (entry.isDirectory() && existsSync(pkgPath)) {
+        const { name } = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+        workspaces.push({ path: pkgPath, name });
       }
     }
   }

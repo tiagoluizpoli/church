@@ -1085,3 +1085,46 @@ describe('CycleReviewCard cancelled scopes', () => {
     expect(messageItem).not.toHaveTextContent(m.event_status_cancelled());
   });
 });
+
+describe('CycleReviewCard actions on cancelled scopes', () => {
+  it('offers no cancel, move or delete action on a cancelled Event or block', async () => {
+    const sent = twoEventCycleResponse({ state: 'sent' });
+    const [sunday, wednesday] = sent.events;
+    const [worship, message] = sunday.eventTimeBlocks;
+    listCycles.mockResolvedValue({ cycles: [sent.cycle] });
+    getCycle.mockResolvedValue({
+      ...sent,
+      events: [
+        {
+          ...sunday,
+          eventTimeBlocks: [{ ...worship, status: 'cancelled' }, message],
+        },
+        { ...wednesday, event: { ...wednesday.event, status: 'cancelled' } },
+      ],
+    });
+
+    render({ isReadOnly: true });
+    const user = await selectTheOnlyCycle();
+    await user.click(
+      await screen.findByRole('button', { name: m.cycle_review_expand_all() }),
+    );
+
+    const table = screen.getByRole('grid', { name: m.cycle_review_title() });
+    const rowOf = (text: string) =>
+      within(table).getByText(text).closest('[role="row"]') as HTMLElement;
+    const changeNames = (title: string) => [
+      m.event_cancel_action_label({ title }),
+      `Excluir horário ${title}`,
+    ];
+    for (const title of ['Wednesday Service', 'Worship']) {
+      for (const name of changeNames(title)) {
+        expect(
+          within(rowOf(title)).queryByRole('button', { name }),
+        ).not.toBeInTheDocument();
+      }
+      expect(
+        within(rowOf(title)).queryByRole('button', { name: /^Mover/ }),
+      ).not.toBeInTheDocument();
+    }
+  });
+});

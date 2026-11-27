@@ -457,6 +457,16 @@ describe('POST /admin/cycles/:cycleId/events/:eventId/cancel', () => {
     });
   });
 
+  it('cancels the Event without changing the status of its EventTimeBlocks', async () => {
+    const sunday = await seedSentSunday();
+    signIn({ sunday });
+
+    await confirm(sunday);
+
+    const blocks = await db.select().from(eventTimeBlock);
+    expect(blocks.map(({ status }) => status)).toEqual(['active', 'active']);
+  });
+
   it('recalculates over a stale preview: a Volunteer published after it is told too', async () => {
     const sunday = await seedSentSunday();
     signIn({ sunday });

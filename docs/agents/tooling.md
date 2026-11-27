@@ -958,7 +958,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | A CI step that runs tests records its output for the failed-tests summary | Spec #1161 | Mechanical | Validation guard | Enforced: `tooling/tests/ci/record-test-output.test.ts` (`test:validation`) |
 | Annotations start their line through the gate's `[stage]` prefix and Playwright's `list` reporter | Spec #1161 | Mechanical | Validation guard | Enforced: `tooling/tests/validation/run-lanes.test.ts`, `apps/web/tests/fixtures/e2e-reporters.unit.test.ts` |
 | Destructive database commands refuse any target but their own | Tooling, ADR-0005 | Mechanical | Validation guard | Enforced: runtime preflight of the database resolver |
-| No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |
+| No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Enforced: `tooling/tests/env/legacy-env-loading.test.ts` (`test:validation`) |
 | The API client and `auto-generated-api.yaml` are generated, never hand-edited | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:api-generated`, run by the `develop-fast` and `fast-gate` CI jobs |
 | Fix lint, format and type errors; suppressions need user permission | Tooling | Judgement | — | Review: whether permission was given is not in the code; VII and date-time suppressions have their own guards |
 | Finish the phase, run focused tests and affected validation before review | Tooling | Judgement | — | Review: a working process |

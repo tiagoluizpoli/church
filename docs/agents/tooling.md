@@ -24,6 +24,7 @@ and task ordering.
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
 | E2E lane-list guard (no Playwright start) | `bun run validate:e2e-lanes` |
+| Constitution version guard (amendments bump version) | `bun run validate:constitution-version` |
 | Sign-in load times and filmstrip ([harness](#sign-in-load-harness)) | `bun run perf:sign-in` |
 | Web bundle gzip budget (needs a built `apps/web/dist`) | `bun run validate:bundle-budget` |
 | `/login` module requests under `vite dev` ([cap](#dev-module-cap)) | `bun run validate:dev-module-cap` |
@@ -947,7 +948,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | `@church/app-config` is plain data with a Zod schema, no logic beyond `withAllParkedOn` | Constitution | Judgement | — | Review: the package is one file; "no logic" is easier to read than to pattern-match |
 | Every workspace name is scoped `@church/` | Constitution | Mechanical | Validation guard | Follow-up [#549](https://github.com/tiagoluizpoli/church/issues/549) |
 | Documentation first: significant changes are planned in `planning/` | Constitution | Judgement | — | Review: "significant" is a judgement |
-| A constitution amendment bumps its version | Constitution | Mechanical | Validation guard | Follow-up [#550](https://github.com/tiagoluizpoli/church/issues/550) |
+| A constitution amendment bumps its version | Constitution | Mechanical | Validation guard | Enforced: `bun run validate:constitution-version`, part of `lint` |
 | A constitution amendment updates its dependent templates | Constitution | Judgement | — | Review: which templates depend on a change is a judgement |
 | `mise.toml` and `packageManager` pin the same Bun | Tooling | Mechanical | Validation guard | Follow-up [#551](https://github.com/tiagoluizpoli/church/issues/551) |
 | Run commands through root Bun scripts | Tooling | Judgement | — | Review: governs how an agent works, leaves nothing in the repository to check |

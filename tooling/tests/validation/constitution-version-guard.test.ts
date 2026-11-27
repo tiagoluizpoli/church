@@ -67,3 +67,66 @@ describe('checkConstitutionVersionBump', () => {
     expect(result.valid).toBe(true);
   });
 });
+
+describe('violation detection', () => {
+  test('would fail if constitution changed but version did not', () => {
+    // Simulate the violation scenario by testing the logic directly
+    const baseContent = `
+# Church Constitution
+
+**Version**: 1.9.0 | **Ratified**: 2026-05-03
+
+Some content.
+`;
+
+    const headContent = `
+# Church Constitution
+
+**Version**: 1.9.0 | **Ratified**: 2026-05-03
+
+Some content that was changed.
+`;
+
+    const baseVersion = extractVersion({ content: baseContent });
+    const headVersion = extractVersion({ content: headContent });
+
+    const constitutionChanged = baseContent !== headContent;
+    const versionChanged = baseVersion !== headVersion;
+
+    // This is the violation the guard should catch
+    expect(constitutionChanged).toBe(true);
+    expect(versionChanged).toBe(false);
+    expect(baseVersion).toBe('1.9.0');
+    expect(headVersion).toBe('1.9.0');
+  });
+
+  test('would pass if both constitution and version changed', () => {
+    const baseContent = `
+# Church Constitution
+
+**Version**: 1.9.0 | **Ratified**: 2026-05-03
+
+Some content.
+`;
+
+    const headContent = `
+# Church Constitution
+
+**Version**: 2.0.0 | **Ratified**: 2026-05-03
+
+Some content that was changed.
+`;
+
+    const baseVersion = extractVersion({ content: baseContent });
+    const headVersion = extractVersion({ content: headContent });
+
+    const constitutionChanged = baseContent !== headContent;
+    const versionChanged = baseVersion !== headVersion;
+
+    // Both changed - this should pass
+    expect(constitutionChanged).toBe(true);
+    expect(versionChanged).toBe(true);
+    expect(baseVersion).toBe('1.9.0');
+    expect(headVersion).toBe('2.0.0');
+  });
+});

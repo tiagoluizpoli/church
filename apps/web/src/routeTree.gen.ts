@@ -15,6 +15,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PrototypeKidsRouteImport } from './routes/prototype.kids'
 import { Route as AppSwitchChurchConfirmRouteImport } from './routes/app/switch-church-confirm'
 import { Route as AppSelectChurchRouteImport } from './routes/app/select-church'
 import { Route as AppNoAccessRouteImport } from './routes/app/no-access'
@@ -86,6 +87,11 @@ const SlugRoute = SlugRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrototypeKidsRoute = PrototypeKidsRouteImport.update({
+  id: '/prototype/kids',
+  path: '/prototype/kids',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppSwitchChurchConfirmRoute = AppSwitchChurchConfirmRouteImport.update({
@@ -347,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/app/no-access': typeof AppNoAccessRoute
   '/app/select-church': typeof AppSelectChurchRoute
   '/app/switch-church-confirm': typeof AppSwitchChurchConfirmRoute
+  '/prototype/kids': typeof PrototypeKidsRoute
   '/app/availability': typeof AppActiveChurchAvailabilityRoute
   '/app/church-settings': typeof AppActiveChurchChurchSettingsRoute
   '/app/dashboard': typeof AppActiveChurchDashboardRoute
@@ -395,6 +402,7 @@ export interface FileRoutesByTo {
   '/app/no-access': typeof AppNoAccessRoute
   '/app/select-church': typeof AppSelectChurchRoute
   '/app/switch-church-confirm': typeof AppSwitchChurchConfirmRoute
+  '/prototype/kids': typeof PrototypeKidsRoute
   '/app/availability': typeof AppActiveChurchAvailabilityRoute
   '/app/church-settings': typeof AppActiveChurchChurchSettingsRoute
   '/app/dashboard': typeof AppActiveChurchDashboardRoute
@@ -441,6 +449,7 @@ export interface FileRoutesById {
   '/app/no-access': typeof AppNoAccessRoute
   '/app/select-church': typeof AppSelectChurchRoute
   '/app/switch-church-confirm': typeof AppSwitchChurchConfirmRoute
+  '/prototype/kids': typeof PrototypeKidsRoute
   '/app/_active-church/_planning-admin': typeof AppActiveChurchPlanningAdminRouteWithChildren
   '/app/_active-church/availability': typeof AppActiveChurchAvailabilityRoute
   '/app/_active-church/church-settings': typeof AppActiveChurchChurchSettingsRoute
@@ -492,6 +501,7 @@ export interface FileRouteTypes {
     | '/app/no-access'
     | '/app/select-church'
     | '/app/switch-church-confirm'
+    | '/prototype/kids'
     | '/app/availability'
     | '/app/church-settings'
     | '/app/dashboard'
@@ -540,6 +550,7 @@ export interface FileRouteTypes {
     | '/app/no-access'
     | '/app/select-church'
     | '/app/switch-church-confirm'
+    | '/prototype/kids'
     | '/app/availability'
     | '/app/church-settings'
     | '/app/dashboard'
@@ -585,6 +596,7 @@ export interface FileRouteTypes {
     | '/app/no-access'
     | '/app/select-church'
     | '/app/switch-church-confirm'
+    | '/prototype/kids'
     | '/app/_active-church/_planning-admin'
     | '/app/_active-church/availability'
     | '/app/_active-church/church-settings'
@@ -632,6 +644,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  PrototypeKidsRoute: typeof PrototypeKidsRoute
   InvitationsChurchInvitationIdRoute: typeof InvitationsChurchInvitationIdRoute
 }
 
@@ -677,6 +690,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prototype/kids': {
+      id: '/prototype/kids'
+      path: '/prototype/kids'
+      fullPath: '/prototype/kids'
+      preLoaderRoute: typeof PrototypeKidsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/switch-church-confirm': {
@@ -1168,6 +1188,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  PrototypeKidsRoute: PrototypeKidsRoute,
   InvitationsChurchInvitationIdRoute: InvitationsChurchInvitationIdRoute,
 }
 export const routeTree = rootRouteImport

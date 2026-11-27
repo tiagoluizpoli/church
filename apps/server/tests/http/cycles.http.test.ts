@@ -1104,6 +1104,72 @@ describe('GET /admin/cycles', () => {
   });
 });
 
+describe('GET /admin/cycles/:cycleId', () => {
+  const START = parseInstant({ value: '2026-10-18T13:00:00Z' });
+  const END = parseInstant({ value: '2026-10-18T15:00:00Z' });
+
+  it('returns cancelled Events and EventTimeBlocks with their status', async () => {
+    const seed = await signIn();
+    const sent = await seedCycle({
+      churchId: seed.churchAId,
+      startDate: '2026-10-12',
+      endDate: '2026-10-25',
+      state: 'sent',
+    });
+    for (const status of ['scheduled', 'cancelled'] as const) {
+      const seeded = await buildEvent({
+        db,
+        churchId: seed.churchAId,
+        cycleId: sent.id,
+        title: status,
+        start: START,
+        end: END,
+        status,
+      });
+      for (const blockStatus of ['active', 'cancelled'] as const) {
+        const block = await buildEventTimeBlock({
+          db,
+          churchId: seed.churchAId,
+          eventId: seeded.id,
+          label: blockStatus,
+          start: START,
+          end: END,
+        });
+        await db
+          .update(eventTimeBlock)
+          .set({ status: blockStatus })
+          .where(eq(eventTimeBlock.id, block.id));
+      }
+    }
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/admin/cycles/${sent.id}`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const read = response
+      .json()
+      .events.map(
+        (graph: {
+          event: { title: string; status: string };
+          eventTimeBlocks: { label: string; status: string }[];
+        }) => ({
+          title: graph.event.title,
+          status: graph.event.status,
+          blocks: graph.eventTimeBlocks
+            .map(({ label, status }) => `${label}:${status}`)
+            .sort(),
+        }),
+      );
+    const blocks = ['active:active', 'cancelled:cancelled'];
+    expect(read).toEqual([
+      { title: 'cancelled', status: 'cancelled', blocks },
+      { title: 'scheduled', status: 'scheduled', blocks },
+    ]);
+  });
+});
+
 describe('DELETE /admin/cycles/:cycleId', () => {
   const DELETE_START = parseInstant({ value: '2026-10-18T22:00:00Z' });
   const DELETE_END = parseInstant({ value: '2026-10-19T00:00:00Z' });

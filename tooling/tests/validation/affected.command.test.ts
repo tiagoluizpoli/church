@@ -247,6 +247,19 @@ describe('Journey-Impact trailer on the branch’s own commits', () => {
     expect(runAffected().plan.e2eSpecPaths).toEqual(SWITCHING);
   });
 
+  it.each([
+    'Journey-Impact: none -',
+    'Journey-Impact: none',
+  ])('says why "%s" is refused', (trailer) => {
+    commitChange(`refactor: move it\n\n${trailer}`);
+
+    const { stderr } = runAffected();
+
+    expect(stderr).toMatch(
+      /Journey impact: trailer refused, journeys run\n {2}refused: no reason given \(commit [0-9a-f]+\); write "Journey-Impact: none - <reason>"\./,
+    );
+  });
+
   it('is not borrowed from the configured validate base', () => {
     git(['checkout', '--quiet', '-b', 'spec/9-integration', 'develop']);
     writeRepoFile('apps/web/src/earlier.ts');

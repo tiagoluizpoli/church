@@ -30,6 +30,7 @@ import {
 } from './gate-summary';
 import {
   JOURNEY_IMPACT_TRAILER,
+  readBlankJourneyImpactTrailers,
   readJourneyImpactTrailers,
 } from './journey-impact';
 import {
@@ -785,6 +786,8 @@ function buildTurboStep({
 interface ExplainPlanInput {
   baseRef: string | undefined;
   journeyAcknowledgements?: Acknowledgements;
+  /** `Journey-Impact` trailers with no reason, from any commit above the base. */
+  blankJourneyTrailers?: Acknowledgements;
   plan: ValidationPlan;
   seedAcknowledgements?: Acknowledgements;
   tier?: ValidationTier;
@@ -795,6 +798,7 @@ export function explainPlan({
   baseRef,
   plan,
   journeyAcknowledgements,
+  blankJourneyTrailers,
   seedAcknowledgements,
   tier = 'affected',
   wholeUnitSuites = false,
@@ -856,7 +860,13 @@ export function explainPlan({
     }
   }
 
-  lines.push(...explainJourneyImpact({ plan, journeyAcknowledgements }));
+  lines.push(
+    ...explainJourneyImpact({
+      plan,
+      journeyAcknowledgements,
+      blankJourneyTrailers,
+    }),
+  );
 
   lines.push('', 'Tooling tests selected:');
   if (plan.toolingTestPaths.length === 0) {
@@ -919,29 +929,35 @@ function explainRefused({
 function explainJourneyImpact({
   plan,
   journeyAcknowledgements,
+  blankJourneyTrailers,
 }: {
   plan: ValidationPlan;
   journeyAcknowledgements?: Acknowledgements;
+  blankJourneyTrailers?: Acknowledgements;
 }): string[] {
   const {
     accepted = [],
     borrowed = [],
     ownBaseRef,
   } = journeyAcknowledgements ?? {};
+  const { accepted: ownBlank = [], borrowed: borrowedBlank = [] } =
+    blankJourneyTrailers ?? {};
+  const blank = [...ownBlank, ...borrowedBlank].map(
+    ({ sha }) =>
+      `  refused: no reason given (commit ${sha}); write "${JOURNEY_IMPACT_TRAILER}".`,
+  );
   const reasons = plan.journeyImpactAcknowledgements;
   if (reasons.length > 0) {
     return [
       '',
       'Journey impact: acknowledged, journeys skipped',
       ...explainAcknowledged({ reasons, accepted }),
+      ...blank,
     ];
   }
-  if (borrowed.length === 0) return [];
-  return [
-    '',
-    'Journey impact: trailer refused, journeys run',
-    ...explainRefused({ borrowed, ownBaseRef }),
-  ];
+  const refused = [...explainRefused({ borrowed, ownBaseRef }), ...blank];
+  if (refused.length === 0) return [];
+  return ['', 'Journey impact: trailer refused, journeys run', ...refused];
 }
 
 interface ExplainSeedImpactInput {
@@ -1013,8 +1029,13 @@ async function runCli({ argumentsResult, ending }: RunCliInput) {
     baseRef,
     readReasons: readJourneyImpactTrailers,
   });
+  const blankJourneyTrailers = readAcknowledgements({
+    baseRef,
+    readReasons: readBlankJourneyImpactTrailers,
+  });
   const explained = {
     baseRef,
+    blankJourneyTrailers,
     journeyAcknowledgements,
     seedAcknowledgements,
   };

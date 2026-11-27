@@ -401,7 +401,8 @@ A production change no mapping covers runs the critical smoke set. The plan
 also lists the changed files that selected no journey.
 
 A pure refactor may skip journeys with a commit trailer
-`Journey-Impact: none - <reason>`. A blank reason does not count. It follows the
+`Journey-Impact: none - <reason>`. A blank reason does not count, and the plan
+refuses it by commit. It follows the
 [seed-impact](#seed-impact) rule for the branch's own commits: the plan names
 the commit behind each accepted reason, and a borrowed trailer is refused, so
 the journeys run. One trailer skips the journeys of the whole diff, so use it only when

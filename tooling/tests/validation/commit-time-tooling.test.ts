@@ -10,6 +10,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
  */
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..');
+/** Real commitlint takes over 5 s to start on a loaded machine. */
+const COMMITLINT_TIMEOUT_MS = 60_000;
+const FAIL_FAST_MS = 5000;
 
 interface LefthookJob {
   run: string;
@@ -40,6 +43,7 @@ afterEach(() => {
 interface CommitMsgInput {
   message: string;
   cwd: string;
+  timeout?: number;
 }
 
 function runCommitMsg(input: CommitMsgInput) {
@@ -52,36 +56,45 @@ function runCommitMsg(input: CommitMsgInput) {
   const result = spawnSync('sh', ['-c', command], {
     cwd: input.cwd,
     encoding: 'utf8',
-    timeout: 5000,
+    timeout: input.timeout ?? COMMITLINT_TIMEOUT_MS,
   });
 
   return { status: result.status, output: result.stdout + result.stderr };
 }
 
 describe('commit-msg hook', () => {
-  it('accepts a conventional message', () => {
-    const result = runCommitMsg({
-      message: 'chore(root): tidy the hooks',
-      cwd: REPO_ROOT,
-    });
+  it(
+    'accepts a conventional message',
+    () => {
+      const result = runCommitMsg({
+        message: 'chore(root): tidy the hooks',
+        cwd: REPO_ROOT,
+      });
 
-    expect(result.status).toBe(0);
-  });
+      expect(result.status).toBe(0);
+    },
+    COMMITLINT_TIMEOUT_MS,
+  );
 
-  it('refuses an unknown type, naming the rule', () => {
-    const result = runCommitMsg({
-      message: 'wip(root): tidy the hooks',
-      cwd: REPO_ROOT,
-    });
+  it(
+    'refuses an unknown type, naming the rule',
+    () => {
+      const result = runCommitMsg({
+        message: 'wip(root): tidy the hooks',
+        cwd: REPO_ROOT,
+      });
 
-    expect(result.status).toBe(1);
-    expect(result.output).toContain('type-enum');
-  });
+      expect(result.status).toBe(1);
+      expect(result.output).toContain('type-enum');
+    },
+    COMMITLINT_TIMEOUT_MS,
+  );
 
   it('fails at once without node_modules, naming the bootstrap', () => {
     const result = runCommitMsg({
       message: 'chore(root): tidy the hooks',
       cwd: sandbox,
+      timeout: FAIL_FAST_MS,
     });
 
     expect(result.status).toBe(1);

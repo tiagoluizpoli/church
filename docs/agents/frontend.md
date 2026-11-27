@@ -20,7 +20,8 @@ Load for frontend or UI work.
   `await waitForDialogFocus()` before typing or moving focus.
 - Interfaces and types: a large interface, or several that serve one file, get
   their own file next to their domain concept. A single small one may stay at
-  the top of its file. A split must make sense to a human reader.
+  the top of its file. A split must make sense to a human reader: never split
+  just for the sake of splitting. Review enforces this; no guard checks the web.
   [Backend: Contracts and composition](backend.md#contracts-and-composition)
   holds the server's stricter rule.
 - A script that runs before the app (`apps/web/index.html`) reads each stored

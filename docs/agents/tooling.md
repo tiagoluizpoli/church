@@ -20,7 +20,7 @@ and task ordering.
 | Test placement guard | `bun run validate:test-placement` |
 | Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
 | Presentation-text guard (no hard-coded copy) | `bun run validate:presentation-text` (`-- <path>…` for files) |
-| Server types report (types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
+| Server types guard (no types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
 | E2E lane-list guard (no Playwright start) | `bun run validate:e2e-lanes` |
@@ -285,15 +285,16 @@ declaration. Details: [ADR-0010](../adr/0010-mechanical-rules-enforced-by-toolin
 ## Server types
 
 `bun run validate:server-types` (`tooling/validation/server-types-guard.ts`)
-lists every `interface` and `type` declared in a server implementation file,
-grouped by folder, with a total. It checks `apps/server/src/` `application/`,
-`infrastructure/`, `api/`, `domain/services/` and `main/`, and skips
-`.types.ts` siblings, `.d.ts` files and `api/dtos/`. Domain contracts, entities
-and errors sit outside those folders. It is report-only and exits 0, so the
-#1179 migrate batches can track their remaining work; `-- --fail` prints the
-report to stderr and exits 1 when anything is left. It is not part of `lint`
-until [#1191](https://github.com/tiagoluizpoli/church/issues/1191) switches it
-to failing.
+fails on every `interface` and `type` declared in a server implementation file,
+printing them grouped by folder with a total. It checks `apps/server/src/`
+`application/`, `infrastructure/`, `api/`, `domain/services/` and `main/`, and
+skips `.types.ts` siblings, `.d.ts` files and `api/dtos/`. Domain contracts,
+entities and errors sit outside those folders. `bun run lint` and every
+`validate:affected` run it, with no baseline and no suppression comment
+([ADR-0010](../adr/0010-mechanical-rules-enforced-by-tooling.md)). Move a
+reported type to its home:
+[Contracts and composition](backend.md#contracts-and-composition). The guard
+checks only where types are declared; the rest of that section is review's job.
 
 ## Presentation text
 

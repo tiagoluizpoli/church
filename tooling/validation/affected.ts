@@ -447,6 +447,11 @@ export function buildValidationSteps({
       label: 'named-parameters',
     });
     checkLane.push({
+      args: ['run', 'validate:server-types'],
+      command: 'bun',
+      label: 'server-types',
+    });
+    checkLane.push({
       args: ['run', 'validate:journey-map'],
       command: 'bun',
       label: 'journey-map',
@@ -496,6 +501,7 @@ export function buildValidationSteps({
       'test-placement',
       'i18n-parity',
       'named-parameters',
+      'server-types',
       'journey-map',
       'presentation-text',
       'date-time-seam',

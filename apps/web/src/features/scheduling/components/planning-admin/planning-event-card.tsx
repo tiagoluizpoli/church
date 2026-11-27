@@ -3,7 +3,6 @@ import type { Instant } from '@church/time';
 import { Link } from '@tanstack/react-router';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { CancelledBadge } from '../cancelled-badge';
 import type { ConfirmDeleteEventTimeBlockInput } from './calendar-row';
 import { EventCancelDialog } from './event-cancel-dialog';
 import { EventEditPreview } from './event-edit-preview';
@@ -15,6 +14,7 @@ import {
   eventStatusLabel,
   timeBlockCountLabel,
 } from './planning-admin.utils';
+import { CancelledBadge } from '@/components/cancelled-badge';
 import {
   AlertDialog,
   AlertDialogAction,

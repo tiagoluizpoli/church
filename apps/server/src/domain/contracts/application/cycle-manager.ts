@@ -63,9 +63,16 @@ export interface DeleteCycleManagerInput {
   cycleId: CycleId;
 }
 
+/** What is still planned: cancelled Events and EventTimeBlocks left out. */
+export interface CyclePlannedCounts {
+  eventCount: number;
+  eventTimeBlockCount: number;
+}
+
 export interface CycleDetails {
   cycle: Cycle;
   events: EventWithEventTimeBlocks[];
+  counts: CyclePlannedCounts;
 }
 
 export interface ICycleManager {

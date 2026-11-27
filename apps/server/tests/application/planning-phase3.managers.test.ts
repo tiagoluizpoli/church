@@ -443,6 +443,7 @@ describe('DbCycleManager', () => {
     await expect(manager.getCycle({ churchId, cycleId })).resolves.toEqual({
       cycle: past,
       events: [],
+      counts: { eventCount: 0, eventTimeBlockCount: 0 },
     });
     expect(cycleRepository.updateState).toHaveBeenCalledWith({
       churchId,

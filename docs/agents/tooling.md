@@ -25,10 +25,12 @@ and task ordering.
 | Journey-map integrity guard | `bun run validate:journey-map` |
 | E2E lane-list guard (no Playwright start) | `bun run validate:e2e-lanes` |
 | Sign-in load times and filmstrip ([harness](#sign-in-load-harness)) | `bun run perf:sign-in` |
+| Web bundle gzip budget (needs a built `apps/web/dist`) | `bun run validate:bundle-budget` |
 | Affected validation without Docker (pre-push) | `bun run validate:no-docker` |
 | Affected validation | `bun run validate:affected` |
 | Final validation | `bun run validate` |
 | Rebuild + seed this worktree's development DB | `bun run db:reseed:dev` (`-- --anchor=YYYY-MM-DD` to reproduce a day) |
+| SQL on this worktree's development DB (Docker, no host `psql`) | `bun run db:sql -- -c 'select 1'` (psql arguments; none opens a prompt) |
 | Generate worktree `.env.local` | `bun run env:local` |
 | Revalidate its ports before launch | `bun run env:local -- --revalidate` |
 | Create + migrate its dev/int/E2E databases and its `church-<worktree>` storage bucket | `bun run db:bootstrap` |
@@ -68,8 +70,8 @@ reuse nor record a pass.
 
 `validate:affected` runs lint, its guards and typecheck first and stops on a
 failure; then unit tests run concurrently with integration tests, then E2E
-only if both lanes pass. `validate` runs lint → typecheck → unit tests
-concurrently with integration tests, then E2E. Output
+only if both lanes pass. `validate` runs lint → typecheck → bundle budget →
+unit tests concurrently with integration tests, then E2E. Output
 lines carry a `[stage]` prefix and a final table reports each stage's status.
 
 ### How the affected gate's log ends
@@ -133,6 +135,99 @@ failures name their fix; follow it and commit again.
   13 s, and over 30 s on a loaded machine.
 
 HTML is not formatted: Biome's HTML formatter is off in `biome.json`.
+
+## Screenshot a screen
+
+Drive the screen from a throwaway Playwright spec: the E2E config starts the
+server and Vite, and you own the data. The example loads the
+`cancelled-and-started` seed scenario (a Shift that started today at 00:00, and
+a cancelled EventTimeBlock a week later) and captures the ChurchAdmin's
+planning page and the leader's schedule builder. For another screen, load the
+journey recipe that owns the state (`apps/server/seeds/e2e/recipes/`).
+
+1. Save as `apps/web/tests/zz-screenshot.spec.ts`:
+
+   ```ts
+   import { expect, test } from '@playwright/test';
+   import { z } from 'zod';
+   import { loadJourneyRecipe } from '@/tests/fixtures/journey-recipes';
+   import {
+     ASSIGN_CYCLE_SCHEMA,
+     ASSIGN_JOURNEY_BASE_SCHEMA,
+     ASSIGN_PERSONA_SCHEMA,
+     assignBuilderPath,
+     assignMinistrySchema,
+     newPersonaContext,
+     signInPersonaPage,
+   } from '@/tests/fixtures/journeys/assign-church';
+
+   const SCHEMA = ASSIGN_JOURNEY_BASE_SCHEMA.extend({
+     ministries: z.object({
+       worship: assignMinistrySchema({ roles: ['usher'], sectors: ['main'] }),
+     }),
+     personas: z.object({
+       admin: ASSIGN_PERSONA_SCHEMA,
+       leader: ASSIGN_PERSONA_SCHEMA,
+     }),
+     cycle: ASSIGN_CYCLE_SCHEMA,
+   });
+   const VIEWPORT = { width: 1600, height: 1000 };
+
+   test('screenshot', async ({ browser, page }, testInfo) => {
+     const scenario = loadJourneyRecipe({
+       recipeName: 'cancelled-and-started',
+       schema: SCHEMA,
+       testInfo,
+     });
+     const cycleId = scenario.cycle.id;
+
+     await page.setViewportSize(VIEWPORT);
+     await signInPersonaPage({ page, persona: scenario.personas.admin });
+     await page.goto(`/app/cycles/${cycleId}`);
+     await page.getByRole('button', { name: 'Expandir tudo' }).click();
+     await expect(page.getByText('Noite').filter({ visible: true })).toBeVisible();
+     await page.screenshot({ path: 'test-results/screens/planning.png' });
+
+     const leader = await newPersonaContext({
+       browser,
+       persona: scenario.personas.leader,
+     });
+     const board = await leader.newPage();
+     await board.setViewportSize(VIEWPORT);
+     const ministryId = scenario.ministries.worship.id;
+     await board.goto(assignBuilderPath({ ministryId, cycleId }));
+     await expect(board.getByTestId('cycle-builder')).toBeVisible();
+     await expect(board.getByText('Noite')).toBeVisible();
+     await board.screenshot({ path: 'test-results/screens/builder.png' });
+     await leader.close();
+   });
+   ```
+
+2. Add `'zz-screenshot.spec.ts',` to `ISOLATED_SPECS`
+   (`apps/web/tests/fixtures/e2e-lanes.ts`); the config refuses an unlisted
+   spec.
+3. Run `bun run test:e2e -- tests/zz-screenshot.spec.ts`. The images land in
+   `apps/web/test-results/screens/`, which the next E2E run empties. A
+   `[WebServer] … exit code 143` line after the run is Vite being stopped.
+4. Downscale before reading: `convert in.png -resize 800x out.png` (`magick`
+   on ImageMagick 7).
+5. Delete the spec and its `ISOLATED_SPECS` line.
+
+What the example already handles:
+
+- **Sign in and choose the church**: `signInPersonaPage` (the test's own
+  `page`) and `newPersonaContext` (each further persona) sign in over HTTP and
+  select the Active Church. Give each persona its own context: a second sign-in
+  on one fails with `MISSING_OR_NULL_ORIGIN`.
+- **Stable locators**: prefer `getByTestId`, then `getByRole` with the pt-BR
+  name (`m.<key>({}, { locale: 'pt-BR' })` from `@church/i18n/messages`).
+  Lists render a table and cards at once, one hidden by CSS, so a text locator
+  needs `.filter({ visible: true })`.
+- **Framing**: the app scrolls inside its shell, so `fullPage` stops at the
+  viewport. Enlarge the viewport instead.
+- **Fonts**: the E2E config blocks Google Fonts, so no web font ever loads and
+  the app renders in the system font. Wait for an element: a wait for a Google
+  font never succeeds.
 
 ## Test placement
 
@@ -272,6 +367,20 @@ mapping's source prefix is accurate stays a review decision
 2. Add it to `JOURNEY_MAP` or `CRITICAL_SMOKE_SPEC_PATHS` in
    `tooling/validation/journey-map.ts`.
 3. Run `bun run lint`, not `bunx biome check`: only `lint` runs both guards.
+
+## Bundle budget
+
+`bun run validate:bundle-budget` (`tooling/validation/bundle-budget.ts`)
+prints the gzip size of every JS and CSS chunk in `apps/web/dist/assets` and
+fails, naming the chunk, when the entry chunk, the entry CSS or a shared chunk
+(a `modulepreload` in `index.html`) is over its limit. Lazy chunks are printed
+only. It never builds: `validate` runs it right after the type check, which
+builds `dist`, and `validate:affected` and `validate:no-docker` do the same
+when `web` is affected. It is not part of `lint`. The limits are `LIMITS` in
+the script; raise one only on purpose and say why in the PR. `shared` is one
+limit for each shared chunk on its own, so a small chunk can grow up to it
+unnoticed. It does not name the module that grew: the build writes no stats
+file.
 
 ## Seed impact
 

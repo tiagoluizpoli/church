@@ -1012,3 +1012,76 @@ function SelectCycle({ cycleId }: SelectCycleProps) {
   }, [cycleId, handleSelectCycle]);
   return null;
 }
+
+describe('CycleReviewCard cancelled scopes', () => {
+  it('keeps a cancelled Event listed and badges a cancelled block, also after a refetch', async () => {
+    listCycles.mockResolvedValue({
+      cycles: [
+        {
+          id: 'cycle-1',
+          name: 'August 2026',
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          state: 'sent',
+        },
+      ],
+    });
+    const before = twoEventCycleResponse({ state: 'sent' });
+    getCycle.mockResolvedValue(before);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    renderWithProviders(
+      <PlanningAdminProvider>
+        <SelectCycleButtons />
+        <CycleReviewCard isReadOnly />
+      </PlanningAdminProvider>,
+      { queryClient },
+    );
+    const user = await selectTheOnlyCycle();
+    await user.click(
+      await screen.findByRole('button', { name: m.cycle_review_expand_all() }),
+    );
+    const table = screen.getByRole('grid', { name: m.cycle_review_title() });
+    expect(
+      within(table).queryByText(m.event_status_cancelled()),
+    ).not.toBeInTheDocument();
+
+    const [sunday, wednesday] = before.events;
+    const [worship, message] = sunday.eventTimeBlocks;
+    getCycle.mockResolvedValue({
+      ...before,
+      events: [
+        {
+          ...sunday,
+          eventTimeBlocks: [{ ...worship, status: 'cancelled' }, message],
+        },
+        {
+          ...wednesday,
+          event: { ...wednesday.event, status: 'cancelled' },
+        },
+      ],
+    });
+    await act(() =>
+      queryClient.invalidateQueries({ queryKey: ['cycle-details'] }),
+    );
+
+    const rowOf = (text: string) =>
+      within(table).getByText(text).closest('[role="row"]') as HTMLElement;
+    await waitFor(() =>
+      expect(rowOf('Wednesday Service')).toHaveTextContent(
+        m.event_status_cancelled(),
+      ),
+    );
+    expect(rowOf('Worship')).toHaveTextContent(m.event_status_cancelled());
+    expect(rowOf('Message')).not.toHaveTextContent(m.event_status_cancelled());
+    const cards = screen.getAllByTestId('planning-event-card');
+    expect(cards).toHaveLength(2);
+    expect(cards[1]).toHaveTextContent(m.event_status_cancelled());
+    const [worshipItem, messageItem] = within(cards[0]).getAllByTestId(
+      'planning-event-time-block-item',
+    );
+    expect(worshipItem).toHaveTextContent(m.event_status_cancelled());
+    expect(messageItem).not.toHaveTextContent(m.event_status_cancelled());
+  });
+});

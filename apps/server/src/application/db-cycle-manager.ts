@@ -305,8 +305,16 @@ export class DbCycleManager implements ICycleManager {
       churchId: input.churchId,
       cycleId: input.cycleId,
     });
+    // A cancelled Event takes its EventTimeBlocks with it, whatever theirs say.
+    const planned = events.filter(({ event }) => event.status !== 'cancelled');
+    const counts = {
+      eventCount: planned.length,
+      eventTimeBlockCount: planned
+        .flatMap(({ eventTimeBlocks }) => eventTimeBlocks)
+        .filter(({ status }) => status !== 'cancelled').length,
+    };
 
-    return { cycle, events };
+    return { cycle, events, counts };
   }
 
   async getSendSummary(

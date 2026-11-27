@@ -5,6 +5,7 @@ import { AxiosError, type AxiosResponse } from 'axios';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TemplateCreateDialog } from '@/features/scheduling/components/planning-admin/template-create-dialog';
+import { waitForDialogFocus } from '@/tests/setup/dialog';
 import { renderWithProviders } from '@/tests/setup/render';
 import { fillTimeOfDayField } from '@/tests/setup/time-of-day';
 
@@ -58,6 +59,11 @@ function refusal({ data }: { data: unknown }) {
   } as AxiosResponse);
 }
 
+async function renderCreateDialog() {
+  renderWithProviders(<TemplateCreateDialog />);
+  await waitForDialogFocus();
+}
+
 async function fillValidForm({
   user,
 }: {
@@ -83,7 +89,7 @@ async function fillValidForm({
 describe('TemplateCreateDialog', () => {
   it('opens as a titled dialog with one block row, a disabled Save that says why, and Cancel back to the list', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     const dialog = screen.getByRole('dialog', { name: 'Novo modelo' });
     expect(
@@ -109,7 +115,7 @@ describe('TemplateCreateDialog', () => {
 
   it('drops the blocked-save hint once the form is complete', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     await fillValidForm({ user });
 
@@ -121,7 +127,7 @@ describe('TemplateCreateDialog', () => {
 
   it('keeps the lone picked weekday enabled and explains why it stays picked', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     const sunday = screen.getByTestId('template-weekday-toggle-0');
     expect(sunday).toBeEnabled();
@@ -143,7 +149,7 @@ describe('TemplateCreateDialog', () => {
 
   it('adds and removes block rows', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     await user.click(screen.getByTestId('add-template-time-block-button'));
     expect(screen.getAllByTestId('template-time-block-row')).toHaveLength(2);
@@ -156,7 +162,7 @@ describe('TemplateCreateDialog', () => {
 
   it('flags equal endpoints and duplicate labels inline and keeps Save disabled', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     await user.type(screen.getByTestId('template-name-input'), 'Vigil');
     await user.type(
@@ -192,7 +198,7 @@ describe('TemplateCreateDialog', () => {
   it('creates an overnight template without persisted ids or order, then toasts and returns to the list', async () => {
     createEventTemplate.mockResolvedValue({ id: 'new-1' });
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     await fillValidForm({ user });
     expect(screen.getByTestId('template-time-block-span')).toHaveTextContent(
@@ -227,7 +233,7 @@ describe('TemplateCreateDialog', () => {
   it('prevents repeat submission while a save is pending', async () => {
     createEventTemplate.mockReturnValue(new Promise(() => undefined));
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -250,7 +256,7 @@ describe('TemplateCreateDialog', () => {
       }),
     );
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -273,7 +279,7 @@ describe('TemplateCreateDialog', () => {
       }),
     );
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -303,7 +309,7 @@ describe('TemplateCreateDialog', () => {
       )
       .mockResolvedValueOnce({ id: 'new-1' });
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -353,7 +359,7 @@ describe('TemplateCreateDialog', () => {
       } as AxiosResponse),
     );
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));
@@ -376,7 +382,7 @@ describe('TemplateCreateDialog', () => {
 
   it('holds navigation only once the draft is dirty', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
     expect(shouldBlock()).toBe(false);
 
     await user.type(screen.getByTestId('template-name-input'), 'V');
@@ -386,7 +392,7 @@ describe('TemplateCreateDialog', () => {
   it('asks before discarding: Keep editing resets, Discard proceeds', async () => {
     blocker.status = 'blocked';
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     const leave = await screen.findByTestId('template-leave-dialog');
     await user.click(
@@ -402,7 +408,7 @@ describe('TemplateCreateDialog', () => {
   it('ignores Escape while saving and holds navigation', async () => {
     createEventTemplate.mockReturnValue(new Promise(() => undefined));
     const user = userEvent.setup();
-    renderWithProviders(<TemplateCreateDialog />);
+    await renderCreateDialog();
 
     await fillValidForm({ user });
     await user.click(screen.getByTestId('create-template-button'));

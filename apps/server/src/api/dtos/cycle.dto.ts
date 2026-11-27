@@ -146,6 +146,11 @@ export const cycleAnchorsResponseSchema = z.object({
 export const cycleDetailsResponseSchema = z.object({
   cycle: cycleResponseSchema,
   events: z.array(eventGraphResponseSchema),
+  /** Events and EventTimeBlocks that are not cancelled. */
+  counts: z.object({
+    eventCount: z.number().int(),
+    eventTimeBlockCount: z.number().int(),
+  }),
 });
 
 export type CycleResponse = z.infer<typeof cycleResponseSchema>;
@@ -194,6 +199,7 @@ export const cycleMapper = {
     return {
       cycle: toCycleResponse(details.cycle),
       events: details.events.map(eventGraphMapper.toResponse),
+      counts: details.counts,
     };
   },
 };

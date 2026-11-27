@@ -31,6 +31,8 @@ interface Expected {
   publish: string | null;
 }
 
+const STARTED = '2026-08-01T09:00:00.000Z';
+
 beforeEach(() => {
   overwriteGetLocale(() => 'en');
   setTestClock({
@@ -130,13 +132,14 @@ function boardData({
 }
 
 function renderBuilder(data: CycleBuilderData) {
+  const onPublish = vi.fn();
   const mutation = { isPending: false, mutateAsync: vi.fn() };
   renderWithProviders(
     <CycleBuilder
       data={data}
       selectedDates={[]}
       onSelectedDatesChange={vi.fn()}
-      onPublish={vi.fn()}
+      onPublish={onPublish}
       isPublishing={false}
       cycleId="cycle-1"
       ministryId="ministry-1"
@@ -147,6 +150,49 @@ function renderBuilder(data: CycleBuilderData) {
       reassignAssignment={mutation}
       moveAssignment={mutation}
     />,
+  );
+  return { onPublish };
+}
+
+/** The same Shift twice: one already started, one still to come. */
+function startedAndUpcomingData(): CycleBuilderData {
+  const data = boardData({ name: 'started Shift', startTime: STARTED });
+  const upcoming = boardData({ name: 'upcoming Shift' }).events[0];
+  const [event] = data.events;
+  if (!event || !upcoming) throw new Error('missing Event');
+  const [block] = upcoming.eventTimeBlocks;
+  const [shift] = block?.shifts ?? [];
+  if (!shift) throw new Error('missing Shift');
+  const later = {
+    ...shift,
+    shiftId: 'shift-2',
+    eventTimeBlockId: 'block-2',
+    assignments: [],
+    assignedCount: 0,
+    requirements: shift.requirements.map((requirement) => ({
+      ...requirement,
+      id: 'requirement-2',
+    })),
+  };
+  event.eventTimeBlocks.push({
+    ...block,
+    eventTimeBlockId: 'block-2',
+    shifts: [later],
+  });
+  return data;
+}
+
+async function openPublishDialog() {
+  await userEvent.click(
+    screen.getByRole('button', { name: m.builder_ui_publish() }),
+  );
+  return within(screen.getByRole('dialog'));
+}
+
+async function confirmPublish() {
+  const dialog = await openPublishDialog();
+  await userEvent.click(
+    dialog.getByRole('button', { name: m.builder_ui_publish() }),
   );
 }
 
@@ -187,9 +233,13 @@ const cases: [ShiftCase, Expected][] = [
   ],
   [
     // The server never proposes a started Shift; the preview shows what it is
-    // sent, and the publish gate still counts its empty place.
-    { name: 'started Shift', startTime: '2026-08-01T09:00:00.000Z' },
-    { ...closed, startedNotice: true },
+    // sent. Nobody can fill its empty place, so the publish dialog skips it.
+    { name: 'started Shift', startTime: STARTED },
+    {
+      ...closed,
+      startedNotice: true,
+      publish: m.builder_ui_publish_full({}, { locale: 'en' }),
+    },
   ],
   [
     { name: 'full requirement', peopleNeeded: 1 },
@@ -298,5 +348,31 @@ describe.each(cases)('Schedule builder: $name', (shiftCase, expected) => {
     }
     await userEvent.click(publish as HTMLElement);
     expect(screen.getByText(expected.publish)).toBeInTheDocument();
+  });
+});
+
+describe('Publishing with empty places on a started Shift', () => {
+  it('leaves them out of the dialog count', async () => {
+    renderBuilder(startedAndUpcomingData());
+    const dialog = await openPublishDialog();
+    expect(
+      dialog.getByText(m.builder_ui_publish_gaps({ places: 2, shifts: 1 })),
+    ).toBeInTheDocument();
+  });
+
+  // The server still counts a started Shift when it asks for this flag.
+  it('confirms below full when they are the only ones', async () => {
+    const { onPublish } = renderBuilder(
+      boardData({ name: 'started Shift', startTime: STARTED }),
+    );
+    await confirmPublish();
+    expect(onPublish).toHaveBeenCalledWith(true);
+  });
+
+  it('keeps the started Shift in the header coverage', () => {
+    renderBuilder(startedAndUpcomingData());
+    expect(
+      screen.getByText(m.builder_header_below_many({ count: 2 })),
+    ).toBeInTheDocument();
   });
 });

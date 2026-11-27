@@ -15,6 +15,7 @@ import {
   eventStatusLabel,
   timeBlockCountLabel,
 } from './planning-admin.utils';
+import { CancelledBadge } from '@/components/cancelled-badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -153,7 +154,7 @@ export function calendarRowKey({
       ? visibleRow.weekEnd
       : visibleRow.kind === 'parent'
         ? `${visibleRow.row.title}-${visibleRow.row.location ?? ''}-${visibleRow.row.start}-${visibleRow.row.end}-${visibleRow.row.status}-${visibleRow.row.eventTimeBlocks.length}`
-        : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}`;
+        : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}-${visibleRow.status}-${visibleRow.parentStatus}`;
 
   return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEventTimeBlock ? 'deleting-event-time-block' : 'normal'}-${deleteEventTimeBlockPending ? 'event-time-block-pending' : 'event-time-block-idle'}`;
 }
@@ -473,6 +474,9 @@ function EventTimeBlockRowCell({
             timeZone,
           })}
         </span>
+      ) : null}
+      {column.id === 'status' && visibleRow.status === 'cancelled' ? (
+        <CancelledBadge />
       ) : null}
       {column.id === 'actions' && canPreviewMove ? (
         <EventMovePreview

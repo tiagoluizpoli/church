@@ -14,6 +14,7 @@ import {
   eventStatusLabel,
   timeBlockCountLabel,
 } from './planning-admin.utils';
+import { CancelledBadge } from '@/components/cancelled-badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -184,21 +185,26 @@ export function PlanningEventCard({
               data-testid="planning-event-time-block-item"
               className="flex flex-wrap items-center justify-between gap-2"
             >
-              <span
-                className={cn(
-                  eventTimeBlock.status === 'cancelled' && 'line-through',
-                )}
-              >
-                <span>{eventTimeBlock.label}</span> ·{' '}
-                <span>
-                  {formatInstantRangeOf({
-                    start: eventTimeBlock.startTime,
-                    end: eventTimeBlock.endTime,
-                    timeZone: churchTimezone,
-                  })}
+              <span className="flex flex-wrap items-center gap-2">
+                <span
+                  className={cn(
+                    eventTimeBlock.status === 'cancelled' && 'line-through',
+                  )}
+                >
+                  <span>{eventTimeBlock.label}</span> ·{' '}
+                  <span>
+                    {formatInstantRangeOf({
+                      start: eventTimeBlock.startTime,
+                      end: eventTimeBlock.endTime,
+                      timeZone: churchTimezone,
+                    })}
+                  </span>
                 </span>
+                {eventTimeBlock.status === 'cancelled' ? (
+                  <CancelledBadge />
+                ) : null}
               </span>
-              {canPreviewMove ? (
+              {canPreviewMove && eventTimeBlock.status === 'active' ? (
                 <EventMovePreview
                   cycleId={cycleId}
                   eventId={row.eventId}

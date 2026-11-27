@@ -335,8 +335,8 @@ the gate passes, fails, or gets SIGINT/SIGTERM. After 30 minutes
 (`CHURCH_VALIDATE_LOCK_TIMEOUT_MS` overrides) the run exits 75 naming the
 holder: nothing was validated, so run the gate again to keep waiting; it is
 not a check failure to repair.
-A run that got the slot prints `Waited Ns for the validate slot.` above its
-summary.
+A run that got the slot prints `Waited Ns for the validate slot.` after its
+stages.
 
 The pre-push hook's `validate:no-docker` does wait, but at most 5 minutes
 (`lefthook.yml` sets the timeout): it must not hang a push behind a 10+ minute

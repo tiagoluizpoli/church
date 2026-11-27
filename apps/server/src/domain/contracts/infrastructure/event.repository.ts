@@ -66,7 +66,15 @@ export interface UpdateEventRepositoryInput {
   tx?: TransactionContext;
 }
 
+export interface ListEventsByIdsInput {
+  churchId: ChurchId;
+  eventIds: EventId[];
+  tx?: TransactionContext;
+}
+
 export interface EventRepository {
+  /** The Church's Events among the ids, in one read, earliest start first. */
+  listByIds(input: ListEventsByIdsInput): Promise<Event[]>;
   getMinistryId(input: GetEventInput): Promise<MinistryId>;
   getById(input: GetEventInput): Promise<Event>;
   getWithEventTimeBlocks(

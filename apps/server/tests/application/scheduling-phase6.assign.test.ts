@@ -527,28 +527,11 @@ describe('Assignment and publication managers', () => {
         status: 'pending',
       },
     });
-    const draft = new Assignment({
-      id: AssignmentId.from('draft'),
-      props: {
-        churchId,
-        participationId: MinistryParticipationId.from('published'),
-        eventTimeBlockId: EventTimeBlockId.from('block'),
-        shiftId,
-        volunteerId,
-        roleId: RoleId.from('role'),
-        shiftRequirementId,
-        status: 'draft',
-      },
-    });
-    f.assignmentRepository.listByVolunteer.mockResolvedValue([
-      visible,
-      draft,
-      f.assignment,
+    // The read itself leaves out drafts and unpublished participations.
+    f.assignmentRepository.listPublishedByVolunteer.mockResolvedValue([
+      { assignment: visible, cancelled: false },
     ]);
-    f.ministryParticipationRepository.listByIds.mockResolvedValue([
-      published,
-      f.participation,
-    ]);
+    f.ministryParticipationRepository.listByIds.mockResolvedValue([published]);
     f.volunteerRepository.listMemberMinistryIds.mockResolvedValue([]);
     f.ministryRepository.listByChurch.mockResolvedValue([]);
     f.eventRepository.getById.mockResolvedValue(f.event);

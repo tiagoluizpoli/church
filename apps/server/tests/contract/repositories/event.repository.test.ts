@@ -102,6 +102,10 @@ class MockEventRepository implements EventRepository {
     return e;
   }
 
+  async listByIds(): Promise<Event[]> {
+    return [];
+  }
+
   async getWithEventTimeBlocks({
     churchId,
     eventId: id,

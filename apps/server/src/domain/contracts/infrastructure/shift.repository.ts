@@ -95,6 +95,8 @@ export interface DeleteShiftRequirementsInput {
 export interface ListRequirementsByParticipationInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
+  /** Leaves out the requirements of a cancelled EventTimeBlock or Event. */
+  liveOnly?: boolean;
   tx?: TransactionContext;
 }
 
@@ -111,7 +113,15 @@ export interface GetRequirementForShiftInput {
   tx?: TransactionContext;
 }
 
+export interface ListShiftsByIdsInput {
+  churchId: ChurchId;
+  shiftIds: ShiftId[];
+  tx?: TransactionContext;
+}
+
 export interface ShiftRepository {
+  /** The Church's Shifts among the ids, in one read, earliest start first. */
+  listByIds(input: ListShiftsByIdsInput): Promise<Shift[]>;
   listConflictFacts(
     input: ListShiftConflictFactsInput,
   ): Promise<ShiftConflictFacts[]>;

@@ -8,12 +8,13 @@ import {
   shiftRequirement,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { MinistryId } from '../../domain/branded-ids';
 import type {
   CreateEventRepositoryInput,
   EventRepository,
   GetEventInput,
+  ListEventsByIdsInput,
   ListEventsByMinistryInput,
   UpdateEventRepositoryInput,
   UpdateEventStatusRepositoryInput,
@@ -72,6 +73,25 @@ export class DrizzleEventRepository implements EventRepository {
       );
     if (!row) throw new NotFoundError(`Event not found: ${eventId}`);
     return mapEvent(row);
+  }
+
+  async listByIds({
+    churchId,
+    eventIds,
+    tx,
+  }: ListEventsByIdsInput): Promise<Event[]> {
+    if (eventIds.length === 0) return [];
+    const rows = await getClient({ db: this.db, tx })
+      .select()
+      .from(event)
+      .where(
+        and(
+          inArray(event.id, eventIds),
+          withChurchIsolation({ table: event, churchId }),
+        ),
+      )
+      .orderBy(asc(event.start), asc(event.id));
+    return rows.map(mapEvent);
   }
 
   async getWithEventTimeBlocks({

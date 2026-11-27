@@ -54,8 +54,11 @@ export function createAssignmentRepositoryFake() {
     listByEventTimeBlock: vi.fn<AssignmentRepository['listByEventTimeBlock']>(),
     listByEvent: vi.fn<AssignmentRepository['listByEvent']>(),
     listByParticipation: vi.fn<AssignmentRepository['listByParticipation']>(),
+    listByParticipations: vi.fn<AssignmentRepository['listByParticipations']>(),
     listByShift: vi.fn<AssignmentRepository['listByShift']>(),
     listByVolunteer: vi.fn<AssignmentRepository['listByVolunteer']>(),
+    listPublishedByVolunteer:
+      vi.fn<AssignmentRepository['listPublishedByVolunteer']>(),
     listByVolunteers: vi.fn<AssignmentRepository['listByVolunteers']>(),
     listByVolunteerInRange:
       vi.fn<AssignmentRepository['listByVolunteerInRange']>(),
@@ -101,7 +104,10 @@ export function createAvailabilityCheckRepositoryFake() {
     createMany: vi.fn<AvailabilityCheckRepository['createMany']>(),
     getCheckContext: vi.fn<AvailabilityCheckRepository['getCheckContext']>(),
     listByVolunteer: vi.fn<AvailabilityCheckRepository['listByVolunteer']>(),
+    countByVolunteer: vi.fn<AvailabilityCheckRepository['countByVolunteer']>(),
     listCheckShifts: vi.fn<AvailabilityCheckRepository['listCheckShifts']>(),
+    listCheckShiftsByChecks:
+      vi.fn<AvailabilityCheckRepository['listCheckShiftsByChecks']>(),
     listMinistryLeaderVolunteerIds:
       vi.fn<AvailabilityCheckRepository['listMinistryLeaderVolunteerIds']>(),
     confirm: vi.fn<AvailabilityCheckRepository['confirm']>(),
@@ -132,6 +138,7 @@ export function createChurchRepositoryFake() {
 export function createCycleRepositoryFake() {
   return {
     create: vi.fn<CycleRepository['create']>(),
+    listByIds: vi.fn<CycleRepository['listByIds']>(),
     list: vi.fn<CycleRepository['list']>(),
     getById: vi.fn<CycleRepository['getById']>(),
     findOverlapping: vi.fn<CycleRepository['findOverlapping']>(),
@@ -150,6 +157,7 @@ export function createCycleRepositoryFake() {
 
 export function createEventRepositoryFake() {
   return {
+    listByIds: vi.fn<EventRepository['listByIds']>(),
     getMinistryId: vi.fn<EventRepository['getMinistryId']>(),
     getById: vi.fn<EventRepository['getById']>(),
     getWithEventTimeBlocks: vi.fn<EventRepository['getWithEventTimeBlocks']>(),
@@ -208,6 +216,14 @@ export function createMinistryParticipationRepositoryFake() {
     listScheduleLastTold: vi
       .fn<MinistryParticipationRepository['listScheduleLastTold']>()
       .mockResolvedValue([]),
+    listScheduleLastToldBySchedules:
+      vi.fn<
+        MinistryParticipationRepository['listScheduleLastToldBySchedules']
+      >(),
+    listPublishedScheduleParticipations:
+      vi.fn<
+        MinistryParticipationRepository['listPublishedScheduleParticipations']
+      >(),
     saveScheduleLastTold:
       vi.fn<MinistryParticipationRepository['saveScheduleLastTold']>(),
     getById: vi.fn<MinistryParticipationRepository['getById']>(),
@@ -269,6 +285,8 @@ export function createPlanningEventRepositoryFake() {
     getEvent: vi.fn<PlanningEventRepository['getEvent']>(),
     deleteEvent: vi.fn<PlanningEventRepository['deleteEvent']>(),
     listCycleEvents: vi.fn<PlanningEventRepository['listCycleEvents']>(),
+    listCycleCancellations:
+      vi.fn<PlanningEventRepository['listCycleCancellations']>(),
     createEventTimeBlock:
       vi.fn<PlanningEventRepository['createEventTimeBlock']>(),
     seedParticipations: vi.fn<PlanningEventRepository['seedParticipations']>(),
@@ -297,6 +315,7 @@ export function createPlanningEventRepositoryFake() {
 
 export function createRoleRepositoryFake() {
   return {
+    listByIds: vi.fn<RoleRepository['listByIds']>(),
     getById: vi.fn<RoleRepository['getById']>(),
     listByMinistry: vi.fn<RoleRepository['listByMinistry']>(),
     listActiveByMinistry: vi.fn<RoleRepository['listActiveByMinistry']>(),
@@ -329,6 +348,7 @@ export function createShiftRepositoryFake() {
     listConflictFacts: vi
       .fn<ShiftRepository['listConflictFacts']>()
       .mockResolvedValue([]),
+    listByIds: vi.fn<ShiftRepository['listByIds']>(),
     createMany: vi.fn<ShiftRepository['createMany']>(),
     getById: vi.fn<ShiftRepository['getById']>(),
     listByParticipation: vi.fn<ShiftRepository['listByParticipation']>(),
@@ -380,6 +400,8 @@ export function createUnavailableShiftRepositoryFake() {
       vi.fn<UnavailableShiftRepository['listByParticipation']>(),
     listUnavailableShiftsByCheck:
       vi.fn<UnavailableShiftRepository['listUnavailableShiftsByCheck']>(),
+    listUnavailableShiftsByChecks:
+      vi.fn<UnavailableShiftRepository['listUnavailableShiftsByChecks']>(),
     replaceUnavailableShiftsForCheck:
       vi.fn<UnavailableShiftRepository['replaceUnavailableShiftsForCheck']>(),
   } satisfies UnavailableShiftRepository;

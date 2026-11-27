@@ -70,6 +70,20 @@ export interface ListCycleEventsInput {
   tx?: TransactionContext;
 }
 
+export interface ListCycleCancellationsInput {
+  churchId: ChurchId;
+  cycleIds: CycleId[];
+  tx?: TransactionContext;
+}
+
+/** What one Cycle has cancelled: whole Events and the Shifts of cancelled time blocks. */
+export interface CycleCancellations {
+  cycleId: CycleId;
+  eventIds: EventId[];
+  /** Shifts with a requirement whose block, or whose Event, is cancelled. */
+  shiftIds: ShiftId[];
+}
+
 export interface CreatePlanningEventTimeBlockInput {
   churchId: ChurchId;
   eventId: EventId;
@@ -219,6 +233,13 @@ export interface PlanningEventRepository {
   listCycleEvents(
     input: ListCycleEventsInput,
   ): Promise<EventWithEventTimeBlocks[]>;
+  /**
+   * The cancelled Events and cancelled-block Shifts of the Cycles, in one read;
+   * a Cycle with nothing cancelled is absent. Hidden scopes included.
+   */
+  listCycleCancellations(
+    input: ListCycleCancellationsInput,
+  ): Promise<CycleCancellations[]>;
   createEventTimeBlock(
     input: CreatePlanningEventTimeBlockInput,
   ): Promise<EventTimeBlockId>;

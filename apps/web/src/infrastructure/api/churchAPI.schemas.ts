@@ -7018,6 +7018,8 @@ export type PublishCycle200 = {
   published: boolean;
   belowFull: boolean;
   participations: PublishCycle200ParticipationsItem[];
+  /** Set only on a below-full refusal: the places still to fill. */
+  gapCount?: number;
 };
 
 export type PublishCycle403 = {
@@ -9873,6 +9875,18 @@ export type GetMinistrySchedule404 = {
   error: string;
   message: string;
 };
+
+export type ListAvailabilityChecksParams = {
+state?: ListAvailabilityChecksState;
+};
+
+export type ListAvailabilityChecksState = typeof ListAvailabilityChecksState[keyof typeof ListAvailabilityChecksState];
+
+
+export const ListAvailabilityChecksState = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+} as const;
 
 export type ListAvailabilityChecks200ChecksItemState = typeof ListAvailabilityChecks200ChecksItemState[keyof typeof ListAvailabilityChecks200ChecksItemState];
 

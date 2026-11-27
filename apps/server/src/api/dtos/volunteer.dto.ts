@@ -9,6 +9,7 @@ import type {
   VolunteerAvailabilityCheckSummary,
   VolunteerDashboard,
 } from '../../domain/contracts/application/volunteer-manager';
+import { AVAILABILITY_CHECK_STATE_OPTIONS } from '../../domain/entities/availability-check';
 import {
   type AssignmentResponse,
   assignmentMapper,
@@ -39,9 +40,13 @@ export type AvailabilityCheckSummaryResponse = z.infer<
   typeof availabilityCheckSummarySchema
 >;
 
+export const availabilityCheckListQuerystringSchema = z.object({
+  state: z.enum(AVAILABILITY_CHECK_STATE_OPTIONS).optional(),
+});
+
 export const availabilityCheckListResponseSchema = z.object({
   checks: z.array(availabilityCheckSummarySchema),
-  /** Header totals; the list is never paged or filtered, so it is the whole scope. */
+  /** Header totals; the list is never paged and they ignore `state`, so they are the whole scope. */
   counts: z.object({
     total: z.number().int(),
     pending: z.number().int(),
@@ -423,6 +428,7 @@ function ministryScheduleToResponse(
 export const volunteerMapper = {
   dashboardToResponse,
   ministryScheduleToResponse,
+  /** These `counts` describe `summaries`; the list route sends its own. */
   availabilityCheckListToResponse(
     summaries: VolunteerAvailabilityCheckSummary[],
   ) {

@@ -94,6 +94,10 @@ export const publishCycleResponseSchema = z.object({
   published: z.boolean(),
   belowFull: z.boolean(),
   participations: z.array(publishCycleParticipationOutcomeSchema),
+  gapCount: z
+    .number()
+    .optional()
+    .describe('Set only on a below-full refusal: the places still to fill.'),
 });
 export type PublishCycleResponse = z.infer<typeof publishCycleResponseSchema>;
 
@@ -102,6 +106,7 @@ export const publishCycleMapper = {
     return {
       published: view.published,
       belowFull: view.belowFull,
+      gapCount: view.gapCount,
       participations: view.participations.map((participation) => ({
         participationId: participation.participationId as string,
         state: participation.state,

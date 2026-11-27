@@ -721,6 +721,16 @@ describe('repository list ordering', () => {
       return seed;
     }
 
+    it('listByUserId returns memberships by Church id', async () => {
+      const seed = await seedChurches();
+      const repo = new DrizzleChurchMembershipRepository({ db });
+      const rows = await repo.listByUserId({
+        userId: UserId.from(seed.adminUserId),
+      });
+      const ids = [seed.churchAId, uuid(2), uuid(1)].sort();
+      expect(rows.map((r) => r.churchId)).toEqual(ids);
+    });
+
     it('listComparisonsByUserId returns Churches by name (case-insensitive), then id', async () => {
       const seed = await seedChurches();
       const repo = new DrizzleChurchMembershipRepository({ db });

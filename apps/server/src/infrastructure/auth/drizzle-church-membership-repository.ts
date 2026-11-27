@@ -35,7 +35,9 @@ export class DrizzleChurchMembershipRepository
     const rows = await getClient({ db: this.db, tx: input.tx })
       .select({ organizationId: member.organizationId, role: member.role })
       .from(member)
-      .where(eq(member.userId, input.userId));
+      .where(eq(member.userId, input.userId))
+      // No caller shows an order (they count the rows): natural key, then id.
+      .orderBy(asc(member.organizationId), asc(member.id));
 
     return rows.map((row) => ({
       churchId: row.organizationId as ChurchId,

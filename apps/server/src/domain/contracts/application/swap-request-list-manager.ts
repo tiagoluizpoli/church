@@ -1,5 +1,6 @@
 import type { Instant } from '@church/time';
 import type { ChurchId, CycleId, MinistryId } from '../../branded-ids';
+import type { SwapRequestRepository } from '@/domain/contracts/infrastructure/swap-request.repository';
 
 export interface ListLeaderSwapRequestsCommand {
   churchId: ChurchId;
@@ -37,4 +38,8 @@ export interface ISwapRequestListManager {
   listForLeader(
     input: ListLeaderSwapRequestsCommand,
   ): Promise<LeaderSwapRequestsView>;
+}
+
+export interface DbSwapRequestListManagerDependencies {
+  swapRequestRepo: SwapRequestRepository;
 }

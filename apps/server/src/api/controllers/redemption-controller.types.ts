@@ -3,7 +3,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { z } from 'zod';
 import type { UserId } from '../../domain/branded-ids';
 import type { RedemptionManager } from '../../domain/contracts/application/redemption-manager';
-import type { VolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
+import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import type {
   acceptExistingMemberBodySchema,
   confirmTransferBodySchema,
@@ -42,7 +42,7 @@ export interface InvitationPreviewFields {
 
 export interface RedemptionControllerDependencies {
   redemptionManager: RedemptionManager;
-  volunteerTransferManager: VolunteerTransferManager;
+  volunteerTransferManager: IVolunteerTransferManager;
   config: AppConfig;
 }
 

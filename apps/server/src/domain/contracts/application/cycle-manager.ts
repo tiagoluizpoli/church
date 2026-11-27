@@ -1,3 +1,4 @@
+import type { CalendarDay } from '@church/time';
 import type { ChurchId, CycleId } from '../../branded-ids';
 import type {
   Cycle,
@@ -7,6 +8,15 @@ import type {
   CycleState,
 } from '../../entities/cycle';
 import type { EventWithEventTimeBlocks } from '../../entities/event';
+import type { IChurchNotifications } from '@/domain/contracts/application/church-notifications';
+import type { IUsualSetupStaffingSeeder } from '@/domain/contracts/application/usual-setup-staffing-seeder';
+import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
+import type { CycleRepository } from '@/domain/contracts/infrastructure/cycle.repository';
+import type { MinistryParticipationRepository } from '@/domain/contracts/infrastructure/ministry-participation.repository';
+import type { PlanningEventRepository } from '@/domain/contracts/infrastructure/planning-event.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
+import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
 
 export interface CreateCycleManagerInput {
   churchId: ChurchId;
@@ -85,4 +95,45 @@ export interface ICycleManager {
   sendCycle(input: SendCycleManagerInput): Promise<void>;
   updateCycle(input: UpdateCycleManagerInput): Promise<Cycle>;
   deleteCycle(input: DeleteCycleManagerInput): Promise<void>;
+}
+
+export interface SuggestNextCycleInput {
+  latestEnd: CalendarDay | null;
+  churchToday: CalendarDay;
+}
+
+export interface EnsureResolvedCycleInput {
+  cycle: Cycle;
+  churchTimeZone: string;
+  /** A write's open transaction, so its rollback undoes the Past flip. */
+  tx?: TransactionContext;
+}
+
+export interface LoadSendableCycleInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  timeZone: string;
+  tx: TransactionContext;
+}
+
+export interface SendableCycle {
+  cycle: Cycle;
+  draftEvents: EventWithEventTimeBlocks[];
+}
+
+export interface EnqueueCycleReadyInput {
+  churchId: ChurchId;
+  cycleId: CycleId;
+  tx: TransactionContext;
+}
+
+export interface DbCycleManagerDependencies {
+  cycleRepository: CycleRepository;
+  eventRepository: PlanningEventRepository;
+  churchRepository: ChurchRepository;
+  unitOfWork: UnitOfWork;
+  participationRepository: MinistryParticipationRepository;
+  staffingSeeder: IUsualSetupStaffingSeeder;
+  volunteerRepository: VolunteerRepository;
+  notifications: IChurchNotifications;
 }

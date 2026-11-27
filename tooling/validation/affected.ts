@@ -17,16 +17,29 @@ import {
   findReusablePass,
   formatReusedPass,
   readCleanTree,
+  readJudgedTree,
   readMergeBase,
   recordPass,
 } from './gate-pass';
 import {
+  type CheckTiming,
+  countTests,
+  type FormatGateEndingInput,
+  formatGateEnding,
+  formatGateSummary,
+} from './gate-summary';
+import {
   hasFailure,
   type LaneStep,
   type OutputSink,
+  PROCESS_OUTPUT,
   runStages,
   type StepResult,
 } from './run-lanes';
+import {
+  readSeedAcknowledgements,
+  type SeedAcknowledgements,
+} from './seed-acknowledgements';
 import { readSeedImpactTrailers, SEED_IMPACT_TRAILER } from './seed-impact';
 import { VALIDATE_SETUP_STEPS } from './validate';
 import { formatLockWait, holdValidateLock } from './validate-lock';
@@ -48,8 +61,6 @@ interface CollectChangedPathsResult {
   changedPaths: string[];
   /** Changed paths with no file in the working tree. */
   deletedPaths: string[];
-  /** Messages of the commits the branch adds over the base. */
-  commitMessages: string[];
   /** Root package.json only gained scripts versus the merge base. */
   packageJsonScriptsOnlyAddition: boolean;
 }
@@ -97,13 +108,6 @@ export interface RunValidationInput {
 interface RunValidationResult {
   failed: boolean;
   timings: CheckTiming[];
-}
-
-export interface CheckTiming {
-  failed?: boolean;
-  label: string;
-  ms: number;
-  skipped?: boolean;
 }
 
 interface PushSkippedInput {
@@ -225,15 +229,6 @@ function collectChangedPaths({
     (path, index, paths) => path.length > 0 && paths.indexOf(path) === index,
   );
 
-  const commitMessages = resolvedBaseRef
-    ? runCommand({
-        args: ['log', '--format=%B%x00', `${resolvedBaseRef}..HEAD`],
-        command: 'git',
-      })
-        .join('\n')
-        .split('\0')
-    : [];
-
   let packageJsonScriptsOnlyAddition = false;
   if (resolvedBaseRef && changedPaths.includes('package.json')) {
     try {
@@ -254,7 +249,6 @@ function collectChangedPaths({
   return {
     baseRef: resolvedBaseRef,
     changedPaths,
-    commitMessages,
     packageJsonScriptsOnlyAddition,
     deletedPaths: changedPaths.filter((path) => !existsSync(path)),
   };
@@ -563,9 +557,12 @@ async function runValidation({
   onlyE2e,
   plan,
   skipE2e,
+  output,
   tier,
   wholeUnitSuites,
-}: RunValidationInput): Promise<RunValidationResult> {
+}: RunValidationInput & {
+  output: OutputSink;
+}): Promise<RunValidationResult> {
   const timings: CheckTiming[] = [];
   const steps = buildValidationSteps({
     onlyE2e,
@@ -579,6 +576,7 @@ async function runValidation({
   // The i18n compile runs before every check: lint, typecheck and tests read
   // the compiled messages, and a stale compile fails them falsely.
   const results = await runValidationSteps({
+    output,
     steps: {
       ...steps,
       checkLane: [...VALIDATE_SETUP_STEPS, ...steps.checkLane],
@@ -771,6 +769,7 @@ function buildTurboStep({
 interface ExplainPlanInput {
   baseRef: string | undefined;
   plan: ValidationPlan;
+  seedAcknowledgements?: SeedAcknowledgements;
   tier?: ValidationTier;
   wholeUnitSuites?: boolean;
 }
@@ -778,6 +777,7 @@ interface ExplainPlanInput {
 export function explainPlan({
   baseRef,
   plan,
+  seedAcknowledgements,
   tier = 'affected',
   wholeUnitSuites = false,
 }: ExplainPlanInput): string {
@@ -845,7 +845,7 @@ export function explainPlan({
     for (const path of plan.toolingTestPaths) lines.push(`  - ${path}`);
   }
 
-  lines.push('', ...explainSeedImpact({ plan }));
+  lines.push('', ...explainSeedImpact({ plan, seedAcknowledgements }));
 
   if (plan.missingJourneyMappings.length > 0) {
     lines.push(
@@ -860,9 +860,18 @@ export function explainPlan({
 
 interface ExplainSeedImpactInput {
   plan: ValidationPlan;
+  seedAcknowledgements?: SeedAcknowledgements;
 }
 
-function explainSeedImpact({ plan }: ExplainSeedImpactInput): string[] {
+function explainSeedImpact({
+  plan,
+  seedAcknowledgements,
+}: ExplainSeedImpactInput): string[] {
+  const {
+    accepted = [],
+    borrowed = [],
+    ownBaseRef,
+  } = seedAcknowledgements ?? {};
   const { acknowledgements, changes, decision } = plan.seedImpact;
   if (decision === 'not-applicable') return ['Seed impact: none selected'];
 
@@ -874,10 +883,24 @@ function explainSeedImpact({ plan }: ExplainSeedImpactInput): string[] {
   for (const { area, changedPath } of changes) {
     lines.push(`  - ${area} <- ${changedPath}`);
   }
-  for (const reason of acknowledgements) {
-    lines.push(`  acknowledged: ${reason}`);
+  // A reason with no commit came from --no-seed-impact.
+  for (const reason of new Set(acknowledgements)) {
+    const shas = accepted
+      .filter((acknowledgement) => acknowledgement.reason === reason)
+      .map(({ sha }) => sha);
+    const source = shas.length > 0 ? ` (commit ${shas.join(', ')})` : '';
+    lines.push(`  acknowledged: ${reason}${source}`);
+  }
+  if (accepted.length > 0 || borrowed.length > 0) {
+    lines.push(`  own commits: above ${ownBaseRef}`);
   }
   if (decision === 'undecided') {
+    for (const { reason, sha } of borrowed) {
+      lines.push(
+        `  refused: ${reason} (commit ${sha}) is not one of this branch's own commits (above ${ownBaseRef}).`,
+      );
+    }
+    if (borrowed.length > 0) lines.push('  Add the trailer on this branch.');
     lines.push(
       '  Update apps/server/seeds (and its contracts) in this change, or',
       `  acknowledge it with a commit trailer "${SEED_IMPACT_TRAILER}"`,
@@ -887,28 +910,13 @@ function explainSeedImpact({ plan }: ExplainSeedImpactInput): string[] {
   return lines;
 }
 
-interface FormatTimingSummaryInput {
-  timings: CheckTiming[];
+interface RunCliInput {
+  argumentsResult: ParseArgumentsResult;
+  /** Filled as the run learns it; the exit handler prints it. */
+  ending: Omit<FormatGateEndingInput, 'exitCode'>;
 }
 
-export function formatTimingSummary({
-  timings,
-}: FormatTimingSummaryInput): string {
-  const lines = ['| Check | Elapsed |', '| --- | --- |'];
-  for (const { failed, label, ms, skipped } of timings) {
-    const elapsed = `${(ms / 1000).toFixed(1)}s`;
-    const status = skipped
-      ? 'skipped'
-      : failed
-        ? `failed (${elapsed})`
-        : elapsed;
-    lines.push(`| ${label} | ${status} |`);
-  }
-  return lines.join('\n');
-}
-
-if (import.meta.main) {
-  const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
+async function runCli({ argumentsResult, ending }: RunCliInput) {
   const { tier } = argumentsResult;
   if (tier === 'no-docker') {
     console.log(
@@ -918,10 +926,10 @@ if (import.meta.main) {
   const {
     baseRef,
     changedPaths,
-    commitMessages,
     deletedPaths,
     packageJsonScriptsOnlyAddition,
   } = collectChangedPaths({ baseRef: argumentsResult.baseRef });
+  const seedAcknowledgements = readSeedAcknowledgements({ baseRef });
   const plan = classifyChanges({
     changedPaths,
     dailyGate: argumentsResult.dailyGate,
@@ -931,9 +939,12 @@ if (import.meta.main) {
     packageJsonScriptsOnlyAddition,
     seedImpactAcknowledgements: [
       ...argumentsResult.seedImpactAcknowledgements,
-      ...readSeedImpactTrailers({ messages: commitMessages }),
+      ...seedAcknowledgements.accepted.map(({ reason }) => reason),
     ],
   });
+
+  ending.journeyFallbacks = plan.missingJourneyMappings;
+  ending.seedDecision = plan.seedImpact.decision;
 
   console.log(JSON.stringify(plan, null, 2));
   if (plan.missingJourneyMappings.length > 0) {
@@ -945,7 +956,7 @@ if (import.meta.main) {
   // Only a run that would validate refuses: --dry-run stays a pure plan whose
   // JSON other CI steps parse, and the gate that runs validation enforces it.
   if (plan.seedImpact.decision === 'undecided' && !argumentsResult.dryRun) {
-    console.error(explainPlan({ baseRef, plan }));
+    console.error(explainPlan({ baseRef, plan, seedAcknowledgements }));
     console.error(
       '\nSeed impact is undecided: this change touches schema, persistence, authentication, tenancy or scheduling. Nothing was validated.',
     );
@@ -957,7 +968,7 @@ if (import.meta.main) {
     // Bun (see ci.yml's "Determine affected plan" step) — the explanation
     // must stay off stdout so that stays valid JSON.
     console.error('');
-    console.error(explainPlan({ baseRef, plan }));
+    console.error(explainPlan({ baseRef, plan, seedAcknowledgements }));
   } else {
     const mergeBase =
       baseRef && isWholeLocalRun({ argumentsResult, ci: process.env.CI })
@@ -972,10 +983,13 @@ if (import.meta.main) {
     }
     const tree = mergeBase ? readCleanTree({}) : null;
     const lock = await holdValidateLock({ tier });
+    const { counts, output } = countTests({ output: PROCESS_OUTPUT });
+    ending.counts = counts;
     let failed: boolean;
-    let timings: Awaited<ReturnType<typeof runValidation>>['timings'];
+    let timings: CheckTiming[];
     try {
       ({ failed, timings } = await runValidation({
+        output,
         onlyE2e: argumentsResult.onlyE2e,
         plan,
         skipE2e: argumentsResult.skipE2e,
@@ -985,25 +999,45 @@ if (import.meta.main) {
     } finally {
       lock.release();
     }
-    const summary = formatTimingSummary({ timings });
+    ending.timings = timings;
     const explanation = explainPlan({
       baseRef,
       plan,
+      seedAcknowledgements,
       tier,
       wholeUnitSuites: argumentsResult.dailyGate,
     });
     console.log('');
-    console.log(summary);
     console.log(formatLockWait({ waitedMs: lock.waitedMs }));
     console.log('');
     console.log(explanation);
     if (process.env.GITHUB_STEP_SUMMARY) {
+      const summary = formatGateSummary(ending);
       appendFileSync(
         process.env.GITHUB_STEP_SUMMARY,
-        `\n### Check timings\n\n${summary}\n\n### Selection reasons\n\n\`\`\`\n${explanation}\n\`\`\`\n`,
+        `\n### Gate summary\n\n${summary}\n\n### Selection reasons\n\n\`\`\`\n${explanation}\n\`\`\`\n`,
       );
     }
     if (failed) process.exitCode = 1;
     else if (tree && mergeBase) recordPass({ base: mergeBase, tier, tree });
+  }
+}
+
+if (import.meta.main) {
+  const argumentsResult = parseArguments({ args: Bun.argv.slice(2) });
+  const ending: RunCliInput['ending'] = { tree: 'unknown' };
+  // A dry run's stdout is parsed as JSON. Every other run ends with the
+  // summary however it ends: pass, failure, throw, busy slot or signal.
+  if (!argumentsResult.dryRun) {
+    ending.tree = readJudgedTree({});
+    process.on('exit', (exitCode) => {
+      process.stdout.write(formatGateEnding({ ...ending, exitCode }));
+    });
+  }
+  try {
+    await runCli({ argumentsResult, ending });
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
   }
 }

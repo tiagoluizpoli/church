@@ -99,11 +99,14 @@ test('J10 admin cancellation: impact, typed gate, N9 and N10, closed SwapRequest
     m.event_cancel_done_one({}, locale),
   );
 
-  // The Volunteer is told (N9) and the Assignment is gone, at once.
+  // The Volunteer is told (N9) and the Assignment reads as cancelled, at once.
   await expectBellNotice(volunteerPage, 'event_cancelled');
   await volunteerPage.goto('/app/my-schedule');
+  const cancelledRow = volunteerPage
+    .getByRole('row')
+    .filter({ hasText: eventTitle });
   await expect(
-    volunteerPage.getByText(m.my_schedule_empty({}, locale)),
+    cancelledRow.getByText(m.event_status_cancelled({}, locale)),
   ).toBeVisible();
   await expect(assignmentLink).toHaveCount(0);
 

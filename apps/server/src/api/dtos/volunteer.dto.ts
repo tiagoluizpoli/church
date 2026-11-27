@@ -184,6 +184,7 @@ const volunteerScheduleAssignmentSchema = z.object({
   roleId: z.string(),
   roleName: z.string(),
   status: z.enum(['pending']),
+  cancelled: z.boolean(),
   swapRequested: z.boolean(),
 });
 
@@ -215,6 +216,7 @@ const ministryScheduleEventResponseSchema = z.object({
   title: z.string(),
   start: instantSchema,
   end: instantSchema,
+  cancelled: z.boolean(),
   assignmentCount: z.number(),
   rows: z.array(
     z.object({
@@ -224,6 +226,7 @@ const ministryScheduleEventResponseSchema = z.object({
       shiftEnd: instantSchema,
       sectorName: z.string(),
       roleName: z.string(),
+      cancelled: z.boolean(),
       volunteerDisplayName: z.string().optional(),
     }),
   ),
@@ -394,6 +397,7 @@ function ministryScheduleEventToResponse(
     title: event.title,
     start: parseInstant({ value: event.start }),
     end: parseInstant({ value: event.end }),
+    cancelled: event.cancelled,
     assignmentCount: event.assignmentCount,
     rows: event.rows.map((row) => ({
       ...row,

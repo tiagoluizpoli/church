@@ -697,6 +697,42 @@ describe('repository list ordering', () => {
       ]);
     });
 
+    it('resolveActor returns each membership’s qualified roles by role id', async () => {
+      const { churchId, seed } = await seedBase();
+      // A new Ministry: the seeded admin already belongs to the seeded one.
+      const ministry = await buildMinistry({
+        db,
+        churchId: seed.churchAId,
+        name: 'Choir',
+      });
+      for (const n of [2, 1]) {
+        await buildRole({
+          db,
+          churchId: seed.churchAId,
+          ministryId: ministry.id,
+          id: uuid(n),
+          name: `role ${n}`,
+        });
+      }
+      await buildMinistryMembership({
+        db,
+        churchId: seed.churchAId,
+        volunteerId: seed.adminVolunteerId,
+        ministryId: ministry.id,
+        ministryAccessLevel: 'volunteer',
+        roleIds: [uuid(2), uuid(1)],
+      });
+      const resolver = new DrizzleAuthorityActorResolver({ db });
+      const actor = await resolver.resolveActor({
+        userId: UserId.from(seed.adminUserId),
+        activeChurchId: churchId,
+      });
+      const membership = actor.ministryMemberships.find(
+        (m) => m.ministryId === ministry.id,
+      );
+      expect(membership?.qualifiedRoleIds).toEqual([uuid(1), uuid(2)]);
+    });
+
     /** The seeded admin joins two more Churches, inserted last name first. */
     async function seedChurches() {
       const { seed } = await seedBase();

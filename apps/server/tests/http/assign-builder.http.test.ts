@@ -3,7 +3,6 @@ import { appConfig } from '@church/app-config';
 import { event, eventTimeBlock } from '@church/db';
 import { parseInstant } from '@church/time';
 import { eq } from 'drizzle-orm';
-import pg from 'pg';
 import {
   afterAll,
   beforeAll,
@@ -51,6 +50,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { compareStatementCounts } from '@/tests/test-support/statement-count';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn(), setActiveOrganization: vi.fn() } },
@@ -556,27 +556,20 @@ it('keeps builder and eligible read query counts bounded as assignment history g
   ];
   for (const url of urls)
     expect((await app.inject({ method: 'GET', url })).statusCode).toBe(200);
-  // Observe real driver statements without replacing storage or authorization.
-  const queries = vi.spyOn(pg.Client.prototype, 'query');
-  const readCounts = async () => {
-    const counts: number[] = [];
-    for (const url of urls) {
-      queries.mockClear();
-      const response = await app.inject({ method: 'GET', url });
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toContain('Holder');
-      expect(response.body).toContain('2026-07-02T09:00:00.000Z');
-      counts.push(queries.mock.calls.length);
-    }
-    return counts;
-  };
-  try {
-    const smallHistory = await readCounts();
-    expect(smallHistory.every((count) => count > 0)).toBe(true);
-    for (let index = 1; index < 9; index++) await addHistory(index);
-    const largeHistory = await readCounts();
-    expect(largeHistory).toEqual(smallHistory);
-  } finally {
-    queries.mockRestore();
+  const { small, large } = await compareStatementCounts({
+    app,
+    requests: urls.map((url) => ({ method: 'GET', url })),
+    grow: async () => {
+      for (let index = 1; index < 9; index++) await addHistory(index);
+    },
+  });
+  for (const { response } of [...small, ...large]) {
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain('Holder');
+    expect(response.body).toContain('2026-07-02T09:00:00.000Z');
   }
+  const smallHistory = small.map(({ statements }) => statements);
+  expect(smallHistory.every((count) => count > 0)).toBe(true);
+  const largeHistory = large.map(({ statements }) => statements);
+  expect(largeHistory).toEqual(smallHistory);
 });

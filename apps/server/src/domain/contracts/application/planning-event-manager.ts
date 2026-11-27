@@ -17,17 +17,17 @@ import type {
   CancellationScope,
   CancellationScopeAssignment,
   ResolvedCancellationScope,
-} from '../../services/event-cancellation';
-import type { EditProposal } from '../../services/event-edit';
-import type { EventGraphTimeBlock } from '../../services/event-graph';
+} from '../../services/planning/event-cancellation.types';
+import type { EditProposal } from '../../services/planning/event-edit.types';
+import type { EventGraphTimeBlock } from '../../services/planning/event-graph.types';
 import type {
   InstantBounds,
   MoveClash,
   MoveProposal,
   MoveScope,
   MoveScopeAssignment,
-} from '../../services/event-move';
-import type { LosingEventTimeBlock } from '../../services/template-precedence-application';
+} from '../../services/planning/event-move.types';
+import type { LosingEventTimeBlock } from '../../services/planning/template-precedence-application.types';
 import type { IAssignmentLifecycle } from './assignment-lifecycle';
 import type { IChurchNotifications } from './church-notifications';
 import type { IChurchRecipients } from './church-recipients';

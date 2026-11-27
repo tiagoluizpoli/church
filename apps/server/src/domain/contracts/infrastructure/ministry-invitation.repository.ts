@@ -11,7 +11,7 @@ import type { MinistryInvitation } from '../../entities/ministry-invitation';
 import type { MinistryAccessLevel } from '../../entities/ministry-membership';
 import type { PublicRedemptionPreview } from '../../entities/public-redemption-preview';
 import type { RedemptionBundle } from '../../entities/redemption-bundle';
-import type { ResendThrottleState } from '../../services/resend-throttle';
+import type { ResendThrottleState } from '../../services/invitations/resend-throttle.types';
 import type { TransactionContext } from './transaction-context';
 
 export interface AcquireMintLockInput {

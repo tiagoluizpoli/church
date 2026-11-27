@@ -11,7 +11,7 @@ import type { MinistryParticipation } from '../../entities/ministry-participatio
 import type {
   ParticipationSeedPlan,
   ProfileSeederEntry,
-} from '../../services/profile-seeder';
+} from '../../services/church-identity/profile-seeder.types';
 import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
 import type { MinistryParticipationRepository } from '@/domain/contracts/infrastructure/ministry-participation.repository';
 import type { ShiftRepository } from '@/domain/contracts/infrastructure/shift.repository';

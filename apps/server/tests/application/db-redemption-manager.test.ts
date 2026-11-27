@@ -24,7 +24,7 @@ import type { Church } from '@/domain/entities/church';
 import type { RedemptionBundle } from '@/domain/entities/redemption-bundle';
 import { CrossChurchVolunteerConflictError } from '@/domain/errors/cross-church-volunteer-conflict';
 import { VerificationCodeError } from '@/domain/errors/verification-code-error';
-import { reviewTokenFor } from '@/domain/services/redemption-review-token';
+import { reviewTokenFor } from '@/domain/services/invitations/redemption-review-token';
 
 const CHURCH_ID = ChurchId.from('11111111-1111-4111-8111-111111111111');
 const MINISTRY_INVITATION_ID = MinistryInvitationId.from(

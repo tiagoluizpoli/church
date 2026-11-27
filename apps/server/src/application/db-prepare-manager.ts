@@ -59,8 +59,8 @@ import {
   assertEventTimeBlockNotCancelled,
   isEventTimeBlockCancelled,
 } from '../domain/event-time-block-cancellation';
-import { ShiftSplitter } from '../domain/services/shift-splitter';
-import { spansFitBlock } from '../domain/services/usual-setup-planner';
+import { ShiftSplitter } from '../domain/services/scheduling/shift-splitter';
+import { spansFitBlock } from '../domain/services/scheduling/usual-setup-planner';
 import { filterCycleParticipation } from './participation-view-filter';
 
 /**

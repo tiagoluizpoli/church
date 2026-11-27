@@ -51,13 +51,13 @@ import { PendingChurchInvitationExistsError } from '../domain/errors/pending-chu
 import { PendingMinistryInvitationExistsError } from '../domain/errors/pending-ministry-invitation-exists';
 import { ResendCooldownActiveError } from '../domain/errors/resend-cooldown-active';
 import { ResendDailyCapExceededError } from '../domain/errors/resend-daily-cap-exceeded';
-import { normalizeInvitationEmail } from '../domain/services/normalize-invitation-email';
+import { normalizeInvitationEmail } from '../domain/services/invitations/normalize-invitation-email';
 import {
   hasResendDailyCapExceeded,
   isResendCooldownActive,
   nextResendThrottleState,
-  type ResendThrottleState,
-} from '../domain/services/resend-throttle';
+} from '../domain/services/invitations/resend-throttle';
+import type { ResendThrottleState } from '../domain/services/invitations/resend-throttle.types';
 import { revokeChurchOffer, revokeMinistryHalf } from './invitation-revocation';
 
 interface ExpiryFromInput {

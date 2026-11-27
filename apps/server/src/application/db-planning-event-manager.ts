@@ -78,34 +78,34 @@ import {
 } from '../domain/errors';
 import {
   CycleEventGenerator,
-  type ExistingGeneratedEventTimeBlockFingerprint,
   eventTimeBlockEnvelope,
-} from '../domain/services/cycle-event-generator';
+} from '../domain/services/planning/cycle-event-generator';
+import type { ExistingGeneratedEventTimeBlockFingerprint } from '../domain/services/planning/cycle-event-generator.types';
 import {
-  type CancellationImpact,
-  type CancellationScopeAssignment,
   resolveCancellationScope,
   summarizeCancellationImpact,
-} from '../domain/services/event-cancellation';
+} from '../domain/services/planning/event-cancellation';
+import type {
+  CancellationImpact,
+  CancellationScopeAssignment,
+} from '../domain/services/planning/event-cancellation.types';
 import {
   findEditClashes,
   proposeEdit,
   proposeShiftBounds,
-} from '../domain/services/event-edit';
+} from '../domain/services/planning/event-edit';
+import { assertEventGraph } from '../domain/services/planning/event-graph';
+import type {
+  EventGraph,
+  EventGraphTimeBlock,
+} from '../domain/services/planning/event-graph.types';
 import {
-  assertEventGraph,
-  type EventGraph,
-  type EventGraphTimeBlock,
-} from '../domain/services/event-graph';
-import {
-  type BoundsPair,
   findMoveClashes,
   proposeMove,
-} from '../domain/services/event-move';
-import {
-  listLosingEventTimeBlocks,
-  type PrecedencePair,
-} from '../domain/services/template-precedence-application';
+} from '../domain/services/planning/event-move';
+import type { BoundsPair } from '../domain/services/planning/event-move.types';
+import { listLosingEventTimeBlocks } from '../domain/services/planning/template-precedence-application';
+import type { PrecedencePair } from '../domain/services/planning/template-precedence-application.types';
 import type { TemplatePrecedence } from '../domain/template-precedence';
 
 const sameBounds = ({ left, right }: BoundsPair) =>

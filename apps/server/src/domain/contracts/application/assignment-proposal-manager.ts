@@ -16,7 +16,7 @@ import type {
   ProposeAssignmentsInput,
   ProposedAddition,
   ReviewedAddition,
-} from '../../services/assignment-proposal';
+} from '../../services/scheduling/assignment-proposal.types';
 import type { IAssignmentLifecycle } from './assignment-lifecycle';
 import type { IParticipationReader } from './participation-reader';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';

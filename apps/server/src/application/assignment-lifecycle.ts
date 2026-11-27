@@ -48,14 +48,14 @@ import { eventTimeBlockCancellation } from '../domain/event-time-block-cancellat
 import {
   findAssignmentRefusal,
   isMarkedUnavailable,
-} from '../domain/services/assignment-eligibility';
-import type { AssignmentEligibility } from '../domain/services/assignment-eligibility.types';
+} from '../domain/services/scheduling/assignment-eligibility';
+import type { AssignmentEligibility } from '../domain/services/scheduling/assignment-eligibility.types';
 
 /**
  * The Assignment lifecycle (#1122): every way an Assignment comes and goes,
  * with its audit row, the Schedule's move to assigning and the closing of
  * its open swap request. Eligibility rules are the pure
- * `domain/services/assignment-eligibility`; this module loads their facts,
+ * `domain/services/scheduling/assignment-eligibility`; this module loads their facts,
  * maps a refusal to the error each entry point answers, and writes.
  * Authorization stays with the callers (ADR-0009), which also hold the
  * Church and Participation locks.

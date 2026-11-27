@@ -59,7 +59,7 @@ import {
   InvalidCycleEventsError,
   OverlappingCycleError,
 } from '../domain/errors';
-import { assertEventGraph } from '../domain/services/event-graph';
+import { assertEventGraph } from '../domain/services/planning/event-graph';
 
 interface SuggestNextCycleInput {
   latestEnd: CalendarDay | null;

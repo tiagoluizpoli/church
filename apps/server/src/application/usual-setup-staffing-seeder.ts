@@ -16,11 +16,11 @@ import type { MinistryParticipationRepository } from '../domain/contracts/infras
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import { Shift } from '../domain/entities/shift';
-import {
-  type ParticipationSeedPlan,
-  ProfileSeeder,
-  type ProfileSeederEntry,
-} from '../domain/services/profile-seeder';
+import { ProfileSeeder } from '../domain/services/church-identity/profile-seeder';
+import type {
+  ParticipationSeedPlan,
+  ProfileSeederEntry,
+} from '../domain/services/church-identity/profile-seeder.types';
 
 /**
  * Pre-fills inclusions, Shifts and positive ShiftRequirements from the Usual

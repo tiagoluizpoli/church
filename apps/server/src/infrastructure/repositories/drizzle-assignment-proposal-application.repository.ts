@@ -13,7 +13,7 @@ import type {
   CreateAssignmentProposalApplicationInput,
   FindAssignmentProposalApplicationInput,
 } from '../../domain/contracts/infrastructure/assignment-proposal-application.repository';
-import type { AppliedProposalAddition } from '../../domain/services/assignment-proposal';
+import type { AppliedProposalAddition } from '../../domain/services/scheduling/assignment-proposal.types';
 import { getClient, withChurchIsolation } from './helpers';
 import type { AnyDrizzleDb } from './types';
 

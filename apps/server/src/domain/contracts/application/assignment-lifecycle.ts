@@ -13,7 +13,7 @@ import type {
   AssignmentEligibility,
   AssignmentRefusal,
   EligibilityCheck,
-} from '../../services/assignment-eligibility.types';
+} from '../../services/scheduling/assignment-eligibility.types';
 import type { CreateParticipationAssignmentResult } from './assignment-manager';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
 import type { AssignmentAuditRepository } from '@/domain/contracts/infrastructure/assignment-audit.repository';
@@ -30,7 +30,7 @@ import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volu
  * The Assignment lifecycle (#1122): every way an Assignment comes and goes,
  * with its audit row, the Schedule's move to assigning and the closing of its
  * open swap request. Eligibility rules are the pure
- * `domain/services/assignment-eligibility`. Callers authorize (ADR-0009), hold
+ * `domain/services/scheduling/assignment-eligibility`. Callers authorize (ADR-0009), hold
  * the Church and Participation locks, and pass their transaction on every call.
  */
 

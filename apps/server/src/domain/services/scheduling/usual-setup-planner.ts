@@ -158,7 +158,11 @@ export function planUsualSetupShifts({
   };
 }
 
-/** A serving manual split that no longer fits its Time block's current bounds. */
+/**
+ * A serving manual split that no longer fits its Time block's current bounds.
+ * `ministryNeedsReview` (infrastructure) answers the same rule in SQL for the
+ * Ministry lists; the two must change together.
+ */
 export function usualSetupNeedsReview({
   entry,
   block,

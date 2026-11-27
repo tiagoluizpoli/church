@@ -20,13 +20,14 @@ import {
   type SQL,
   sql,
 } from 'drizzle-orm';
-import type { CycleId } from '../../domain/branded-ids';
+import type { CycleId, MinistryId } from '../../domain/branded-ids';
 import type {
   ArchiveMinistryRecordInput,
   CreateMinistryRecordInput,
   GetMinistryByIdInput,
   GetMinistrySettingsInput,
   ListMinistriesByChurchInput,
+  ListMinistriesNeedingReviewInput,
   ListMinistryPageInput,
   ListUnendedParticipationCyclesInput,
   LockActiveMinistryInput,
@@ -58,6 +59,7 @@ import {
   isValidUuid,
   withChurchIsolation,
 } from './helpers';
+import { ministryNeedsReview } from './ministry-needs-review.sql';
 import { isUniqueViolation } from './unique-violation';
 
 const ACTIVE_NAME_CONSTRAINT = 'ministry_church_active_name_idx';
@@ -129,7 +131,6 @@ export class DrizzleMinistryRepository implements MinistryRepository {
     ids,
     search,
     status,
-    reviewIds,
     cursor,
     limit,
   }: ListMinistryPageInput): Promise<MinistryPageRecord> {
@@ -140,8 +141,7 @@ export class DrizzleMinistryRepository implements MinistryRepository {
       isNull(ministry.deletedAt),
       ids ? inArray(ministry.id, ids) : undefined,
     );
-    const needsReview =
-      reviewIds.length > 0 ? inArray(ministry.id, reviewIds) : sql`false`;
+    const needsReview = ministryNeedsReview({ client, churchId });
     const withoutSectors = notExists(
       client
         .select({ id: sector.id })
@@ -189,6 +189,25 @@ export class DrizzleMinistryRepository implements MinistryRepository {
           : undefined,
       counts: counts ?? NO_MINISTRIES,
     };
+  }
+
+  async listNeedingReviewIds({
+    churchId,
+    ministryIds,
+  }: ListMinistriesNeedingReviewInput): Promise<MinistryId[]> {
+    if (ministryIds.length === 0) return [];
+    const client = getClient({ db: this.db });
+    const rows = await client
+      .select({ id: ministry.id })
+      .from(ministry)
+      .where(
+        and(
+          withChurchIsolation({ table: ministry, churchId }),
+          inArray(ministry.id, ministryIds),
+          ministryNeedsReview({ client, churchId }),
+        ),
+      );
+    return rows.map((row) => row.id as MinistryId);
   }
 
   async create({

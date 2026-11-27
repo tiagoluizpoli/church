@@ -199,6 +199,7 @@ export function createMinistryRepositoryFake() {
     getById: vi.fn<MinistryRepository['getById']>(),
     listByChurch: vi.fn<MinistryRepository['listByChurch']>(),
     listPage: vi.fn<MinistryRepository['listPage']>(),
+    listNeedingReviewIds: vi.fn<MinistryRepository['listNeedingReviewIds']>(),
     create: vi.fn<MinistryRepository['create']>(),
     rename: vi.fn<MinistryRepository['rename']>(),
     lockActive: vi.fn<MinistryRepository['lockActive']>(),

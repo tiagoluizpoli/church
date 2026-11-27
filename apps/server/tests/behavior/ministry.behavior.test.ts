@@ -127,8 +127,6 @@ describe('DbMinistryManager.listByLeader (T032)', () => {
     unitOfWork: new DrizzleUnitOfWork({ db }),
     sectorRepo: {} as never,
     roleRepo: {} as never,
-    usualSetupRepo: {} as never,
-    templateRepo: {} as never,
   });
 
   it('returns ministries where volunteer is leader', async () => {
@@ -168,8 +166,6 @@ describe('DbMinistryManager.setDefaultDirection', () => {
     unitOfWork: new DrizzleUnitOfWork({ db }),
     sectorRepo: {} as never,
     roleRepo: {} as never,
-    usualSetupRepo: {} as never,
-    templateRepo: {} as never,
   });
 
   it('updates the ministry default direction', async () => {

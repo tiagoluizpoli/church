@@ -168,8 +168,6 @@ export function buildManagers({
       unitOfWork,
       sectorRepo: sectorRepository,
       roleRepo: roleRepository,
-      usualSetupRepo: usualSetupRepository,
-      templateRepo: eventTemplateRepository,
     });
   const ministryRoleManager =
     overrides.ministryRoleManager ??

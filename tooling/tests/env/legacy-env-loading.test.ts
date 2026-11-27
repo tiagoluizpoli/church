@@ -1,6 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'bun:test';
 
 /**
@@ -50,6 +58,11 @@ interface TurboConfig {
   tasks: Record<string, TurboTask>;
 }
 
+interface WriteManifestInput {
+  path: string;
+  scripts: Record<string, string>;
+}
+
 interface ScriptInput {
   workspace: string;
   script: string;
@@ -89,6 +102,28 @@ function trackedFilesContaining(input: TrackedFilesInput): string[] {
   } catch {
     return [];
   }
+}
+
+interface GenericDbResetScriptsInput {
+  root: string;
+}
+
+/** `<manifest>:db:reset` for every package.json, tracked or new, declaring it. */
+function genericDbResetScripts({ root }: GenericDbResetScriptsInput): string[] {
+  return execFileSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard', '*package.json'],
+    { cwd: root, encoding: 'utf8' },
+  )
+    .trim()
+    .split('\n')
+    .filter((manifest) => {
+      const source = readFileSync(join(root, manifest), 'utf8');
+      const { scripts = {} } = JSON.parse(source) as PackageJson;
+      return 'db:reset' in scripts;
+    })
+    .map((manifest) => `${manifest}:db:reset`)
+    .sort();
 }
 
 // Development commands that read the environment run through Varlock with an
@@ -183,5 +218,59 @@ describe('legacy environment loading', () => {
         pattern: 'TEST_DATABASE_URL|DATABASE_URL_TEST',
       }),
     ).toEqual([]);
+  });
+
+  it('the only reset scripts today are the development-purpose ones', () => {
+    const manifests = execFileSync('git', ['ls-files', '*package.json'], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+    })
+      .trim()
+      .split('\n');
+    const resetScripts = manifests.flatMap((manifest) =>
+      Object.keys(
+        readPackageJson({ workspace: dirname(manifest) }).scripts ?? {},
+      )
+        .filter((name) => name.startsWith('db:reset'))
+        .map((name) => `${manifest}:${name}`),
+    );
+
+    expect(resetScripts).toEqual([
+      'package.json:db:reset:dev',
+      'packages/db/package.json:db:reset:dev',
+    ]);
+  });
+
+  // ADR-0005: every destructive command declares its purpose.
+  it('no workspace declares a generic db:reset script', () => {
+    expect(genericDbResetScripts({ root: REPO_ROOT })).toEqual([]);
+  });
+
+  it('names a generic db:reset in any manifest, even an untracked one', () => {
+    const root = mkdtempSync(join(tmpdir(), 'db-reset-guard-'));
+    const writeManifest = ({ path, scripts }: WriteManifestInput) => {
+      mkdirSync(join(root, dirname(path)), { recursive: true });
+      writeFileSync(join(root, path), JSON.stringify({ scripts }));
+    };
+
+    try {
+      execFileSync('git', ['init', '--quiet'], { cwd: root });
+      writeManifest({
+        path: 'package.json',
+        scripts: { 'db:reset': 'x', 'db:reset:dev': 'x' },
+      });
+      execFileSync('git', ['add', 'package.json'], { cwd: root });
+      writeManifest({
+        path: 'packages/new/package.json',
+        scripts: { 'db:reset': 'x' },
+      });
+
+      expect(genericDbResetScripts({ root })).toEqual([
+        'package.json:db:reset',
+        'packages/new/package.json:db:reset',
+      ]);
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
   });
 });

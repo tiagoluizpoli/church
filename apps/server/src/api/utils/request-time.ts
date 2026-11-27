@@ -5,10 +5,11 @@ import {
   toDate,
   toInstant,
 } from '@church/time';
-
-export interface InstantStringInput {
-  value: string;
-}
+import type {
+  CalendarDayStringInput,
+  InstantStringInput,
+  OptionalInstantStringInput,
+} from './request-time.types';
 
 /** A request body's ISO instant string, bridged to the `Date` legacy manager
  * contracts still expect. */
@@ -16,19 +17,11 @@ export function dateFromInstantString({ value }: InstantStringInput): Date {
   return toDate({ instant: parseInstant({ value }) });
 }
 
-export interface OptionalInstantStringInput {
-  value: string | undefined;
-}
-
 /** {@link dateFromInstantString}, for an optional PATCH-body field. */
 export function optionalDateFromInstantString({
   value,
 }: OptionalInstantStringInput): Date | undefined {
   return value ? dateFromInstantString({ value }) : undefined;
-}
-
-export interface CalendarDayStringInput {
-  value: string;
 }
 
 /** A request body's `yyyy-MM-dd` string, as the `Date` at its UTC midnight. */

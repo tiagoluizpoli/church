@@ -1,8 +1,9 @@
 import type { DomainError } from '@church/core';
 import { m } from '@church/i18n/messages';
-import type { Locale } from '@church/i18n/runtime';
 import type { Instant } from '@church/time';
-import { type ErrorMessage, errorMessage } from './error-table';
+import type { DomainErrorMessageInput } from './error-messages.types';
+import { errorMessage } from './error-table';
+import type { ErrorMessage } from './error-table.types';
 import type { ArchiveBlocker } from '@/domain/archive-blockers';
 import {
   AskBlockedFlaggedShiftsError,
@@ -73,11 +74,6 @@ export const VALIDATION_REASON_MESSAGES: Record<
   CANCEL_CONFIRMATION: m.error_validation_cancel_confirmation,
   PLACE_ADDRESS_NOT_FOUND: m.error_validation_place_address_not_found,
 };
-
-interface DomainErrorMessageInput {
-  error: DomainError;
-  locale: Locale;
-}
 
 /** The rule-based reason a `VALIDATION_ERROR` carries, also sent to the client. */
 export function validationReason(

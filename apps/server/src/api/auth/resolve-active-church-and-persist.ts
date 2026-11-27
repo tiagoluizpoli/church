@@ -1,18 +1,7 @@
-import type { FastifyRequest } from 'fastify';
-import type { ChurchId, UserId } from '../../domain/branded-ids';
-import type {
-  ActiveChurchResolution,
-  IActiveChurchResolver,
-} from '../../domain/contracts/application/active-church-resolver';
+import type { ActiveChurchResolution } from '../../domain/contracts/application/active-church-resolver';
 import { auth } from '../../main/di/server-auth';
 import { headersFromRequest } from '../utils/headers';
-
-export interface ResolveActiveChurchAndPersistInput {
-  resolver: IActiveChurchResolver;
-  request: FastifyRequest;
-  userId: UserId;
-  activeOrganizationId: ChurchId | null;
-}
+import type { ResolveActiveChurchAndPersistInput } from './resolve-active-church-and-persist.types';
 
 /**
  * The one place `IActiveChurchResolver.resolve` is called and its

@@ -1,27 +1,12 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ChurchId, UserId } from '../../domain/branded-ids';
-import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import { auth } from '../../main/di/server-auth';
 import { headersFromRequest } from '../utils/headers';
 import { refuse } from '../utils/refuse';
+import type {
+  ActiveChurchPreValidation,
+  CreateActiveChurchPreValidationInput,
+} from './active-church-pre-validation.types';
 import { resolveActiveChurchAndPersist } from './resolve-active-church-and-persist';
-
-export interface CreateActiveChurchPreValidationInput {
-  resolver: IActiveChurchResolver;
-  /**
-   * The route serves the caller's own Volunteer — e.g. their dashboard — so it
-   * needs an active serving Membership, not just a leftover profile. A Church
-   * admin with no Volunteer profile is a valid caller everywhere else, per the
-   * authority matrix.
-   */
-  requireVolunteer?: boolean;
-}
-
-// named-parameters-ignore: Fastify preValidation hook signature (request, reply)
-type ActiveChurchPreValidation = (
-  request: FastifyRequest,
-  reply: FastifyReply,
-) => Promise<FastifyReply | undefined>;
 
 /**
  * The one Active-Church resolution every protected controller registers as

@@ -1,6 +1,4 @@
-import type { AppConfig } from '@church/app-config';
 import { parseInstant } from '@church/time';
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -13,13 +11,13 @@ import {
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IAvailabilityCheckManager } from '../../domain/contracts/application/availability-check-manager';
 import type { IPrepareManager } from '../../domain/contracts/application/prepare-manager';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
 import type { ShiftSplitStrategy } from '../../domain/services/scheduling/shift-splitter.types';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import {
@@ -51,41 +49,21 @@ import {
   shiftHasResponsesResponseSchema,
 } from '../dtos/participation.dto';
 import { refuse } from '../utils/refuse';
-
-interface CycleParticipationRouteParams {
-  cycleId: string;
-}
-
-interface ScheduleSummaryRouteParams {
-  ministryId: string;
-}
-
-interface CycleMinistryQuery {
-  ministryId: string;
-}
-
-type AskScheduleBody = z.infer<typeof askScheduleBodySchema>;
-type RemindScheduleBody = z.infer<typeof remindScheduleBodySchema>;
-type SetAvailabilityDeadlineBody = z.infer<
-  typeof setAvailabilityDeadlineBodySchema
->;
-
-interface ParticipationEventTimeBlockRouteParams {
-  participationId: string;
-  eventTimeBlockId: string;
-}
-
-interface DenyParticipationScopeInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  participationId: string;
-}
-
-interface DenyAuthorityDecisionInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  allowed: boolean;
-}
+import type {
+  AskScheduleBody,
+  CycleMinistryQuery,
+  CycleParticipationRouteParams,
+  DenyAuthorityDecisionInput,
+  DenyParticipationScopeInput,
+  ListLimitQuery,
+  ParticipationEventTimeBlockRouteParams,
+  PrepareControllerDependencies,
+  RemindScheduleBody,
+  ScheduleListQuery,
+  ScheduleSummaryRouteParams,
+  SetAvailabilityDeadlineBody,
+  ToPreparationSplitInput,
+} from './prepare-controller.types';
 
 const cycleParticipationQuerySchema = z.object({
   ministryId: z.string(),
@@ -96,23 +74,6 @@ const errorResponseSchema = z.object({
   message: z.string(),
 });
 
-interface PrepareControllerDependencies {
-  prepareManager: IPrepareManager;
-  scheduleReadModel: IScheduleReadModel;
-  availabilityCheckManager: IAvailabilityCheckManager;
-  activeChurchResolver: IActiveChurchResolver;
-  authorityGuard: AuthorityGuard;
-  config: AppConfig;
-}
-
-/** The page size the route's own schema bounds by the configured maximum. */
-interface ListLimitQuery {
-  limit: number;
-}
-
-type ScheduleListQuery = z.infer<typeof scheduleListQuerystringSchema> &
-  ListLimitQuery;
-
 export class PrepareController implements FastifyController {
   readonly prefix = '/prepare';
 
@@ -120,7 +81,7 @@ export class PrepareController implements FastifyController {
   private readonly scheduleReadModel: IScheduleReadModel;
   private readonly availabilityCheckManager: IAvailabilityCheckManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
   private readonly schedulePageSize: number;
   private readonly scheduleMaxPageSize: number;
   private readonly answersMaxPageSize: number;
@@ -733,10 +694,6 @@ export class PrepareController implements FastifyController {
     refuse({ reply, request, code: 'NOT_FOUND' });
     return true;
   }
-}
-
-interface ToPreparationSplitInput {
-  shiftSplit: NonNullable<SavePreparationBody['shiftSplit']>;
 }
 
 function toPreparationSplit({

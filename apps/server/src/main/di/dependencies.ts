@@ -1,6 +1,5 @@
 import type { AppConfig } from '@church/app-config';
 import type { db } from '@church/db';
-import type { AuthorityGuard } from '../../api/auth/authority-guard';
 import type {
   IActiveChurchResolver,
   IActiveChurchSelectionManager,
@@ -38,6 +37,7 @@ import type {
   IVolunteerManager,
   IVolunteerTransferManager,
 } from '../../domain/contracts/application';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type {
   AssignmentAuditRepository,
   AssignmentProposalApplicationRepository,
@@ -140,7 +140,7 @@ export interface CompositionRootDependencies {
   scopeRepository: SchedulingScopeRepository;
   authorityActorRepository: AuthorityActorRepository;
   authorityManager: IAuthorityManager;
-  authorityGuard: AuthorityGuard;
+  authorityGuard: IAuthorityGuard;
   churchMembershipRepository: ChurchMembershipRepository;
   activeChurchResolver: IActiveChurchResolver;
   // Managers

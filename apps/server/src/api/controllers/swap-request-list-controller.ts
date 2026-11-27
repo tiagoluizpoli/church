@@ -8,11 +8,11 @@ import {
   UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { ISwapRequestListManager } from '../../domain/contracts/application/swap-request-list-manager';
 import type { ISwapRequestManager } from '../../domain/contracts/application/swap-request-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import type { AuthorityGuard } from '../auth/authority-guard';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   keepSwapRequestBodySchema,
@@ -20,23 +20,12 @@ import {
   leaderSwapRequestsResponseSchema,
 } from '../dtos/swap-request.dto';
 import { refuse } from '../utils/refuse';
-
-interface SwapRequestListControllerDependencies {
-  swapRequestListManager: ISwapRequestListManager;
-  swapRequestManager: ISwapRequestManager;
-  activeChurchResolver: IActiveChurchResolver;
-  authorityGuard: AuthorityGuard;
-}
-
-interface MinistryRouteParams {
-  ministryId: string;
-}
-
-interface KeepRouteParams extends MinistryRouteParams {
-  swapRequestId: string;
-}
-
-type LeaderSwapRequestsQuery = z.infer<typeof leaderSwapRequestsQuerySchema>;
+import type {
+  KeepRouteParams,
+  LeaderSwapRequestsQuery,
+  MinistryRouteParams,
+  SwapRequestListControllerDependencies,
+} from './swap-request-list-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -50,7 +39,7 @@ export class SwapRequestListController implements FastifyController {
   private readonly swapRequestListManager: ISwapRequestListManager;
   private readonly swapRequestManager: ISwapRequestManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
-  private readonly authorityGuard: AuthorityGuard;
+  private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     swapRequestListManager,

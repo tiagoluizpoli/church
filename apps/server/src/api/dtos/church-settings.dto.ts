@@ -26,7 +26,7 @@ import {
 } from '../../domain/church-settings';
 import { contactGroupOrderSchema } from '../../domain/contact-group';
 import { socialLinksSchema } from '../../domain/social-link';
-import type { ErrorMessage } from '../utils/error-table';
+import type { ErrorMessage } from '../utils/error-table.types';
 
 const churchContactResponseSchema = z.object({
   kind: z.enum(CHURCH_CONTACT_KINDS),

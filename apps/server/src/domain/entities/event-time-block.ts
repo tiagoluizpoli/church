@@ -6,6 +6,7 @@ import type {
   EventTimeBlockId,
   TemplateTimeBlockId,
 } from '../branded-ids';
+import { IllegalStateTransitionError } from '../errors/illegal-state-transition';
 import { InvalidDateRangeError } from '../errors/invalid-date-range';
 import type { ShiftRequirement } from './shift-requirement';
 
@@ -44,6 +45,11 @@ export interface EventTimeBlockInput {
   id?: string;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+interface SetHiddenInput {
+  isHidden: boolean;
+  action: 'hide' | 'show';
 }
 
 export class EventTimeBlock extends Entity<
@@ -123,6 +129,24 @@ export class EventTimeBlock extends Entity<
 
   public cancel(): void {
     this._props.status = 'cancelled';
+    this._updatedAt = toDate({ instant: now() });
+  }
+
+  /** Only cancelled work can be hidden or shown again. */
+  public hide(): void {
+    this.setHidden({ isHidden: true, action: 'hide' });
+  }
+
+  public show(): void {
+    this.setHidden({ isHidden: false, action: 'show' });
+  }
+
+  private setHidden({ isHidden, action }: SetHiddenInput): void {
+    const { status } = this._props;
+    if (status !== 'cancelled') {
+      throw new IllegalStateTransitionError({ from: status, to: action });
+    }
+    this._props.isHidden = isHidden;
     this._updatedAt = toDate({ instant: now() });
   }
 }

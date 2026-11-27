@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Pending } from '@/components/ui/pending';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { GetMinistrySchedule200 } from '@/infrastructure/api/churchAPI.schemas';
+import { STRUCK } from '@/lib/struck';
 import { cn } from '@/lib/utils';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useTimezone } from '@/shared/hooks/use-timezone';
@@ -49,8 +50,6 @@ function eventWhen({ start, end, timeZone }: EventWhenInput): string {
     assignmentDayLabel({ startTime: start, timeZone });
   return `${day} · ${formatTimeOf({ value: start, timeZone })}–${formatTimeOf({ value: end, timeZone })}`;
 }
-
-const STRUCK = 'text-muted-foreground line-through';
 
 interface ShiftGroup {
   label: string;

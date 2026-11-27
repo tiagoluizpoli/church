@@ -173,6 +173,7 @@ export class DrizzleEventTimeBlockRepository
         ...(input.placeAddressId !== undefined
           ? { placeAddressId: input.placeAddressId }
           : {}),
+        ...(input.isHidden !== undefined ? { isHidden: input.isHidden } : {}),
       })
       .where(
         and(

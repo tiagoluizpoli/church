@@ -11,6 +11,7 @@ import { dateLabel } from '../../../utils/builder/cycle-builder-date.utils';
 import { LoadTag, PersonToggle } from './proposal-parts';
 import { Button } from '@/components/ui/button';
 import type { GetAssignmentProposal200AdditionsItem } from '@/infrastructure/api/churchAPI.schemas';
+import { STRUCK } from '@/lib/struck';
 import { cn } from '@/lib/utils';
 import { formatTimeOf } from '@/shared/utils/church-time';
 
@@ -160,7 +161,7 @@ export function ProposalVolunteerTable({
                         key={day}
                         className={cn(
                           'radius-control inline-flex h-7 items-center whitespace-nowrap bg-secondary px-2 text-secondary-foreground text-sm tabular-nums',
-                          out && 'text-muted-foreground line-through',
+                          out && STRUCK,
                         )}
                       >
                         {formatDayAndMonth({

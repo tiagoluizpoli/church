@@ -288,8 +288,6 @@ export function createPlanningEventRepositoryFake() {
       vi.fn<PlanningEventRepository['listCancellationScopeAssignments']>(),
     cancelEventTimeBlock:
       vi.fn<PlanningEventRepository['cancelEventTimeBlock']>(),
-    setEventTimeBlockHidden:
-      vi.fn<PlanningEventRepository['setEventTimeBlockHidden']>(),
     deleteScopeUnavailableShifts:
       vi.fn<PlanningEventRepository['deleteScopeUnavailableShifts']>(),
     removeLastToldAssignments:

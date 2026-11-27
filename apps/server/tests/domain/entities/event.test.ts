@@ -1,6 +1,7 @@
 import { parseInstant } from '@church/time';
 import { describe, expect, it } from 'vitest';
 import { EVENT_STATUS_OPTIONS, Event } from '@/domain/entities/event';
+import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
 import { InvalidDateRangeError } from '@/domain/errors/invalid-date-range';
 
 const props = {
@@ -53,5 +54,32 @@ describe('Event Entity', () => {
     expect(() => new Event({ props: { ...props, start: props.end } })).toThrow(
       InvalidDateRangeError,
     );
+  });
+});
+
+describe('Event hide/show', () => {
+  it('hides and shows a cancelled Event', () => {
+    const event = new Event({ props: { ...props, status: 'cancelled' } });
+
+    event.hide();
+    expect(event.isHidden).toBe(true);
+    event.show();
+    expect(event.isHidden).toBe(false);
+  });
+
+  it.each([
+    'draft',
+    'scheduled',
+    'past',
+  ] as const)('refuses to hide or show a %s Event', (status) => {
+    const event = new Event({ props: { ...props, status } });
+
+    expect(() => event.hide()).toThrow(
+      new IllegalStateTransitionError({ from: status, to: 'hide' }),
+    );
+    expect(() => event.show()).toThrow(
+      new IllegalStateTransitionError({ from: status, to: 'show' }),
+    );
+    expect(event.isHidden).toBe(false);
   });
 });

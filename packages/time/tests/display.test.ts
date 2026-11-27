@@ -15,6 +15,7 @@ import {
   formatRelative,
   formatTimeOfDay,
   formatWeekday,
+  formatWeekdayInSentence,
   formatWeekdayOfIndex,
   formatWeekdayPluralOfIndex,
   formatWeekdayShort,
@@ -104,6 +105,17 @@ describe('formatWeekday', () => {
   it('capitalizes the first letter in pt-BR', () => {
     expect(formatWeekday({ day: day('2027-01-04'), locale: 'pt-BR' })).toMatch(
       /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ]/,
+    );
+  });
+});
+
+describe('formatWeekdayInSentence', () => {
+  it.each([
+    ['en', 'Monday'],
+    ['pt-BR', 'segunda-feira'],
+  ] as const)('writes the weekday as %s does mid-sentence', (locale, expected) => {
+    expect(formatWeekdayInSentence({ day: day('2027-01-04'), locale })).toBe(
+      expected,
     );
   });
 });

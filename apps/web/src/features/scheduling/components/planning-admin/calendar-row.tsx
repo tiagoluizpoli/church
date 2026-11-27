@@ -31,6 +31,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import type { DataTableColumn } from '@/components/ui/data-table';
+import { STRUCK } from '@/lib/struck';
 import { cn } from '@/lib/utils';
 import {
   formatCalendarDateOnly,
@@ -360,8 +361,7 @@ function ParentRowCell({
           <span className="flex flex-col">
             <span
               className={cn(
-                row.status === 'cancelled' &&
-                  'text-muted-foreground line-through',
+                row.status === 'cancelled' && STRUCK,
                 row.isHidden && 'opacity-70',
               )}
             >

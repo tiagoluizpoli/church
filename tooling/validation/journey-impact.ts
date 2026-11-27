@@ -15,3 +15,17 @@ export function readJourneyImpactTrailers({
     .map((match) => (match[1] ?? '').trim())
     .filter((reason) => reason.length > 0);
 }
+
+const BLANK_TRAILER_PATTERN =
+  /^Journey-Impact:[ \t]*none[ \t]*(?:-[ \t]*)?$/gim;
+
+/** Every `Journey-Impact` trailer line that gives no reason, to be refused aloud. */
+export function readBlankJourneyImpactTrailers({
+  messages,
+}: {
+  messages: string[];
+}): string[] {
+  return messages
+    .flatMap((message) => [...message.matchAll(BLANK_TRAILER_PATTERN)])
+    .map(([line]) => line.trim());
+}

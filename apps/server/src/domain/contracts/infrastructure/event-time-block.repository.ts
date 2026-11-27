@@ -22,6 +22,8 @@ export interface UpdateEventTimeBlockInput {
   /** `null` clears the place. */
   place?: string | null;
   placeAddressId?: string | null;
+  /** The block's own hidden choice, as `EventTimeBlock.hide` left it. */
+  isHidden?: boolean;
 }
 
 export interface GetEventTimeBlockInput {

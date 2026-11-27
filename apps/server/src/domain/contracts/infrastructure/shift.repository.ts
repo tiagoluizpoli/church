@@ -38,6 +38,8 @@ export interface ShiftConflictFacts {
 export interface ListShiftsByParticipationInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
+  /** Leave out hidden Events and EventTimeBlocks, as every non-admin read does. */
+  shownOnly?: boolean;
   tx?: TransactionContext;
 }
 

@@ -23,6 +23,7 @@ and task ordering.
 | Server types report (types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
+| E2E lane-list guard (no Playwright start) | `bun run validate:e2e-lanes` |
 | Sign-in load times and filmstrip ([harness](#sign-in-load-harness)) | `bun run perf:sign-in` |
 | Affected validation without Docker (pre-push) | `bun run validate:no-docker` |
 | Affected validation | `bun run validate:affected` |
@@ -107,6 +108,31 @@ one database script outside Varlock. Nothing else loads value files: no
 `--env-file`, no `dotenv`, and each package's `bunfig.toml` turns off Bun's
 automatic `.env` loading. Unit tests read no values at all; the server's
 unit project pins placeholders (`apps/server/vitest.config.ts`).
+
+## Pre-commit
+
+Lefthook runs these on the staged files, in parallel. Install and hook
+failures name their fix; follow it and commit again.
+
+| Job | Staged files | Does |
+| --- | --- | --- |
+| `biome` | scripts and JSON | fixes and restages |
+| `typecheck` | `.ts`, `.tsx` | `tsc` over each workspace in `apps/*`/`packages/*` that owns a staged file |
+| `css` | `.css` | refuses unformatted or invalid CSS; fix with `bun run lint:fix` |
+| `spec-registration` | `*.spec.ts` under `apps/web/tests/`, `e2e-lanes.ts`, `journey-map.ts` | `validate:e2e-lanes`, then `validate:journey-map` |
+
+`typecheck` (`tooling/validation/staged-typecheck.ts`):
+
+- Checks the workspace as it is on disk, unstaged edits included.
+- Does not check dependent workspaces, `tooling/` or `apps/desktop`; the gate
+  runs `typecheck`.
+- Reads generated sources as they are: after adding or moving a route, the
+  tracked `routeTree.gen.ts` must be current.
+- Is incremental (`node_modules/.cache/pre-commit.tsbuildinfo` per workspace):
+  the first web or server check in a worktree takes 45–55 s, later ones about
+  13 s, and over 30 s on a loaded machine.
+
+HTML is not formatted: Biome's HTML formatter is off in `biome.json`.
 
 ## Test placement
 
@@ -239,6 +265,13 @@ adds, renames or deletes a spec still fails on drift with the same
 diagnostics. It needs no browser, database or running application. Whether a
 mapping's source prefix is accurate stays a review decision
 ([ADR-0004](../adr/0004-test-strategy-and-ci-gate-policy.md)).
+
+### Adding a Playwright spec
+
+1. Add its path to `ISOLATED_SPECS` in `apps/web/tests/fixtures/e2e-lanes.ts`.
+2. Add it to `JOURNEY_MAP` or `CRITICAL_SMOKE_SPEC_PATHS` in
+   `tooling/validation/journey-map.ts`.
+3. Run `bun run lint`, not `bunx biome check`: only `lint` runs both guards.
 
 ## Seed impact
 
@@ -695,7 +728,8 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | IV. Variables are declared in Varlock `.env.schema` files and validated by `@church/env` | Constitution, ADR-0005 | Judgement | — | Review: whether a new variable is declared in the right schema is a design call |
 | IV. Only Varlock loads values: no `--env-file`, no `dotenv`, no package value files | Constitution, tooling, ADR-0005 | Mechanical | Validation guard | Enforced: `tooling/tests/env/legacy-env-loading.test.ts` (`test:validation`), and `env:local` refuses package value files |
 | IV. Never commit secrets | Constitution | Judgement | — | Review: a secret is not a fixed pattern |
-| V. Biome lints and formats; it passes before every commit | Constitution | Mechanical | Biome rule | Enforced: Lefthook `pre-commit` runs Biome on staged files; `lint` in CI |
+| V. Biome lints and formats; it passes before every commit | Constitution | Mechanical | Biome rule | Enforced: Lefthook `pre-commit` runs Biome on staged files (CSS read-only); `lint` in CI |
+| Staged TypeScript type-checks before it is committed | Tooling | Mechanical | tsc setting | Enforced: Lefthook `pre-commit` `typecheck` job (`tooling/tests/validation/staged-typecheck.command.test.ts`) |
 | V. Conventional commits | Constitution | Mechanical | Validation guard | Enforced: commitlint in Lefthook `commit-msg` |
 | `commit-msg` fails at once without `node_modules`; it never waits on an install prompt | Tooling | Mechanical | Validation guard | Enforced: `tooling/tests/validation/commit-time-tooling.test.ts` (`test:validation`) |
 | `lint` writes nothing; fixing stays in `lint:fix` and the pre-commit Biome job | Tooling | Mechanical | Validation guard | Enforced: `tooling/tests/validation/commit-time-tooling.test.ts` (`test:validation`) |
@@ -751,7 +785,8 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | `components/ui/calendar.tsx` is never hand-edited | ADR-0003 | Judgement | — | Review: a re-run of `shadcn add` changes it legitimately, and a tool cannot tell that from a hand edit |
 | Playwright discovers only `*.spec.ts`; Vitest owns `*.test.ts(x)` | ADR-0004 | Mechanical | Validation guard | Enforced: `apps/web/tests/e2e-discovery-boundary.unit.test.ts` |
 | A Playwright spec covers a critical journey | ADR-0004 | Judgement | — | Review: "critical journey" is a judgement |
-| Every Playwright spec has a `JOURNEY_MAP` or `CRITICAL_SMOKE_SPEC_PATHS` entry, and every entry points at an existing spec | ADR-0004 | Mechanical | Validation guard | Enforced: `bun run validate:journey-map`, part of `lint` and `validate:affected` ([#557](https://github.com/tiagoluizpoli/church/issues/557)) |
+| Every Playwright spec is listed exactly once in `ISOLATED_SPECS` | Tooling, ADR-0005 | Mechanical | Validation guard | Enforced: `bun run validate:e2e-lanes`, part of `lint` and `pre-commit`; the Playwright config load |
+| Every Playwright spec has a `JOURNEY_MAP` or `CRITICAL_SMOKE_SPEC_PATHS` entry, and every entry points at an existing spec | ADR-0004 | Mechanical | Validation guard | Enforced: `bun run validate:journey-map`, part of `lint`, `validate:affected` and `pre-commit` ([#557](https://github.com/tiagoluizpoli/church/issues/557)) |
 | A failing E2E spec gets exactly one retry in CI | ADR-0004 | Mechanical | Validation guard | Enforced: `retries` in `apps/web/playwright.config.ts` |
 | Daily and release gates; no direct pushes to `develop` or `master` | ADR-0004 | Mechanical | Validation guard | Enforced: `.github/workflows/ci.yml` and branch protection |
 | Each worktree has its own databases, ports and URL set | ADR-0005 | Mechanical | Validation guard | Enforced: `env:local` and `db:bootstrap` generate them |

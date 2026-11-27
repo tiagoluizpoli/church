@@ -45,6 +45,7 @@ const run = () => {
     stdout: 'pipe',
   });
   return {
+    ending: result.stdout.toString().trimEnd().split('\n').slice(-2),
     exitCode: result.exitCode,
     stderr: result.stderr.toString(),
     stdout: result.stdout.toString(),
@@ -66,6 +67,16 @@ const holdSlot = () => {
     }),
   );
 };
+
+const headTree = () =>
+  Bun.spawnSync(['git', 'rev-parse', 'HEAD^{tree}'], { cwd: repo })
+    .stdout.toString()
+    .trim();
+
+const failedEnding = ({ code }: { code: number }) => [
+  `VALIDATE_AFFECTED: FAILED ${headTree()}`,
+  `EXIT ${code}`,
+];
 
 beforeEach(() => {
   repo = mkdtempSync(join(tmpdir(), 'affected-ending-repo-'));
@@ -89,10 +100,11 @@ describe('affected.ts run that ends before any stage', () => {
       path: 'apps/server/src/infrastructure/repositories/drizzle-x.ts',
     });
 
-    const { exitCode, stderr } = run();
+    const { ending, exitCode, stderr } = run();
 
     expect(exitCode).toBe(1);
     expect(stderr).toContain('Nothing was validated.');
+    expect(ending).toEqual(failedEnding({ code: 1 }));
   });
 
   it('exits 0 when the tree already passed', () => {
@@ -102,27 +114,50 @@ describe('affected.ts run that ends before any stage', () => {
     if (!tree || !base) throw new Error('expected a clean tree and a base');
     recordPass({ base, cwd: repo, dir: stateDir(), tier: 'affected', tree });
 
-    const { exitCode, stdout } = run();
+    const { ending, exitCode, stdout } = run();
 
     expect(exitCode).toBe(0);
     expect(stdout).toContain('Skipping validation:');
+    expect(ending).toEqual([`VALIDATE_AFFECTED: PASSED ${tree}`, 'EXIT 0']);
   });
 
   it('exits 75 when the validate slot stays busy', () => {
     commitFile({ path: 'apps/web/src/x.ts' });
 
-    const { exitCode, stderr } = run();
+    const { ending, exitCode, stderr } = run();
 
     expect(exitCode).toBe(75);
     expect(stderr).toContain('Nothing was validated');
+    expect(ending).toEqual(failedEnding({ code: 75 }));
+  });
+
+  it('marks a tree with uncommitted work', () => {
+    writeFileSync(join(repo, 'scratch.txt'), 'x');
+
+    const { ending } = run();
+
+    expect(ending[0]).toBe(
+      `VALIDATE_AFFECTED: FAILED ${headTree()}+uncommitted`,
+    );
+  });
+
+  it('adds no ending to a dry run, whose stdout is parsed as JSON', () => {
+    const result = Bun.spawnSync(['bun', SCRIPT_PATH, '--dry-run'], {
+      cwd: repo,
+      stderr: 'pipe',
+      stdout: 'pipe',
+    });
+
+    expect(() => JSON.parse(result.stdout.toString())).not.toThrow();
   });
 
   it('exits 1 when the configured base does not resolve', () => {
     git('config', 'branch.feature/x.validateBase', 'spec/9-deleted');
 
-    const { exitCode, stderr } = run();
+    const { ending, exitCode, stderr } = run();
 
     expect(exitCode).toBe(1);
     expect(stderr).toContain('"spec/9-deleted", which does not resolve');
+    expect(ending).toEqual(failedEnding({ code: 1 }));
   });
 });

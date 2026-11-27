@@ -49,7 +49,11 @@ Local validation has three tiers, all planned by the same
 
 A whole local run that passes records its tier against the committed tree
 and the merge-base its selection diffed against (`validate` against the tree
-alone) in `~/.local/state/church/gate-passes/`. `validate:no-docker` and
+alone) in `~/.local/state/church/gate-passes/`, one JSON file per pass,
+`<tree>-<merge-base>.json` (`<tree>-whole-tree.json` for `validate`), naming
+the tier, commit and worktree (`tooling/validation/gate-pass.ts`). `<tree>`
+is `git rev-parse HEAD^{tree}`, as on the gate's result line. CI records
+nothing. `validate:no-docker` and
 `validate:affected` then exit 0 at once on that tree when it already passed
 an equal or stronger tier (`no-docker` < `affected` < `validate`), and say
 which run they reuse, so `git push` after a green `validate:affected` skips
@@ -64,6 +68,32 @@ failure; then unit tests run concurrently with integration tests, then E2E
 only if both lanes pass. `validate` runs lint → typecheck → unit tests
 concurrently with integration tests, then E2E. Output
 lines carry a `[stage]` prefix and a final table reports each stage's status.
+
+### How the affected gate's log ends
+
+`validate:affected` and `validate:no-docker` end every run except
+`--dry-run` with (`tooling/validation/gate-summary.ts`):
+
+```text
+Gate summary:
+| Stage | Status | Tests | Elapsed |
+| --- | --- | --- | --- |
+| lint | passed | - | 4.1s |
+| test:unit | failed | 193 passed, 1 failed | 40.2s |
+| test:e2e | skipped | - | - |
+Seed impact: acknowledged
+Journey fallbacks: none
+VALIDATE_AFFECTED: FAILED <tree>
+EXIT 1
+```
+
+Read the last two lines first. No `EXIT` line means the log is incomplete or
+the run was killed. `<tree>` is the committed tree read before the run, with
+`+uncommitted` appended when the working tree held more than that. Test counts
+are the totals Vitest, Bun and Playwright print. A run that ends before any
+stage (reused pass, undecided seed impact, busy slot, bad base) says
+`No stage results.`. After a failure, `bun run` itself appends one
+`error: script "validate:affected" exited with code <code>` line below `EXIT`.
 
 Every command that reads configuration runs through Varlock from its
 package directory, so the root and the package directory resolve the same
@@ -305,7 +335,8 @@ the gate passes, fails, or gets SIGINT/SIGTERM. After 30 minutes
 (`CHURCH_VALIDATE_LOCK_TIMEOUT_MS` overrides) the run exits 75 naming the
 holder: nothing was validated, so run the gate again to keep waiting; it is
 not a check failure to repair.
-The summary ends with `Waited Ns for the validate slot.`
+A run that got the slot prints `Waited Ns for the validate slot.` above its
+summary.
 
 The pre-push hook's `validate:no-docker` does wait, but at most 5 minutes
 (`lefthook.yml` sets the timeout): it must not hang a push behind a 10+ minute

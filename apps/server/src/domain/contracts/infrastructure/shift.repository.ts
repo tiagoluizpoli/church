@@ -95,6 +95,8 @@ export interface DeleteShiftRequirementsInput {
 export interface ListRequirementsByParticipationInput {
   churchId: ChurchId;
   participationId: MinistryParticipationId;
+  /** Leaves out the requirements of a cancelled EventTimeBlock or Event. */
+  liveOnly?: boolean;
   tx?: TransactionContext;
 }
 

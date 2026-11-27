@@ -8,8 +8,10 @@ import type {
 import type { EventWithEventTimeBlocks } from '../../entities/event';
 import type { MinistryParticipation } from '../../entities/ministry-participation';
 import type { IChurchNotifications } from './church-notifications';
-import type { IScheduleChangeReader } from './schedule-change-reader';
-import type { ParticipationCompletionView } from './schedule-read-model';
+import type {
+  IScheduleChangeReader,
+  ParticipationStaffingView,
+} from './schedule-change-reader';
 import type { ChurchRepository } from '@/domain/contracts/infrastructure/church.repository';
 import type { CycleRepository } from '@/domain/contracts/infrastructure/cycle.repository';
 import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
@@ -46,6 +48,8 @@ export interface PublishCycleView {
   published: boolean;
   belowFull: boolean;
   participations: PublishCycleParticipationOutcome[];
+  /** Set only on a below-full refusal: the places still to fill. */
+  gapCount?: number;
 }
 
 export interface TagCoveredSwapRequestsInput {
@@ -56,7 +60,7 @@ export interface TagCoveredSwapRequestsInput {
 
 export interface PublishCandidate {
   participation: MinistryParticipation;
-  completion: ParticipationCompletionView;
+  completion: ParticipationStaffingView;
 }
 
 export interface NotifySchedulePublishedInput {

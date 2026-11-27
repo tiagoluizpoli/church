@@ -7,10 +7,10 @@ import type {
   CountScheduleChangesInput,
   DbScheduleChangeReaderDependencies,
   IScheduleChangeReader,
+  ParticipationStaffingView,
   ReadParticipationCompletionInput,
   ScheduleVolunteerChanges,
 } from '../domain/contracts/application/schedule-change-reader';
-import type { ParticipationCompletionView } from '../domain/contracts/application/schedule-read-model';
 import type { AssignmentRepository } from '../domain/contracts/infrastructure/assignment.repository';
 import type { MinistryParticipationRepository } from '../domain/contracts/infrastructure/ministry-participation.repository';
 import type { PlanningEventRepository } from '../domain/contracts/infrastructure/planning-event.repository';
@@ -154,11 +154,12 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
     churchId,
     participationId,
     tx,
-  }: ReadParticipationCompletionInput): Promise<ParticipationCompletionView> {
+  }: ReadParticipationCompletionInput): Promise<ParticipationStaffingView> {
     const [requirements, assignments] = await Promise.all([
       this.shiftRepository.listRequirementsByParticipation({
         churchId,
         participationId,
+        liveOnly: true,
         tx,
       }),
       this.assignmentRepository.listByParticipation({
@@ -196,6 +197,7 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
       participationId,
       peopleNeeded,
       assignedCount,
+      gapCount: peopleNeeded - coveredPlaces,
       completionPercent: calculateCompletionPercent({
         assignedCount: coveredPlaces,
         peopleNeeded,

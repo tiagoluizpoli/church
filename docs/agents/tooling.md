@@ -20,6 +20,7 @@ and task ordering.
 | Test placement guard | `bun run validate:test-placement` |
 | Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
 | Presentation-text guard (no hard-coded copy) | `bun run validate:presentation-text` (`-- <path>…` for files) |
+| Server types report (types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
 | Affected validation without Docker (pre-push) | `bun run validate:no-docker` |
@@ -49,7 +50,11 @@ Local validation has three tiers, all planned by the same
 
 A whole local run that passes records its tier against the committed tree
 and the merge-base its selection diffed against (`validate` against the tree
-alone) in `~/.local/state/church/gate-passes/`. `validate:no-docker` and
+alone) in `~/.local/state/church/gate-passes/`, one JSON file per pass,
+`<tree>-<merge-base>.json` (`<tree>-whole-tree.json` for `validate`), naming
+the tier, commit and worktree (`tooling/validation/gate-pass.ts`). `<tree>`
+is `git rev-parse HEAD^{tree}`, as on the gate's result line. CI records
+nothing. `validate:no-docker` and
 `validate:affected` then exit 0 at once on that tree when it already passed
 an equal or stronger tier (`no-docker` < `affected` < `validate`), and say
 which run they reuse, so `git push` after a green `validate:affected` skips
@@ -64,6 +69,32 @@ failure; then unit tests run concurrently with integration tests, then E2E
 only if both lanes pass. `validate` runs lint → typecheck → unit tests
 concurrently with integration tests, then E2E. Output
 lines carry a `[stage]` prefix and a final table reports each stage's status.
+
+### How the affected gate's log ends
+
+`validate:affected` and `validate:no-docker` end every run except
+`--dry-run` with (`tooling/validation/gate-summary.ts`):
+
+```text
+Gate summary:
+| Stage | Status | Tests | Elapsed |
+| --- | --- | --- | --- |
+| lint | passed | - | 4.1s |
+| test:unit | failed | 193 passed, 1 failed | 40.2s |
+| test:e2e | skipped | - | - |
+Seed impact: acknowledged
+Journey fallbacks: none
+VALIDATE_AFFECTED: FAILED <tree>
+EXIT 1
+```
+
+Read the last two lines first. No `EXIT` line means the log is incomplete or
+the run was killed. `<tree>` is the committed tree read before the run, with
+`+uncommitted` appended when the working tree held more than that. Test counts
+are the totals Vitest, Bun and Playwright print. A run that ends before any
+stage (reused pass, undecided seed impact, busy slot, bad base) says
+`No stage results.`. After a failure, `bun run` itself appends one
+`error: script "validate:affected" exited with code <code>` line below `EXIT`.
 
 Every command that reads configuration runs through Varlock from its
 package directory, so the root and the package directory resolve the same
@@ -96,6 +127,19 @@ on an inline object type in a parameter, variable, return or `as` position.
 to a dependency's API is exempt; a named function whose signature a framework
 controls carries `// named-parameters-ignore: <reason>` directly above its
 declaration. Details: [ADR-0010](../adr/0010-mechanical-rules-enforced-by-tooling.md).
+
+## Server types
+
+`bun run validate:server-types` (`tooling/validation/server-types-guard.ts`)
+lists every `interface` and `type` declared in a server implementation file,
+grouped by folder, with a total. It checks `apps/server/src/` `application/`,
+`infrastructure/`, `api/`, `domain/services/` and `main/`, and skips
+`.types.ts` siblings, `.d.ts` files and `api/dtos/`. Domain contracts, entities
+and errors sit outside those folders. It is report-only and exits 0, so the
+#1179 migrate batches can track their remaining work; `-- --fail` prints the
+report to stderr and exits 1 when anything is left. It is not part of `lint`
+until [#1191](https://github.com/tiagoluizpoli/church/issues/1191) switches it
+to failing.
 
 ## Presentation text
 
@@ -210,14 +254,19 @@ validate until the change carries one decision:
   `Seed-Impact: none - <reason>` (or `--no-seed-impact "<reason>"` for
   uncommitted work). A blank reason does not count.
 
-The trailer lookup reads the commits between the validate base and `HEAD`.
-On a branch stacked on another open PR, set `validateBase` to the branch below
-(see [Test loop and completion gate](#test-loop-and-completion-gate)).
-Otherwise the lower branch's trailer satisfies the local gate, and CI, which
-sees only the PR's own commits once the lower PR merges, refuses.
+The trailer lookup reads the commits between the validate base and `HEAD`,
+and accepts only the branch's own: those above the open PR's base
+(`gh pr view`; `origin/<base>`, else the local branch) or, without a PR,
+above the validate base. The plan prints each accepted reason with its commit
+and the ref used. A trailer from a lower stacked branch is refused: add one on
+this branch. Without a PR the gate can't see a stack, so set `validateBase` to
+the branch below (see
+[Test loop and completion gate](#test-loop-and-completion-gate)). A failing
+`gh` (offline, not signed in) counts as no PR.
 
 `--dry-run` only reports the missing decision; the validating run fails.
-The rules live in `tooling/validation/seed-impact.ts`. A deleted file keeps
+The rules live in `tooling/validation/seed-impact.ts`, the commit lookup in
+`tooling/validation/seed-acknowledgements.ts`. A deleted file keeps
 its workspace in scope but selects no test file and, when no journey maps it,
 no smoke fallback.
 
@@ -305,7 +354,8 @@ the gate passes, fails, or gets SIGINT/SIGTERM. After 30 minutes
 (`CHURCH_VALIDATE_LOCK_TIMEOUT_MS` overrides) the run exits 75 naming the
 holder: nothing was validated, so run the gate again to keep waiting; it is
 not a check failure to repair.
-The summary ends with `Waited Ns for the validate slot.`
+A run that got the slot prints `Waited Ns for the validate slot.` after its
+stages.
 
 The pre-push hook's `validate:no-docker` does wait, but at most 5 minutes
 (`lefthook.yml` sets the timeout): it must not hang a push behind a 10+ minute
@@ -609,7 +659,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | VII. Named object parameters: at most one parameter, named `interface`/`type` shapes, no inline object types | Constitution, backend, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:named-parameters`, part of `lint` ([#539](https://github.com/tiagoluizpoli/church/issues/539), turned on by [#547](https://github.com/tiagoluizpoli/church/issues/547)) |
 | Business logic is separated from framework code | Constitution, backend | Judgement | — | Review: what counts as business logic is a judgement; the import shape is the row below |
 | Server layers import inward only (`api`/`application`/`infrastructure` → `domain`) | Backend | Mechanical | Biome rule | Enforced: `noRestrictedImports` overrides in `biome.json` |
-| Server implementation files declare no `interface`/`type`; each lives in its contract | Backend | Mechanical | Validation guard | Follow-up [#1129](https://github.com/tiagoluizpoli/church/issues/1129) |
+| Server implementation files declare no `interface`/`type`; each lives in its contract | Backend | Mechanical | Validation guard | Report-only: `bun run validate:server-types` ([#1180](https://github.com/tiagoluizpoli/church/issues/1180)); fails in `lint` after [#1191](https://github.com/tiagoluizpoli/church/issues/1191) |
 | Server classes are built in `main/di/` and injected, never `new`-ed inside another class | Backend | Mechanical | Validation guard | Follow-up [#1129](https://github.com/tiagoluizpoli/church/issues/1129) |
 | Web interfaces get their own file when large or several | Frontend | Judgement | — | Review: "large" and whether a split makes sense are judgements |
 | Shared packages hold only generic code; application code lives in `apps/server` | Constitution, backend | Judgement | — | Review: "application-specific" is a judgement about meaning |
@@ -624,6 +674,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Tests live in the owning project's `tests/` and import by alias | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:test-placement`, part of `lint` |
 | User-facing copy comes from the `@church/i18n` catalog, never a literal | Spec #837, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:presentation-text`, part of `lint` and `validate:affected`. Copy reached only through calls or unrelated names stays with review (see Presentation text) |
 | Seed-relevant changes carry a seed decision | Tooling, ADR-0006 | Mechanical | Validation guard | Enforced: `tooling/validation/seed-impact.ts` in `validate:affected` |
+| A `Seed-Impact` acknowledgement comes from the branch's own commits | Spec #1161 | Mechanical | Validation guard | Enforced: `tooling/validation/seed-acknowledgements.ts` in `validate:affected` |
 | Destructive database commands refuse any target but their own | Tooling, ADR-0005 | Mechanical | Validation guard | Enforced: runtime preflight of the database resolver |
 | No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |
 | The API client and `auto-generated-api.yaml` are generated, never hand-edited | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:api-generated`, run by the `develop-fast` and `fast-gate` CI jobs |

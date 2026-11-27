@@ -173,3 +173,8 @@ test('a draft assignment persists through publish and can be reassigned', async 
   await page.reload();
   await expect(requirement.getByTestId('assignment-chip')).toBeVisible();
 });
+
+// THROWAWAY (#1162 proof): fails on purpose; delete with the branch.
+test('throwaway #1162: browser journey fails on purpose', () => {
+  expect(1 + 1).toBe(3);
+});

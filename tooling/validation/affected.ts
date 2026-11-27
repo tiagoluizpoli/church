@@ -760,6 +760,7 @@ function buildTurboStep({
       `--concurrency=${concurrency}`,
       ...filters,
       '--only',
+      '--continue=always',
       '--',
       ...args,
     ],

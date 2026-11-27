@@ -11,6 +11,7 @@ describe('turbo test:integration task graph', () => {
         'test:integration',
         ...SELECTED.flatMap((name) => ['--filter', name]),
         '--only',
+        '--continue=always',
         '--dry=json',
       ],
       stderr: 'ignore',

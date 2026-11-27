@@ -23,3 +23,8 @@ describe('e2eReporters', () => {
     ]);
   });
 });
+
+// THROWAWAY (#1162 proof): fails on purpose; delete with the branch.
+it('throwaway #1162: web unit fails on purpose', () => {
+  expect(1 + 1).toBe(3);
+});

@@ -47,6 +47,7 @@ describe('validate:affected unit narrowing', () => {
       '--filter',
       'server',
       '--only',
+      '--continue=always',
       '--',
       'src/domain/services/shift-splitter.ts',
     ]);
@@ -93,6 +94,7 @@ describe('validate:affected unit narrowing', () => {
           '--filter',
           'server',
           '--only',
+          '--continue=always',
           '--',
         ],
         command: 'bunx',

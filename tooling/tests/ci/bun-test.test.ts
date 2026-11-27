@@ -100,3 +100,8 @@ describe('bun-test.ts', () => {
     expect(annotations(stdout)).toEqual([]);
   });
 });
+
+// THROWAWAY (#1162 proof): fails on purpose; delete with the branch.
+it('throwaway #1162: validation test fails on purpose', () => {
+  expect(1 + 1).toBe(3);
+});

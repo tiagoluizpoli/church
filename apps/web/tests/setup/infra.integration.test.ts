@@ -8,3 +8,8 @@ describe('vitest integration project', () => {
     expect(typeof window).toBe('undefined');
   });
 });
+
+// THROWAWAY (#1162 proof): fails on purpose; delete with the branch.
+it('throwaway #1162: web integration fails on purpose', () => {
+  expect(1 + 1).toBe(3);
+});

@@ -103,6 +103,8 @@ jobs:
         run: bun run validate:api-generated
 
       - name: Validation tests (affected-plan, date-time seam fixture)
+        # THROWAWAY (#1162 proof): let the gate step run after this one fails.
+        continue-on-error: true
         shell: bash tooling/ci/record-test-output.sh {0}
         run: bun run test:validation
 

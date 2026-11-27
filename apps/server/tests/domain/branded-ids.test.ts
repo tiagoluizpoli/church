@@ -22,3 +22,8 @@ describe('Branded ID factories', () => {
     expect(brand.from(raw)).toBe(raw);
   });
 });
+
+// THROWAWAY (#1162 proof): fails on purpose; delete with the branch.
+it('throwaway #1162: server unit fails on purpose', () => {
+  expect(1 + 1).toBe(3);
+});

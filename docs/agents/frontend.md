@@ -15,6 +15,9 @@ Load for frontend or UI work.
   `await screen.findByRole('option', { name })`. Base UI mounts the options
   while the list is still closed (`pointer-events: none`) and opens it a frame
   later. A role query waits for the open list.
+- Animation frames are slow in component tests (`tests/setup/slow-frames.ts`),
+  so wait on UI state, never on a frame landing in time; after opening a dialog,
+  `await waitForDialogFocus()` before typing or moving focus.
 - Interfaces and types: a large interface, or several that serve one file, get
   their own file next to their domain concept. A single small one may stay at
   the top of its file. A split must make sense to a human reader.

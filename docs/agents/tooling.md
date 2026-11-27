@@ -846,6 +846,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | The web reads `appConfig` by direct import | Frontend | Judgement | — | Review: states the allowed path; there is no fixed pattern to forbid |
 | Parked UI is gated at the mount point, not with CSS | Frontend | Judgement | — | Review: hiding by CSS has many shapes |
 | Component tests flip parked switches with `withAllParkedOn` | Frontend | Judgement | — | Review: a mock of `@church/app-config` may stub other values for other reasons |
+| Component tests wait on UI state, not on a frame landing in time | Frontend | Judgement | — | Review: slow frames (`apps/web/tests/setup/slow-frames.ts`) make most such races fail, but not every delay-dependent one |
 | Read `CONTEXT.md` and the relevant ADRs; use the glossary's terms; flag ADR conflicts | Domain | Judgement | — | Review: vocabulary and conflicts need meaning |
 | Issues go through `gh`; triage roles map to the label table | Issue tracker, triage labels | Judgement | — | Review: agent workflow, leaves nothing in the repository to check |
 | Guidance routes compose by scenario | Routing conformance | Judgement | — | Review: session behaviour, not repository content |

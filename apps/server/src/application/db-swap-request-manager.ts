@@ -1,17 +1,12 @@
-import type { AppConfig } from '@church/app-config';
 import { NotFoundError } from '@church/core';
 import { compareInstants, now as nowInstant } from '@church/time';
-import type {
-  ChurchId,
-  MinistryId,
-  SwapRequestId,
-  UserId,
-  VolunteerId,
-} from '../domain/branded-ids';
 import type { IAuthorityManager } from '../domain/contracts/application/authority-manager';
 import type { IChurchNotifications } from '../domain/contracts/application/church-notifications';
 import type { IChurchRecipients } from '../domain/contracts/application/church-recipients';
 import type {
+  AssertClosedInMinistryInput,
+  AssertOwnAssignmentInput,
+  DbSwapRequestManagerDependencies,
   ISwapRequestManager,
   KeepSwapRequestCommand,
   RaisedSwapRequest,
@@ -26,7 +21,6 @@ import type { MinistryParticipationRepository } from '../domain/contracts/infras
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { ShiftRepository } from '../domain/contracts/infrastructure/shift.repository';
 import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
-import type { TransactionContext } from '../domain/contracts/infrastructure/transaction-context';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import {
@@ -40,38 +34,6 @@ import {
   SwapRequestShiftStartedError,
   SwapRequestUnpublishedError,
 } from '../domain/errors/swap-request';
-
-interface AssertOwnAssignmentInput {
-  churchId: ChurchId;
-  userId: UserId;
-  ownerVolunteerId: VolunteerId;
-  tx?: TransactionContext;
-}
-
-interface AssertClosedInMinistryInput {
-  churchId: ChurchId;
-  ministryId: MinistryId;
-  swapRequestId: SwapRequestId;
-  raisedBy: UserId;
-  tx: TransactionContext;
-}
-
-interface DbSwapRequestManagerDependencies {
-  swapRequestRepo: SwapRequestRepository;
-  assignmentRepo: AssignmentRepository;
-  participationRepo: MinistryParticipationRepository;
-  shiftRepo: ShiftRepository;
-  eventRepo: EventRepository;
-  ministryRepo: MinistryRepository;
-  roleRepo: RoleRepository;
-  churchRepo: ChurchRepository;
-  volunteerRepo: VolunteerRepository;
-  recipients: IChurchRecipients;
-  notifications: IChurchNotifications;
-  authorityManager: Pick<IAuthorityManager, 'decideAuthority'>;
-  unitOfWork: UnitOfWork;
-  config: AppConfig;
-}
 
 export class DbSwapRequestManager implements ISwapRequestManager {
   private readonly swapRequestRepo: SwapRequestRepository;

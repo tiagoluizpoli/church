@@ -1,15 +1,12 @@
 import { now } from '@church/time';
 import type {
+  DbSwapRequestListManagerDependencies,
   ISwapRequestListManager,
   ListLeaderSwapRequestsCommand,
   ScheduleSwapRequests,
 } from '../domain/contracts/application/swap-request-list-manager';
 import type { SwapRequestRepository } from '../domain/contracts/infrastructure/swap-request.repository';
 import { isSwapRequestExpired } from '../domain/entities/swap-request';
-
-interface DbSwapRequestListManagerDependencies {
-  swapRequestRepo: SwapRequestRepository;
-}
 
 export class DbSwapRequestListManager implements ISwapRequestListManager {
   private readonly swapRequestRepo: SwapRequestRepository;

@@ -8,6 +8,10 @@ import type {
   PrecedenceAnswer,
   TemplatePrecedenceAnswer,
 } from '../../template-precedence';
+import type { EventTemplateRepository } from '@/domain/contracts/infrastructure/event-template.repository';
+import type { TemplatePrecedenceRepository } from '@/domain/contracts/infrastructure/template-precedence.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
 /** Submitted block; `order` is derived from start time by the manager. */
 export interface EventTemplateTimeBlockManagerInput {
@@ -89,4 +93,21 @@ export interface IEventTemplateManager {
   changePrecedence(
     input: ChangeTemplatePrecedenceManagerInput,
   ): Promise<TemplatePrecedenceView>;
+}
+
+export interface DbEventTemplateManagerDependencies {
+  templateRepository: EventTemplateRepository;
+  precedenceRepository: TemplatePrecedenceRepository;
+  unitOfWork: UnitOfWork;
+}
+
+export interface SettlePrecedencesInput {
+  churchId: ChurchId;
+  template: EventTemplate;
+  answers?: TemplatePrecedenceAnswer[];
+  tx: TransactionContext;
+}
+
+export interface NormalizeBlocksInput {
+  blocks: EventTemplateTimeBlockManagerInput[];
 }

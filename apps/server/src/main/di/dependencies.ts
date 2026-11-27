@@ -35,8 +35,8 @@ import type {
   ISwapRequestManager,
   IUsualSetupManager,
   IVolunteerManager,
+  IVolunteerTransferManager,
   RedemptionManager,
-  VolunteerTransferManager,
 } from '../../domain/contracts/application';
 import type {
   AssignmentAuditRepository,
@@ -159,7 +159,7 @@ export interface CompositionRootDependencies {
   sectorManager: ISectorManager;
   invitationVerificationCodeManager: IInvitationVerificationCodeManager;
   redemptionManager: RedemptionManager;
-  volunteerTransferManager: VolunteerTransferManager;
+  volunteerTransferManager: IVolunteerTransferManager;
   outboxDrainer: IOutboxDrainer;
   prepareManager: IPrepareManager;
   usualSetupManager: IUsualSetupManager;

@@ -1131,6 +1131,7 @@ describe('Schedule completion and publish (integration)', () => {
     expect(result).toStrictEqual({
       published: false,
       belowFull: true,
+      gapCount: 1,
       participations: [
         {
           participationId: graph.participation.id,
@@ -1140,6 +1141,35 @@ describe('Schedule completion and publish (integration)', () => {
         },
       ],
     });
+  });
+
+  it('counts a gap that an over-filled requirement hides from the totals', async () => {
+    const seed = await seedSchedulingPhase3Base();
+    const { shiftBase, publishInput } = await seedCompletionSchedule({ seed });
+    const extra = await seedUnqualifiedMember({
+      churchId: seed.churchAId,
+      ministryId: seed.ministryAId,
+      name: 'Extra Member',
+      email: 'extra-member@example.com',
+    });
+    await seedStaffedShift({
+      ...shiftBase,
+      peopleNeeded: 1,
+      volunteerIds: [seed.adminVolunteerId, extra.volunteerId],
+    });
+    await seedStaffedShift({
+      ...shiftBase,
+      peopleNeeded: 1,
+      volunteerIds: [],
+    });
+
+    const result =
+      await createParticipationModules().schedulePublisher.publishCycle(
+        publishInput,
+      );
+
+    expect(result.published).toBe(false);
+    expect(result.gapCount).toBe(1);
   });
 
   it('publishes without confirmation, leaving out a wholly cancelled Event', async () => {

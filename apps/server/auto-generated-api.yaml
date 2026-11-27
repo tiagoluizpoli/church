@@ -14971,6 +14971,9 @@ paths:
                         - peopleNeeded
                         - assignedCount
                       additionalProperties: false
+                  gapCount:
+                    description: "Set only on a below-full refusal: the places still to fill."
+                    type: number
                 required:
                   - published
                   - belowFull

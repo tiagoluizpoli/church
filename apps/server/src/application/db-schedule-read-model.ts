@@ -75,13 +75,15 @@ export class DbScheduleReadModel implements IScheduleReadModel {
   async getCompletion(
     input: GetParticipationCompletionInput,
   ): Promise<ParticipationCompletionView> {
-    return this.unitOfWork.run((tx) =>
-      this.scheduleChangeReader.readParticipationCompletion({
-        churchId: input.churchId,
-        participationId: input.participationId,
-        tx,
-      }),
+    const { gapCount: _gapCount, ...completion } = await this.unitOfWork.run(
+      (tx) =>
+        this.scheduleChangeReader.readParticipationCompletion({
+          churchId: input.churchId,
+          participationId: input.participationId,
+          tx,
+        }),
     );
+    return completion;
   }
 
   async listScheduleSummaries(

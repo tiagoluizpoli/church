@@ -7,7 +7,7 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
-import type { InvitationVerificationCodeManager } from '@/domain/contracts/application/invitation-verification-code-manager';
+import type { IInvitationVerificationCodeManager } from '@/domain/contracts/application/invitation-verification-code-manager';
 import type {
   AcceptPendingMinistryInvitationInput,
   PublicRedemptionPreview,
@@ -60,7 +60,7 @@ interface RedemptionManagerHarness {
   manager: DbRedemptionManager;
   verificationCodeRepository: InvitationVerificationCodeRepository;
   recordChurchOnlyPartialAcceptance: ReturnType<typeof vi.fn>;
-  verificationCodeManager: InvitationVerificationCodeManager;
+  verificationCodeManager: IInvitationVerificationCodeManager;
 }
 
 interface CreateHarnessInput {
@@ -116,7 +116,7 @@ function createHarness({
     isChurchInvitationAddressedToUser: vi.fn().mockResolvedValue(true),
     findRedemptionBundle: vi.fn().mockResolvedValue(CHURCH_ONLY_BUNDLE),
   } as RedemptionManagerHarness['invitationRepository'];
-  const verificationCodeManager: InvitationVerificationCodeManager = {
+  const verificationCodeManager: IInvitationVerificationCodeManager = {
     issue: vi.fn(),
     verify: vi.fn().mockImplementation(verify),
   };

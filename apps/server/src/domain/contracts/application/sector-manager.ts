@@ -1,5 +1,9 @@
 import type { ChurchId, MinistryId, SectorId } from '../../branded-ids';
 import type { Sector } from '../../entities/sector';
+import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
+import type { SectorRepository } from '@/domain/contracts/infrastructure/sector.repository';
+import type { TransactionContext } from '@/domain/contracts/infrastructure/transaction-context';
+import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
 export interface ListActiveSectorsInput {
   churchId: ChurchId;
@@ -38,4 +42,16 @@ export interface ISectorManager {
   rename(input: RenameSectorInput): Promise<Sector>;
   /** `SectorInUseError` while upcoming requirements or a UsualSetup use it. */
   archive(input: ArchiveSectorInput): Promise<void>;
+}
+
+export interface DbSectorManagerDependencies {
+  ministryRepository: MinistryRepository;
+  sectorRepository: SectorRepository;
+  unitOfWork: UnitOfWork;
+}
+
+export interface LockActiveMinistryInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  tx: TransactionContext;
 }

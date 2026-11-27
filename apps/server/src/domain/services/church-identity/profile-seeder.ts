@@ -1,6 +1,7 @@
 import { planUsualSetupShifts } from '../scheduling/usual-setup-planner';
 import type {
   BuildProfileShiftsInput,
+  IProfileSeeder,
   ParticipationSeedPlan,
   SeededShiftPlan,
   SeedParticipationPlanInput,
@@ -8,7 +9,7 @@ import type {
 
 const EXCLUDED_PLAN: ParticipationSeedPlan = { include: false, shifts: [] };
 
-export class ProfileSeeder {
+export class ProfileSeeder implements IProfileSeeder {
   plan({
     eventTimeBlock,
     profileEntries,

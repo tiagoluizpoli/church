@@ -12,6 +12,7 @@ import type { Cycle } from '../../entities/cycle';
 import type { Event } from '../../entities/event';
 import type { EventTemplate } from '../../entities/event-template';
 import type { EventTimeBlock } from '../../entities/event-time-block';
+import type { ICycleEventGenerator } from '../../services/planning/cycle-event-generator.types';
 import type {
   CancellationImpact,
   CancellationScope,
@@ -470,6 +471,7 @@ export interface DbPlanningEventManagerDependencies {
   assignmentLifecycle: IAssignmentLifecycle;
   recipients: IChurchRecipients;
   notifications: IChurchNotifications;
+  cycleEventGenerator: ICycleEventGenerator;
 }
 
 export interface ListInOrderInput {

@@ -46,3 +46,7 @@ export interface BuildProfileShiftsInput {
   entry: ProfileSeederEntry;
   timeZone: string;
 }
+
+export interface IProfileSeeder {
+  plan(input: SeedParticipationPlanInput): ParticipationSeedPlan;
+}

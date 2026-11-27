@@ -17,7 +17,10 @@ import type { Shift } from '../../entities/shift';
 import type { ShiftRequirement } from '../../entities/shift-requirement';
 import type { UnavailableShift } from '../../entities/unavailable-shift';
 import type { UsualSetupHeadcount } from '../../entities/usual-setup';
-import type { ShiftSplitStrategy } from '../../services/scheduling/shift-splitter.types';
+import type {
+  IShiftSplitter,
+  ShiftSplitStrategy,
+} from '../../services/scheduling/shift-splitter.types';
 import type { IParticipationReader } from './participation-reader';
 import type { IUsualSetupStaffingSeeder } from './usual-setup-staffing-seeder';
 import type { AssignmentRepository } from '@/domain/contracts/infrastructure/assignment.repository';
@@ -273,6 +276,7 @@ export interface DbPrepareManagerDependencies {
   unavailableShiftRepository: UnavailableShiftRepository;
   unitOfWork: UnitOfWork;
   participationReader: IParticipationReader;
+  shiftSplitter: IShiftSplitter;
 }
 
 export interface IPrepareManager {

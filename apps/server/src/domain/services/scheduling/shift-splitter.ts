@@ -8,6 +8,7 @@ import { InvalidShiftSplitError } from '../../errors/invalid-shift-split';
 import type {
   ComputeEqualSpansInput,
   EqualSpan,
+  IShiftSplitter,
   ManualSplitSpan,
   NormalizeManualSpansInput,
   SplitShiftsInput,
@@ -55,7 +56,7 @@ export function computeEqualSpans({
   return spans;
 }
 
-export class ShiftSplitter {
+export class ShiftSplitter implements IShiftSplitter {
   split({
     churchId,
     participationId,

@@ -76,11 +76,11 @@ import {
   LastRemainingEventTimeBlockError,
   PublicInfoLockedError,
 } from '../domain/errors';
-import {
-  CycleEventGenerator,
-  eventTimeBlockEnvelope,
-} from '../domain/services/planning/cycle-event-generator';
-import type { ExistingGeneratedEventTimeBlockFingerprint } from '../domain/services/planning/cycle-event-generator.types';
+import { eventTimeBlockEnvelope } from '../domain/services/planning/cycle-event-generator';
+import type {
+  ExistingGeneratedEventTimeBlockFingerprint,
+  ICycleEventGenerator,
+} from '../domain/services/planning/cycle-event-generator.types';
 import {
   resolveCancellationScope,
   summarizeCancellationImpact,
@@ -118,8 +118,6 @@ const sameBounds = ({ left, right }: BoundsPair) =>
  * Event writes serialize.
  */
 export class DbPlanningEventManager implements IPlanningEventManager {
-  private readonly generator = new CycleEventGenerator();
-
   private readonly cycleRepository: CycleRepository;
   private readonly eventRepository: PlanningEventRepository;
   private readonly templateRepository: EventTemplateRepository;
@@ -130,6 +128,7 @@ export class DbPlanningEventManager implements IPlanningEventManager {
   private readonly assignmentLifecycle: IAssignmentLifecycle;
   private readonly recipients: IChurchRecipients;
   private readonly notifications: IChurchNotifications;
+  private readonly generator: ICycleEventGenerator;
 
   constructor({
     cycleRepository,
@@ -142,7 +141,9 @@ export class DbPlanningEventManager implements IPlanningEventManager {
     assignmentLifecycle,
     recipients,
     notifications,
+    cycleEventGenerator,
   }: DbPlanningEventManagerDependencies) {
+    this.generator = cycleEventGenerator;
     this.cycleRepository = cycleRepository;
     this.eventRepository = eventRepository;
     this.templateRepository = templateRepository;

@@ -4,6 +4,7 @@ import type {
   EventTimeBlockId,
   MinistryParticipationId,
 } from '../../branded-ids';
+import type { Shift } from '../../entities/shift';
 
 export interface EqualNSplitStrategy {
   kind: 'equal-n';
@@ -49,4 +50,8 @@ export interface ComputeEqualSpansInput {
 
 export interface NormalizeManualSpansInput {
   spans: ManualSplitSpan[];
+}
+
+export interface IShiftSplitter {
+  split(input: SplitShiftsInput): Shift[];
 }

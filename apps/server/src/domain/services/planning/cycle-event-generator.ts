@@ -13,10 +13,11 @@ import type {
   EventTimeBlockEnvelopeInput,
   GenerateCycleEventsInput,
   GeneratedCycleEventPlan,
+  ICycleEventGenerator,
 } from './cycle-event-generator.types';
 import { losingBlockIds } from './template-precedence-application';
 
-export class CycleEventGenerator {
+export class CycleEventGenerator implements ICycleEventGenerator {
   generate({
     cycle,
     templates,

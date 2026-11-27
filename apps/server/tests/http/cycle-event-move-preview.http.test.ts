@@ -45,6 +45,8 @@ import {
   UserId,
   VolunteerId,
 } from '@/domain/branded-ids';
+import { ProfileSeeder } from '@/domain/services/church-identity/profile-seeder';
+import { CycleEventGenerator } from '@/domain/services/planning/cycle-event-generator';
 import { DrizzleChurchRepository } from '@/infrastructure/repositories/drizzle-church.repository';
 import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
 import { DrizzleEventTemplateRepository } from '@/infrastructure/repositories/drizzle-event-template.repository';
@@ -132,6 +134,7 @@ beforeAll(async () => {
       unitOfWork,
       participationRepository,
       staffingSeeder: new UsualSetupStaffingSeeder({
+        profileSeeder: new ProfileSeeder(),
         participationRepository,
         shiftRepository: new DrizzleShiftRepository({ db }),
         usualSetupRepository: new DrizzleUsualSetupRepository({ db }),
@@ -144,6 +147,7 @@ beforeAll(async () => {
       }),
     }),
     planningEventManager: new DbPlanningEventManager({
+      cycleEventGenerator: new CycleEventGenerator(),
       cycleRepository,
       eventRepository,
       precedenceRepository: new DrizzleTemplatePrecedenceRepository({ db }),

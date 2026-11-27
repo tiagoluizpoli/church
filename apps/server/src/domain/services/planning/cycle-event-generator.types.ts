@@ -80,3 +80,7 @@ export interface EventTimeBlockEnvelope {
 export interface EventTimeBlockEnvelopeInput {
   eventTimeBlocks: EventTimeBlockBounds[];
 }
+
+export interface ICycleEventGenerator {
+  generate(input: GenerateCycleEventsInput): GeneratedCycleEventPlan[];
+}

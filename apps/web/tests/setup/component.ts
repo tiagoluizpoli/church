@@ -1,6 +1,7 @@
 // Must be first: installs `localStorage` before any other import reads it
 // (MSW's `CookieStore` touches it at module load). See the file for why.
 import '@/tests/setup/web-storage';
+import '@/tests/setup/slow-frames';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, configure } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';

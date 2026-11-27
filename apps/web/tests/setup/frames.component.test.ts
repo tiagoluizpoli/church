@@ -4,6 +4,13 @@ function nextFrame(): Promise<number> {
   return new Promise((resolve) => requestAnimationFrame(resolve));
 }
 
+// Long enough for two of jsdom's own ~16ms frames to have run.
+const TWO_REAL_FRAMES_MS = 34;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 describe('animation frames in the component project', () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -17,6 +24,15 @@ describe('animation frames in the component project', () => {
     expect(frame).not.toHaveBeenCalled();
     await nextFrame();
     expect(frame).toHaveBeenCalledExactlyOnceWith(expect.any(Number));
+  });
+
+  it('runs frames slow, so a test has to wait on UI state', async () => {
+    const frame = vi.fn();
+    requestAnimationFrame(frame);
+
+    await wait(TWO_REAL_FRAMES_MS);
+    expect(frame).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(frame).toHaveBeenCalledOnce());
   });
 
   it('never runs a cancelled frame', async () => {

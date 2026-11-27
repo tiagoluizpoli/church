@@ -35,7 +35,6 @@ import type {
   ListAssignmentsByParticipationsInput,
   ListAssignmentsByRangeInput,
   ListAssignmentsByShiftInput,
-  ListAssignmentsByVolunteerInput,
   ListAssignmentsByVolunteerInRangeInput,
   ListAssignmentsByVolunteersInput,
   ListPublishedAssignmentsByVolunteerInput,
@@ -287,21 +286,6 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     return this.rows({
       churchId,
       conditions: [eq(assignment.shiftId, shiftId)],
-      tx,
-    });
-  }
-
-  listByVolunteer({
-    churchId,
-    volunteerId,
-    shownOnly,
-    tx,
-  }: ListAssignmentsByVolunteerInput): Promise<Assignment[]> {
-    const conditions: SQL[] = [eq(assignment.volunteerId, volunteerId)];
-    if (shownOnly) conditions.push(shownEventTimeBlock());
-    return this.rows({
-      churchId,
-      conditions,
       tx,
     });
   }

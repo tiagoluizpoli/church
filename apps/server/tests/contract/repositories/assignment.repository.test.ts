@@ -21,7 +21,6 @@ import type {
   ListAssignmentsByParticipationsInput,
   ListAssignmentsByRangeInput,
   ListAssignmentsByShiftInput,
-  ListAssignmentsByVolunteerInput,
   ListAssignmentsByVolunteerInRangeInput,
   ListAssignmentsByVolunteersInput,
   MoveAssignmentRepositoryInput,
@@ -177,15 +176,6 @@ class MockAssignmentRepository implements AssignmentRepository {
       );
     }
     return [];
-  }
-
-  async listByVolunteer({
-    churchId,
-    volunteerId,
-  }: ListAssignmentsByVolunteerInput): Promise<Assignment[]> {
-    return Array.from(this.assignments.values()).filter(
-      (a) => a.churchId === churchId && a.volunteerId === volunteerId,
-    );
   }
 
   async listPublishedByVolunteer(): Promise<PublishedAssignment[]> {

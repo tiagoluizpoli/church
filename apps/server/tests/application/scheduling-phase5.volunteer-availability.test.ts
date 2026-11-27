@@ -105,7 +105,6 @@ function createHarness() {
   const volunteerRepo = createVolunteerRepositoryFake();
   volunteerRepo.listMemberMinistryIds.mockResolvedValue([]);
   const assignmentRepo = createAssignmentRepositoryFake();
-  assignmentRepo.listByVolunteer.mockResolvedValue([]);
   const unavailableShiftRepo = createUnavailableShiftRepositoryFake();
   unavailableShiftRepo.listUnavailableShiftsByCheck.mockResolvedValue([]);
   const notificationRepo = createNotificationRepositoryFake();

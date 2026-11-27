@@ -86,14 +86,6 @@ export interface ListAssignmentsByShiftInput {
   tx?: TransactionContext;
 }
 
-export interface ListAssignmentsByVolunteerInput {
-  churchId: ChurchId;
-  volunteerId: VolunteerId;
-  /** Leave out hidden Events and EventTimeBlocks, as every non-admin read does. */
-  shownOnly?: boolean;
-  tx?: TransactionContext;
-}
-
 export interface ListPublishedAssignmentsByVolunteerInput {
   churchId: ChurchId;
   volunteerId: VolunteerId;
@@ -168,9 +160,6 @@ export interface AssignmentRepository {
     input: ListAssignmentsByParticipationsInput,
   ): Promise<Assignment[]>;
   listByShift(input: ListAssignmentsByShiftInput): Promise<Assignment[]>;
-  listByVolunteer(
-    input: ListAssignmentsByVolunteerInput,
-  ): Promise<Assignment[]>;
   /**
    * The Volunteer's Assignments on published participations, hidden work left
    * out: the published ones, plus what an Event or EventTimeBlock cancellation

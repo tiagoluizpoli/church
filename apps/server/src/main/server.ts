@@ -1,6 +1,7 @@
 import { db } from '@church/db';
 import { env } from '@church/env/server';
 import { sql } from 'drizzle-orm';
+import type { IOutboxPoller } from '../domain/contracts/application/outbox-poller';
 import { serializeError } from '../infrastructure/privacy/privacy';
 import { initErrorReporting } from '../infrastructure/services/sentry-error-reporter';
 import { createCompositionRoot } from './di/composition-root';
@@ -9,11 +10,8 @@ import { registerReadiness } from './fastify/readiness';
 import { registerControllers } from './fastify/register-controllers';
 import { createFastify } from './fastify/setup';
 import { OutboxPoller } from './outbox-poller';
-import {
-  createShutdown,
-  type LogEntry,
-  logUnhandledRejection,
-} from './shutdown';
+import { createShutdown, logUnhandledRejection } from './shutdown';
+import type { LogEntry } from './shutdown.types';
 
 async function start(): Promise<void> {
   const reportingDsn = initErrorReporting({
@@ -58,7 +56,7 @@ async function start(): Promise<void> {
       ? app.log.info(message)
       : app.log.error({ err: error }, message);
 
-  const outboxPoller = new OutboxPoller({
+  const outboxPoller: IOutboxPoller = new OutboxPoller({
     drainer: root.outboxDrainer,
     intervalMs: env.OUTBOX_POLL_INTERVAL_MS,
     batchSize: env.OUTBOX_DRAIN_BATCH_SIZE,

@@ -1,47 +1,12 @@
-import type { EmailSender } from '../../domain/contracts/infrastructure/email-sender';
-import type { PlatformBranding } from '../../domain/contracts/infrastructure/email-templates';
-import type { RuntimeConfigurationRepository } from '../../domain/contracts/infrastructure/runtime-configuration.repository';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
 import { DeliveryModeEmailSender } from '../../infrastructure/services/delivery-mode-email-sender';
 import { ResendEmailSender } from '../../infrastructure/services/resend-email-sender';
 import { SmtpEmailSender } from '../../infrastructure/services/smtp-email-sender';
-
-export type DevEmailSender = 'smtp' | 'resend' | 'capture';
-
-export type ChurchEnvironment =
-  | 'local'
-  | 'development'
-  | 'staging'
-  | 'production';
-
-export interface EmailSenderConfig {
-  nodeEnv: 'development' | 'production' | 'test';
-  environment: ChurchEnvironment;
-  /** Read per email in development and staging only. */
-  runtimeConfiguration: RuntimeConfigurationRepository;
-  /** Development selection; unset means SMTP. Ignored in test and production. */
-  devSender: DevEmailSender | undefined;
-  appName: string;
-  platform?: PlatformBranding;
-  resend: { apiKey: string | undefined; from: string };
-  smtp: {
-    host: string;
-    port: number;
-    secure: boolean;
-    requireTls?: boolean;
-    user?: string;
-    password?: string;
-    from: string;
-  };
-}
-
-export interface EmailSenders {
-  serverEmailSender: EmailSender;
-  /** Present only when capture is the selected sender. */
-  captureEmailSender: CaptureEmailSender | undefined;
-}
-
-type SenderChoice = DevEmailSender | 'delivery-mode';
+import type {
+  EmailSenderConfig,
+  EmailSenders,
+  SenderChoice,
+} from './email-senders.types';
 
 /**
  * Exactly one sender, chosen once: tests are capture, a production

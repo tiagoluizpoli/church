@@ -5,25 +5,9 @@ import { HttpWebShell } from '../../infrastructure/services/http-web-shell';
 import { OtelTracing } from '../../infrastructure/services/otel-tracing';
 import { SentryErrorReporter } from '../../infrastructure/services/sentry-error-reporter';
 import { S3ObjectStorage } from '../../infrastructure/storage/s3-object-storage';
-import type { CompositionRootDependencies } from './dependencies';
+import type { BuildServicesInput, Services } from './build-services.types';
 import { auth, createServerAuth, useResetMailSender } from './server-auth';
 import { serverEmailSender } from './server-email-sender';
-
-export type Services = Pick<
-  CompositionRootDependencies,
-  | 'redemptionIdentityGateway'
-  | 'emailSender'
-  | 'errorReporter'
-  | 'tracing'
-  | 'objectStorage'
-  | 'webShell'
-> &
-  // Absent unless the sender is capture.
-  Partial<Pick<CompositionRootDependencies, 'verificationCodeInspector'>>;
-
-export interface BuildServicesInput {
-  overrides: Partial<CompositionRootDependencies>;
-}
 
 export function buildServices({ overrides }: BuildServicesInput): Services {
   const redemptionIdentityGateway =

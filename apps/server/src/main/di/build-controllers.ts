@@ -21,17 +21,7 @@ import {
   VolunteerController,
   VolunteerScheduleController,
 } from '../../api/controllers';
-import type { Auth } from './build-auth';
-import type { Managers } from './build-managers';
-import type { Services } from './build-services';
-import type { CompositionRootDependencies } from './dependencies';
-
-export interface BuildControllersInput {
-  config: CompositionRootDependencies['config'];
-  managers: Managers;
-  services: Pick<Services, 'webShell'>;
-  auth: Auth;
-}
+import type { BuildControllersInput } from './build-controllers.types';
 
 export function buildControllers({
   config,

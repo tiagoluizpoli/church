@@ -3,10 +3,8 @@ import { CaptureEmailSender } from '@/infrastructure/services/capture-email-send
 import { DeliveryModeEmailSender } from '@/infrastructure/services/delivery-mode-email-sender';
 import { ResendEmailSender } from '@/infrastructure/services/resend-email-sender';
 import { SmtpEmailSender } from '@/infrastructure/services/smtp-email-sender';
-import {
-  createEmailSenders,
-  type EmailSenderConfig,
-} from '@/main/di/email-senders';
+import { createEmailSenders } from '@/main/di/email-senders';
+import type { EmailSenderConfig } from '@/main/di/email-senders.types';
 
 function config(overrides: Partial<EmailSenderConfig>): EmailSenderConfig {
   return {

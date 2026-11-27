@@ -1,16 +1,7 @@
-export interface LogEntry {
-  message: string;
-  error?: unknown;
-}
-
-export interface ShutdownSteps {
-  closeApp: () => Promise<void>;
-  stopPoller: () => Promise<void>;
-  closeDatabase: () => Promise<void>;
-  exit: (code: number) => void;
-  log: (entry: LogEntry) => void;
-}
-
+import type {
+  ShutdownSteps,
+  UnhandledRejectionOptions,
+} from './shutdown.types';
 /** Ordered, run-once graceful shutdown: stop intake, drain the poller, free the pool. */
 export function createShutdown(steps: ShutdownSteps) {
   let running: Promise<void> | undefined;
@@ -37,11 +28,6 @@ export function createShutdown(steps: ShutdownSteps) {
 }
 
 /** A stray rejection is logged, not fatal: the server keeps serving. */
-export interface UnhandledRejectionOptions {
-  reason: unknown;
-  log: ShutdownSteps['log'];
-}
-
 export function logUnhandledRejection(
   options: UnhandledRejectionOptions,
 ): void {

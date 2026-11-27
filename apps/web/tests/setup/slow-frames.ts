@@ -10,6 +10,13 @@ const SLOW_FRAME_MS = 50;
 const { setTimeout: realSetTimeout, clearTimeout: realClearTimeout } =
   globalThis;
 
+// A frame still pending when the test file ends would otherwise fire after
+// jsdom's teardown and fail the run with "window is not defined"; it is skipped.
 globalThis.requestAnimationFrame = (callback) =>
-  Number(realSetTimeout(() => callback(performance.now()), SLOW_FRAME_MS));
+  Number(
+    realSetTimeout(() => {
+      if (typeof window === 'undefined') return;
+      callback(performance.now());
+    }, SLOW_FRAME_MS),
+  );
 globalThis.cancelAnimationFrame = (frame) => realClearTimeout(frame);

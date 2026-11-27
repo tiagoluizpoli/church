@@ -35,6 +35,18 @@ describe('animation frames in the component project', () => {
     await vi.waitFor(() => expect(frame).toHaveBeenCalledOnce());
   });
 
+  it('skips a frame that fires once the window is gone', async () => {
+    const frame = vi.fn();
+    requestAnimationFrame(frame);
+    vi.stubGlobal('window', undefined);
+    try {
+      await wait(TWO_REAL_FRAMES_MS * 3);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(frame).not.toHaveBeenCalled();
+  });
+
   it('never runs a cancelled frame', async () => {
     const frame = vi.fn();
     cancelAnimationFrame(requestAnimationFrame(frame));

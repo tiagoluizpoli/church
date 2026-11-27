@@ -67,13 +67,10 @@ export function usePendingChecks({
       userId,
       parts: ['availability-checks'],
     }),
-    queryFn: () => volunteerApi.listAvailabilityChecks(),
+    queryFn: () => volunteerApi.listAvailabilityChecks({ state: 'pending' }),
     enabled,
   });
-  // shortcut: listAvailabilityChecks has no state filter, filtered client-side; move to a server param when the endpoint gets one
-  const pending = (query.data?.checks ?? []).filter(
-    (check) => check.state !== 'confirmed',
-  );
+  const pending = query.data?.checks ?? [];
   return { query, pending };
 }
 

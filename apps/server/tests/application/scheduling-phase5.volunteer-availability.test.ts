@@ -123,6 +123,20 @@ function createHarness() {
   availabilityCheckRepo.getCheckContext.mockResolvedValue(context);
   availabilityCheckRepo.listByVolunteer.mockResolvedValue([context]);
   availabilityCheckRepo.listCheckShifts.mockResolvedValue(shifts);
+  // The list reads in batches: answer from the single-check fakes each test sets.
+  availabilityCheckRepo.listCheckShiftsByChecks.mockImplementation(async () => {
+    const rows = await availabilityCheckRepo.listCheckShifts({
+      churchId,
+      checkId,
+    });
+    return rows.map((row) => ({ ...row, availabilityCheckId: checkId }));
+  });
+  unavailableShiftRepo.listUnavailableShiftsByChecks.mockImplementation(() =>
+    unavailableShiftRepo.listUnavailableShiftsByCheck({
+      churchId,
+      availabilityCheckId: checkId,
+    }),
+  );
   const unitOfWork = createUnitOfWorkFake({ tx });
   const churchRepo = createChurchRepositoryFake();
   churchRepo.getById.mockResolvedValue(

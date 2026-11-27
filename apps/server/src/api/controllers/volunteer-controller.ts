@@ -26,6 +26,7 @@ import {
   answerConflictResponseSchema,
   assignmentDetailResponseSchema,
   availabilityCheckDetailResponseSchema,
+  availabilityCheckListQuerystringSchema,
   availabilityCheckListResponseSchema,
   dashboardResponseSchema,
   ministryScheduleResponseSchema,
@@ -184,18 +185,27 @@ export class VolunteerController implements FastifyController {
           tags: ['volunteer'],
           operationId: 'listAvailabilityChecks',
           summary: "List the caller's AvailabilityChecks",
-          description: "List the current Volunteer's AvailabilityChecks.",
+          querystring: availabilityCheckListQuerystringSchema,
+          description:
+            "List the current Volunteer's AvailabilityChecks. `state` narrows `checks` only: `counts` covers every state.",
           response: { 200: availabilityCheckListResponseSchema },
         },
       },
       async (request, reply) => {
-        const summaries = await this.volunteerManager.listAvailabilityChecks({
+        const { state } = request.query as z.infer<
+          typeof availabilityCheckListQuerystringSchema
+        >;
+        const owner = {
           volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
-        });
-        return reply.send(
-          volunteerMapper.availabilityCheckListToResponse(summaries),
-        );
+        };
+        const [summaries, counts] = await Promise.all([
+          this.volunteerManager.listAvailabilityChecks({ ...owner, state }),
+          this.volunteerManager.countAvailabilityChecks(owner),
+        ]);
+        const listed =
+          volunteerMapper.availabilityCheckListToResponse(summaries);
+        return reply.send({ ...listed, counts });
       },
     );
 

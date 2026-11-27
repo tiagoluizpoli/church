@@ -101,7 +101,10 @@ export function createAvailabilityCheckRepositoryFake() {
     createMany: vi.fn<AvailabilityCheckRepository['createMany']>(),
     getCheckContext: vi.fn<AvailabilityCheckRepository['getCheckContext']>(),
     listByVolunteer: vi.fn<AvailabilityCheckRepository['listByVolunteer']>(),
+    countByVolunteer: vi.fn<AvailabilityCheckRepository['countByVolunteer']>(),
     listCheckShifts: vi.fn<AvailabilityCheckRepository['listCheckShifts']>(),
+    listCheckShiftsByChecks:
+      vi.fn<AvailabilityCheckRepository['listCheckShiftsByChecks']>(),
     listMinistryLeaderVolunteerIds:
       vi.fn<AvailabilityCheckRepository['listMinistryLeaderVolunteerIds']>(),
     confirm: vi.fn<AvailabilityCheckRepository['confirm']>(),
@@ -384,6 +387,8 @@ export function createUnavailableShiftRepositoryFake() {
       vi.fn<UnavailableShiftRepository['listByParticipation']>(),
     listUnavailableShiftsByCheck:
       vi.fn<UnavailableShiftRepository['listUnavailableShiftsByCheck']>(),
+    listUnavailableShiftsByChecks:
+      vi.fn<UnavailableShiftRepository['listUnavailableShiftsByChecks']>(),
     replaceUnavailableShiftsForCheck:
       vi.fn<UnavailableShiftRepository['replaceUnavailableShiftsForCheck']>(),
   } satisfies UnavailableShiftRepository;

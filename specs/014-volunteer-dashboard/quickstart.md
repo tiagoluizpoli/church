@@ -97,9 +97,9 @@ Open the web app and authenticate as seeded volunteer.
 ## 4. Targeted Test Commands
 
 ```bash
-bun run --filter server test
-bun run --filter web test
-bun run --filter web test:e2e
+bun run --filter @church/server test
+bun run --filter @church/web test
+bun run --filter @church/web test:e2e
 ```
 
 If the implementation adds narrower file-scoped commands, run those first during task-by-task execution.

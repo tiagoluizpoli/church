@@ -45,7 +45,7 @@ describe('validate:affected unit narrowing', () => {
       'test:unit:related',
       '--concurrency=2',
       '--filter',
-      'server',
+      '@church/server',
       '--only',
       '--',
       'src/domain/services/shift-splitter.ts',
@@ -91,7 +91,7 @@ describe('validate:affected unit narrowing', () => {
           'test:unit',
           '--concurrency=2',
           '--filter',
-          'server',
+          '@church/server',
           '--only',
           '--',
         ],
@@ -130,9 +130,9 @@ describe('the run summary unit selection', () => {
     const explanation = explainPlan({ baseRef: undefined, plan });
 
     expect(explanation).toContain('Unit test selection:');
-    expect(explanation).toContain('  - server: related tests');
+    expect(explanation).toContain('  - @church/server: related tests');
     expect(explanation).toContain(
-      '  - web: whole suite (untraceable change: apps/web/vitest.config.ts)',
+      '  - @church/web: whole suite (untraceable change: apps/web/vitest.config.ts)',
     );
   });
 });

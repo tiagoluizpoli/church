@@ -65,6 +65,8 @@ export interface CycleCalendarEventTimeBlockRow {
   startTime: string;
   endTime: string;
   status: 'active' | 'cancelled';
+  /** Hidden itself or through its Event. */
+  isHidden: boolean;
   isOnlyEventTimeBlockInEvent: boolean;
 }
 
@@ -75,6 +77,7 @@ export interface CycleCalendarTableRow {
   start: string;
   end: string;
   status: CycleEventGroup['event']['status'];
+  isHidden: boolean;
   eventTimeBlocks: CycleCalendarEventTimeBlockRow[];
 }
 

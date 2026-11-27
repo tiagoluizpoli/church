@@ -4,6 +4,7 @@ import { Link } from '@tanstack/react-router';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ConfirmDeleteEventTimeBlockInput } from './calendar-row';
+import { CancelledVisibilityAction, HiddenBadge } from './cancelled-visibility';
 import { EventCancelDialog } from './event-cancel-dialog';
 import { EventEditPreview } from './event-edit-preview';
 import { EventMovePreview } from './event-move-preview';
@@ -100,11 +101,14 @@ export function PlanningEventCard({
       className={cn(
         'surface-subtle workspace-panel',
         isCancelled && 'opacity-60',
+        row.isHidden && 'border-dashed',
       )}
       data-testid="planning-event-card"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
+        <div
+          className={cn('space-y-1', row.isHidden && 'text-muted-foreground')}
+        >
           <div
             className={cn(
               'font-medium text-base',
@@ -129,12 +133,15 @@ export function PlanningEventCard({
             {timeBlockCountLabel({ count: row.eventTimeBlocks.length })}
           </div>
         </div>
-        <Badge variant={eventStatusBadgeVariant({ status: row.status })}>
-          {eventStatusLabel({ status: row.status })}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-1">
+          <Badge variant={eventStatusBadgeVariant({ status: row.status })}>
+            {eventStatusLabel({ status: row.status })}
+          </Badge>
+          {row.isHidden ? <HiddenBadge /> : null}
+        </div>
       </div>
 
-      {!isReadOnly || canPreviewMove || canEdit || canCancel ? (
+      {!isReadOnly || canPreviewMove || canEdit || canCancel || isCancelled ? (
         <div
           data-testid="planning-event-actions"
           className="mt-3 flex flex-wrap items-center justify-end gap-2"
@@ -174,6 +181,14 @@ export function PlanningEventCard({
               title={row.title}
             />
           ) : null}
+          {isCancelled ? (
+            <CancelledVisibilityAction
+              cycleId={cycleId}
+              eventId={row.eventId}
+              title={row.title}
+              isHidden={row.isHidden}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -189,6 +204,7 @@ export function PlanningEventCard({
                 <span
                   className={cn(
                     eventTimeBlock.status === 'cancelled' && 'line-through',
+                    eventTimeBlock.isHidden && 'opacity-70',
                   )}
                 >
                   <span>{eventTimeBlock.label}</span> ·{' '}
@@ -203,7 +219,17 @@ export function PlanningEventCard({
                 {eventTimeBlock.status === 'cancelled' ? (
                   <CancelledBadge />
                 ) : null}
+                {eventTimeBlock.isHidden ? <HiddenBadge /> : null}
               </span>
+              {eventTimeBlock.status === 'cancelled' && !row.isHidden ? (
+                <CancelledVisibilityAction
+                  cycleId={cycleId}
+                  eventId={row.eventId}
+                  eventTimeBlockId={eventTimeBlock.eventTimeBlockId}
+                  title={`${row.title} · ${eventTimeBlock.label}`}
+                  isHidden={eventTimeBlock.isHidden}
+                />
+              ) : null}
               {canPreviewMove && eventTimeBlock.status === 'active' ? (
                 <EventMovePreview
                   cycleId={cycleId}

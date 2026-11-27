@@ -5,6 +5,7 @@ import { Ban } from 'lucide-react';
 import { useState } from 'react';
 import { refreshPlanning } from './refresh-planning';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogClose,
@@ -26,7 +27,7 @@ import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { adminApi } from '@/utils/api-instances';
 
 /** The reads a cancellation changes beyond planning and Schedules: notices and Volunteer reads. */
-const CANCELLATION_READERS = [
+export const CANCELLATION_READERS = [
   ['notifications'],
   ['my-schedule'],
   ['my-ministry-schedule'],
@@ -65,6 +66,7 @@ export function EventCancelDialog({
   const { churchTimezone } = useTimezone();
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState('');
+  const [hide, setHide] = useState(false);
   const queryClient = useQueryClient();
   const refreshCancelled = () =>
     refreshPlanning({ queryClient, cycleId, readers: CANCELLATION_READERS });
@@ -89,15 +91,17 @@ export function EventCancelDialog({
     onError: refreshWhenWindowClosed,
   });
   const cancel = useMutation({
-    mutationFn: (confirmation: string) =>
-      eventTimeBlockId
+    mutationFn: (confirmation: string) => {
+      const body = { confirmation, ...(hide ? { hidden: true } : {}) };
+      return eventTimeBlockId
         ? adminApi.cancelPlanningEventTimeBlock(
             cycleId,
             eventId,
             eventTimeBlockId,
-            { confirmation },
+            body,
           )
-        : adminApi.cancelPlanningEvent(cycleId, eventId, { confirmation }),
+        : adminApi.cancelPlanningEvent(cycleId, eventId, body);
+    },
     onError: refreshWhenWindowClosed,
   });
   const impact = preview.data;
@@ -118,6 +122,7 @@ export function EventCancelDialog({
     // Refresh only once closed, so the success state stays readable.
     if (done) void refreshCancelled();
     setTyped('');
+    setHide(false);
     preview.reset();
     cancel.reset();
   };
@@ -216,6 +221,16 @@ export function EventCancelDialog({
               <p className="font-medium text-destructive">
                 {m.event_cancel_warning()}
               </p>
+              <Label className="flex items-center gap-2">
+                <Checkbox
+                  checked={hide}
+                  disabled={cancel.isPending}
+                  onCheckedChange={(checked) => setHide(checked === true)}
+                />
+                {eventTimeBlockId
+                  ? m.event_hide_block_action()
+                  : m.event_hide_action()}
+              </Label>
               <div className="space-y-1">
                 <Label htmlFor="event-cancel-confirmation">
                   {m.event_cancel_confirm_label({ word })}

@@ -17,6 +17,8 @@ const listCycles = vi.fn();
 const listEventTemplates = vi.fn().mockResolvedValue({ templates: [] });
 const getCycle = vi.fn();
 const deletePlanningEventTimeBlock = vi.fn().mockResolvedValue(undefined);
+const setPlanningEventHidden = vi.fn().mockResolvedValue(undefined);
+const setPlanningEventTimeBlockHidden = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/utils/api-instances', () => ({
   adminApi: {
@@ -25,6 +27,10 @@ vi.mock('@/utils/api-instances', () => ({
     getCycle: (...args: unknown[]) => getCycle(...args),
     deletePlanningEventTimeBlock: (...args: unknown[]) =>
       deletePlanningEventTimeBlock(...args),
+    setPlanningEventHidden: (...args: unknown[]) =>
+      setPlanningEventHidden(...args),
+    setPlanningEventTimeBlockHidden: (...args: unknown[]) =>
+      setPlanningEventTimeBlockHidden(...args),
   },
 }));
 
@@ -147,6 +153,16 @@ function twoEventCycleResponse({ state }: TwoEventCycleResponseInput) {
       },
     ],
   };
+}
+
+interface RenderCancelledInput {
+  hiddenBlock?: boolean;
+  hiddenEvent?: boolean;
+}
+
+interface ActionNameInput {
+  action: string;
+  title: string;
 }
 
 describe('CycleReviewCard header consolidation (US1)', () => {
@@ -1126,5 +1142,158 @@ describe('CycleReviewCard actions on cancelled scopes', () => {
         within(rowOf(title)).queryByRole('button', { name: /^Mover/ }),
       ).not.toBeInTheDocument();
     }
+  });
+});
+
+describe('CycleReviewCard hidden cancelled scopes', () => {
+  /** Sunday: scheduled, its Worship block cancelled. Wednesday: cancelled. */
+  async function renderCancelled({
+    hiddenBlock = false,
+    hiddenEvent = false,
+  }: RenderCancelledInput = {}) {
+    const past = twoEventCycleResponse({ state: 'sent' });
+    const [sunday, wednesday] = past.events;
+    const [worship, message] = sunday.eventTimeBlocks;
+    const [midweek] = wednesday.eventTimeBlocks;
+    listCycles.mockResolvedValue({ cycles: [past.cycle] });
+    getCycle.mockResolvedValue({
+      ...past,
+      events: [
+        {
+          ...sunday,
+          eventTimeBlocks: [
+            { ...worship, status: 'cancelled', isHidden: hiddenBlock },
+            message,
+          ],
+        },
+        {
+          event: {
+            ...wednesday.event,
+            status: 'cancelled',
+            isHidden: hiddenEvent,
+          },
+          eventTimeBlocks: [
+            { ...midweek, status: 'cancelled', isHidden: hiddenEvent },
+          ],
+        },
+      ],
+    });
+
+    render({ isReadOnly: true });
+    const user = await selectTheOnlyCycle();
+    await user.click(
+      await screen.findByRole('button', { name: m.cycle_review_expand_all() }),
+    );
+    const table = screen.getByRole('grid', { name: m.cycle_review_title() });
+    const rowOf = (text: string) =>
+      within(table).getByText(text).closest('[role="row"]') as HTMLElement;
+    return { user, table, rowOf };
+  }
+
+  const actionName = ({ action, title }: ActionNameInput) =>
+    `${action}: ${title}`;
+  const midweekTitle = m.cycle_review_time_block_fallback();
+
+  it('offers Hide on shown cancelled rows only, with no hidden marker', async () => {
+    const { table, rowOf } = await renderCancelled();
+
+    expect(
+      within(rowOf('Wednesday Service')).getByRole('button', {
+        name: actionName({
+          action: 'Ocultar evento cancelado',
+          title: 'Wednesday Service',
+        }),
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(rowOf('Worship')).getByRole('button', {
+        name: actionName({
+          action: 'Ocultar horário cancelado',
+          title: 'Worship',
+        }),
+      }),
+    ).toBeInTheDocument();
+    for (const title of ['Sunday Service', 'Message']) {
+      expect(
+        within(rowOf(title)).queryByRole('button', { name: /cancelado/ }),
+      ).not.toBeInTheDocument();
+    }
+    expect(
+      within(table).queryByText(m.event_status_hidden()),
+    ).not.toBeInTheDocument();
+  });
+
+  it('marks a hidden Event and its blocks, offering Show on the Event alone', async () => {
+    const { rowOf } = await renderCancelled({ hiddenEvent: true });
+
+    expect(rowOf('Wednesday Service')).toHaveTextContent(
+      m.event_status_hidden(),
+    );
+    expect(rowOf(midweekTitle)).toHaveTextContent(m.event_status_hidden());
+    expect(
+      within(rowOf(midweekTitle)).queryByRole('button', { name: /cancelado/ }),
+    ).not.toBeInTheDocument();
+    const card = screen.getAllByTestId('planning-event-card')[1];
+    expect(card).toHaveTextContent(m.event_status_hidden());
+    expect(
+      within(card).getByRole('button', {
+        name: actionName({
+          action: 'Mostrar evento cancelado',
+          title: 'Wednesday Service',
+        }),
+      }),
+    ).toHaveTextContent('Mostrar evento cancelado');
+  });
+
+  it('hides a cancelled Event only after the dialog warns that sent emails stay sent', async () => {
+    const { user, rowOf } = await renderCancelled();
+
+    await user.click(
+      within(rowOf('Wednesday Service')).getByRole('button', {
+        name: actionName({
+          action: 'Ocultar evento cancelado',
+          title: 'Wednesday Service',
+        }),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent(m.event_hide_description());
+    expect(setPlanningEventHidden).not.toHaveBeenCalled();
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Ocultar evento cancelado' }),
+    );
+
+    expect(setPlanningEventHidden).toHaveBeenCalledWith('cycle-1', 'event-2', {
+      hidden: true,
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+  });
+
+  it('shows a hidden block again through the nested endpoint', async () => {
+    const { user, rowOf } = await renderCancelled({ hiddenBlock: true });
+    expect(rowOf('Worship')).toHaveTextContent(m.event_status_hidden());
+
+    await user.click(
+      within(rowOf('Worship')).getByRole('button', {
+        name: actionName({
+          action: 'Mostrar horário cancelado',
+          title: 'Worship',
+        }),
+      }),
+    );
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Mostrar horário cancelado',
+      }),
+    );
+
+    expect(setPlanningEventTimeBlockHidden).toHaveBeenCalledWith(
+      'cycle-1',
+      'event-1',
+      'event-time-block-1',
+      { hidden: false },
+    );
   });
 });

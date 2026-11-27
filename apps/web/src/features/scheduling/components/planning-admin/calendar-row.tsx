@@ -2,6 +2,7 @@ import { m } from '@church/i18n/messages';
 import type { Instant } from '@church/time';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { CancelledVisibilityAction, HiddenBadge } from './cancelled-visibility';
 import { EventCancelDialog } from './event-cancel-dialog';
 import { EventEditPreview } from './event-edit-preview';
 import { EventMovePreview } from './event-move-preview';
@@ -54,11 +55,13 @@ export type CalendarVisibleRow =
       kind: 'event-time-block';
       parentId: string;
       parentStatus: string;
+      parentIsHidden: boolean;
       eventTimeBlockId: string;
       label: string;
       startTime: string;
       endTime: string;
       status: 'active' | 'cancelled';
+      isHidden: boolean;
       isOnlyEventTimeBlockInEvent: boolean;
     };
 
@@ -87,11 +90,13 @@ export function buildVisibleCalendarRows({
             kind: 'event-time-block',
             parentId: row.eventId,
             parentStatus: row.status,
+            parentIsHidden: row.isHidden,
             eventTimeBlockId: eventTimeBlock.eventTimeBlockId,
             label: eventTimeBlock.label,
             startTime: eventTimeBlock.startTime,
             endTime: eventTimeBlock.endTime,
             status: eventTimeBlock.status,
+            isHidden: eventTimeBlock.isHidden,
             isOnlyEventTimeBlockInEvent:
               eventTimeBlock.isOnlyEventTimeBlockInEvent,
           }),
@@ -153,8 +158,8 @@ export function calendarRowKey({
     visibleRow.kind === 'week'
       ? visibleRow.weekEnd
       : visibleRow.kind === 'parent'
-        ? `${visibleRow.row.title}-${visibleRow.row.location ?? ''}-${visibleRow.row.start}-${visibleRow.row.end}-${visibleRow.row.status}-${visibleRow.row.eventTimeBlocks.length}`
-        : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}-${visibleRow.status}-${visibleRow.parentStatus}`;
+        ? `${visibleRow.row.title}-${visibleRow.row.location ?? ''}-${visibleRow.row.start}-${visibleRow.row.end}-${visibleRow.row.status}-${visibleRow.row.eventTimeBlocks.length}-${visibleRow.row.isHidden}`
+        : `${visibleRow.label}-${visibleRow.startTime}-${visibleRow.endTime}-${visibleRow.isOnlyEventTimeBlockInEvent}-${visibleRow.status}-${visibleRow.parentStatus}-${visibleRow.isHidden}-${visibleRow.parentIsHidden}`;
 
   return `${id}-${dataFingerprint}-${isExpanded ? 'expanded' : 'collapsed'}-${isConfirmingDeleteEventTimeBlock ? 'deleting-event-time-block' : 'normal'}-${deleteEventTimeBlockPending ? 'event-time-block-pending' : 'event-time-block-idle'}`;
 }
@@ -354,11 +359,11 @@ function ParentRowCell({
           </Button>
           <span className="flex flex-col">
             <span
-              className={
-                row.status === 'cancelled'
-                  ? 'text-muted-foreground line-through'
-                  : undefined
-              }
+              className={cn(
+                row.status === 'cancelled' &&
+                  'text-muted-foreground line-through',
+                row.isHidden && 'opacity-70',
+              )}
             >
               {row.title}
             </span>
@@ -377,9 +382,12 @@ function ParentRowCell({
         ? timeBlockCountLabel({ count: row.eventTimeBlocks.length })
         : null}
       {column.id === 'status' ? (
-        <Badge variant={eventStatusBadgeVariant({ status: row.status })}>
-          {eventStatusLabel({ status: row.status })}
-        </Badge>
+        <span className="flex flex-wrap items-center gap-1">
+          <Badge variant={eventStatusBadgeVariant({ status: row.status })}>
+            {eventStatusLabel({ status: row.status })}
+          </Badge>
+          {row.isHidden ? <HiddenBadge /> : null}
+        </span>
       ) : null}
       {column.id === 'actions' && !isReadOnly ? (
         <span className="flex items-center gap-1">
@@ -418,6 +426,15 @@ function ParentRowCell({
           cycleId={cycleId}
           eventId={row.eventId}
           title={row.title}
+          size="icon-xs"
+        />
+      ) : null}
+      {column.id === 'actions' && row.status === 'cancelled' ? (
+        <CancelledVisibilityAction
+          cycleId={cycleId}
+          eventId={row.eventId}
+          title={row.title}
+          isHidden={row.isHidden}
           size="icon-xs"
         />
       ) : null}
@@ -461,6 +478,7 @@ function EventTimeBlockRowCell({
           className={cn(
             'pl-8 text-muted-foreground',
             visibleRow.status === 'cancelled' && 'line-through',
+            visibleRow.isHidden && 'opacity-70',
           )}
         >
           {visibleRow.label}
@@ -475,8 +493,11 @@ function EventTimeBlockRowCell({
           })}
         </span>
       ) : null}
-      {column.id === 'status' && visibleRow.status === 'cancelled' ? (
-        <CancelledBadge />
+      {column.id === 'status' ? (
+        <span className="flex flex-wrap items-center gap-1">
+          {visibleRow.status === 'cancelled' ? <CancelledBadge /> : null}
+          {visibleRow.isHidden ? <HiddenBadge /> : null}
+        </span>
       ) : null}
       {column.id === 'actions' && canPreviewMove ? (
         <EventMovePreview
@@ -485,6 +506,18 @@ function EventTimeBlockRowCell({
           eventTimeBlockId={visibleRow.eventTimeBlockId}
           title={visibleRow.label}
           start={visibleRow.startTime as Instant}
+          size="icon-xs"
+        />
+      ) : null}
+      {column.id === 'actions' &&
+      visibleRow.status === 'cancelled' &&
+      !visibleRow.parentIsHidden ? (
+        <CancelledVisibilityAction
+          cycleId={cycleId}
+          eventId={visibleRow.parentId}
+          eventTimeBlockId={visibleRow.eventTimeBlockId}
+          title={visibleRow.label}
+          isHidden={visibleRow.isHidden}
           size="icon-xs"
         />
       ) : null}

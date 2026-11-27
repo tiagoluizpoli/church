@@ -341,3 +341,59 @@ describe('EventCancelDialog for one EventTimeBlock', () => {
     expect(cancelPlanningEvent).not.toHaveBeenCalled();
   });
 });
+
+describe('EventCancelDialog hidden option', () => {
+  it.each([
+    ['event', undefined, 'Ocultar evento cancelado'],
+    ['time block', 'block-1', 'Ocultar horário cancelado'],
+  ])('offers it unchecked for an %s and sends hidden only when ticked', async (_scope, eventTimeBlockId, label) => {
+    const preview = eventTimeBlockId
+      ? previewPlanningEventTimeBlockCancellation
+      : previewPlanningEventCancellation;
+    const cancel = eventTimeBlockId
+      ? cancelPlanningEventTimeBlock
+      : cancelPlanningEvent;
+    preview.mockResolvedValue(impact());
+    cancel.mockResolvedValue(impact());
+    const user = userEvent.setup();
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="America/Sao_Paulo">
+        <EventCancelDialog
+          cycleId="cycle-1"
+          eventId="event-1"
+          eventTimeBlockId={eventTimeBlockId}
+          title="Sunday"
+        />
+      </TimezoneProvider>,
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: m.event_cancel_action_label({ title: 'Sunday' }),
+      }),
+    );
+    await screen.findByTestId('event-cancel-impact');
+    const option = screen.getByRole('checkbox', { name: label });
+    expect(option).not.toBeChecked();
+
+    await user.click(option);
+    await user.type(
+      screen.getByLabelText(m.event_cancel_confirm_label({ word: 'cancelar' })),
+      'cancelar',
+    );
+    await user.click(
+      screen.getByRole('button', {
+        name: eventTimeBlockId
+          ? m.event_cancel_block_confirm()
+          : m.event_cancel_confirm(),
+      }),
+    );
+
+    const ids = eventTimeBlockId
+      ? ['cycle-1', 'event-1', eventTimeBlockId]
+      : ['cycle-1', 'event-1'];
+    expect(cancel).toHaveBeenCalledWith(...ids, {
+      confirmation: 'cancelar',
+      hidden: true,
+    });
+  });
+});

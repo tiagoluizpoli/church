@@ -156,7 +156,7 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
       byParticipation.set(participation.id, comparison);
     }
     const toldSchedules = comparisons.map(({ schedule }) => schedule);
-    const cycleIds = unique(toldSchedules.map(({ cycleId }) => cycleId));
+    const cycleIds = [...new Set(toldSchedules.map(({ cycleId }) => cycleId))];
     const [snapshots, lastTold, cancellations] = await Promise.all([
       this.collectAssignmentSnapshots({
         churchId,
@@ -346,26 +346,33 @@ export class DbScheduleChangeReader implements IScheduleChangeReader {
       tx,
     });
     if (assignments.length === 0) return [];
+    const shiftIds = [
+      ...new Set(
+        assignments.flatMap(({ shiftId }) => (shiftId ? [shiftId] : [])),
+      ),
+    ];
+    const shiftRequirementIds = [
+      ...new Set(
+        assignments.flatMap(({ shiftRequirementId }) =>
+          shiftRequirementId ? [shiftRequirementId] : [],
+        ),
+      ),
+    ];
+    const roleIds = [...new Set(assignments.map(({ roleId }) => roleId))];
     const [shifts, requirements, roles] = await Promise.all([
       this.shiftRepository.listByIds({
         churchId,
-        shiftIds: unique(
-          assignments.flatMap(({ shiftId }) => (shiftId ? [shiftId] : [])),
-        ),
+        shiftIds,
         tx,
       }),
       this.shiftRepository.listRequirementsByIds({
         churchId,
-        shiftRequirementIds: unique(
-          assignments.flatMap(({ shiftRequirementId }) =>
-            shiftRequirementId ? [shiftRequirementId] : [],
-          ),
-        ),
+        shiftRequirementIds,
         tx,
       }),
       this.roleRepository.listByIds({
         churchId,
-        roleIds: unique(assignments.map(({ roleId }) => roleId)),
+        roleIds,
         tx,
       }),
     ]);
@@ -420,8 +427,4 @@ function toAssignmentSnapshot({
     sectorId: requirement.sectorId,
     sectorName: requirement.sectorName,
   };
-}
-
-function unique<T>(items: T[]): T[] {
-  return [...new Set(items)];
 }

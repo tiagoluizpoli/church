@@ -574,4 +574,29 @@ describe('PlanningEventCard block cancellation', () => {
       'line-through',
     );
   });
+
+  it('offers no move preview on a cancelled block, which cannot move', () => {
+    const row = rowWithTwoEventTimeBlocks();
+    const [worship, message] = row.eventTimeBlocks;
+    if (!worship || !message) throw new Error('fixture needs two blocks');
+    row.eventTimeBlocks = [worship, { ...message, status: 'cancelled' }];
+
+    renderWithProviders(
+      <TimezoneProvider churchTimezone="UTC">
+        <PlanningEventCard
+          row={row}
+          isReadOnly
+          canPreviewMove
+          {...baseProps()}
+        />
+      </TimezoneProvider>,
+    );
+
+    const moveButton = (title: string) =>
+      screen.queryByRole('button', {
+        name: m.event_move_preview_action_label({ title }),
+      });
+    expect(moveButton('Sunday Service · Worship')).toBeInTheDocument();
+    expect(moveButton('Sunday Service · Message')).not.toBeInTheDocument();
+  });
 });

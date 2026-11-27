@@ -204,7 +204,7 @@ export function PlanningEventCard({
                   <CancelledBadge />
                 ) : null}
               </span>
-              {canPreviewMove ? (
+              {canPreviewMove && eventTimeBlock.status === 'active' ? (
                 <EventMovePreview
                   cycleId={cycleId}
                   eventId={row.eventId}

@@ -7,7 +7,7 @@ import { SEED_CONTRACT_TARGETS } from '../../validation/seed-impact';
 const REPO_ROOT = join(import.meta.dir, '..', '..', '..');
 const WORKSPACE_PATHS: Record<string, string> = {
   '@church/db': 'packages/db',
-  server: 'apps/server',
+  '@church/server': 'apps/server',
 };
 
 describe('seed contract targets', () => {
@@ -34,7 +34,7 @@ describe('buildSeedContractSteps', () => {
       ({ label }) => label === 'test:integration',
     );
     expect(integration.map(({ args }) => args.join(' '))).toEqual([
-      expect.stringContaining('--filter server --only -- tests/seeds/'),
+      expect.stringContaining('--filter @church/server --only -- tests/seeds/'),
       expect.stringContaining(
         '--filter @church/db --only -- tests/destructive-development-commands.test.ts',
       ),
@@ -48,6 +48,8 @@ describe('buildSeedContractSteps', () => {
       steps
         .filter(({ label }) => label === 'test:unit')
         .map(({ args }) => args),
-    ).toEqual([expect.arrayContaining(['--filter', 'server', 'tests/seeds/'])]);
+    ).toEqual([
+      expect.arrayContaining(['--filter', '@church/server', 'tests/seeds/']),
+    ]);
   });
 });

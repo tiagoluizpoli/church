@@ -153,3 +153,54 @@ describe('a turbo.json change that reaches beyond one package', () => {
     expect(dryRun().plan.workspaceNames).toEqual(EVERY_WORKSPACE);
   });
 });
+
+describe('a turbo.json change confined to one package', () => {
+  it('selects only that package and says why', () => {
+    writeTurbo(
+      withTasks({
+        tasks: {
+          'web#build': { cache: true },
+          'web#test:unit': { cache: false },
+        },
+      }),
+    );
+
+    const { explanation, plan } = dryRun();
+
+    expect(plan.workspaceNames).toEqual(['web']);
+    expect(plan.workspaceSelectionReasons).toEqual([
+      {
+        changedPath: 'turbo.json',
+        detail: 'turbo-package-task',
+        workspaceName: 'web',
+      },
+    ]);
+    expect(plan.testLayers).toEqual(['test:unit']);
+    expect(plan.toolingTestPaths).toEqual(['turbo.json']);
+    expect(explanation).toContain(
+      '  - web\n      turbo-package-task <- turbo.json\n',
+    );
+    expect(explanation).toContain('  - web: whole suite (');
+    expect(explanation).toContain(
+      'turbo.json narrowed to web: only its own task entries differ (web#build, web#test:unit)',
+    );
+  });
+
+  it('narrows a removed package task entry, without the package dependents', () => {
+    const { 'server#build': _removed, ...tasks } = BASE_TURBO.tasks;
+    writeTurbo(JSON.stringify({ ...BASE_TURBO, tasks }));
+
+    const { plan } = dryRun();
+
+    expect(plan.workspaceNames).toEqual(['server']);
+    expect(plan.testLayers).toEqual(['test:unit', 'test:integration']);
+  });
+
+  it('still selects every workspace beside another root infrastructure change', () => {
+    writeTurbo(withTasks({ tasks: { 'web#build': { cache: true } } }));
+    writeFileSync(join(repoDir, 'bun.lock'), '{}\n');
+    git(['add', 'bun.lock']);
+
+    expect(dryRun().plan.workspaceNames).toEqual(EVERY_WORKSPACE);
+  });
+});

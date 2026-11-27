@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { type E2eImportGraph, selectSpecsReaching } from './e2e-import-graph';
 import { CRITICAL_SMOKE_SPEC_PATHS, JOURNEY_MAP } from './journey-map';
 import { isProductionSourcePath } from './production-path';
@@ -45,6 +46,18 @@ export interface ClassifyChangesInput {
    * needs no seed update.
    */
   seedImpactAcknowledgements?: string[];
+  /**
+   * `turbo.json` differs from the base only in one package's own task entries
+   * (see `readTurboNarrowing`). It then stays a tooling-test input but selects
+   * that package alone, without its dependents.
+   */
+  turboNarrowing?: TurboNarrowing;
+}
+
+export interface TurboNarrowing {
+  /** The differing `<package>#<task>` entries, sorted. */
+  taskNames: string[];
+  workspaceName: string;
 }
 
 export interface ValidationPlan {
@@ -65,6 +78,8 @@ export interface ValidationPlan {
   testTargets: TestTarget[];
   /** Changed paths that selected the tooling tests, sorted. Empty = step skipped. */
   toolingTestPaths: string[];
+  /** Set when a one-package `turbo.json` change selected that package alone. */
+  turboNarrowing?: TurboNarrowing;
   workspaceNames: string[];
   workspaceSelectionReasons: WorkspaceSelectionReason[];
 }
@@ -86,7 +101,11 @@ export interface JourneySelectionReason {
 
 export interface WorkspaceSelectionReason {
   changedPath: string;
-  detail: 'direct' | 'root-infrastructure' | `dependent-of:${string}`;
+  detail:
+    | 'direct'
+    | 'root-infrastructure'
+    | 'turbo-package-task'
+    | `dependent-of:${string}`;
   workspaceName: string;
 }
 
@@ -100,6 +119,7 @@ export interface TestLayerSelectionReason {
   detail:
     | 'direct'
     | 'root-infrastructure'
+    | 'turbo-package-task'
     | `dependent-of:${string}`
     | `seed-contract:${string}`;
   testLayer: TestLayer;
@@ -243,6 +263,44 @@ export function isScriptsOnlyAddition({
   }
 }
 
+interface ReadTurboNarrowingInput {
+  base: string;
+  head: string;
+}
+
+/**
+ * The one package whose `<package>#<task>` entries hold every difference
+ * between two `turbo.json` files. Undefined for anything else: a global key, a
+ * generic task, two packages, a package the plan cannot select, no difference
+ * in any task, or a file that does not parse.
+ */
+export function readTurboNarrowing({
+  base,
+  head,
+}: ReadTurboNarrowingInput): TurboNarrowing | undefined {
+  try {
+    const { tasks: baseTasks = {}, ...baseRest } = JSON.parse(base);
+    const { tasks: headTasks = {}, ...headRest } = JSON.parse(head);
+    if (!isDeepStrictEqual(baseRest, headRest)) return undefined;
+
+    const allTaskNames = Object.keys({ ...baseTasks, ...headTasks });
+    const taskNames = allTaskNames
+      .filter((name) => !isDeepStrictEqual(baseTasks[name], headTasks[name]))
+      .sort();
+    const workspace = WORKSPACES.find(({ name }) =>
+      taskNames[0]?.startsWith(`${name}#`),
+    );
+    if (!workspace) return undefined;
+
+    const prefix = `${workspace.name}#`;
+    return taskNames.every((name) => name.startsWith(prefix))
+      ? { taskNames, workspaceName: workspace.name }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const TEST_LAYERS: TestLayer[] = ['test:unit', 'test:integration'];
 
 export function classifyChanges({
@@ -254,6 +312,7 @@ export function classifyChanges({
   journeyImpactAcknowledgements = [],
   packageJsonScriptsOnlyAddition = false,
   seedImpactAcknowledgements = [],
+  turboNarrowing,
 }: ClassifyChangesInput): ValidationPlan {
   const deletedPathSet = new Set(deletedPaths);
   const workspaceNames = new Set<string>();
@@ -282,6 +341,24 @@ export function classifyChanges({
   }
 
   for (const changedPath of changedPaths) {
+    if (changedPath === 'turbo.json' && turboNarrowing) {
+      const { workspaceName } = turboNarrowing;
+      workspaceNames.add(workspaceName);
+      workspaceSelectionReasons.push({
+        changedPath,
+        detail: 'turbo-package-task',
+        workspaceName,
+      });
+      pushTestLayerSelectionReasons({
+        changedPath,
+        detail: 'turbo-package-task',
+        testLayerSelectionReasons,
+        testLayers: getTestLayersForWorkspace({ workspaceName }),
+        workspaceName,
+      });
+      continue;
+    }
+
     if (
       ROOT_INFRASTRUCTURE_PATHS.has(changedPath) &&
       !(changedPath === 'package.json' && packageJsonScriptsOnlyAddition)
@@ -460,6 +537,7 @@ export function classifyChanges({
     testLayers: TEST_LAYERS.filter((testLayer) => testLayers.has(testLayer)),
     testTargets,
     toolingTestPaths: [...toolingTestPaths].sort(),
+    turboNarrowing,
     workspaceNames: [...workspaceNames].sort(),
     workspaceSelectionReasons,
   };

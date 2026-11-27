@@ -66,6 +66,7 @@ import type {
   GetCycleParticipation200EventsItemEventTimeBlocksItem,
   SaveEventTimeBlockPreparationBody,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { STRUCK } from '@/lib/struck';
 import { cn } from '@/lib/utils';
 import { useTimezone } from '@/shared/hooks/use-timezone';
 import { dayOf, formatTimeOf } from '@/shared/utils/church-time';
@@ -608,7 +609,7 @@ function PreparationBlockForm({
                     aria-describedby="preparation-block-when"
                     className={cn(
                       'font-semibold text-lg outline-none',
-                      cancelled && 'text-muted-foreground line-through',
+                      cancelled && STRUCK,
                     )}
                   >
                     {blockTitle({

@@ -15,6 +15,7 @@ import {
 import type { SetIncludedInput } from './proposal-side-views';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { GetAssignmentProposal200AdditionsItem } from '@/infrastructure/api/churchAPI.schemas';
+import { STRUCK } from '@/lib/struck';
 import { cn } from '@/lib/utils';
 import { formatTimeOf } from '@/shared/utils/church-time';
 
@@ -92,12 +93,7 @@ export function ProposalAttention({
     const needLabel = `${place.need.roleName} · ${place.need.sectorName}`;
     return (
       <li key={key} className={ROW}>
-        <span
-          className={cn(
-            'min-w-0 flex-1 md:truncate',
-            out && 'text-muted-foreground line-through',
-          )}
-        >
+        <span className={cn('min-w-0 flex-1 md:truncate', out && STRUCK)}>
           <span className="text-muted-foreground tabular-nums first-letter:uppercase">
             {when}
           </span>{' '}

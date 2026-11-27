@@ -10,6 +10,7 @@ import type {
   SetIncludedInput,
 } from './proposal-side-views';
 import { Button } from '@/components/ui/button';
+import { STRUCK } from '@/lib/struck';
 import { cn } from '@/lib/utils';
 import { formatTimeOf } from '@/shared/utils/church-time';
 
@@ -78,7 +79,7 @@ export function ProposalRail({
                     <span
                       className={cn(
                         'max-w-full truncate font-semibold',
-                        allOut && 'text-muted-foreground line-through',
+                        allOut && STRUCK,
                       )}
                     >
                       {group.name}

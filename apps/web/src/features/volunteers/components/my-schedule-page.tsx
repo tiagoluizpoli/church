@@ -82,6 +82,7 @@ import type {
   GetPublishedVolunteerSchedule200SchedulesItem as MinistrySchedule,
   GetPublishedVolunteerSchedule200AssignmentsItem as ScheduleAssignment,
 } from '@/infrastructure/api/churchAPI.schemas';
+import { STRUCK } from '@/lib/struck';
 import { cn } from '@/lib/utils';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { useDebouncedSearch } from '@/shared/hooks/use-debounced-search';
@@ -288,8 +289,6 @@ function OpenAssignment({ row, timeZone }: OpenAssignmentProps) {
     </div>
   );
 }
-
-const STRUCK = 'text-muted-foreground line-through';
 
 interface UpcomingTableProps extends RowContext {
   rows: ListRow[];

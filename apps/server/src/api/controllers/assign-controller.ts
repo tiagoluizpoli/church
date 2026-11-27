@@ -152,6 +152,7 @@ export class AssignController implements FastifyController {
         const { ministryId } = request.query as CycleMinistryQuery;
 
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -201,6 +202,7 @@ export class AssignController implements FastifyController {
           const { ministryId } = request.query as CycleMinistryQuery;
 
           const decision = await this.authorityGuard.decideManageMinistry({
+            actor: request.actor,
             churchId: ChurchId.from(request.churchId),
             ministryId: MinistryId.from(ministryId),
             userId: UserId.from(request.userId),
@@ -248,6 +250,7 @@ export class AssignController implements FastifyController {
         const { ministryId } = request.query as CycleMinistryQuery;
 
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -298,6 +301,7 @@ export class AssignController implements FastifyController {
 
         // Checked again on every attempt, recovery included.
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -353,6 +357,7 @@ export class AssignController implements FastifyController {
         const { ministryId } = request.query as CycleMinistryQuery;
 
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -399,6 +404,7 @@ export class AssignController implements FastifyController {
         const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
         const { ministryId } = request.query as CycleMinistryQuery;
         const decision = await this.authorityGuard.decideManageMinistry({
+          actor: request.actor,
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
           userId: UserId.from(request.userId),
@@ -667,6 +673,7 @@ export class AssignController implements FastifyController {
     participationId,
   }: DenyParticipationScopeInput): Promise<boolean> {
     const decision = await this.authorityGuard.decideManageParticipation({
+      actor: request.actor,
       churchId: ChurchId.from(request.churchId),
       participationId: MinistryParticipationId.from(participationId),
       userId: UserId.from(request.userId),
@@ -718,6 +725,7 @@ export class AssignController implements FastifyController {
     const userId = UserId.from(request.userId);
     const brandedShiftId = ShiftId.from(shiftId);
     const decision = await this.authorityGuard.decideManageShift({
+      actor: request.actor,
       churchId,
       shiftId: brandedShiftId,
       userId,
@@ -736,6 +744,7 @@ export class AssignController implements FastifyController {
     shiftId,
   }: DenyShiftScopeInput): Promise<boolean> {
     const decision = await this.authorityGuard.decideManageShift({
+      actor: request.actor,
       churchId: ChurchId.from(request.churchId),
       shiftId: ShiftId.from(shiftId),
       userId: UserId.from(request.userId),
@@ -754,6 +763,7 @@ export class AssignController implements FastifyController {
   }: DenyAuthorityDecisionInput): Promise<boolean> {
     if (allowed) return false;
     const functionDecision = await this.authorityGuard.decideManageAnyMinistry({
+      actor: request.actor,
       churchId: ChurchId.from(request.churchId),
       userId: UserId.from(request.userId),
     });

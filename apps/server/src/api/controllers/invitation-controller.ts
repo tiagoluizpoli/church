@@ -96,6 +96,7 @@ export class InvitationController implements FastifyController {
         const churchId = ChurchId.from(request.churchId);
         const { isChurchAdmin, ledMinistries } =
           await this.authorityGuard.resolveCallerCapabilities({
+            actor: request.actor,
             churchId,
             userId: UserId.from(request.userId),
           });
@@ -118,6 +119,7 @@ export class InvitationController implements FastifyController {
         const page = await this.invitationListManager.list({
           churchId,
           userId: UserId.from(request.userId),
+          actor: request.actor,
           scope,
           filters,
           cursor,
@@ -150,6 +152,7 @@ export class InvitationController implements FastifyController {
         const churchId = ChurchId.from(request.churchId);
         const inviterId = UserId.from(request.userId);
         const canManageChurch = await this.authorityGuard.canManageChurch({
+          actor: request.actor,
           churchId,
           userId: inviterId,
         });
@@ -193,6 +196,7 @@ export class InvitationController implements FastifyController {
       async (request, reply) => {
         const churchId = ChurchId.from(request.churchId);
         const canManageChurch = await this.authorityGuard.canManageChurch({
+          actor: request.actor,
           churchId,
           userId: UserId.from(request.userId),
         });
@@ -232,6 +236,7 @@ export class InvitationController implements FastifyController {
         const churchId = ChurchId.from(request.churchId);
         const callerId = UserId.from(request.userId);
         const canManageChurch = await this.authorityGuard.canManageChurch({
+          actor: request.actor,
           churchId,
           userId: callerId,
         });

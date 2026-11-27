@@ -145,6 +145,13 @@ describe('DbActiveChurchResolver (integration, real repeatable-read transaction)
       churchId: churchAId,
       volunteerId: null,
       hasVolunteerMembership: false,
+      actor: {
+        userId: singleMemberUserId,
+        volunteerId: null,
+        activeChurchId: churchAId,
+        churchMembership: { churchId: churchAId, accessLevel: 'member' },
+        ministryMemberships: [],
+      },
       autoSelected: true,
     });
   });
@@ -195,6 +202,13 @@ describe('DbActiveChurchResolver (integration, real repeatable-read transaction)
       churchId: churchBId,
       volunteerId: null,
       hasVolunteerMembership: false,
+      actor: {
+        userId: dualMemberUserId,
+        volunteerId: null,
+        activeChurchId: churchBId,
+        churchMembership: { churchId: churchBId, accessLevel: 'admin' },
+        ministryMemberships: [],
+      },
       autoSelected: false,
     });
   });
@@ -223,6 +237,13 @@ describe('DbActiveChurchResolver (integration, real repeatable-read transaction)
       churchId: churchBId,
       volunteerId: null,
       hasVolunteerMembership: false,
+      actor: {
+        userId: removedSingleRemainUserId,
+        volunteerId: null,
+        activeChurchId: churchBId,
+        churchMembership: { churchId: churchBId, accessLevel: 'member' },
+        ministryMemberships: [],
+      },
       autoSelected: true,
       membershipRemovedFrom: 'Active Resolver Church A',
     });

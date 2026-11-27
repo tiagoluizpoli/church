@@ -61,6 +61,7 @@ export class NotificationController implements FastifyController {
     // never a parameter, so member-level access is the only rule to ask.
     app.addHook('preHandler', async (request, reply) => {
       const decision = await this.authorityGuard.decideAuthority({
+        actor: request.actor,
         churchId: ChurchId.from(request.churchId),
         userId: UserId.from(request.userId),
         action: 'access',

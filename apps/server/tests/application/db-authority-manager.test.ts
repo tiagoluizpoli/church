@@ -47,7 +47,13 @@ function ministryLeaderActor(): AuthorityActor {
     activeChurchId: churchId,
     churchMembership: { churchId, accessLevel: 'member' },
     ministryMemberships: [
-      { churchId, ministryId, accessLevel: 'leader', qualifiedRoleIds: [] },
+      {
+        churchId,
+        ministryId,
+        ministryName: 'Worship',
+        accessLevel: 'leader',
+        qualifiedRoleIds: [],
+      },
     ],
   };
 }
@@ -89,6 +95,29 @@ describe('DbAuthorityManager', () => {
       false,
     );
 
+    expect(actorRepository.resolveActor).toHaveBeenCalledWith({
+      userId,
+      activeChurchId: churchId,
+    });
+  });
+
+  it("reuses the request's own caller and reads afresh for any other User or Church", async () => {
+    const manager = createManager();
+    await expect(
+      manager.canManageChurch({ churchId, userId, actor: adminActor() }),
+    ).resolves.toBe(true);
+    expect(actorRepository.resolveActor).not.toHaveBeenCalled();
+
+    actorRepository.resolveActor.mockResolvedValue(memberActor());
+    const otherUser = { ...adminActor(), userId: 'usr_2' as UserId };
+    await expect(
+      manager.canManageChurch({ churchId, userId, actor: otherUser }),
+    ).resolves.toBe(false);
+    const otherChurch = { ...adminActor(), activeChurchId: otherChurchId };
+    await expect(
+      manager.canManageChurch({ churchId, userId, actor: otherChurch }),
+    ).resolves.toBe(false);
+    expect(actorRepository.resolveActor).toHaveBeenCalledTimes(2);
     expect(actorRepository.resolveActor).toHaveBeenCalledWith({
       userId,
       activeChurchId: churchId,
@@ -267,6 +296,7 @@ describe('DbAuthorityManager', () => {
     ): MinistryMembershipFact => ({
       churchId,
       ministryId,
+      ministryName: 'Worship',
       accessLevel: 'volunteer',
       qualifiedRoleIds: [],
       ...overrides,

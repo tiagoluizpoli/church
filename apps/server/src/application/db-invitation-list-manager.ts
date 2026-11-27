@@ -27,6 +27,7 @@ export class DbInvitationListManager implements IInvitationListManager {
   async list({
     churchId,
     userId,
+    actor,
     scope,
     filters,
     cursor,
@@ -50,6 +51,7 @@ export class DbInvitationListManager implements IInvitationListManager {
     const manageable = await this.authorityManager.canManageInvitations({
       churchId,
       userId,
+      actor,
       invitations,
     });
     return {

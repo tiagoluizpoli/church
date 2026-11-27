@@ -215,6 +215,7 @@ export class SectorController implements FastifyController {
     const churchId = ChurchId.from(request.churchId);
     const userId = UserId.from(request.userId);
     const anyMinistry = await this.authorityGuard.decideManageAnyMinistry({
+      actor: request.actor,
       churchId,
       userId,
     });
@@ -226,6 +227,7 @@ export class SectorController implements FastifyController {
       (request.params as SectorsRouteParams).ministryId,
     );
     const decision = await this.authorityGuard.decideManageMinistry({
+      actor: request.actor,
       churchId,
       userId,
       ministryId,

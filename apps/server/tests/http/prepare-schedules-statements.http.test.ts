@@ -343,8 +343,8 @@ describe('Schedules list, single Schedule and insights statement budgets', () =>
     ]);
     expect(small[2]?.response.json().affectedVolunteerCount).toBe(1);
     expect(large[2]?.response.json().affectedVolunteerCount).toBe(1);
-    expect(small.map(({ statements }) => statements)).toEqual([23, 12, 21, 13]);
-    expect(large.map(({ statements }) => statements)).toEqual([23, 12, 21, 13]);
+    expect(small.map(({ statements }) => statements)).toEqual([18, 7, 16, 8]);
+    expect(large.map(({ statements }) => statements)).toEqual([18, 7, 16, 8]);
   });
 
   it('costs the same for a small and a large Assignment history', async () => {
@@ -387,8 +387,8 @@ describe('Schedules list, single Schedule and insights statement budgets', () =>
       expect(response.statusCode).toBe(200);
     expect(small[2]?.response.json().affectedVolunteerCount).toBe(1);
     expect(large[2]?.response.json().affectedVolunteerCount).toBe(5);
-    expect(small.map(({ statements }) => statements)).toEqual([23, 12, 21, 13]);
-    expect(large.map(({ statements }) => statements)).toEqual([23, 12, 21, 13]);
+    expect(small.map(({ statements }) => statements)).toEqual([18, 7, 16, 8]);
+    expect(large.map(({ statements }) => statements)).toEqual([18, 7, 16, 8]);
   });
 
   it('runs no schedule-change count for an unpublished Schedule, however many Events its Cycle holds', async () => {
@@ -439,8 +439,8 @@ describe('Schedules list, single Schedule and insights statement budgets', () =>
       affectedVolunteerCount: 0,
     });
     // One read finds no published participation; the published single read costs 21.
-    expect(small.map(({ statements }) => statements)).toEqual([17, 17, 15]);
-    expect(large.map(({ statements }) => statements)).toEqual([17, 17, 15]);
+    expect(small.map(({ statements }) => statements)).toEqual([12, 12, 10]);
+    expect(large.map(({ statements }) => statements)).toEqual([12, 12, 10]);
   });
 });
 

@@ -15,7 +15,7 @@ import {
 } from '../dtos/active-church.dto';
 import { serviceUnavailableResponseSchema } from '../dtos/service-unavailable.dto';
 import { headersFromRequest } from '../utils/headers';
-import { refuse } from '../utils/refuse';
+import { RefusalError } from '../utils/refusal-error';
 import type {
   ActiveChurchControllerDependencies,
   BuildStatusResponseInput,
@@ -39,16 +39,11 @@ const internalErrorResponseSchema = errorResponseSchema.extend({
  */
 async function requireSession({
   request,
-  reply,
-}: RequireSessionInput): Promise<CallerSession | null> {
+}: RequireSessionInput): Promise<CallerSession> {
   const session = await request.server.sessionGateway.lookup({
     headers: headersFromRequest(request),
   });
-  if (!session) {
-    // FastifyReply is thenable: send without awaiting, return a plain value.
-    refuse({ reply, request, code: 'UNAUTHORIZED' });
-    return null;
-  }
+  if (!session) throw new RefusalError({ code: 'UNAUTHORIZED' });
   return session;
 }
 
@@ -88,8 +83,7 @@ export class ActiveChurchController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const session = await requireSession({ request, reply });
-        if (!session) return;
+        const session = await requireSession({ request });
 
         const resolution = await resolveActiveChurchAndPersist({
           resolver: this.activeChurchResolver,
@@ -118,8 +112,7 @@ export class ActiveChurchController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const session = await requireSession({ request, reply });
-        if (!session) return;
+        const session = await requireSession({ request });
 
         const options = await this.selectionManager.listSelectableChurches({
           userId: session.userId,
@@ -148,8 +141,7 @@ export class ActiveChurchController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const session = await requireSession({ request, reply });
-        if (!session) return;
+        const session = await requireSession({ request });
 
         const body = request.body;
         const resolution = await this.selectionManager.selectActiveChurch({
@@ -158,7 +150,7 @@ export class ActiveChurchController implements FastifyController {
         });
 
         if (resolution.status !== 'resolved') {
-          return refuse({ reply, request, code: 'FORBIDDEN' });
+          throw new RefusalError({ code: 'FORBIDDEN' });
         }
 
         // A failed save must reach the standard 500: answering "resolved" would show a Church the session does not scope.

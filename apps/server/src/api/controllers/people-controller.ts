@@ -28,7 +28,7 @@ import {
   setMinistryRolesBodySchema,
   upcomingAssignmentsResponseSchema,
 } from '../dtos/people-list.dto';
-import { refuse } from '../utils/refuse';
+import { RefusalError } from '../utils/refusal-error';
 import { requestCaller } from '../utils/request-caller';
 import type {
   PeopleControllerDependencies,
@@ -43,14 +43,13 @@ const errorResponseSchema = z.object({
 /** Maps the shared refusals and sends the applied change without its `kind`. */
 function sendMembershipOutcome({
   reply,
-  request,
   outcome,
 }: SendMembershipOutcomeInput): FastifyReply {
   if (outcome.kind === 'forbidden') {
-    return refuse({ reply, request, code: 'FORBIDDEN' });
+    throw new RefusalError({ code: 'FORBIDDEN' });
   }
   if (outcome.kind === 'not-found') {
-    return refuse({ reply, request, code: 'NOT_FOUND' });
+    throw new RefusalError({ code: 'NOT_FOUND' });
   }
   const { kind: _applied, ...result } = outcome;
   return reply.send(result);
@@ -130,13 +129,13 @@ export class PeopleController implements FastifyController {
           accessLevel,
         });
         if (outcome.kind === 'forbidden') {
-          return refuse({ reply, request, code: 'FORBIDDEN' });
+          throw new RefusalError({ code: 'FORBIDDEN' });
         }
         if (outcome.kind === 'not-found') {
-          return refuse({ reply, request, code: 'NOT_FOUND' });
+          throw new RefusalError({ code: 'NOT_FOUND' });
         }
         if (outcome.kind === 'last-admin') {
-          return refuse({ reply, request, code: 'LAST_CHURCH_ADMIN' });
+          throw new RefusalError({ code: 'LAST_CHURCH_ADMIN' });
         }
         const { kind: _applied, ...result } = outcome;
         return reply.send(result);
@@ -171,12 +170,10 @@ export class PeopleController implements FastifyController {
         const caller = requestCaller({ request });
         const { churchId, userId: actorId } = caller;
         // The area gate; the manager decides the target under the Church lock.
-        const scope = await resolveLeadershipScope({
+        await resolveLeadershipScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
         });
-        if (!scope) return;
         const { memberId, membershipId } = request.params;
         const { roleIds } = request.body;
         const outcome = await this.ministryMembershipManager.setMinistryRoles({
@@ -186,7 +183,7 @@ export class PeopleController implements FastifyController {
           membershipId,
           roleIds: roleIds.map(RoleId.from),
         });
-        return sendMembershipOutcome({ reply, request, outcome });
+        return sendMembershipOutcome({ reply, outcome });
       },
     );
 
@@ -230,7 +227,7 @@ export class PeopleController implements FastifyController {
             accessLevel,
             roleIds: roleIds?.map(RoleId.from),
           });
-        return sendMembershipOutcome({ reply, request, outcome });
+        return sendMembershipOutcome({ reply, outcome });
       },
     );
 
@@ -260,12 +257,10 @@ export class PeopleController implements FastifyController {
         const caller = requestCaller({ request });
         const { churchId, userId: actorId } = caller;
         // The area gate; the manager decides the target under the Church lock.
-        const scope = await resolveLeadershipScope({
+        await resolveLeadershipScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
         });
-        if (!scope) return;
         const { memberId, membershipId } = request.params;
         const outcome =
           await this.ministryMembershipManager.endMinistryMembership({
@@ -274,7 +269,7 @@ export class PeopleController implements FastifyController {
             memberId,
             membershipId,
           });
-        return sendMembershipOutcome({ reply, request, outcome });
+        return sendMembershipOutcome({ reply, outcome });
       },
     );
 
@@ -302,9 +297,7 @@ export class PeopleController implements FastifyController {
         const scope = await resolveLeadershipScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
         });
-        if (!scope) return;
         const result = await this.peopleListManager.get({
           churchId,
           scope,
@@ -312,7 +305,7 @@ export class PeopleController implements FastifyController {
           callerActor,
           memberId: request.params.memberId,
         });
-        if (!result) return refuse({ reply, request, code: 'NOT_FOUND' });
+        if (!result) throw new RefusalError({ code: 'NOT_FOUND' });
         const { person, ...capabilities } = result;
         return reply.send({ ...person, ...capabilities });
       },
@@ -346,9 +339,7 @@ export class PeopleController implements FastifyController {
         const scope = await resolveLeadershipScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
         });
-        if (!scope) return;
         const { cursor, limit, ...filters } = request.query;
         return reply.send(
           await this.peopleListManager.list({

@@ -20,9 +20,9 @@ import type { IScheduleReadModel } from '../../domain/contracts/application/sche
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import {
-  denyParticipationScope,
-  denyRefusedDecision,
-  denyShiftScope,
+  assertAllowedDecision,
+  assertParticipationScope,
+  assertShiftScope,
 } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
@@ -53,8 +53,8 @@ import {
 import { assignmentParamsSchema, idSchema } from '../dtos/id.dto';
 import { requestCaller } from '../utils/request-caller';
 import type {
+  AssertAssignmentScopeInput,
   AssignControllerDependencies,
-  DenyAssignmentScopeInput,
   ReviewedPairBody,
 } from './assign-controller.types';
 
@@ -146,15 +146,11 @@ export class AssignController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const view = await this.scheduleBuilderReader.getCycleBuilderData({
           churchId: request.churchId,
@@ -193,15 +189,11 @@ export class AssignController implements FastifyController {
             ...requestCaller({ request }),
             ministryId: MinistryId.from(ministryId),
           });
-          if (
-            await denyRefusedDecision({
-              authorityGuard: this.authorityGuard,
-              request,
-              reply,
-              allowed: decision.allowed,
-            })
-          )
-            return;
+          await assertAllowedDecision({
+            authorityGuard: this.authorityGuard,
+            request,
+            allowed: decision.allowed,
+          });
 
           const items = await this.assignmentManager.listAuditLogForCycle({
             churchId: request.churchId,
@@ -240,15 +232,11 @@ export class AssignController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const proposal =
           await this.assignmentProposalManager.getAssignmentProposal({
@@ -290,15 +278,11 @@ export class AssignController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const { applicationKey, reviewToken, additions, excludedAdditions } =
           request.body;
@@ -345,15 +329,11 @@ export class AssignController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const body = request.body;
         const view = await this.schedulePublisher.publishCycle({
@@ -391,15 +371,11 @@ export class AssignController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
         const result = await this.schedulePublisher.sendScheduleUpdates({
           churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
@@ -429,13 +405,11 @@ export class AssignController implements FastifyController {
       },
       async (request, reply) => {
         const { shiftId } = request.params;
-        const denied = await denyShiftScope({
+        await assertShiftScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
           shiftId,
         });
-        if (denied) return;
 
         const volunteers =
           await this.scheduleBuilderReader.listEligibleVolunteers({
@@ -469,13 +443,11 @@ export class AssignController implements FastifyController {
       async (request, reply) => {
         const { shiftId } = request.params;
         const body = request.body;
-        const denied = await denyShiftScope({
+        await assertShiftScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
           shiftId,
         });
-        if (denied) return;
 
         const input = {
           churchId: request.churchId,
@@ -512,12 +484,7 @@ export class AssignController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params;
-        const denied = await this.denyAssignmentScope({
-          request,
-          reply,
-          assignmentId,
-        });
-        if (denied) return;
+        await this.assertAssignmentScope({ request, assignmentId });
 
         await this.assignmentManager.deleteAssignment({
           assignmentId: AssignmentId.from(assignmentId),
@@ -546,12 +513,7 @@ export class AssignController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params;
-        const denied = await this.denyAssignmentScope({
-          request,
-          reply,
-          assignmentId,
-        });
-        if (denied) return;
+        await this.assertAssignmentScope({ request, assignmentId });
         const body = request.body;
         const moved = await this.assignmentManager.moveParticipationAssignment({
           churchId: request.churchId,
@@ -585,12 +547,7 @@ export class AssignController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params;
-        const denied = await this.denyAssignmentScope({
-          request,
-          reply,
-          assignmentId,
-        });
-        if (denied) return;
+        await this.assertAssignmentScope({ request, assignmentId });
 
         const body = request.body;
         const reassigned =
@@ -623,13 +580,11 @@ export class AssignController implements FastifyController {
       },
       async (request, reply) => {
         const { participationId } = request.params;
-        const denied = await denyParticipationScope({
+        await assertParticipationScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
           participationId,
         });
-        if (denied) return;
 
         const completion = await this.scheduleReadModel.getCompletion({
           churchId: request.churchId,
@@ -641,15 +596,14 @@ export class AssignController implements FastifyController {
   }
 
   /**
-   * `denyShiftScope` for the Assignment's Shift. A missing Assignment, or one
+   * `assertShiftScope` for the Assignment's Shift. A missing Assignment, or one
    * with no Shift, is refused as a denied object decision.
    */
-  private async denyAssignmentScope({
+  private async assertAssignmentScope({
     request,
-    reply,
     assignmentId,
-  }: DenyAssignmentScopeInput): Promise<boolean> {
-    const access = { authorityGuard: this.authorityGuard, request, reply };
+  }: AssertAssignmentScopeInput): Promise<void> {
+    const access = { authorityGuard: this.authorityGuard, request };
     let shiftId: ShiftId | undefined;
     try {
       const assignment = await this.assignmentManager.getAssignment({
@@ -660,7 +614,7 @@ export class AssignController implements FastifyController {
     } catch (error) {
       if (!(error instanceof NotFoundError)) throw error;
     }
-    if (!shiftId) return denyRefusedDecision({ ...access, allowed: false });
-    return denyShiftScope({ ...access, shiftId });
+    if (!shiftId) return assertAllowedDecision({ ...access, allowed: false });
+    await assertShiftScope({ ...access, shiftId });
   }
 }

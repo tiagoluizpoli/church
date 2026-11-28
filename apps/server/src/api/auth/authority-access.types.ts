@@ -1,20 +1,19 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyRequest } from 'fastify';
 import type { MinistryId } from '../../domain/branded-ids';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 
-/** What every authority guard reads: who asks, and where a refusal goes. */
+/** What every authority guard reads: who asks. */
 export interface AuthorityAccessInput {
   authorityGuard: IAuthorityGuard;
   request: FastifyRequest;
-  reply: FastifyReply;
 }
 
-export interface DenyUnmanagedMinistryInput extends AuthorityAccessInput {
+export interface AssertManagedMinistryInput extends AuthorityAccessInput {
   ministryId: MinistryId;
 }
 
-export interface DenyMinistryManagementInput extends AuthorityAccessInput {
+export interface AssertMinistryManagementInput extends AuthorityAccessInput {
   /** Omit for the function-level check only (403); pass for the object check too (404). */
   ministryId?: MinistryId;
 }
@@ -24,16 +23,16 @@ export interface ResolveManagedMinistryInput extends AuthorityAccessInput {
   ministryId: MinistryId;
 }
 
-export interface DenyRefusedDecisionInput extends AuthorityAccessInput {
+export interface AssertAllowedDecisionInput extends AuthorityAccessInput {
   /** The object decision already taken for this request. */
   allowed: boolean;
 }
 
-export interface DenyShiftScopeInput extends AuthorityAccessInput {
+export interface AssertShiftScopeInput extends AuthorityAccessInput {
   shiftId: string;
 }
 
-export interface DenyParticipationScopeInput extends AuthorityAccessInput {
+export interface AssertParticipationScopeInput extends AuthorityAccessInput {
   participationId: string;
 }
 
@@ -46,8 +45,4 @@ export interface CreateChurchAdminHookInput {
   authorityGuard: IAuthorityGuard;
 }
 
-// named-parameters-ignore: Fastify hook signature (request, reply)
-export type ChurchAdminHook = (
-  request: FastifyRequest,
-  reply: FastifyReply,
-) => Promise<FastifyReply | undefined>;
+export type ChurchAdminHook = (request: FastifyRequest) => Promise<void>;

@@ -17,8 +17,8 @@ import type { ShiftSplitStrategy } from '../../domain/services/scheduling/shift-
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import {
-  denyParticipationScope,
-  denyRefusedDecision,
+  assertAllowedDecision,
+  assertParticipationScope,
   resolveLeadershipScope,
 } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
@@ -134,9 +134,7 @@ export class PrepareController implements FastifyController {
         const scope = await resolveLeadershipScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
         });
-        if (!scope) return;
 
         const { cursor, limit, ministryId, ...filters } = request.query;
         const page = await this.scheduleReadModel.listSchedules({
@@ -174,9 +172,7 @@ export class PrepareController implements FastifyController {
         const scope = await resolveLeadershipScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
         });
-        if (!scope) return;
         const insights = await this.scheduleReadModel.getScheduleInsights({
           churchId,
           ministryIds: scope.kind === 'church' ? undefined : scope.ministryIds,
@@ -208,9 +204,7 @@ export class PrepareController implements FastifyController {
         const scope = await resolveLeadershipScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
         });
-        if (!scope) return;
         const { ministryId, cycleId } = request.params;
         const schedule = await this.scheduleReadModel.getSchedule({
           churchId,
@@ -256,15 +250,11 @@ export class PrepareController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const view = await this.prepareManager.getCycleParticipation({
           churchId: request.churchId,
@@ -308,15 +298,11 @@ export class PrepareController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const preview = await this.availabilityCheckManager.getAskPreview({
           churchId: request.churchId,
@@ -351,15 +337,11 @@ export class PrepareController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const views = await this.scheduleReadModel.listScheduleSummaries({
           churchId: request.churchId,
@@ -399,13 +381,11 @@ export class PrepareController implements FastifyController {
       },
       async (request, reply) => {
         const { participationId, eventTimeBlockId } = request.params;
-        const denied = await denyParticipationScope({
+        await assertParticipationScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
           participationId,
         });
-        if (denied) return;
 
         const { serves, shiftSplit, headcounts } = request.body;
         const view = await this.prepareManager.savePreparation({
@@ -458,15 +438,11 @@ export class PrepareController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const result = await this.availabilityCheckManager.askSchedule({
           churchId: request.churchId,
@@ -507,15 +483,11 @@ export class PrepareController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         await this.availabilityCheckManager.setDeadline({
           churchId: request.churchId,
@@ -555,15 +527,11 @@ export class PrepareController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const result = await this.availabilityCheckManager.remindSchedule({
           churchId: request.churchId,
@@ -604,15 +572,11 @@ export class PrepareController implements FastifyController {
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await denyRefusedDecision({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const answers =
           await this.availabilityCheckManager.listCycleCheckStatuses({

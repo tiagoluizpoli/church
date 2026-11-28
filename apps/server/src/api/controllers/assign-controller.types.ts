@@ -1,5 +1,5 @@
 import type { AppConfig } from '@church/app-config';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyRequest } from 'fastify';
 import type { z } from 'zod';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAssignmentManager } from '../../domain/contracts/application/assignment-manager';
@@ -16,9 +16,8 @@ export type ApplyAssignmentProposalBody = z.infer<
 
 export type ReviewedPairBody = ApplyAssignmentProposalBody['additions'][number];
 
-export interface DenyAssignmentScopeInput {
+export interface AssertAssignmentScopeInput {
   request: FastifyRequest;
-  reply: FastifyReply;
   assignmentId: string;
 }
 

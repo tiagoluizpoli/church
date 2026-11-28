@@ -26,7 +26,7 @@ import {
   invitationListResponseSchema,
 } from '../dtos/invitation-list.dto';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
-import { refuse } from '../utils/refuse';
+import { RefusalError } from '../utils/refusal-error';
 import { requestCaller } from '../utils/request-caller';
 import type { InvitationControllerDependencies } from './invitation-controller.types';
 
@@ -99,9 +99,7 @@ export class InvitationController implements FastifyController {
         const scope = await resolveLeadershipScope({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
         });
-        if (!scope) return;
         const { cursor, limit, ...filters } = request.query;
         const page = await this.invitationListManager.list({
           ...caller,
@@ -178,7 +176,7 @@ export class InvitationController implements FastifyController {
           churchId,
           churchInvitationId: invitationId,
         });
-        if (!resent) return refuse({ reply, request, code: 'NOT_FOUND' });
+        if (!resent) throw new RefusalError({ code: 'NOT_FOUND' });
         return reply.send(churchInvitationResendMapper.toResponse(resent));
       },
     );
@@ -212,7 +210,7 @@ export class InvitationController implements FastifyController {
           churchInvitationId: invitationId,
           callerId,
         });
-        if (!revoked) return refuse({ reply, request, code: 'NOT_FOUND' });
+        if (!revoked) throw new RefusalError({ code: 'NOT_FOUND' });
         return reply.status(204).send(null);
       },
     );

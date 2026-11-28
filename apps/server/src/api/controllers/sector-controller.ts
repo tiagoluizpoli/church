@@ -80,10 +80,8 @@ export class SectorController implements FastifyController {
           authorityGuard: this.authorityGuard,
           ministryManager: this.ministryManager,
           request,
-          reply,
           ministryId: MinistryId.from(request.params.ministryId),
         });
-        if (!ministryId) return;
         const sectors = await this.sectorManager.list({
           churchId: request.churchId,
           ministryId,
@@ -117,10 +115,8 @@ export class SectorController implements FastifyController {
           authorityGuard: this.authorityGuard,
           ministryManager: this.ministryManager,
           request,
-          reply,
           ministryId: MinistryId.from(request.params.ministryId),
         });
-        if (!ministryId) return;
         const { name } = request.body;
         const sector = await this.sectorManager.create({
           churchId: request.churchId,
@@ -156,10 +152,8 @@ export class SectorController implements FastifyController {
           authorityGuard: this.authorityGuard,
           ministryManager: this.ministryManager,
           request,
-          reply,
           ministryId: MinistryId.from(request.params.ministryId),
         });
-        if (!ministryId) return;
         const { sectorId } = request.params;
         const { name } = request.body;
         const sector = await this.sectorManager.rename({
@@ -196,10 +190,8 @@ export class SectorController implements FastifyController {
           authorityGuard: this.authorityGuard,
           ministryManager: this.ministryManager,
           request,
-          reply,
           ministryId: MinistryId.from(request.params.ministryId),
         });
-        if (!ministryId) return;
         const { sectorId } = request.params;
         await this.sectorManager.archive({
           churchId: request.churchId,

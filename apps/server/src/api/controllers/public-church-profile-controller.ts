@@ -17,7 +17,7 @@ import {
 } from '../dtos/public-event.dto';
 import { renderChurchPageHead } from '../utils/church-page-head';
 import { isRateLimited } from '../utils/rate-limit';
-import { refuse } from '../utils/refuse';
+import { RefusalError } from '../utils/refusal-error';
 import type {
   ChurchPageAnswer,
   ChurchPageInput,
@@ -78,12 +78,12 @@ export class PublicChurchProfileController implements FastifyController {
             limit: this.rateLimit,
           })
         )
-          return refuse({ reply, request, code: 'RATE_LIMITED' });
+          throw new RefusalError({ code: 'RATE_LIMITED' });
         const { slug } = request.params;
         const profile = await this.publicChurchProfileManager.getProfile({
           slug,
         });
-        if (!profile) return refuse({ reply, request, code: 'NOT_FOUND' });
+        if (!profile) throw new RefusalError({ code: 'NOT_FOUND' });
         return reply.send(profile);
       },
     );
@@ -137,14 +137,14 @@ export class PublicChurchProfileController implements FastifyController {
             limit: this.rateLimit,
           })
         )
-          return refuse({ reply, request, code: 'RATE_LIMITED' });
+          throw new RefusalError({ code: 'RATE_LIMITED' });
         const { slug } = request.params;
         const { cursor } = request.query;
         const result = await this.publicEventManager.listPublicEventsBySlug({
           slug,
           after: cursor ? decodePublicEventCursor({ cursor }) : undefined,
         });
-        if (!result) return refuse({ reply, request, code: 'NOT_FOUND' });
+        if (!result) throw new RefusalError({ code: 'NOT_FOUND' });
         return reply.send(publicEventsToResponse(result));
       },
     );

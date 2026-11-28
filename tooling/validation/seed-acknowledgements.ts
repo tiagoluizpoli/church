@@ -59,8 +59,6 @@ function resolvePullRequestBase({ name }: { name: string }): string {
       `The open PR's base "${name}" is not available locally; run git fetch origin ${name}.`,
     );
   }
-  // Without shared history `git log` would count every commit as the branch's own.
-  requireMergeBase({ ref });
   return ref;
 }
 
@@ -104,6 +102,9 @@ export function readAcknowledgements({
 
   const name = readOpenPullRequestBase();
   const ownBaseRef = name ? resolvePullRequestBase({ name }) : baseRef;
+  // Without shared history `git log` would count every commit as the branch's
+  // own; readTrailers already checked baseRef.
+  if (ownBaseRef !== baseRef) requireMergeBase({ ref: ownBaseRef });
   const ownShas = new Set(
     execFileSync('git', ['log', '--format=%h', `${ownBaseRef}..HEAD`], {
       encoding: 'utf8',

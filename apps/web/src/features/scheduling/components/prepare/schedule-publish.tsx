@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { builderErrorMessage } from '@/features/scheduling/utils/builder/cycle-builder-error.utils';
-import { publishGapsMessage } from '@/features/scheduling/utils/publish-gaps-message';
+import {
+  publishGapsMessage,
+  publishUnansweredMessage,
+} from '@/features/scheduling/utils/publish-gaps-message';
 import { adminApi } from '@/utils/api-instances';
 
 interface SchedulePublishProps {
@@ -139,7 +142,7 @@ export function SchedulePublish({
         <p className="text-sm">{m.prepare_publish_notifications()}</p>
         {pending > 0 ? (
           <p className="text-sm">
-            {m.prepare_publish_unanswered({ count: pending })}
+            {publishUnansweredMessage({ count: pending })}
           </p>
         ) : null}
       </ResponsiveFormSurface>

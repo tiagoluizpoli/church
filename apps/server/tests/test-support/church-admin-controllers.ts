@@ -4,6 +4,7 @@ import type { CycleAdminControllerDependencies } from '@/api/controllers/cycle-a
 import { EventTemplateAdminController } from '@/api/controllers/event-template-admin-controller';
 import type { EventTemplateAdminControllerDependencies } from '@/api/controllers/event-template-admin-controller.types';
 import { EventTimeBlockAdminController } from '@/api/controllers/event-time-block-admin-controller';
+import type { EventTimeBlockAdminControllerDependencies } from '@/api/controllers/event-time-block-admin-controller.types';
 import { MinistryAdminController } from '@/api/controllers/ministry-admin-controller';
 import type { MinistryAdminControllerDependencies } from '@/api/controllers/ministry-admin-controller.types';
 import { PlanningEventAdminController } from '@/api/controllers/planning-event-admin-controller';
@@ -13,6 +14,7 @@ import type { FastifyTypedInstance } from '@/main/fastify/types';
 type ChurchAdminControllersDependencies = CycleAdminControllerDependencies &
   EventTemplateAdminControllerDependencies &
   PlanningEventAdminControllerDependencies &
+  EventTimeBlockAdminControllerDependencies &
   MinistryAdminControllerDependencies;
 
 /**

@@ -110,7 +110,8 @@ export class DrizzleEventRepository implements EventRepository {
           eq(eventTimeBlock.eventId, eventId),
           withChurchIsolation({ table: eventTimeBlock, churchId }),
         ),
-      );
+      )
+      .orderBy(asc(eventTimeBlock.startTime), asc(eventTimeBlock.id));
 
     const eventTimeBlocks = await Promise.all(
       eventTimeBlockRows.map(async (eventTimeBlockRow) => {

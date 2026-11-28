@@ -1103,6 +1103,20 @@ describe('repository list ordering', () => {
       expect(cycles.map((c) => c.id)).toEqual(expected);
     });
 
+    it('getWithEventTimeBlocks returns blocks by start time, then id', async () => {
+      const { churchId, event } = await seedEventBlocks();
+      const repo = new DrizzleEventRepository({ db });
+      const withBlocks = await repo.getWithEventTimeBlocks({
+        churchId,
+        eventId: EventId.from(event.id),
+      });
+      expect(withBlocks.eventTimeBlocks.map((b) => b.id)).toEqual([
+        uuid(1),
+        uuid(2),
+        uuid(3),
+      ]);
+    });
+
     it('characterization: each read returns every row it returned before #1231', async () => {
       const blockRequirements = await seedBlockRequirements();
       const eventTimeBlocks = new DrizzleEventTimeBlockRepository({ db });

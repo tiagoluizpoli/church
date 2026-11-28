@@ -30,7 +30,7 @@
     "@react-router/dev": "^7.13.2",
     "@tailwindcss/vite": "^4.3.3",
     "@types/mdx": "^2.0.13",
-    "@types/node": "^25.5.0",
+    "@types/node": "^26.0.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "react-router-devtools": "^6.2.0",

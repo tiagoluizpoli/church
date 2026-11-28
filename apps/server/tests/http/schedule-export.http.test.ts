@@ -25,6 +25,7 @@ import {
 } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { ScheduleExportController } from '@/api/controllers/schedule-export-controller';
+import { scheduleExportRenderPayload } from '@/api/utils/schedule-export-render';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbScheduleChangeReader } from '@/application/db-schedule-change-reader';
 import { DbScheduleExportReader } from '@/application/db-schedule-export-reader';
@@ -76,6 +77,18 @@ const activeChurchResolver = { resolve: vi.fn() };
 
 let app: FastifyTypedInstance;
 
+const typstRenderer = new TypstCliRenderer({
+  objectStorage: new InMemoryObjectStorage(),
+  config: {
+    binary: TYPST_BINARY,
+    fontsDir: TYPST_FONTS_DIR,
+    templatesDir: TYPST_TEMPLATES_DIR,
+    timeoutMs: 10_000,
+    cacheBytes: 10 * 1024 * 1024,
+    concurrency: 2,
+  },
+});
+
 beforeAll(async () => {
   app = await createFastify({
     locale: testLocale,
@@ -97,17 +110,7 @@ beforeAll(async () => {
         shiftRepository: new DrizzleShiftRepository({ db }),
       }),
       unitOfWork: new DrizzleUnitOfWork({ db }),
-      typstRenderer: new TypstCliRenderer({
-        objectStorage: new InMemoryObjectStorage(),
-        config: {
-          binary: TYPST_BINARY,
-          fontsDir: TYPST_FONTS_DIR,
-          templatesDir: TYPST_TEMPLATES_DIR,
-          timeoutMs: 10_000,
-          cacheBytes: 10 * 1024 * 1024,
-          concurrency: 2,
-        },
-      }),
+      typstRenderer,
     }),
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard: new AuthorityGuard({
@@ -235,11 +238,50 @@ async function readAllCards(request: ExportRequest = {}) {
 
 /** Each card's header strip is the one shape in this colour. */
 const CARD_HEADER = 'fill="oklch(94.8% 0.018 -113)"';
-/** A card's frame, and on the first image the rule under the header. */
+/** A card's frame, and the rule under each image's header. */
 const CARD_EDGE = 'stroke="oklch(88.5% 0.012 -118)"';
 
 function count(svg: string, mark: string) {
   return svg.split(mark).length - 1;
+}
+
+interface CardPagesRequest {
+  cycleId: string;
+  split?: 'none' | 'week';
+  part?: number;
+}
+
+/**
+ * Each card image's text, one entry per image: the SVG draws glyphs as paths,
+ * so this reads the cards template's PDF of the same payload, whose pages are
+ * the images.
+ */
+async function cardPagesText({
+  cycleId,
+  split = 'none',
+  part = 1,
+}: CardPagesRequest) {
+  const data = (
+    await app.inject({
+      method: 'GET',
+      url: `${exportUrl('data', { cycleId })}?split=${split}`,
+    })
+  ).json();
+  const payload = scheduleExportRenderPayload({
+    data: { ...data, parts: [data.parts[part - 1]] },
+    locale: 'pt-BR',
+    media: 'cards',
+  });
+  const pdf = await typstRenderer.render({
+    template: 'schedule-cards',
+    format: 'pdf',
+    payload,
+    creationTimestamp: new Date(0),
+  });
+  return poppler('pdftotext', Buffer.from(pdf))
+    .split('\f')
+    .filter((page) => page.trim())
+    .map((page) => page.replace(/\s+/g, ' '));
 }
 
 const DECEMBER_SUNDAYS = [
@@ -731,12 +773,12 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/file', () => {
           `attachment; filename="Escala - Kids - Dezembro 2026 - parte ${part} de 3.png"; filename*=UTF-8''${encodeURIComponent(`Escala - Kids - Dezembro 2026 - parte ${part} de 3.png`)}`,
       ),
     );
-    for (const [index, { size, svg }] of images.entries()) {
+    for (const { size, svg } of images) {
       expect(size.width).toBe(1080);
       expect(size.height).toBeLessThanOrEqual(1600);
       // Whole cards only: a cut card would leave a frame without its header.
-      const rule = index === 0 ? 1 : 0;
-      expect(count(svg, CARD_EDGE)).toBe(count(svg, CARD_HEADER) + rule);
+      // Each image adds the rule under its own header.
+      expect(count(svg, CARD_EDGE)).toBe(count(svg, CARD_HEADER) + 1);
     }
     const cards = images.map(({ svg }) => count(svg, CARD_HEADER));
     expect(cards.reduce((sum, each) => sum + each)).toBe(7);
@@ -790,6 +832,34 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/file', () => {
       404,
       404,
     ]);
+  });
+
+  it('heads every card image after the first with the Schedule, its part and the draft tag', async () => {
+    const cycleId = fixture.decemberId;
+    await seedCardServices({
+      fixture,
+      cycleId,
+      days: ['2026-12-08', '2026-12-09', '2026-12-10', '2026-12-11'],
+      shifts: 4,
+    });
+    const header = 'Escala · Kids · Dezembro 2026 · 01/12/2026 – 31/12/2026';
+
+    const whole = await cardPagesText({ cycleId });
+    await db
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(eq(ministryParticipation.ministryId, fixture.kidsId));
+    const week = await cardPagesText({ cycleId, split: 'week' });
+
+    expect(whole.length).toBeGreaterThan(1);
+    expect(week.length).toBeGreaterThan(1);
+    for (const page of whole.slice(1)) {
+      expect(page).toContain(header);
+      expect(page).not.toContain('Rascunho');
+    }
+    for (const page of week.slice(1)) {
+      expect(page).toContain(`${header} · Semana 07–13 dez Rascunho`);
+    }
   });
 
   it('makes a card taller than 1600 px an image of its own', async () => {

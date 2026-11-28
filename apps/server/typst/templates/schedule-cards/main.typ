@@ -148,6 +148,27 @@
   )
 }
 
+// The compact header atop every image of a part after its first: "Escala",
+// Ministry, Cycle and span on one line, then the part's name and draft tag.
+#let compact-header(pt) = {
+  text(size: 11pt, fill: mfg, {
+    text(weight: "bold", t.kicker)
+    " · "
+    text(weight: "bold", fill: fg, data.ministry.name)
+    " · " + data.cycle.name + " · " + t.range
+    if pt.name != none {
+      " · "
+      text(weight: "bold", fill: pri, pt.name)
+    }
+  })
+  if data.isDraft {
+    h(8pt)
+    box(stroke: 1pt + des, inset: (x: 5pt, y: 1.5pt), radius: 3pt, text(size: 9.5pt, weight: "bold", fill: des, t.draft))
+  }
+  v(-6pt)
+  line(length: 100%, stroke: 1pt + bd)
+}
+
 #let cancelled(label) = align(center, pad(y: 5pt, text(weight: "bold", fill: des, label)))
 
 #let card(part, ev, shared) = {
@@ -187,8 +208,9 @@
 }
 
 // Pack whole units into pages no taller than max-content-height. Each part
-// starts a page with the header naming it; a group bar travels with the card
-// below it.
+// starts a page with the header naming it, and its later pages with the
+// compact header unless the one card on the page only fits without it; a
+// group bar travels with the card below it.
 #context {
   let pages = ()
   for (pi, part) in data.parts.enumerate() {
@@ -204,14 +226,17 @@
         bars = ()
       }
     }
+    let compact = compact-header(t.parts.at(pi))
+    let compact-height = measure(block(width: content-width, compact)).height
     let current = ()
     let height = 0pt
     for u in units {
       let h = measure(block(width: content-width, u)).height
       if current.len() > 0 and height + gap + h > max-content-height {
         pages.push(current)
-        current = ()
-        height = 0pt
+        let fits = compact-height + gap + h <= max-content-height
+        current = if fits { (compact,) } else { () }
+        height = if fits { compact-height } else { 0pt }
       }
       height += if current.len() > 0 { gap + h } else { h }
       current.push(u)

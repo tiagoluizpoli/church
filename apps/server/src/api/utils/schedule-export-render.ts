@@ -1,3 +1,4 @@
+import { exportFileName } from '@church/domain-rules/export-file-name';
 import { m } from '@church/i18n/messages';
 import {
   type CalendarDay,
@@ -10,9 +11,6 @@ import type {
   ScheduleExportText,
   ScheduleExportTextInput,
 } from './schedule-export-render.types';
-
-/** Characters a file name may not hold on Windows, macOS or Linux. */
-const BANNED_FILE_NAME_CHARACTERS = /[\\/:*?"<>|\p{Cc}]/gu;
 
 function exportText({
   data,
@@ -74,14 +72,12 @@ export function scheduleExportFileName({
   data,
   locale,
 }: ScheduleExportTextInput): string {
-  return m
-    .export_file_name(
+  return exportFileName({
+    name: m.export_file_name(
       { ministry: data.ministry.name, cycle: data.cycle.name },
       { locale },
-    )
-    .replace(BANNED_FILE_NAME_CHARACTERS, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+    ),
+  });
 }
 
 /** An attachment header: an ASCII `filename` fallback and the UTF-8 `filename*`. */

@@ -238,7 +238,7 @@ export class PrepareController implements FastifyController {
           querystring: cycleParticipationQuerystringSchema,
           response: {
             200: cycleParticipationResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -339,7 +339,7 @@ export class PrepareController implements FastifyController {
             "List summaries of a Ministry's MinistryParticipation prepare progress across its Cycles.",
           response: {
             200: scheduleSummaryListResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -582,7 +582,7 @@ export class PrepareController implements FastifyController {
           }),
           response: {
             200: answersResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },

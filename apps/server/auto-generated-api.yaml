@@ -398,6 +398,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/cycles:
     post:
       operationId: createCycle
@@ -476,6 +493,36 @@ paths:
                   - createdAt
                   - updatedAt
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "409":
           description: Default Response
           content:
@@ -514,6 +561,23 @@ paths:
                   - error
                   - message
                   - conflictingCycles
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
     get:
       operationId: listCycles
@@ -670,6 +734,53 @@ paths:
                   - next
                   - counts
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/cycles/anchors:
     get:
       operationId: getCycleAnchors
@@ -774,6 +885,53 @@ paths:
                 required:
                   - current
                   - next
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/admin/cycles/{cycleId}:
     get:
@@ -995,6 +1153,53 @@ paths:
                   - events
                   - counts
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
     patch:
       operationId: updateCycle
       summary: Edit a Draft Cycle
@@ -1082,6 +1287,36 @@ paths:
                   - createdAt
                   - updatedAt
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "409":
           description: Default Response
           content:
@@ -1143,6 +1378,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
     delete:
       operationId: deleteCycle
       summary: Delete a Draft Cycle
@@ -1168,6 +1420,53 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/send-summary:
     get:
       operationId: getCycleSendSummary
@@ -1207,6 +1506,36 @@ paths:
                   - eventCount
                   - prefilledMinistryCount
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "409":
           description: Default Response
           content:
@@ -1245,6 +1574,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/send:
     post:
       operationId: sendCycle
@@ -1276,6 +1622,36 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "409":
           description: Default Response
           content:
@@ -1310,6 +1686,23 @@ paths:
                         - start
                         - end
                       additionalProperties: false
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -1719,6 +2112,36 @@ paths:
                   - createdAt
                   - updatedAt
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "409":
           description: Default Response
           content:
@@ -1784,6 +2207,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -2007,6 +2447,53 @@ paths:
                 required:
                   - templates
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/event-templates/{templateId}:
     get:
       operationId: getEventTemplate
@@ -2227,6 +2714,53 @@ paths:
                   - blocks
                   - createdAt
                   - updatedAt
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
     patch:
       operationId: updateEventTemplate
@@ -2645,6 +3179,36 @@ paths:
                   - createdAt
                   - updatedAt
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "409":
           description: Default Response
           content:
@@ -2714,6 +3278,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
     delete:
       operationId: deleteEventTemplate
       summary: Delete an EventTemplate
@@ -2738,6 +3319,53 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/event-templates/{templateId}/usage:
     get:
       operationId: getEventTemplateUsage
@@ -2783,6 +3411,53 @@ paths:
                   - templateId
                   - ministryCount
                   - blocks
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/admin/event-templates/{templateId}/precedences:
     get:
@@ -2830,6 +3505,53 @@ paths:
                       additionalProperties: false
                 required:
                   - precedences
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/admin/event-templates/{templateId}/precedences/{otherTemplateId}:
     put:
@@ -2893,6 +3615,36 @@ paths:
                   - otherTemplateName
                   - answer
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "422":
           description: Default Response
           content:
@@ -2930,6 +3682,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -3020,6 +3789,53 @@ paths:
                   - generatedEventCount
                   - generatedEventTimeBlockCount
                   - leftoverEventTimeBlocks
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/events:
     post:
@@ -3230,6 +4046,36 @@ paths:
                   - event
                   - eventTimeBlocks
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "422":
           description: Default Response
           content:
@@ -3267,6 +4113,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -3490,6 +4353,36 @@ paths:
                   - event
                   - eventTimeBlocks
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "422":
           description: Default Response
           content:
@@ -3531,6 +4424,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
     delete:
       operationId: deletePlanningEvent
       summary: Delete a Draft Event
@@ -3563,6 +4473,53 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/admin/cycles/{cycleId}/events/{eventId}/details:
     patch:
       operationId: updatePlanningEventDetails
@@ -3756,6 +4713,36 @@ paths:
                   - event
                   - eventTimeBlocks
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "422":
           description: Default Response
           content:
@@ -3793,6 +4780,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -3909,6 +4913,36 @@ paths:
                   - ministries
                   - openSwapRequestCount
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "422":
           description: Default Response
           content:
@@ -3946,6 +4980,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -4079,6 +5130,36 @@ paths:
                   - ministries
                   - openSwapRequestCount
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "422":
           description: Default Response
           content:
@@ -4116,6 +5197,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -4167,6 +5265,36 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -4219,6 +5347,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -4277,6 +5422,36 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -4329,6 +5504,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -4525,6 +5717,36 @@ paths:
                   - eventTimeBlocks
                   - clashes
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "422":
           description: Default Response
           content:
@@ -4562,6 +5784,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -4794,6 +6033,36 @@ paths:
                   - eventTimeBlocks
                   - withdrawn
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "422":
           description: Default Response
           content:
@@ -4831,6 +6100,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -5068,6 +6354,36 @@ paths:
                   - eventTimeBlocks
                   - clashes
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -5120,6 +6436,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -5387,6 +6720,36 @@ paths:
                   - eventTimeBlocks
                   - withdrawn
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -5439,6 +6802,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -5561,6 +6941,36 @@ paths:
                   - status
                   - requirements
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -5613,6 +7023,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -5813,6 +7240,36 @@ paths:
                   - eventTimeBlocks
                   - clashes
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -5865,6 +7322,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -6100,6 +7574,36 @@ paths:
                   - eventTimeBlocks
                   - withdrawn
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -6152,6 +7656,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -6274,6 +7795,36 @@ paths:
                   - ministries
                   - openSwapRequestCount
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -6326,6 +7877,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -6462,6 +8030,36 @@ paths:
                   - ministries
                   - openSwapRequestCount
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -6514,6 +8112,23 @@ paths:
                   issues:
                     type: array
                     items: {}
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -6640,6 +8255,36 @@ paths:
                   - status
                   - requirements
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -6696,6 +8341,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
     delete:
       operationId: deletePlanningEventTimeBlock
       summary: Delete a EventTimeBlock
@@ -6734,6 +8396,36 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -6743,6 +8435,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -6818,6 +8527,53 @@ paths:
                   - defaultDirection
                   - createdAt
                   - updatedAt
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/church-settings:
     get:
@@ -7095,6 +8851,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -7702,6 +9475,23 @@ paths:
                   - message
                   - fieldErrors
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/church-settings/slug-availability:
     get:
       operationId: getChurchSlugAvailability
@@ -7778,6 +9568,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -7902,6 +9709,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -8248,6 +10072,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
     delete:
       operationId: removeChurchLogo
       summary: Remove the Active Church logo
@@ -8522,6 +10363,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -8830,6 +10688,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -9163,6 +11038,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/events/:
     get:
       operationId: listEvents
@@ -9297,6 +11189,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/ministries/:
     get:
       operationId: listMinistries
@@ -9387,6 +11296,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -9489,6 +11415,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -9650,6 +11593,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/ministries/{ministryId}:
     get:
       operationId: getMinistry
@@ -9742,6 +11702,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -9867,6 +11844,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -10035,6 +12029,23 @@ paths:
                   - error
                   - message
                   - blockers
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/ministries/{ministryId}/invitations:
     post:
@@ -10237,6 +12248,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/ministries/{ministryId}/invitations/{invitationId}/resend:
     post:
       operationId: resendMinistryInvitation
@@ -10385,6 +12413,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/ministries/{ministryId}/invitations/{invitationId}/revoke:
     post:
       operationId: revokeMinistryInvitation
@@ -10485,6 +12530,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/ministries/{ministryId}/roles:
     get:
       operationId: listMinistryRoles
@@ -10564,6 +12626,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -10668,6 +12747,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -10779,6 +12875,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -10950,6 +13063,23 @@ paths:
                   - message
                   - blockers
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/ministries/{ministryId}/sectors/:
     get:
       operationId: listSectors
@@ -11028,6 +13158,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -11132,6 +13279,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -11244,6 +13408,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -11414,6 +13595,23 @@ paths:
                   - error
                   - message
                   - blockers
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/ministries/{ministryId}/usual-setup/:
     get:
@@ -11596,6 +13794,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -11864,6 +14079,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/schedules:
     get:
       operationId: listSchedules
@@ -12109,6 +14341,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/insights:
     get:
       operationId: getScheduleInsights
@@ -12239,6 +14488,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -12392,6 +14658,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -12799,6 +15082,21 @@ paths:
                   - dayMarkers
                   - totals
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -12823,6 +15121,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -12950,6 +15265,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/ministries/{ministryId}/cycles-summary:
     get:
       operationId: listScheduleSummaries
@@ -13022,6 +15354,21 @@ paths:
                 required:
                   - cycles
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -13046,6 +15393,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -13544,6 +15908,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/ask-availability:
     post:
       operationId: askScheduleAvailability
@@ -13735,6 +16116,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/availability-deadline:
     put:
       operationId: setAvailabilityDeadline
@@ -13882,6 +16280,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/remind-availability:
     post:
       operationId: remindSchedule
@@ -14013,6 +16428,23 @@ paths:
                       - error
                       - message
                     additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/prepare/cycles/{cycleId}/availability-status:
     get:
       operationId: getCycleAvailabilityStatus
@@ -14152,6 +16584,21 @@ paths:
                   - nextCursor
                   - statuses
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -14176,6 +16623,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -14646,6 +17110,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/cycles/{cycleId}/audit:
     get:
       operationId: getCycleAuditLog
@@ -14751,6 +17232,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -14915,6 +17413,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -15105,6 +17620,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/cycles/{cycleId}/publish:
     post:
       operationId: publishCycle
@@ -15241,6 +17773,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/cycles/{cycleId}/send-updates:
     post:
       operationId: sendScheduleUpdates
@@ -15329,6 +17878,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -15463,6 +18029,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -15617,6 +18200,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/assignments/{assignmentId}:
     delete:
       operationId: deleteParticipationAssignment
@@ -15681,6 +18281,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -15800,6 +18417,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -15926,6 +18560,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/assign/participations/{participationId}/completion:
     get:
       operationId: getParticipationCompletion
@@ -16009,6 +18660,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/caller-capabilities:
     get:
       operationId: getCallerCapabilities
@@ -16078,6 +18746,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -17161,6 +19846,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/notifications/{notificationId}:
     patch:
       operationId: markNotificationRead
@@ -17267,6 +19969,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/notifications/read-all:
     post:
       operationId: markAllNotificationsRead
@@ -17344,6 +20063,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -17671,6 +20407,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/invitations/admin:
     post:
       operationId: mintAdminInvitation
@@ -17827,6 +20580,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/invitations/church/{invitationId}/resend:
     post:
       operationId: resendChurchInvitation
@@ -17950,6 +20720,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/invitations/church/{invitationId}/revoke:
     post:
       operationId: revokeChurchInvitation
@@ -18034,6 +20821,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -18147,6 +20951,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -18369,6 +21190,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -18602,6 +21440,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/people/{memberId}/ministry-memberships/{membershipId}:
     delete:
       operationId: endMinistryMembership
@@ -18783,6 +21638,23 @@ paths:
                       - error
                       - message
                     additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/people/{memberId}:
     get:
       operationId: getPerson
@@ -18930,6 +21802,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -19123,6 +22012,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -22346,6 +25252,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/assignments/{assignmentId}:
     get:
       operationId: getAssignmentDetail
@@ -22519,6 +25442,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/ministries/{ministryId}/schedule:
     get:
       operationId: getMinistrySchedule
@@ -22676,6 +25616,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/availability-checks:
     get:
       operationId: listAvailabilityChecks
@@ -22793,6 +25750,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -22977,6 +25951,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -23208,6 +26199,23 @@ paths:
                     type: array
                     items:
                       type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
                 required:
                   - error
                   - message
@@ -23462,6 +26470,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/assignments/{assignmentId}/swap-requests:
     post:
       operationId: raiseSwapRequest
@@ -23595,6 +26620,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/assignments/{assignmentId}/swap-requests/current:
     delete:
       operationId: withdrawSwapRequest
@@ -23676,6 +26718,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -23827,6 +26886,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/ministries/{ministryId}/swap-requests/{swapRequestId}/keep:
     post:
       operationId: keepSwapRequest
@@ -23926,6 +27002,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:

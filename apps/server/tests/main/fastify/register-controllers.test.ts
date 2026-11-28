@@ -100,30 +100,33 @@ describe('declared response statuses (#1226)', () => {
   // The Active Church hook answers 401 without a session and 403 without a
   // Church Membership (or, where a Volunteer profile is required, without one).
   it.each([
-    ['getVolunteerDashboard', ['200', '401', '403']],
-    ['getAssignmentDetail', ['200', '401', '403', '404']],
-    ['getMinistrySchedule', ['200', '401', '403', '404']],
-    ['listAvailabilityChecks', ['200', '401', '403']],
-    ['getAvailabilityCheck', ['200', '401', '403', '404']],
-    ['answerAvailabilityCheck', ['200', '401', '403', '404', '409']],
-    ['getPublishedVolunteerSchedule', ['200', '401', '403']],
-    ['raiseSwapRequest', ['201', '400', '401', '403', '404', '409']],
-    ['withdrawSwapRequest', ['204', '401', '403', '404', '409']],
-    ['listMinistrySwapRequests', ['200', '401', '403', '404']],
-    ['keepSwapRequest', ['204', '401', '403', '404', '409']],
-    ['getCycleBuilderData', ['200', '401', '403', '404']],
-    ['getCycleAuditLog', ['200', '401', '403', '404']],
-    ['getAssignmentProposal', ['200', '401', '403', '404', '409']],
-    ['applyAssignmentProposal', ['200', '401', '403', '404', '409', '422']],
-    ['publishCycle', ['200', '401', '403', '404', '409']],
-    ['sendScheduleUpdates', ['200', '401', '403', '404', '409']],
-    ['listEligibleVolunteers', ['200', '401', '403', '404']],
-    ['createParticipationAssignment', ['201', '401', '403', '404']],
-    ['deleteParticipationAssignment', ['204', '401', '403', '404']],
-    ['moveParticipationAssignment', ['200', '401', '403', '404']],
-    ['reassignParticipationAssignment', ['200', '401', '403', '404']],
-    ['getParticipationCompletion', ['200', '401', '403', '404']],
-  ])('%s declares the 401 and 403 its hook sends', (operationId, statuses) => {
+    ['getVolunteerDashboard', ['200', '401', '403', '503']],
+    ['getAssignmentDetail', ['200', '401', '403', '404', '503']],
+    ['getMinistrySchedule', ['200', '401', '403', '404', '503']],
+    ['listAvailabilityChecks', ['200', '401', '403', '503']],
+    ['getAvailabilityCheck', ['200', '401', '403', '404', '503']],
+    ['answerAvailabilityCheck', ['200', '401', '403', '404', '409', '503']],
+    ['getPublishedVolunteerSchedule', ['200', '401', '403', '503']],
+    ['raiseSwapRequest', ['201', '400', '401', '403', '404', '409', '503']],
+    ['withdrawSwapRequest', ['204', '401', '403', '404', '409', '503']],
+    ['listMinistrySwapRequests', ['200', '401', '403', '404', '503']],
+    ['keepSwapRequest', ['204', '401', '403', '404', '409', '503']],
+    ['getCycleBuilderData', ['200', '401', '403', '404', '503']],
+    ['getCycleAuditLog', ['200', '401', '403', '404', '503']],
+    ['getAssignmentProposal', ['200', '401', '403', '404', '409', '503']],
+    [
+      'applyAssignmentProposal',
+      ['200', '401', '403', '404', '409', '422', '503'],
+    ],
+    ['publishCycle', ['200', '401', '403', '404', '409', '503']],
+    ['sendScheduleUpdates', ['200', '401', '403', '404', '409', '503']],
+    ['listEligibleVolunteers', ['200', '401', '403', '404', '503']],
+    ['createParticipationAssignment', ['201', '401', '403', '404', '503']],
+    ['deleteParticipationAssignment', ['204', '401', '403', '404', '503']],
+    ['moveParticipationAssignment', ['200', '401', '403', '404', '503']],
+    ['reassignParticipationAssignment', ['200', '401', '403', '404', '503']],
+    ['getParticipationCompletion', ['200', '401', '403', '404', '503']],
+  ])('%s declares the 401, 403 and 503 its hook sends', (operationId, statuses) => {
     expect(declaredStatuses({ operationId })).toEqual(statuses);
   });
 
@@ -132,6 +135,7 @@ describe('declared response statuses (#1226)', () => {
       '200',
       '401',
       '403',
+      '503',
     ]);
   });
 
@@ -144,6 +148,7 @@ describe('declared response statuses (#1226)', () => {
       '403',
       '409',
       '422',
+      '503',
     ]);
   });
 
@@ -151,7 +156,12 @@ describe('declared response statuses (#1226)', () => {
     'deleteCycle',
     'deleteEventTemplate',
   ])('%s declares its 204 like every other delete', (operationId) => {
-    expect(declaredStatuses({ operationId })).toEqual(['204']);
+    expect(declaredStatuses({ operationId })).toEqual([
+      '204',
+      '401',
+      '403',
+      '503',
+    ]);
   });
 });
 

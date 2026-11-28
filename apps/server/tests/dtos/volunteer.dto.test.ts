@@ -225,31 +225,10 @@ describe('volunteerMapper', () => {
       expect(response.checks[0]?.confirmedAt).toBeUndefined();
     });
 
-    it('counts the pending and confirmed checks for the header', () => {
-      const summary = {
-        answerBy: null,
-        id: 'chk',
-        cycleId: 'pc1',
-        cycleName: 'Spring 2026',
-        ministryId: 'm1',
-        ministryName: 'Worship',
-        totalShiftCount: 3,
-        unavailableShiftCount: 0,
-      };
-      const response = volunteerMapper.availabilityCheckListToResponse([
-        { ...summary, id: 'a', state: 'pending' },
-        { ...summary, id: 'b', state: 'pending' },
-        { ...summary, id: 'c', state: 'confirmed' },
-      ]);
-
-      expect(response.counts).toEqual({ total: 3, pending: 2, confirmed: 1 });
-    });
-
     it('maps an empty list of summaries', () => {
       const response = volunteerMapper.availabilityCheckListToResponse([]);
 
-      expect(response.checks).toEqual([]);
-      expect(response.counts).toEqual({ total: 0, pending: 0, confirmed: 0 });
+      expect(response).toEqual({ checks: [] });
     });
   });
 

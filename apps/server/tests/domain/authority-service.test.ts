@@ -46,6 +46,7 @@ function ministryMembership(
   return {
     churchId,
     ministryId,
+    ministryName: 'Worship',
     accessLevel: 'volunteer',
     qualifiedRoleIds: [],
     ...overrides,

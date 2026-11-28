@@ -47,6 +47,18 @@ const DATE_TIME_SEAM_STEP = {
   label: 'date-time-seam',
 };
 
+const BUN_VERSION_STEP = {
+  args: ['run', 'validate:bun-version'],
+  command: 'bun',
+  label: 'bun-version',
+};
+
+const CONSTITUTION_VERSION_STEP = {
+  args: ['run', 'validate:constitution-version'],
+  command: 'bun',
+  label: 'constitution-version',
+};
+
 describe('buildValidationSteps', () => {
   it('skips the test-placement guard for an E2E-only run', () => {
     const { checkLane } = buildValidationSteps({
@@ -73,6 +85,8 @@ describe('buildValidationSteps', () => {
       JOURNEY_MAP_STEP,
       PRESENTATION_TEXT_STEP,
       DATE_TIME_SEAM_STEP,
+      BUN_VERSION_STEP,
+      CONSTITUTION_VERSION_STEP,
     ]);
     expect(steps.checkedLabels).toContain('test-placement');
     expect(steps.checkedLabels).toContain('i18n-parity');
@@ -81,6 +95,8 @@ describe('buildValidationSteps', () => {
     expect(steps.checkedLabels).toContain('journey-map');
     expect(steps.checkedLabels).toContain('presentation-text');
     expect(steps.checkedLabels).toContain('date-time-seam');
+    expect(steps.checkedLabels).toContain('bun-version');
+    expect(steps.checkedLabels).toContain('constitution-version');
     expect(steps.integrationLane).toEqual([]);
     expect(steps.unitLane).toEqual([]);
     expect(steps.e2eSteps).toEqual([]);
@@ -104,7 +120,7 @@ describe('buildValidationSteps', () => {
       onlyE2e: false,
       plan: makePlan({
         lintPaths: [LINT_PATH, 'does/not/exist.ts'],
-        workspaceNames: ['web', '@church/core'],
+        workspaceNames: ['@church/web', '@church/core'],
       }),
       skipE2e: false,
     });
@@ -122,13 +138,15 @@ describe('buildValidationSteps', () => {
       JOURNEY_MAP_STEP,
       PRESENTATION_TEXT_STEP,
       DATE_TIME_SEAM_STEP,
+      BUN_VERSION_STEP,
+      CONSTITUTION_VERSION_STEP,
       {
         args: [
           'turbo',
           'typecheck',
           '--concurrency=2',
           '--filter',
-          'web',
+          '@church/web',
           '--filter',
           '@church/core',
         ],
@@ -152,15 +170,15 @@ describe('buildValidationSteps', () => {
           {
             testLayer: 'test:unit',
             testPath: 'src/a.test.ts',
-            workspaceName: 'web',
+            workspaceName: '@church/web',
           },
           {
             testLayer: 'test:unit',
             testPath: 'src/b.test.ts',
-            workspaceName: 'web',
+            workspaceName: '@church/web',
           },
         ],
-        workspaceNames: ['web', 'server'],
+        workspaceNames: ['@church/web', '@church/server'],
       }),
       skipE2e: false,
       wholeUnitSuites: true,
@@ -174,7 +192,7 @@ describe('buildValidationSteps', () => {
           'test:unit',
           '--concurrency=2',
           '--filter',
-          'server',
+          '@church/server',
           '--only',
           '--',
         ],
@@ -187,7 +205,7 @@ describe('buildValidationSteps', () => {
           'test:unit',
           '--concurrency=2',
           '--filter',
-          'web',
+          '@church/web',
           '--only',
           '--',
           'src/a.test.ts',
@@ -204,7 +222,7 @@ describe('buildValidationSteps', () => {
       onlyE2e: false,
       plan: makePlan({
         testLayers: ['test:integration'],
-        workspaceNames: ['server'],
+        workspaceNames: ['@church/server'],
       }),
       skipE2e: false,
     });
@@ -217,7 +235,7 @@ describe('buildValidationSteps', () => {
           'test:integration',
           '--concurrency=3',
           '--filter',
-          'server',
+          '@church/server',
           '--only',
           '--',
         ],
@@ -303,7 +321,7 @@ describe('buildValidationSteps', () => {
         lintPaths: [LINT_PATH],
         testLayers: ['test:unit', 'test:integration'],
         requiresFullE2e: true,
-        workspaceNames: ['web'],
+        workspaceNames: ['@church/web'],
       }),
       skipE2e: false,
     });

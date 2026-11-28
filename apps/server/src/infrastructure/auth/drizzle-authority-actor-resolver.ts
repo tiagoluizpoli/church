@@ -5,7 +5,7 @@ import {
   ministryMembershipRole,
   volunteer,
 } from '@church/db';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type {
   AuthorityActor,
   ChurchAccessLevel,
@@ -141,6 +141,7 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
       .select({
         id: ministryMembership.id,
         ministryId: ministryMembership.ministryId,
+        ministryName: ministry.name,
         ministryAccessLevel: ministryMembership.ministryAccessLevel,
         ministryArchivedAt: ministry.deletedAt,
       })
@@ -152,6 +153,12 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
           eq(ministryMembership.churchId, churchId),
           eq(ministryMembership.status, 'active'),
         ),
+      )
+      // Ministry name order: the caller capabilities list led Ministries as read.
+      .orderBy(
+        asc(sql`lower(${ministry.name})`),
+        asc(ministry.id),
+        asc(ministryMembership.id),
       );
 
     if (rows.length === 0) {
@@ -167,6 +174,12 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
       .from(ministryMembershipRole)
       .where(
         inArray(ministryMembershipRole.ministryMembershipId, membershipIds),
+      )
+      // No caller shows an order: natural key, then id.
+      .orderBy(
+        asc(ministryMembershipRole.ministryMembershipId),
+        asc(ministryMembershipRole.roleId),
+        asc(ministryMembershipRole.id),
       );
 
     const rolesByMembership = groupByMembership<MembershipRoleRow>(roleRows);
@@ -174,6 +187,7 @@ export class DrizzleAuthorityActorResolver implements AuthorityActorRepository {
     const ministryMemberships: MinistryMembershipFact[] = rows.map((row) => ({
       churchId,
       ministryId: row.ministryId as MinistryId,
+      ministryName: row.ministryName,
       // An archived Ministry keeps its Members' historical reads but grants no leadership.
       accessLevel: row.ministryArchivedAt
         ? 'volunteer'

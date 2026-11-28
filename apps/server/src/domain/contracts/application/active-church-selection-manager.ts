@@ -68,11 +68,6 @@ export interface ToSelectionOptionInput {
   availableAreas: ApplicationArea[];
 }
 
-export interface ResolveAvailableAreasInput {
-  userId: ListSelectableChurchesInput['userId'];
-  churchId: ChurchId;
-}
-
 export interface DbActiveChurchSelectionManagerDependencies {
   membershipRepository: ChurchMembershipRepository;
   authorityManager: IAuthorityManager;

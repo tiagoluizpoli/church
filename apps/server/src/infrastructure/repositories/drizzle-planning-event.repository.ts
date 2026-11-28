@@ -32,6 +32,7 @@ import {
   lt,
   ne,
   notInArray,
+  or,
   type SQL,
   sql,
 } from 'drizzle-orm';
@@ -47,11 +48,13 @@ import type {
   CancelEventTimeBlockInput,
   CreatePlanningEventInput,
   CreatePlanningEventTimeBlockInput,
+  CycleCancellations,
   DeletePlanningEventInput,
   DeleteScopeUnavailableShiftsInput,
   EventShiftBounds,
   GetPlanningEventInput,
   ListCancellationScopeAssignmentsInput,
+  ListCycleCancellationsInput,
   ListCycleEventsInput,
   ListEventShiftsInput,
   ListMoveClashCandidatesInput,
@@ -276,6 +279,62 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         };
       }),
     );
+  }
+
+  // TS twin: `compareScheduleAssignments` (application/db-schedule-change-reader.ts).
+  async listCycleCancellations({
+    churchId,
+    cycleIds,
+    tx,
+  }: ListCycleCancellationsInput): Promise<CycleCancellations[]> {
+    if (cycleIds.length === 0) return [];
+    const eventCancelled = eq(event.status, 'cancelled');
+    const rows = await getClient({ db: this.db, tx })
+      .select({
+        cycleId: event.cycleId,
+        eventId: event.id,
+        eventCancelled: sql<boolean>`${eventCancelled}`,
+        shiftId: shiftRequirement.shiftId,
+      })
+      .from(event)
+      .leftJoin(
+        eventTimeBlock,
+        and(
+          eq(eventTimeBlock.eventId, event.id),
+          or(eventCancelled, eq(eventTimeBlock.status, 'cancelled')),
+        ),
+      )
+      .leftJoin(shift, eq(shift.eventTimeBlockId, eventTimeBlock.id))
+      .leftJoin(shiftRequirement, eq(shiftRequirement.shiftId, shift.id))
+      .where(
+        and(
+          inArray(event.cycleId, cycleIds),
+          withChurchIsolation({ table: event, churchId }),
+          or(eventCancelled, sql`${eventTimeBlock.id} is not null`),
+        ),
+      )
+      .orderBy(
+        asc(event.cycleId),
+        asc(event.id),
+        asc(shiftRequirement.shiftId),
+      );
+    const byCycle = new Map<string, CycleCancellations>();
+    for (const row of rows) {
+      const cancellations = byCycle.get(row.cycleId) ?? {
+        cycleId: row.cycleId as CycleCancellations['cycleId'],
+        eventIds: [],
+        shiftIds: [],
+      };
+      const eventId = row.eventId as CycleCancellations['eventIds'][number];
+      if (row.eventCancelled && !cancellations.eventIds.includes(eventId))
+        cancellations.eventIds.push(eventId);
+      if (row.shiftId)
+        cancellations.shiftIds.push(
+          row.shiftId as CycleCancellations['shiftIds'][number],
+        );
+      byCycle.set(row.cycleId, cancellations);
+    }
+    return [...byCycle.values()];
   }
 
   async createEventTimeBlock(

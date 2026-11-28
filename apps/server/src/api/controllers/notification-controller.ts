@@ -16,6 +16,7 @@ import {
 } from '../dtos/member-notification.dto';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import { refuse } from '../utils/refuse';
+import { requestCaller } from '../utils/request-caller';
 import type { NotificationControllerDependencies } from './notification-controller.types';
 
 const errorResponseSchema = z.object({
@@ -60,11 +61,12 @@ export class NotificationController implements FastifyController {
     // Every route is the caller's own inbox: the owner is the session User,
     // never a parameter, so member-level access is the only rule to ask.
     app.addHook('preHandler', async (request, reply) => {
+      const caller = requestCaller({ request });
+      const { churchId } = caller;
       const decision = await this.authorityGuard.decideAuthority({
-        churchId: ChurchId.from(request.churchId),
-        userId: UserId.from(request.userId),
+        ...caller,
         action: 'access',
-        resource: { type: 'church', churchId: ChurchId.from(request.churchId) },
+        resource: { type: 'church', churchId },
         scope: 'function',
       });
       if (!decision.allowed)

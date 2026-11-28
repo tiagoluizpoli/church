@@ -67,6 +67,10 @@ class MockMinistryRepository implements MinistryRepository {
     throw new Error('listPage is not part of this contract spec');
   }
 
+  async listNeedingReviewIds(): Promise<MinistryId[]> {
+    throw new Error('listNeedingReviewIds is not part of this contract spec');
+  }
+
   async create({
     churchId,
     name,

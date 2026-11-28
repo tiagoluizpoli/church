@@ -124,6 +124,7 @@ export class DbActiveChurchResolver implements IActiveChurchResolver {
         action: 'participate',
         resource: { type: 'church', churchId },
       }).allowed,
+      actor,
       autoSelected,
     };
   }

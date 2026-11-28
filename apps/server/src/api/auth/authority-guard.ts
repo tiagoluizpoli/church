@@ -12,7 +12,6 @@ import type {
   CanManageParticipationInput,
   CanManageShiftInput,
   DecideAuthorityInput,
-  HasSchedulingAccessInput,
   IAuthorityManager,
   ResolveCallerCapabilitiesInput,
 } from '../../domain/contracts/application/authority-manager';
@@ -86,9 +85,5 @@ export class AuthorityGuard implements IAuthorityGuard {
     input: ResolveCallerCapabilitiesInput,
   ): Promise<CallerCapabilitiesProjection> {
     return this.manager.resolveCallerCapabilities(input);
-  }
-
-  hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean> {
-    return this.manager.hasSchedulingAccess(input);
   }
 }

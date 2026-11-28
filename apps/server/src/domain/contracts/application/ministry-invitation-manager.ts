@@ -1,5 +1,6 @@
 import type { AppConfig } from '@church/app-config';
 import type { Instant } from '@church/time';
+import type { AuthorityActor } from '../../authority/types';
 import type {
   ChurchId,
   MinistryId,
@@ -40,6 +41,8 @@ export interface MintMinistryInvitationInput {
   ministryId: MinistryId;
   /** The caller — resolves both the invitation's `inviterId` and its own authority. */
   inviterId: UserId;
+  /** The caller as this request already read it; reused for authority instead of a fresh read. */
+  actor?: AuthorityActor;
   email: string;
   ministryAccessLevel: MinistryAccessLevel;
   roleIds: RoleId[];
@@ -51,6 +54,8 @@ export interface ResendMinistryInvitationInput {
   ministryInvitationId: MinistryInvitationId;
   /** The caller — resend requires the same minting authority as creation. */
   callerId: UserId;
+  /** The caller as this request already read it; reused for authority instead of a fresh read. */
+  actor?: AuthorityActor;
 }
 
 export interface GetMinistryInvitationDeliveryStatusInput {
@@ -80,6 +85,8 @@ export interface RevokeMinistryInvitationInput {
   ministryInvitationId: MinistryInvitationId;
   /** The caller, recorded as the revoking actor; the reason is always `manual`. */
   callerId: UserId;
+  /** The caller as this request already read it; reused for authority instead of a fresh read. */
+  actor?: AuthorityActor;
 }
 
 export interface ResendChurchInvitationInput {
@@ -131,12 +138,14 @@ export interface EnsureMintableScopeInput {
   churchId: ChurchId;
   ministryId: MinistryId;
   callerId: UserId;
+  actor?: AuthorityActor;
 }
 
 export interface EnsureOfferAuthorityInput {
   churchId: ChurchId;
   ministryId: MinistryId;
   callerId: UserId;
+  actor?: AuthorityActor;
   /** The offer's stored (or, on mint, requested) Ministry Access Level. */
   ministryAccessLevel: MinistryAccessLevel;
   tx?: TransactionContext;

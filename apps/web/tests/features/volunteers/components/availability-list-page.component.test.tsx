@@ -119,6 +119,8 @@ describe('Availability checks list', () => {
     const cards = within(
       await screen.findByTestId('data-table-mobile-list'),
     ).getAllByRole('listitem');
+    // The list page asks for every state: no filter argument.
+    expect(api.listAvailabilityChecks).toHaveBeenCalledWith();
     expect(
       screen.getByText(
         `${m.availability_list_pending_count({ count: 2 })} ${m.availability_list_help()}`,

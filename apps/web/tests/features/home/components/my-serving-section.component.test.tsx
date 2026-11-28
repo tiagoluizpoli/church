@@ -129,7 +129,6 @@ describe('Home serving widgets', () => {
     givenServing();
     volunteerApi.listAvailabilityChecks.mockResolvedValue({
       checks: [
-        check('done', 'confirmed'),
         check('open', 'pending', '2026-10-20'),
         check('soon', 'pending', '2026-10-13'),
         check('late', 'pending', '2026-10-01'),
@@ -170,7 +169,10 @@ describe('Home serving widgets', () => {
 
     const checks = await widget(m.home_pending_checks());
     await within(checks).findByText('Ministry open · Cycle open');
-    expect(within(checks).queryByText(/Ministry done/)).not.toBeInTheDocument();
+    // The server filters: Home asks for unconfirmed checks only.
+    expect(volunteerApi.listAvailabilityChecks.mock.calls).toEqual([
+      [{ state: 'pending' }],
+    ]);
     expect(hrefs(checks)).toEqual([
       '/app/availability/open',
       '/app/availability/soon',

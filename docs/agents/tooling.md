@@ -1,7 +1,8 @@
 # Church Tooling
 
 Bun and Node versions are pinned in `mise.toml` (`mise install`); `packageManager`
-in `package.json` must name the same Bun.
+in `package.json` must name the same Bun (`bun run validate:bun-version`, part of
+`lint` and `validate:affected`).
 
 Run commands from the repository root through existing Bun scripts. Do not
 invoke package tools directly: root scripts carry required environment, filters,
@@ -19,11 +20,13 @@ and task ordering.
 | Seed contracts (every recipe, refusals) | `bun run test:seeds` |
 | Test placement guard | `bun run validate:test-placement` |
 | Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
+| Bun pin guard (`mise.toml` = `packageManager`) | `bun run validate:bun-version` |
 | Presentation-text guard (no hard-coded copy) | `bun run validate:presentation-text` (`-- <path>…` for files) |
 | Server types guard (no types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
 | E2E lane-list guard (no Playwright start) | `bun run validate:e2e-lanes` |
+| Constitution version guard (amendments bump version) | `bun run validate:constitution-version` |
 | Sign-in load times and filmstrip ([harness](#sign-in-load-harness)) | `bun run perf:sign-in` |
 | Web bundle gzip budget (needs a built `apps/web/dist`) | `bun run validate:bundle-budget` |
 | `/login` module requests under `vite dev` ([cap](#dev-module-cap)) | `bun run validate:dev-module-cap` |
@@ -417,7 +420,7 @@ plan then selects that package alone, without its dependents, with its whole
 unit suite, and prints:
 
 ```text
-turbo.json narrowed to web: only its own task entries differ (web#build)
+turbo.json narrowed to @church/web: only its own task entries differ (@church/web#build)
 ```
 
 The package must be one the plan can select (`WORKSPACES`, so not
@@ -439,7 +442,7 @@ fails, naming the chunk, when the entry chunk, the entry CSS or a shared chunk
 (a `modulepreload` in `index.html`) is over its limit. Lazy chunks are printed
 only. It never builds: `validate` runs it right after the type check, which
 builds `dist`, and `validate:affected` and `validate:no-docker` do the same
-when `web` is affected. It is not part of `lint`. The limits are `LIMITS` in
+when `@church/web` is affected. It is not part of `lint`. The limits are `LIMITS` in
 the script; raise one only on purpose and say why in the PR. `shared` is one
 limit for each shared chunk on its own, so a small chunk can grow up to it
 unnoticed. It does not name the module that grew: the build writes no stats
@@ -491,10 +494,10 @@ diagnostics). It skips the root `test:unit`'s `TZ=Asia/Kolkata`, so the
 completion gate is still what catches timezone-dependent failures:
 
 ```sh
-bunx turbo -F server test:unit --only -- tests/api/auth/active-church-pre-validation.test.ts
+bunx turbo -F @church/server test:unit --only -- tests/api/auth/active-church-pre-validation.test.ts
 ```
 
-`-F` takes the package name (`server`, `web`, `@church/core`, …); the task is
+`-F` takes the package name (`@church/server`, `@church/web`, `@church/core`, …); the task is
 `test:unit` for unit and component tests or `test:integration` for
 integration tests; the path is relative to that workspace. Integration tasks
 need this worktree's databases (`bun run worktree:bootstrap`). Story E2E keeps
@@ -943,13 +946,13 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Server classes are built in `main/di/` and injected, never `new`-ed inside another class | Backend | Mechanical | Validation guard | Follow-up [#1129](https://github.com/tiagoluizpoli/church/issues/1129) |
 | Web interfaces get their own file when large or several | Frontend | Judgement | — | Review: "large" and whether a split makes sense are judgements |
 | Shared packages hold only generic code; application code lives in `apps/server` | Constitution, backend | Judgement | — | Review: "application-specific" is a judgement about meaning |
-| Only `apps/server` imports `@church/server`; clients use the orval functions | Constitution | Mechanical | Biome rule | Enforced: root `noRestrictedImports` options in `biome.json` (also bans the bare `server` name until [#549](https://github.com/tiagoluizpoli/church/issues/549)), locked by `tooling/tests/biome/server-import-ban.test.ts`; `apps/fumadocs` is not covered because Biome does not lint it. Relative imports: `packages/*` must name `apps/server`; the `apps/web`/`apps/desktop` override bans `../../server` and deeper. shortcut: a glob cannot see file depth, so a client root file (e.g. `vite.config.ts`) importing `../server` slips through and a future `server` folder two or more levels up inside a client would be flagged; move to a resolver-aware check if either happens |
+| Only `apps/server` imports `@church/server`; clients use the orval functions | Constitution | Mechanical | Biome rule | Enforced: root `noRestrictedImports` options in `biome.json` (also still bans the pre-scope bare `server` specifier), locked by `tooling/tests/biome/server-import-ban.test.ts`; `apps/fumadocs` is not covered because Biome does not lint it. Relative imports: `packages/*` must name `apps/server`; the `apps/web`/`apps/desktop` override bans `../../server` and deeper. shortcut: a glob cannot see file depth, so a client root file (e.g. `vite.config.ts`) importing `../server` slips through and a future `server` folder two or more levels up inside a client would be flagged; move to a resolver-aware check if either happens |
 | `@church/app-config` is plain data with a Zod schema, no logic beyond `withAllParkedOn` | Constitution | Judgement | — | Review: the package is one file; "no logic" is easier to read than to pattern-match |
-| Every workspace name is scoped `@church/` | Constitution | Mechanical | Validation guard | Follow-up [#549](https://github.com/tiagoluizpoli/church/issues/549) |
+| Every workspace name is scoped `@church/` | Constitution | Mechanical | Validation guard | Enforced: `bun run validate:workspace-scope` (every `apps/*` and `packages/*` `package.json`), part of `lint` |
 | Documentation first: significant changes are planned in `planning/` | Constitution | Judgement | — | Review: "significant" is a judgement |
-| A constitution amendment bumps its version | Constitution | Mechanical | Validation guard | Follow-up [#550](https://github.com/tiagoluizpoli/church/issues/550) |
+| A constitution amendment bumps its version | Constitution | Mechanical | Validation guard | Enforced: `bun run validate:constitution-version`, part of `lint` and `validate:affected` |
 | A constitution amendment updates its dependent templates | Constitution | Judgement | — | Review: which templates depend on a change is a judgement |
-| `mise.toml` and `packageManager` pin the same Bun | Tooling | Mechanical | Validation guard | Follow-up [#551](https://github.com/tiagoluizpoli/church/issues/551) |
+| `mise.toml` and `packageManager` pin the same Bun | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:bun-version`, part of `lint` and `validate:affected` |
 | Run commands through root Bun scripts | Tooling | Judgement | — | Review: governs how an agent works, leaves nothing in the repository to check |
 | Tests live in the owning project's `tests/` and import by alias | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:test-placement`, part of `lint` |
 | User-facing copy comes from the `@church/i18n` catalog, never a literal | Spec #837, ADR-0010 | Mechanical | Validation guard | Enforced: `bun run validate:presentation-text`, part of `lint` and `validate:affected`. Copy reached only through calls or unrelated names stays with review (see Presentation text) |
@@ -958,7 +961,7 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | A CI step that runs tests records its output for the failed-tests summary | Spec #1161 | Mechanical | Validation guard | Enforced: `tooling/tests/ci/record-test-output.test.ts` (`test:validation`) |
 | Annotations start their line through the gate's `[stage]` prefix and Playwright's `list` reporter | Spec #1161 | Mechanical | Validation guard | Enforced: `tooling/tests/validation/run-lanes.test.ts`, `apps/web/tests/fixtures/e2e-reporters.unit.test.ts` |
 | Destructive database commands refuse any target but their own | Tooling, ADR-0005 | Mechanical | Validation guard | Enforced: runtime preflight of the database resolver |
-| No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Follow-up [#552](https://github.com/tiagoluizpoli/church/issues/552) |
+| No generic `db:reset` script | ADR-0005 | Mechanical | Validation guard | Enforced: `tooling/tests/env/legacy-env-loading.test.ts` (`test:validation`) |
 | The API client and `auto-generated-api.yaml` are generated, never hand-edited | Tooling | Mechanical | Validation guard | Enforced: `bun run validate:api-generated`, run by the `develop-fast` and `fast-gate` CI jobs |
 | Fix lint, format and type errors; suppressions need user permission | Tooling | Judgement | — | Review: whether permission was given is not in the code; VII and date-time suppressions have their own guards |
 | Finish the phase, run focused tests and affected validation before review | Tooling | Judgement | — | Review: a working process |

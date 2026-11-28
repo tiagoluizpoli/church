@@ -105,7 +105,6 @@ function createHarness() {
   const volunteerRepo = createVolunteerRepositoryFake();
   volunteerRepo.listMemberMinistryIds.mockResolvedValue([]);
   const assignmentRepo = createAssignmentRepositoryFake();
-  assignmentRepo.listByVolunteer.mockResolvedValue([]);
   const unavailableShiftRepo = createUnavailableShiftRepositoryFake();
   unavailableShiftRepo.listUnavailableShiftsByCheck.mockResolvedValue([]);
   const notificationRepo = createNotificationRepositoryFake();
@@ -123,6 +122,20 @@ function createHarness() {
   availabilityCheckRepo.getCheckContext.mockResolvedValue(context);
   availabilityCheckRepo.listByVolunteer.mockResolvedValue([context]);
   availabilityCheckRepo.listCheckShifts.mockResolvedValue(shifts);
+  // The list reads in batches: answer from the single-check fakes each test sets.
+  availabilityCheckRepo.listCheckShiftsByChecks.mockImplementation(async () => {
+    const rows = await availabilityCheckRepo.listCheckShifts({
+      churchId,
+      checkId,
+    });
+    return rows.map((row) => ({ ...row, availabilityCheckId: checkId }));
+  });
+  unavailableShiftRepo.listUnavailableShiftsByChecks.mockImplementation(() =>
+    unavailableShiftRepo.listUnavailableShiftsByCheck({
+      churchId,
+      availabilityCheckId: checkId,
+    }),
+  );
   const unitOfWork = createUnitOfWorkFake({ tx });
   const churchRepo = createChurchRepositoryFake();
   churchRepo.getById.mockResolvedValue(
@@ -409,9 +422,12 @@ describe('volunteer dashboard', () => {
         eventTimeBlocks: [],
       });
       f.unavailableShiftRepo.listByVolunteerForEvent.mockResolvedValue([]);
-      f.assignmentRepo.listByVolunteer.mockResolvedValue([assignment]);
+      f.assignmentRepo.listPublishedByVolunteer.mockResolvedValue([
+        { assignment, cancelled: false },
+      ]);
       f.participationRepo.listByIds.mockResolvedValue([participation]);
-      f.shiftRepo.getById.mockResolvedValue(shift);
+      f.eventRepo.listByIds.mockResolvedValue([event]);
+      f.shiftRepo.listByIds.mockResolvedValue([shift]);
       // Every Assignment's requirement exists (non-null FK), with its Sector.
       f.shiftRepo.listRequirementsByIds.mockResolvedValue([
         new ShiftRequirement({
@@ -428,12 +444,12 @@ describe('volunteer dashboard', () => {
           },
         }),
       ]);
-      f.roleRepo.getById.mockResolvedValue(
+      f.roleRepo.listByIds.mockResolvedValue([
         new Role({
           id: RoleId.from('role'),
           props: { churchId, ministryId, name: 'Singer' },
         }),
-      );
+      ]);
       f.notificationRepo.countUnread.mockResolvedValue(2);
       f.notificationRepo.list.mockResolvedValue({ items: [notification] });
       const dashboard = await f.manager.getDashboard({
@@ -511,17 +527,19 @@ describe('volunteer dashboard', () => {
       f.ministryRepo.listByChurch.mockResolvedValue([
         new Ministry({ id: ministryId, props: { churchId, name: 'Music' } }),
       ]);
-      f.participationRepo.listByMinistry.mockResolvedValue([participation]);
-      f.assignmentRepo.listByVolunteer.mockResolvedValue(
-        ['far', 'ended', 'running'].map(makeAssignment),
+      f.participationRepo.listByMinistries.mockResolvedValue([participation]);
+      f.assignmentRepo.listPublishedByVolunteer.mockResolvedValue(
+        ['far', 'ended', 'running']
+          .map(makeAssignment)
+          .map((assignment) => ({ assignment, cancelled: false })),
       );
       f.participationRepo.listByIds.mockResolvedValue([participation]);
-      f.eventRepo.getById.mockResolvedValue(event);
+      f.eventRepo.listByIds.mockResolvedValue([event]);
       f.eventRepo.getWithEventTimeBlocks.mockResolvedValue({
         event: event,
         eventTimeBlocks: [],
       });
-      f.cycleRepo.getById.mockResolvedValue(
+      f.cycleRepo.listByIds.mockResolvedValue([
         new Cycle({
           id: cycleId,
           props: {
@@ -532,21 +550,23 @@ describe('volunteer dashboard', () => {
             state: 'sent',
           },
         }),
+      ]);
+      f.shiftRepo.listByIds.mockImplementation(async ({ shiftIds }) =>
+        shiftIds.map(
+          (shiftId) =>
+            new Shift({
+              id: shiftId,
+              props: {
+                churchId,
+                participationId: participation.id,
+                eventTimeBlockId: EventTimeBlockId.from('block'),
+                startTime: instant(bounds[shiftId as string]?.[0] as string),
+                endTime: instant(bounds[shiftId as string]?.[1] as string),
+              },
+            }),
+        ),
       );
-      f.shiftRepo.getById.mockImplementation(
-        async ({ shiftId }) =>
-          new Shift({
-            id: shiftId,
-            props: {
-              churchId,
-              participationId: participation.id,
-              eventTimeBlockId: EventTimeBlockId.from('block'),
-              startTime: instant(bounds[shiftId as string]?.[0] as string),
-              endTime: instant(bounds[shiftId as string]?.[1] as string),
-            },
-          }),
-      );
-      f.shiftRepo.listRequirementsByParticipation.mockResolvedValue([
+      f.shiftRepo.listRequirementsByIds.mockResolvedValue([
         new ShiftRequirement({
           id: requirementId,
           props: {
@@ -561,12 +581,12 @@ describe('volunteer dashboard', () => {
           },
         }),
       ]);
-      f.roleRepo.getById.mockResolvedValue(
+      f.roleRepo.listByIds.mockResolvedValue([
         new Role({
           id: RoleId.from('role'),
           props: { churchId, ministryId, name: 'Greeter' },
         }),
-      );
+      ]);
 
       const schedule = await f.manager.getPublishedSchedule({
         churchId,

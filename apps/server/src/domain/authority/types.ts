@@ -29,6 +29,8 @@ export interface ChurchMembershipFact {
 export interface MinistryMembershipFact {
   churchId: ChurchId;
   ministryId: MinistryId;
+  /** Read with the membership, so a led Ministry is named without its own lookup. */
+  ministryName: string;
   accessLevel: MinistryAccessLevel;
   /**
    * Roles the Volunteer is qualified for within this Ministry. Never a

@@ -60,6 +60,7 @@ export function createActiveChurchPreValidation(
 
     request.userId = session.user.id;
     request.churchId = resolution.churchId;
+    request.actor = resolution.actor;
     if (resolution.volunteerId) {
       request.volunteerId = resolution.volunteerId;
     }

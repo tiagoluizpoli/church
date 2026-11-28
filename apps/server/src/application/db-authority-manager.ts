@@ -1,6 +1,10 @@
 import { NotFoundError } from '@church/core';
 import { AuthorityService } from '../domain/authority/authority-service';
-import type { AuthorityDecision } from '../domain/authority/types';
+import type {
+  AuthorityActor,
+  AuthorityDecision,
+} from '../domain/authority/types';
+import type { ChurchId, MinistryId } from '../domain/branded-ids';
 import type {
   CallerCapabilitiesProjection,
   CanManageChurchInput,
@@ -14,8 +18,9 @@ import type {
   DbAuthorityManagerDependencies,
   DecideAuthorityInput,
   DecideManageMinistryMembershipInput,
-  HasSchedulingAccessInput,
   IAuthorityManager,
+  LedMinistryCapability,
+  ListSchedulingChurchIdsInput,
   MinistryMembershipHintInput,
   MinistryMembershipHints,
   ResolveActorInput,
@@ -168,7 +173,7 @@ export class DbAuthorityManager implements IAuthorityManager {
   async decideManageMinistry(
     input: CanManageMinistryInput,
   ): Promise<AuthorityDecision> {
-    const { churchId, ministryId, userId } = input;
+    const { churchId, ministryId, userId, actor } = input;
     try {
       await this.ministryRepository.getById({ churchId, id: ministryId });
     } catch (error) {
@@ -180,6 +185,7 @@ export class DbAuthorityManager implements IAuthorityManager {
     return this.decideAuthority({
       churchId,
       userId,
+      actor,
       action: 'manage',
       resource: { type: 'ministry', churchId, ministryId },
       scope: 'object',
@@ -189,7 +195,7 @@ export class DbAuthorityManager implements IAuthorityManager {
   async decideManageParticipation(
     input: CanManageParticipationInput,
   ): Promise<AuthorityDecision> {
-    const { churchId, participationId, userId } = input;
+    const { churchId, participationId, userId, actor } = input;
     const ministryId = await this.scopeRepository.resolveParticipationMinistry({
       churchId,
       participationId,
@@ -198,6 +204,7 @@ export class DbAuthorityManager implements IAuthorityManager {
     return this.decideAuthority({
       churchId,
       userId,
+      actor,
       action: 'manage',
       resource: { type: 'ministry', churchId, ministryId },
       scope: 'object',
@@ -207,7 +214,7 @@ export class DbAuthorityManager implements IAuthorityManager {
   async decideManageShift(
     input: CanManageShiftInput,
   ): Promise<AuthorityDecision> {
-    const { churchId, shiftId, userId } = input;
+    const { churchId, shiftId, userId, actor } = input;
     const ministryId = await this.scopeRepository.resolveShiftMinistry({
       churchId,
       shiftId,
@@ -216,6 +223,7 @@ export class DbAuthorityManager implements IAuthorityManager {
     return this.decideAuthority({
       churchId,
       userId,
+      actor,
       action: 'manage',
       resource: { type: 'ministry', churchId, ministryId },
       scope: 'object',
@@ -276,54 +284,79 @@ export class DbAuthorityManager implements IAuthorityManager {
       action: 'participate',
       resource: churchResource,
     });
-    const ledMinistryIds = new Set(
-      actor.ministryMemberships.flatMap((membership) => {
-        if (
-          !actor.volunteerId ||
-          membership.accessLevel !== 'leader' ||
-          membership.churchId !== churchId
-        )
-          return [];
-        const decision = AuthorityService.authorize({
-          actor,
-          action: 'manage',
-          resource: {
-            type: 'ministry',
-            churchId,
-            ministryId: membership.ministryId,
-          },
-        });
-        return decision.allowed ? [membership.ministryId] : [];
-      }),
-    );
-    const ledMinistries = await Promise.all(
-      [...ledMinistryIds].map(async (ministryId) => {
-        const ministry = await this.ministryRepository.getById({
+    // Keyed by Ministry, in membership order, so one Ministry is listed once.
+    const ledMinistries = new Map<MinistryId, LedMinistryCapability>();
+    for (const membership of actor.ministryMemberships) {
+      if (
+        !actor.volunteerId ||
+        membership.accessLevel !== 'leader' ||
+        membership.churchId !== churchId
+      )
+        continue;
+      const decision = AuthorityService.authorize({
+        actor,
+        action: 'manage',
+        resource: {
+          type: 'ministry',
           churchId,
-          id: ministryId,
+          ministryId: membership.ministryId,
+        },
+      });
+      if (decision.allowed && !ledMinistries.has(membership.ministryId)) {
+        ledMinistries.set(membership.ministryId, {
+          ministryId: membership.ministryId,
+          name: membership.ministryName,
         });
-        return { ministryId, name: ministry.name };
-      }),
-    );
+      }
+    }
     return {
       churchId,
       isChurchAdmin: churchDecision.allowed,
-      ledMinistries,
+      ledMinistries: [...ledMinistries.values()],
       hasVolunteerMembership: servingDecision.allowed,
     };
   }
 
-  async hasSchedulingAccess(input: HasSchedulingAccessInput): Promise<boolean> {
-    const { isChurchAdmin, ledMinistries } =
-      await this.resolveCallerCapabilities(input);
-    return isChurchAdmin || ledMinistries.length > 0;
+  async listSchedulingChurchIds(
+    input: ListSchedulingChurchIdsInput,
+  ): Promise<ChurchId[]> {
+    const { userId } = input;
+    const scopes = await this.scopeRepository.listSchedulingScopes(input);
+    return scopes
+      .filter(({ churchId, churchAccessLevel, leadsMinistry }) => {
+        const churchDecision = AuthorityService.authorize({
+          actor: {
+            userId,
+            volunteerId: null,
+            activeChurchId: churchId,
+            churchMembership: { churchId, accessLevel: churchAccessLevel },
+            ministryMemberships: [],
+          },
+          action: 'manage',
+          resource: { type: 'church', churchId },
+        });
+        return churchDecision.allowed || leadsMinistry;
+      })
+      .map(({ churchId }) => churchId);
   }
 
-  private async resolveActor(input: ResolveActorInput) {
+  /**
+   * The request's own caller when it is this User in this Church; otherwise, and
+   * always inside a `tx` (a check under the caller's locks), a fresh read.
+   */
+  private async resolveActor({
+    churchId,
+    userId,
+    actor,
+    tx,
+  }: ResolveActorInput): Promise<AuthorityActor> {
+    if (!tx && actor?.userId === userId && actor.activeChurchId === churchId) {
+      return actor;
+    }
     return this.actorRepository.resolveActor({
-      userId: input.userId,
-      activeChurchId: input.churchId,
-      tx: input.tx,
+      userId,
+      activeChurchId: churchId,
+      tx,
     });
   }
 }

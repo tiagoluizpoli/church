@@ -1,6 +1,6 @@
 import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { ChurchId, MinistryId, RoleId, UserId } from '../../domain/branded-ids';
+import { MinistryId, RoleId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IChurchAccessManager } from '../../domain/contracts/application/church-access-manager';
@@ -26,6 +26,7 @@ import {
   upcomingAssignmentsResponseSchema,
 } from '../dtos/people-list.dto';
 import { refuse } from '../utils/refuse';
+import { requestCaller } from '../utils/request-caller';
 import type {
   ListLimitQuery,
   PeopleControllerDependencies,
@@ -85,9 +86,14 @@ export class PeopleController implements FastifyController {
   private async resolveScope({
     churchId,
     userId,
+    actor,
   }: ResolveScopeInput): Promise<PeopleListScope | undefined> {
     const { isChurchAdmin, ledMinistries } =
-      await this.authorityGuard.resolveCallerCapabilities({ churchId, userId });
+      await this.authorityGuard.resolveCallerCapabilities({
+        churchId,
+        userId,
+        actor,
+      });
     if (isChurchAdmin) return { kind: 'church' };
     if (ledMinistries.length === 0) return undefined;
     return {
@@ -127,13 +133,10 @@ export class PeopleController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const churchId = ChurchId.from(request.churchId);
-        const actorId = UserId.from(request.userId);
+        const caller = requestCaller({ request });
+        const { churchId, userId: actorId } = caller;
         // Refuse a non-admin before any target lookup; the manager rechecks under the Church lock.
-        const isAdmin = await this.authorityGuard.canManageChurch({
-          churchId,
-          userId: actorId,
-        });
+        const isAdmin = await this.authorityGuard.canManageChurch(caller);
         if (!isAdmin) return refuse({ reply, request, code: 'FORBIDDEN' });
         const { memberId } = request.params as z.infer<
           typeof personParamsSchema
@@ -186,10 +189,10 @@ export class PeopleController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const churchId = ChurchId.from(request.churchId);
-        const actorId = UserId.from(request.userId);
+        const caller = requestCaller({ request });
+        const { churchId, userId: actorId } = caller;
         // The area gate; the manager decides the target under the Church lock.
-        const scope = await this.resolveScope({ churchId, userId: actorId });
+        const scope = await this.resolveScope(caller);
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
         const { memberId, membershipId } = request.params as z.infer<
           typeof ministryMembershipParamsSchema
@@ -233,13 +236,10 @@ export class PeopleController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const churchId = ChurchId.from(request.churchId);
-        const actorId = UserId.from(request.userId);
+        const caller = requestCaller({ request });
+        const { churchId, userId: actorId } = caller;
         // Refuse a non-admin before any target lookup; the manager rechecks under the Church lock.
-        const isAdmin = await this.authorityGuard.canManageChurch({
-          churchId,
-          userId: actorId,
-        });
+        const isAdmin = await this.authorityGuard.canManageChurch(caller);
         if (!isAdmin) return refuse({ reply, request, code: 'FORBIDDEN' });
         const { memberId, membershipId } = request.params as z.infer<
           typeof ministryMembershipParamsSchema
@@ -283,10 +283,10 @@ export class PeopleController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const churchId = ChurchId.from(request.churchId);
-        const actorId = UserId.from(request.userId);
+        const caller = requestCaller({ request });
+        const { churchId, userId: actorId } = caller;
         // The area gate; the manager decides the target under the Church lock.
-        const scope = await this.resolveScope({ churchId, userId: actorId });
+        const scope = await this.resolveScope(caller);
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
         const { memberId, membershipId } = request.params as z.infer<
           typeof ministryMembershipParamsSchema
@@ -321,14 +321,15 @@ export class PeopleController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const churchId = ChurchId.from(request.churchId);
-        const callerId = UserId.from(request.userId);
-        const scope = await this.resolveScope({ churchId, userId: callerId });
+        const caller = requestCaller({ request });
+        const { churchId, userId: callerId, actor: callerActor } = caller;
+        const scope = await this.resolveScope(caller);
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
         const result = await this.peopleListManager.get({
           churchId,
           scope,
           callerId,
+          callerActor,
           memberId: (request.params as z.infer<typeof personParamsSchema>)
             .memberId,
         });
@@ -361,11 +362,9 @@ export class PeopleController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const churchId = ChurchId.from(request.churchId);
-        const scope = await this.resolveScope({
-          churchId,
-          userId: UserId.from(request.userId),
-        });
+        const caller = requestCaller({ request });
+        const { churchId } = caller;
+        const scope = await this.resolveScope(caller);
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
         const { cursor, limit, ...filters } = request.query as z.infer<
           typeof peopleListQuerystringSchema

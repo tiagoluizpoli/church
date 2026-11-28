@@ -35,6 +35,7 @@ export class DbPeopleListManager implements IPeopleListManager {
     const hints = await this.authorityManager.canManageMinistryMemberships({
       churchId: request.churchId,
       userId: request.callerId,
+      actor: request.callerActor,
       targets: person.ministries.map((card) => ({
         ministryId: MinistryId.from(card.ministryId),
         subjectUserId: userId,

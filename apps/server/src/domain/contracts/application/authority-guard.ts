@@ -19,5 +19,4 @@ export type IAuthorityGuard = Pick<
   | 'canManageEvent'
   | 'canManageEventTimeBlock'
   | 'resolveCallerCapabilities'
-  | 'hasSchedulingAccess'
 >;

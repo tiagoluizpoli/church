@@ -2,7 +2,7 @@ import { NotFoundError } from '@church/core';
 import { m } from '@church/i18n/messages';
 import multipart from '@fastify/multipart';
 import { z } from 'zod';
-import { ChurchId, UserId } from '../../domain/branded-ids';
+import { ChurchId } from '../../domain/branded-ids';
 import { ChurchAddressesRefused } from '../../domain/church-address';
 import { LOGO_MAX_BYTES } from '../../domain/church-logo';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -35,6 +35,7 @@ import {
   uploadChurchLogoBodySchema,
 } from '../dtos/church-settings.dto';
 import { refuse } from '../utils/refuse';
+import { requestCaller } from '../utils/request-caller';
 import type {
   AddressUsageParams,
   ChurchSettingsControllerDependencies,
@@ -79,10 +80,9 @@ export class ChurchSettingsController implements FastifyController {
     );
 
     app.addHook('preValidation', async (request, reply) => {
-      const authorized = await this.authorityGuard.canManageChurch({
-        churchId: ChurchId.from(request.churchId),
-        userId: UserId.from(request.userId),
-      });
+      const authorized = await this.authorityGuard.canManageChurch(
+        requestCaller({ request }),
+      );
       if (!authorized) {
         return refuse({ reply, request, code: 'FORBIDDEN' });
       }

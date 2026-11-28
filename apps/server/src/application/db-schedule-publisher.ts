@@ -170,9 +170,14 @@ export class DbSchedulePublisher implements ISchedulePublisher {
 
       // Below-full without confirmation: reject the whole batch, no writes.
       if (anyBelowFull && input.confirmBelowFull !== true) {
+        const gapCount = publishable.reduce(
+          (total, { completion }) => total + completion.gapCount,
+          0,
+        );
         return {
           published: false,
           belowFull: true,
+          gapCount,
           participations: [...publishable, ...alreadyPublished].map(
             toPublishCycleOutcome,
           ),

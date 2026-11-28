@@ -52,8 +52,10 @@ import type {
   ListMinistryStaffingInput,
   ListParticipationsByEventInput,
   ListParticipationsByIdsInput,
+  ListParticipationsByMinistriesInput,
   ListParticipationsByMinistryInput,
   ListScheduleLastToldInput,
+  ListSchedulePairFactsInput,
   ListScheduleRowsInput,
   ListScheduleSummariesInput,
   ListSchedulesFactsInput,
@@ -62,11 +64,13 @@ import type {
   MinistryParticipationRepository,
   MinistryStaffingRow,
   OpenSwapRequestCountsInput,
+  PublishedScheduleParticipation,
   RemoveInclusionInput,
   RequirementStaffingScopeInput,
   SaveScheduleLastToldInput,
   ScheduleCheckCountRow,
   ScheduleCountRow,
+  ScheduleLastToldBySchedulesRow,
   ScheduleLastToldRow,
   ScheduleRowsPage,
   ScheduleServingStateRow,
@@ -87,6 +91,7 @@ import {
 import type { ParticipationEventTimeBlockInclusion } from '../../domain/entities/participation-event-time-block-inclusion';
 import { SCHEDULE_LIST_PAST_BUCKET } from '../../domain/schedule-list-cursor';
 import { mapCycle } from '../mappers/cycle.mapper';
+import { mapEvent } from '../mappers/event.mapper';
 import { mapMinistry } from '../mappers/ministry.mapper';
 import {
   mapMinistryParticipation,
@@ -96,6 +101,7 @@ import type { AnyDrizzleDb } from './drizzle-db.types';
 import type {
   AfterPositionInput,
   DrizzleMinistryParticipationRepositoryInput,
+  InSchedulesInput,
   StepCaseInput,
 } from './drizzle-ministry-participation.repository.types';
 import {
@@ -124,6 +130,21 @@ function caseOfStep({ step, literalOf }: StepCaseInput): SQL {
     ),
     sql` `,
   )} else ${sql.raw(literalOf(NOT_SERVING))} end`;
+}
+
+/** Rows of exactly these (Ministry, Cycle) pairs. */
+function inSchedules({
+  ministryColumn,
+  cycleColumn,
+  schedules,
+}: InSchedulesInput): SQL {
+  const pairs = sql.join(
+    schedules.map(
+      ({ ministryId, cycleId }) => sql`(${ministryId}::uuid, ${cycleId}::uuid)`,
+    ),
+    sql`, `,
+  );
+  return sql`(${ministryColumn}, ${cycleColumn}) in (${pairs})`;
 }
 
 /** Assignments of one requirement row in the given statuses; correlated, so a grouped query sums it. */
@@ -180,6 +201,73 @@ export class DrizzleMinistryParticipationRepository
       volunteerId: row.volunteerId as ScheduleLastToldRow['volunteerId'],
       assignments: row.assignments as ScheduleLastToldRow['assignments'],
       toldAt: fromDate({ date: row.toldAt }),
+    }));
+  }
+
+  async listScheduleLastToldBySchedules({
+    churchId,
+    schedules,
+    tx,
+  }: ListSchedulePairFactsInput): Promise<ScheduleLastToldBySchedulesRow[]> {
+    if (schedules.length === 0) return [];
+    const asked = inSchedules({
+      ministryColumn: scheduleLastTold.ministryId,
+      cycleColumn: scheduleLastTold.cycleId,
+      schedules,
+    });
+    const rows = await getClient({ db: this.db, tx })
+      .select()
+      .from(scheduleLastTold)
+      .where(and(eq(scheduleLastTold.churchId, churchId), asked))
+      .orderBy(
+        asc(scheduleLastTold.ministryId),
+        asc(scheduleLastTold.cycleId),
+        asc(scheduleLastTold.volunteerId),
+      );
+    return rows.map((row) => ({
+      ministryId:
+        row.ministryId as ScheduleLastToldBySchedulesRow['ministryId'],
+      cycleId: row.cycleId as ScheduleLastToldBySchedulesRow['cycleId'],
+      volunteerId: row.volunteerId as ScheduleLastToldRow['volunteerId'],
+      assignments: row.assignments as ScheduleLastToldRow['assignments'],
+      toldAt: fromDate({ date: row.toldAt }),
+    }));
+  }
+
+  async listPublishedScheduleParticipations({
+    churchId,
+    schedules,
+    tx,
+  }: ListSchedulePairFactsInput): Promise<PublishedScheduleParticipation[]> {
+    if (schedules.length === 0) return [];
+    const asked = inSchedules({
+      ministryColumn: ministryParticipation.ministryId,
+      cycleColumn: event.cycleId,
+      schedules,
+    });
+    const rows = await getClient({ db: this.db, tx })
+      .select({ participation: ministryParticipation, event })
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .where(
+        and(
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          withChurchIsolation({ table: event, churchId }),
+          asked,
+          eq(ministryParticipation.state, 'published'),
+          ne(event.status, 'cancelled'),
+        ),
+      )
+      .orderBy(
+        asc(event.start),
+        asc(event.end),
+        asc(event.title),
+        asc(event.id),
+        asc(ministryParticipation.id),
+      );
+    return rows.map((row) => ({
+      participation: mapMinistryParticipation(row.participation),
+      event: mapEvent(row.event),
     }));
   }
 
@@ -376,6 +464,28 @@ export class DrizzleMinistryParticipationRepository
       .where(and(...conditions))
       .orderBy(asc(event.start), asc(ministryParticipation.id));
 
+    return rows.map(mapMinistryParticipation);
+  }
+
+  async listByMinistries({
+    churchId,
+    ministryIds,
+    state,
+    tx,
+  }: ListParticipationsByMinistriesInput): Promise<MinistryParticipation[]> {
+    if (ministryIds.length === 0) return [];
+    const rows = await getClient({ db: this.db, tx })
+      .select(getTableColumns(ministryParticipation))
+      .from(ministryParticipation)
+      .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+      .where(
+        and(
+          inArray(ministryParticipation.ministryId, ministryIds),
+          withChurchIsolation({ table: ministryParticipation, churchId }),
+          state ? eq(ministryParticipation.state, state) : undefined,
+        ),
+      )
+      .orderBy(asc(event.start), asc(ministryParticipation.id));
     return rows.map(mapMinistryParticipation);
   }
 

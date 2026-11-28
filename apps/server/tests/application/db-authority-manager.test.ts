@@ -47,7 +47,13 @@ function ministryLeaderActor(): AuthorityActor {
     activeChurchId: churchId,
     churchMembership: { churchId, accessLevel: 'member' },
     ministryMemberships: [
-      { churchId, ministryId, accessLevel: 'leader', qualifiedRoleIds: [] },
+      {
+        churchId,
+        ministryId,
+        ministryName: 'Worship',
+        accessLevel: 'leader',
+        qualifiedRoleIds: [],
+      },
     ],
   };
 }
@@ -56,6 +62,7 @@ const actorRepository = { resolveActor: vi.fn() };
 const scopeRepository = {
   resolveParticipationMinistry: vi.fn(),
   resolveShiftMinistry: vi.fn(),
+  listSchedulingScopes: vi.fn(),
 };
 const eventRepository = { getMinistryId: vi.fn() };
 const eventTimeBlockRepository = { getById: vi.fn() };
@@ -76,6 +83,25 @@ beforeEach(() => {
 });
 
 describe('DbAuthorityManager', () => {
+  it('lists the Churches the User administers or leads in, from one scope read', async () => {
+    const adminOf = 'chu_admin_of' as ChurchId;
+    const leaderIn = 'chu_leader_in' as ChurchId;
+    const memberOf = 'chu_member_of' as ChurchId;
+    const churchIds = [adminOf, leaderIn, memberOf];
+    scopeRepository.listSchedulingScopes.mockResolvedValueOnce([
+      { churchId: adminOf, churchAccessLevel: 'admin', leadsMinistry: false },
+      { churchId: leaderIn, churchAccessLevel: 'member', leadsMinistry: true },
+      { churchId: memberOf, churchAccessLevel: 'member', leadsMinistry: false },
+    ]);
+
+    await expect(
+      createManager().listSchedulingChurchIds({ userId, churchIds }),
+    ).resolves.toEqual([adminOf, leaderIn]);
+    expect(
+      scopeRepository.listSchedulingScopes,
+    ).toHaveBeenCalledExactlyOnceWith({ userId, churchIds });
+  });
+
   it('canManageChurch allows a Church admin and denies a plain member', async () => {
     const manager = createManager();
 
@@ -92,6 +118,44 @@ describe('DbAuthorityManager', () => {
     expect(actorRepository.resolveActor).toHaveBeenCalledWith({
       userId,
       activeChurchId: churchId,
+    });
+  });
+
+  it("reuses the request's own caller and reads afresh for any other User or Church", async () => {
+    const manager = createManager();
+    await expect(
+      manager.canManageChurch({ churchId, userId, actor: adminActor() }),
+    ).resolves.toBe(true);
+    expect(actorRepository.resolveActor).not.toHaveBeenCalled();
+
+    actorRepository.resolveActor.mockResolvedValue(memberActor());
+    const otherUser = { ...adminActor(), userId: 'usr_2' as UserId };
+    await expect(
+      manager.canManageChurch({ churchId, userId, actor: otherUser }),
+    ).resolves.toBe(false);
+    const otherChurch = { ...adminActor(), activeChurchId: otherChurchId };
+    await expect(
+      manager.canManageChurch({ churchId, userId, actor: otherChurch }),
+    ).resolves.toBe(false);
+    expect(actorRepository.resolveActor).toHaveBeenCalledTimes(2);
+    expect(actorRepository.resolveActor).toHaveBeenCalledWith({
+      userId,
+      activeChurchId: churchId,
+    });
+  });
+
+  it("reads the actor again for a check inside a transaction, ignoring the request's caller", async () => {
+    const manager = createManager();
+    const tx = {} as never;
+    actorRepository.resolveActor.mockResolvedValueOnce(memberActor());
+
+    await expect(
+      manager.canManageChurch({ churchId, userId, actor: adminActor(), tx }),
+    ).resolves.toBe(false);
+    expect(actorRepository.resolveActor).toHaveBeenCalledExactlyOnceWith({
+      userId,
+      activeChurchId: churchId,
+      tx,
     });
   });
 
@@ -267,6 +331,7 @@ describe('DbAuthorityManager', () => {
     ): MinistryMembershipFact => ({
       churchId,
       ministryId,
+      ministryName: 'Worship',
       accessLevel: 'volunteer',
       qualifiedRoleIds: [],
       ...overrides,

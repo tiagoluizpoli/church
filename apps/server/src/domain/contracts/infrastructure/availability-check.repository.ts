@@ -11,7 +11,10 @@ import type {
   UserId,
   VolunteerId,
 } from '../../branded-ids';
-import type { AvailabilityCheck } from '../../entities/availability-check';
+import type {
+  AvailabilityCheck,
+  AvailabilityCheckState,
+} from '../../entities/availability-check';
 import type { TransactionContext } from './transaction-context';
 
 export interface ListActiveMembershipsInput {
@@ -66,18 +69,48 @@ export interface CheckContext {
   timeZone: string;
 }
 
-export interface ListChecksByVolunteerInput {
+export interface CountChecksByVolunteerInput {
   churchId: ChurchId;
   volunteerId: VolunteerId;
   tx?: TransactionContext;
 }
 
+export interface ListChecksByVolunteerInput
+  extends CountChecksByVolunteerInput {
+  /** Omitted: every state. */
+  state?: AvailabilityCheckState;
+}
+
+/** One entry per state the Volunteer has a check in. */
+export interface CheckStateCountRow {
+  state: AvailabilityCheckState;
+  checkCount: number;
+}
+
+/**
+ * Which of the scope's Shifts: `held-roles` keeps those needing a Role the
+ * membership holds. Read projections use it; legacy writes keep `any-role`.
+ */
+export type CheckShiftSelection = 'held-roles' | 'any-role';
+
 export interface ListCheckShiftsInput {
-  /** Read projections use held Roles; legacy writes retain their original scope. */
-  heldRolesOnly?: boolean;
+  /** Omitted: `any-role`. */
+  shifts?: CheckShiftSelection;
   churchId: ChurchId;
   checkId: AvailabilityCheckId;
   tx?: TransactionContext;
+}
+
+export interface ListCheckShiftsByChecksInput {
+  /** Omitted: `any-role`. */
+  shifts?: CheckShiftSelection;
+  churchId: ChurchId;
+  checkIds: AvailabilityCheckId[];
+  tx?: TransactionContext;
+}
+
+export interface CheckShiftOfCheckRow extends CheckShiftRow {
+  availabilityCheckId: AvailabilityCheckId;
 }
 
 /** A shift inside the check's scope (its membership ministry × its cycle). */
@@ -160,7 +193,7 @@ export interface RoleWithoutHolderRow {
 }
 
 /**
- * The actionable reads (`getCheckContext`, `listByVolunteer`, `listByCycle`,
+ * The actionable reads (`getCheckContext`, `listByVolunteer`, `countByVolunteer`, `listByCycle`,
  * `confirm`) see only checks that are not withdrawn, and the first two only
  * on an active Ministry Membership. Inside a transaction,
  * `listActiveMemberships`, `listEligibleMemberships` and `getCheckContext`
@@ -204,7 +237,15 @@ export interface AvailabilityCheckRepository {
   /** Throws `NotFoundError` unless the check is actionable. */
   getCheckContext(input: GetCheckContextInput): Promise<CheckContext>;
   listByVolunteer(input: ListChecksByVolunteerInput): Promise<CheckContext[]>;
+  /** The checks `listByVolunteer` reads with no `state`, counted per state. */
+  countByVolunteer(
+    input: CountChecksByVolunteerInput,
+  ): Promise<CheckStateCountRow[]>;
   listCheckShifts(input: ListCheckShiftsInput): Promise<CheckShiftRow[]>;
+  /** `listCheckShifts` for several checks in one read, in the same order. */
+  listCheckShiftsByChecks(
+    input: ListCheckShiftsByChecksInput,
+  ): Promise<CheckShiftOfCheckRow[]>;
   listMinistryLeaderVolunteerIds(
     input: ListMinistryLeaderVolunteerIdsInput,
   ): Promise<MinistryLeaderRow[]>;

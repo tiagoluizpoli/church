@@ -90,14 +90,6 @@ export function runAssignmentRepositoryContractTests(
       expect(list.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('should list assignments by volunteer', async () => {
-      const list = await repo.listByVolunteer({
-        churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,
-        volunteerId: '44444444-4444-4444-4444-444444444441' as VolunteerId,
-      });
-      expect(list.length).toBeGreaterThanOrEqual(2);
-    });
-
     it('should list assignments by volunteers', async () => {
       const list = await repo.listByVolunteers({
         churchId: '11111111-1111-1111-1111-111111111111' as ChurchId,

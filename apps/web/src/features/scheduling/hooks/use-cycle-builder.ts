@@ -352,10 +352,9 @@ export function useCycleBuilder({
       await queryClient.invalidateQueries({
         queryKey: [...CYCLE_BUILDER_QUERY_KEY, cycleId, ministryId],
       });
-      // Publishing is the most consequential action in the builder and was the
-      // only mutation here that reported nothing back. `published` is false
-      // when the cycle is below its staffing target and the leader has not
-      // confirmed, so the two outcomes must read differently.
+      // `published` is false when the cycle is below its staffing target and
+      // the leader has not confirmed: the builder then asks them to, from this
+      // result, so only a real publish is announced here.
       if (result.published) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['prepare-schedules'] }),
@@ -364,9 +363,7 @@ export function useCycleBuilder({
           }),
         ]);
         toast.success(m.builder_logic_cycle_published());
-        return;
       }
-      toast.warning(m.builder_logic_cycle_not_published());
     },
     onError: (error) => {
       toast.error(

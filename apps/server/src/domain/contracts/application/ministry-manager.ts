@@ -10,13 +10,11 @@ import type {
   MinistryListCounts,
   MinistryListStatus,
 } from '../../entities/ministry';
-import type { EventTemplateRepository } from '@/domain/contracts/infrastructure/event-template.repository';
 import type { MinistryRepository } from '@/domain/contracts/infrastructure/ministry.repository';
 import type { MinistryInvitationRepository } from '@/domain/contracts/infrastructure/ministry-invitation.repository';
 import type { RoleRepository } from '@/domain/contracts/infrastructure/role.repository';
 import type { SectorRepository } from '@/domain/contracts/infrastructure/sector.repository';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
-import type { UsualSetupRepository } from '@/domain/contracts/infrastructure/usual-setup.repository';
 import type { VolunteerRepository } from '@/domain/contracts/infrastructure/volunteer.repository';
 
 export interface ListMinistriesByLeaderInput {
@@ -111,14 +109,6 @@ export interface IMinistryManager {
   setDefaultDirection(input: SetDefaultDirectionInput): Promise<Ministry>;
 }
 
-export interface ReviewIdsInput {
-  churchId: ChurchId;
-}
-
-export interface SummarizeWithInput extends SummarizeMinistriesInput {
-  reviewIds: ReadonlySet<MinistryId>;
-}
-
 export interface DbMinistryManagerDependencies {
   ministryRepo: MinistryRepository;
   volunteerRepo: VolunteerRepository;
@@ -126,6 +116,4 @@ export interface DbMinistryManagerDependencies {
   unitOfWork: UnitOfWork;
   sectorRepo: SectorRepository;
   roleRepo: RoleRepository;
-  usualSetupRepo: UsualSetupRepository;
-  templateRepo: EventTemplateRepository;
 }

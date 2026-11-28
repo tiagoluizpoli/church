@@ -49,6 +49,7 @@ import {
   publishCycleResponseSchema,
 } from '../dtos/cycle-builder.dto';
 import { refuse } from '../utils/refuse';
+import { requestCaller } from '../utils/request-caller';
 import type {
   ApplyAssignmentProposalBody,
   AssignControllerDependencies,
@@ -152,9 +153,8 @@ export class AssignController implements FastifyController {
         const { ministryId } = request.query as CycleMinistryQuery;
 
         const decision = await this.authorityGuard.decideManageMinistry({
-          churchId: ChurchId.from(request.churchId),
+          ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
-          userId: UserId.from(request.userId),
         });
         if (
           await this.denyAuthorityDecision({
@@ -201,9 +201,8 @@ export class AssignController implements FastifyController {
           const { ministryId } = request.query as CycleMinistryQuery;
 
           const decision = await this.authorityGuard.decideManageMinistry({
-            churchId: ChurchId.from(request.churchId),
+            ...requestCaller({ request }),
             ministryId: MinistryId.from(ministryId),
-            userId: UserId.from(request.userId),
           });
           if (
             await this.denyAuthorityDecision({
@@ -248,9 +247,8 @@ export class AssignController implements FastifyController {
         const { ministryId } = request.query as CycleMinistryQuery;
 
         const decision = await this.authorityGuard.decideManageMinistry({
-          churchId: ChurchId.from(request.churchId),
+          ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
-          userId: UserId.from(request.userId),
         });
         if (
           await this.denyAuthorityDecision({
@@ -298,9 +296,8 @@ export class AssignController implements FastifyController {
 
         // Checked again on every attempt, recovery included.
         const decision = await this.authorityGuard.decideManageMinistry({
-          churchId: ChurchId.from(request.churchId),
+          ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
-          userId: UserId.from(request.userId),
         });
         if (
           await this.denyAuthorityDecision({
@@ -353,9 +350,8 @@ export class AssignController implements FastifyController {
         const { ministryId } = request.query as CycleMinistryQuery;
 
         const decision = await this.authorityGuard.decideManageMinistry({
-          churchId: ChurchId.from(request.churchId),
+          ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
-          userId: UserId.from(request.userId),
         });
         if (
           await this.denyAuthorityDecision({
@@ -399,9 +395,8 @@ export class AssignController implements FastifyController {
         const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
         const { ministryId } = request.query as CycleMinistryQuery;
         const decision = await this.authorityGuard.decideManageMinistry({
-          churchId: ChurchId.from(request.churchId),
+          ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
-          userId: UserId.from(request.userId),
         });
         if (
           await this.denyAuthorityDecision({
@@ -667,9 +662,8 @@ export class AssignController implements FastifyController {
     participationId,
   }: DenyParticipationScopeInput): Promise<boolean> {
     const decision = await this.authorityGuard.decideManageParticipation({
-      churchId: ChurchId.from(request.churchId),
+      ...requestCaller({ request }),
       participationId: MinistryParticipationId.from(participationId),
-      userId: UserId.from(request.userId),
     });
     return this.denyAuthorityDecision({
       request,
@@ -714,13 +708,11 @@ export class AssignController implements FastifyController {
     reply,
     shiftId,
   }: ResolveScheduleShiftInput): Promise<ResolveOwnedAssignmentResult> {
-    const churchId = ChurchId.from(request.churchId);
-    const userId = UserId.from(request.userId);
+    const caller = requestCaller({ request });
     const brandedShiftId = ShiftId.from(shiftId);
     const decision = await this.authorityGuard.decideManageShift({
-      churchId,
+      ...caller,
       shiftId: brandedShiftId,
-      userId,
     });
     if (decision.allowed) {
       return { denied: false };
@@ -736,9 +728,8 @@ export class AssignController implements FastifyController {
     shiftId,
   }: DenyShiftScopeInput): Promise<boolean> {
     const decision = await this.authorityGuard.decideManageShift({
-      churchId: ChurchId.from(request.churchId),
+      ...requestCaller({ request }),
       shiftId: ShiftId.from(shiftId),
-      userId: UserId.from(request.userId),
     });
     return this.denyAuthorityDecision({
       request,
@@ -753,10 +744,9 @@ export class AssignController implements FastifyController {
     allowed,
   }: DenyAuthorityDecisionInput): Promise<boolean> {
     if (allowed) return false;
-    const functionDecision = await this.authorityGuard.decideManageAnyMinistry({
-      churchId: ChurchId.from(request.churchId),
-      userId: UserId.from(request.userId),
-    });
+    const functionDecision = await this.authorityGuard.decideManageAnyMinistry(
+      requestCaller({ request }),
+    );
     if (!functionDecision.allowed) {
       refuse({ reply, request, code: 'FORBIDDEN' });
       return true;

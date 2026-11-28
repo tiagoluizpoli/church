@@ -118,6 +118,7 @@ function createRepos(): Repos {
   const eventRepo: EventRepository = {
     getMinistryId: vi.fn(async () => ministryId),
     getById: vi.fn(async () => buildEvent()),
+    listByIds: vi.fn(),
     getWithEventTimeBlocks: vi.fn(),
     listByMinistry: vi.fn(async () => []),
     create: vi.fn(),
@@ -162,8 +163,9 @@ function createRepos(): Repos {
     listByEventTimeBlock: vi.fn(),
     listByEvent: vi.fn(async () => []),
     listByParticipation: vi.fn(async () => []),
+    listByParticipations: vi.fn(),
     listByShift: vi.fn(),
-    listByVolunteer: vi.fn(),
+    listPublishedByVolunteer: vi.fn(),
     listByVolunteers: vi.fn(),
     listByVolunteerInRange: vi.fn(),
     listByRange: vi.fn(),
@@ -179,6 +181,7 @@ function createRepos(): Repos {
     listByVolunteers: vi.fn(async () => []),
     listByParticipation: vi.fn(),
     listUnavailableShiftsByCheck: vi.fn(),
+    listUnavailableShiftsByChecks: vi.fn(),
     replaceUnavailableShiftsForCheck: vi.fn(),
   };
 
@@ -222,6 +225,8 @@ function createRepos(): Repos {
   const ministryParticipationRepo: MinistryParticipationRepository = {
     saveScheduleLastTold: vi.fn(),
     listScheduleLastTold: vi.fn().mockResolvedValue([]),
+    listScheduleLastToldBySchedules: vi.fn(),
+    listPublishedScheduleParticipations: vi.fn(),
     getById: vi.fn(),
     lockById: vi.fn(),
     lockSchedule: vi.fn(),
@@ -230,6 +235,7 @@ function createRepos(): Repos {
     listByEvent: vi.fn(async () => [buildParticipation()]),
     hasCycleStaffing: vi.fn(),
     listByMinistry: vi.fn(),
+    listByMinistries: vi.fn(),
     listByIds: vi.fn(),
     updateState: vi.fn(),
     listInclusions: vi.fn(),

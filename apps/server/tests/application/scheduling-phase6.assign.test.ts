@@ -152,6 +152,7 @@ function createHarness() {
     id: ministryId,
     props: { churchId, name: 'Welcome' },
   });
+  cycleRepository.listByIds.mockResolvedValue([]);
   churchRepository.getById.mockResolvedValue(
     new Church({
       id: churchId,
@@ -527,36 +528,20 @@ describe('Assignment and publication managers', () => {
         status: 'pending',
       },
     });
-    const draft = new Assignment({
-      id: AssignmentId.from('draft'),
-      props: {
-        churchId,
-        participationId: MinistryParticipationId.from('published'),
-        eventTimeBlockId: EventTimeBlockId.from('block'),
-        shiftId,
-        volunteerId,
-        roleId: RoleId.from('role'),
-        shiftRequirementId,
-        status: 'draft',
-      },
-    });
-    f.assignmentRepository.listByVolunteer.mockResolvedValue([
-      visible,
-      draft,
-      f.assignment,
+    // The read itself leaves out drafts and unpublished participations.
+    f.assignmentRepository.listPublishedByVolunteer.mockResolvedValue([
+      { assignment: visible, cancelled: false },
     ]);
-    f.ministryParticipationRepository.listByIds.mockResolvedValue([
-      published,
-      f.participation,
-    ]);
+    f.ministryParticipationRepository.listByIds.mockResolvedValue([published]);
     f.volunteerRepository.listMemberMinistryIds.mockResolvedValue([]);
+    f.ministryParticipationRepository.listByMinistries.mockResolvedValue([]);
     f.ministryRepository.listByChurch.mockResolvedValue([]);
-    f.eventRepository.getById.mockResolvedValue(f.event);
+    f.eventRepository.listByIds.mockResolvedValue([f.event]);
     f.eventRepository.getWithEventTimeBlocks.mockResolvedValue({
       event: f.event,
       eventTimeBlocks: [],
     });
-    f.shiftRepository.getById.mockResolvedValue(
+    f.shiftRepository.listByIds.mockResolvedValue([
       new Shift({
         id: shiftId,
         props: {
@@ -567,8 +552,14 @@ describe('Assignment and publication managers', () => {
           endTime: end,
         },
       }),
-    );
-    f.shiftRepository.listRequirementsByParticipation.mockResolvedValue([]);
+    ]);
+    f.shiftRepository.listRequirementsByIds.mockResolvedValue([]);
+    f.roleRepository.listByIds.mockResolvedValue([
+      new Role({
+        id: RoleId.from('role'),
+        props: { churchId, ministryId, name: 'Greeter' },
+      }),
+    ]);
     const schedule = await f.volunteerManager.getPublishedSchedule({
       churchId,
       volunteerId,

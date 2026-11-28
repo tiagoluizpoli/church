@@ -12,22 +12,17 @@ import type {
   MinistryPage,
   MinistrySummary,
   RenameMinistryInput,
-  ReviewIdsInput,
   SetDefaultDirectionInput,
   SummarizeMinistriesInput,
-  SummarizeWithInput,
 } from '../domain/contracts/application/ministry-manager';
-import type { EventTemplateRepository } from '../domain/contracts/infrastructure/event-template.repository';
 import type { MinistryRepository } from '../domain/contracts/infrastructure/ministry.repository';
 import type { MinistryInvitationRepository } from '../domain/contracts/infrastructure/ministry-invitation.repository';
 import type { RoleRepository } from '../domain/contracts/infrastructure/role.repository';
 import type { SectorRepository } from '../domain/contracts/infrastructure/sector.repository';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
-import type { UsualSetupRepository } from '../domain/contracts/infrastructure/usual-setup.repository';
 import type { VolunteerRepository } from '../domain/contracts/infrastructure/volunteer.repository';
 import type { Ministry } from '../domain/entities/ministry';
 import { MinistryInUseError } from '../domain/errors/ministry-in-use';
-import { usualSetupNeedsReview } from '../domain/services/scheduling/usual-setup-planner';
 import { revokeMinistryHalf } from './invitation-revocation';
 
 export class DbMinistryManager implements IMinistryManager {
@@ -37,8 +32,6 @@ export class DbMinistryManager implements IMinistryManager {
   private readonly unitOfWork: UnitOfWork;
   private readonly sectorRepo: SectorRepository;
   private readonly roleRepo: RoleRepository;
-  private readonly usualSetupRepo: UsualSetupRepository;
-  private readonly templateRepo: EventTemplateRepository;
 
   constructor({
     ministryRepo,
@@ -47,8 +40,6 @@ export class DbMinistryManager implements IMinistryManager {
     unitOfWork,
     sectorRepo,
     roleRepo,
-    usualSetupRepo,
-    templateRepo,
   }: DbMinistryManagerDependencies) {
     this.ministryRepo = ministryRepo;
     this.volunteerRepo = volunteerRepo;
@@ -56,32 +47,19 @@ export class DbMinistryManager implements IMinistryManager {
     this.unitOfWork = unitOfWork;
     this.sectorRepo = sectorRepo;
     this.roleRepo = roleRepo;
-    this.usualSetupRepo = usualSetupRepo;
-    this.templateRepo = templateRepo;
   }
 
   async summarize({
     churchId,
     ministries,
   }: SummarizeMinistriesInput): Promise<Map<MinistryId, MinistrySummary>> {
-    return this.summarizeWith({
-      churchId,
-      ministries,
-      reviewIds: await this.reviewIds({ churchId }),
-    });
-  }
-
-  /** Summaries given the Ministries needing review, so a caller that has them loads them once. */
-  private async summarizeWith({
-    churchId,
-    ministries,
-    reviewIds,
-  }: SummarizeWithInput): Promise<Map<MinistryId, MinistrySummary>> {
     const ministryIds = ministries.map((ministry) => ministry.id);
-    const [sectorCounts, roleCounts] = await Promise.all([
+    const [sectorCounts, roleCounts, needingReview] = await Promise.all([
       this.sectorRepo.countActiveByMinistry({ churchId, ministryIds }),
       this.roleRepo.countActiveByMinistry({ churchId, ministryIds }),
+      this.ministryRepo.listNeedingReviewIds({ churchId, ministryIds }),
     ]);
+    const reviewIds = new Set(needingReview);
     return new Map(
       ministryIds.map((id) => [
         id,
@@ -102,45 +80,19 @@ export class DbMinistryManager implements IMinistryManager {
     cursor,
     limit,
   }: ListMinistryPageRequest): Promise<MinistryPage> {
-    const reviewIds = await this.reviewIds({ churchId });
     const page = await this.ministryRepo.listPage({
       churchId,
       ids: ministryIds,
       search,
       status,
-      reviewIds: [...reviewIds],
       cursor,
       limit,
     });
-    const summaries = await this.summarizeWith({
+    const summaries = await this.summarize({
       churchId,
       ministries: page.ministries,
-      reviewIds,
     });
     return { ...page, summaries };
-  }
-
-  /** Ministries with any Usual setup block needing review, by the domain rule. */
-  private async reviewIds({
-    churchId,
-  }: ReviewIdsInput): Promise<Set<MinistryId>> {
-    const [setups, templates] = await Promise.all([
-      this.usualSetupRepo.listByChurch({ churchId }),
-      this.templateRepo.list({ churchId }),
-    ]);
-    const blocks = new Map(
-      templates
-        .flatMap((template) => template.blocks)
-        .map((block) => [block.id, block]),
-    );
-    return new Set(
-      setups
-        .filter((entry) => {
-          const block = blocks.get(entry.sourceTemplateTimeBlockId);
-          return block !== undefined && usualSetupNeedsReview({ entry, block });
-        })
-        .map((entry) => entry.ministryId),
-    );
   }
 
   async listByChurch(churchId: ChurchId): Promise<Ministry[]> {

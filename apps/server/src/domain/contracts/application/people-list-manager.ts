@@ -1,4 +1,5 @@
 import type { AppConfig } from '@church/app-config';
+import type { AuthorityActor } from '../../authority/types';
 import type { ChurchId, UserId } from '../../branded-ids';
 import type {
   PeopleListFilters,
@@ -23,6 +24,8 @@ export interface GetPersonRequest {
   scope: PeopleListScope;
   memberId: string;
   callerId: UserId;
+  /** The caller as this request already read it; reused for the hints instead of a fresh read. */
+  callerActor?: AuthorityActor;
 }
 
 export interface PersonDetailResult {

@@ -1,10 +1,5 @@
 import { z } from 'zod';
-import {
-  ChurchId,
-  MinistryId,
-  SectorId,
-  UserId,
-} from '../../domain/branded-ids';
+import { ChurchId, MinistryId, SectorId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
@@ -21,6 +16,7 @@ import {
   sectorResponseSchema,
 } from '../dtos/sector.dto';
 import { refuse } from '../utils/refuse';
+import { requestCaller } from '../utils/request-caller';
 import type {
   ResolveManagedMinistryInput,
   SectorControllerDependencies,
@@ -212,12 +208,10 @@ export class SectorController implements FastifyController {
     request,
     reply,
   }: ResolveManagedMinistryInput): Promise<MinistryId | undefined> {
-    const churchId = ChurchId.from(request.churchId);
-    const userId = UserId.from(request.userId);
-    const anyMinistry = await this.authorityGuard.decideManageAnyMinistry({
-      churchId,
-      userId,
-    });
+    const caller = requestCaller({ request });
+    const { churchId } = caller;
+    const anyMinistry =
+      await this.authorityGuard.decideManageAnyMinistry(caller);
     if (!anyMinistry.allowed) {
       refuse({ reply, request, code: 'FORBIDDEN' });
       return undefined;
@@ -226,8 +220,7 @@ export class SectorController implements FastifyController {
       (request.params as SectorsRouteParams).ministryId,
     );
     const decision = await this.authorityGuard.decideManageMinistry({
-      churchId,
-      userId,
+      ...caller,
       ministryId,
     });
     if (!decision.allowed) {

@@ -233,27 +233,19 @@ describe('volunteer dashboard next assignment', () => {
         status: 'pending',
       },
     });
-    assignmentRepo.listByVolunteer.mockResolvedValue([...assignments, tied]);
-    participationRepo.listByIds.mockResolvedValue(participations);
-    eventRepo.getWithEventTimeBlocks.mockImplementation(async ({ eventId }) => {
-      const event = events.find((item) => item.id === eventId);
-      if (!event) throw new Error('missing event');
-      return { event, eventTimeBlocks: [] };
-    });
-    eventRepo.getById.mockImplementation(async ({ eventId }) => {
-      const event = events.find((item) => item.id === eventId);
-      if (!event) throw new Error('missing event');
-      return event;
-    });
-    shiftRepo.getById.mockImplementation(async ({ shiftId }) => {
-      const shift = shifts.find((item) => item.id === shiftId);
-      if (!shift) throw new Error('missing shift');
-      return shift;
-    });
-    shiftRepo.listRequirementsByIds.mockResolvedValue(requirements);
-    roleRepo.getById.mockResolvedValue(
-      new Role({ id: 'role', props: { churchId, ministryId, name: 'Singer' } }),
+    assignmentRepo.listPublishedByVolunteer.mockResolvedValue(
+      [...assignments, tied].map((assignment) => ({
+        assignment,
+        cancelled: false,
+      })),
     );
+    participationRepo.listByIds.mockResolvedValue(participations);
+    eventRepo.listByIds.mockResolvedValue(events);
+    shiftRepo.listByIds.mockResolvedValue(shifts);
+    shiftRepo.listRequirementsByIds.mockResolvedValue(requirements);
+    roleRepo.listByIds.mockResolvedValue([
+      new Role({ id: 'role', props: { churchId, ministryId, name: 'Singer' } }),
+    ]);
     notificationRepo.countUnread.mockResolvedValue(0);
     notificationRepo.list.mockResolvedValue({ items: [] });
     const response = await app.inject({
@@ -281,7 +273,7 @@ describe('volunteer dashboard next assignment', () => {
       user: { id: userId },
       session: { activeOrganizationId: null },
     } as never);
-    assignmentRepo.listByVolunteer.mockResolvedValue([]);
+    assignmentRepo.listPublishedByVolunteer.mockResolvedValue([]);
     participationRepo.listByIds.mockResolvedValue([]);
     const response = await app.inject({
       method: 'GET',
@@ -373,40 +365,34 @@ function arrange({ events, items }: ArrangeInput) {
         }),
     ),
   );
-  assignmentRepo.listByVolunteer.mockResolvedValue(
-    items.map(
-      (item) =>
-        new Assignment({
-          id: item.id,
-          props: {
-            churchId,
-            volunteerId,
-            eventTimeBlockId: `b-${item.id}`,
-            participationId: `p-${item.id}`,
-            shiftId: `s-${item.id}`,
-            roleId: 'role',
-            shiftRequirementId: `r-${item.id}`,
-            status: item.status,
-          },
-        }),
-    ),
+  const assignments = items.map(
+    (item) =>
+      new Assignment({
+        id: item.id,
+        props: {
+          churchId,
+          volunteerId,
+          eventTimeBlockId: `b-${item.id}`,
+          participationId: `p-${item.id}`,
+          shiftId: `s-${item.id}`,
+          roleId: 'role',
+          shiftRequirementId: `r-${item.id}`,
+          status: item.status,
+        },
+      }),
+  );
+  // The read leaves a cancelled Event's work out of the live list.
+  const cancelledEventIds = new Set(
+    events.filter((event) => event.status).map((event) => event.id),
+  );
+  assignmentRepo.listPublishedByVolunteer.mockResolvedValue(
+    assignments
+      .filter((_, index) => !cancelledEventIds.has(items[index]?.eventId ?? ''))
+      .map((assignment) => ({ assignment, cancelled: false })),
   );
   participationRepo.listByIds.mockResolvedValue(participations);
-  eventRepo.getById.mockImplementation(async ({ eventId }) => {
-    const event = eventEntities.find((entry) => entry.id === eventId);
-    if (!event) throw new Error('missing event');
-    return event;
-  });
-  eventRepo.getWithEventTimeBlocks.mockImplementation(async ({ eventId }) => {
-    const event = eventEntities.find((entry) => entry.id === eventId);
-    if (!event) throw new Error('missing event');
-    return { event, eventTimeBlocks: [] };
-  });
-  shiftRepo.getById.mockImplementation(async ({ shiftId }) => {
-    const shift = shifts.find((entry) => entry.id === shiftId);
-    if (!shift) throw new Error('missing shift');
-    return shift;
-  });
+  eventRepo.listByIds.mockResolvedValue(eventEntities);
+  shiftRepo.listByIds.mockResolvedValue(shifts);
   shiftRepo.listRequirementsByIds.mockResolvedValue(
     items.map(
       (item) =>
@@ -425,9 +411,9 @@ function arrange({ events, items }: ArrangeInput) {
         }),
     ),
   );
-  roleRepo.getById.mockResolvedValue(
+  roleRepo.listByIds.mockResolvedValue([
     new Role({ id: 'role', props: { churchId, ministryId, name: 'Singer' } }),
-  );
+  ]);
   notificationRepo.countUnread.mockResolvedValue(0);
   notificationRepo.list.mockResolvedValue({ items: [] });
 }

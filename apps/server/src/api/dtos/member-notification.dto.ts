@@ -106,7 +106,6 @@ export const memberNotificationsQuerystringSchema = z.object({
       message: 'Invalid cursor',
     })
     .optional(),
-  limit: z.coerce.number().int().positive().optional(),
 });
 
 export const memberNotificationParamsSchema = z.object({

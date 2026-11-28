@@ -16,7 +16,7 @@ import {
   memberNotificationParamsSchema,
   memberNotificationsQuerystringSchema,
 } from '../dtos/member-notification.dto';
-import { pageLimitSchema } from '../dtos/page-limit.dto';
+import { withPageLimit } from '../dtos/page-limit.dto';
 import { RefusalError } from '../utils/refusal-error';
 import { requestCaller } from '../utils/request-caller';
 import type { NotificationControllerDependencies } from './notification-controller.types';
@@ -84,10 +84,9 @@ export class NotificationController implements FastifyController {
           summary: "List the caller's Notifications",
           description:
             "List the caller's own Notifications in the Active Church, newest first, with the unread count of the whole inbox.",
-          querystring: memberNotificationsQuerystringSchema.extend({
-            limit: pageLimitSchema({
-              maxPageSize: this.maxPageSize,
-            }).optional(),
+          querystring: withPageLimit({
+            querystring: memberNotificationsQuerystringSchema,
+            maxPageSize: this.maxPageSize,
           }),
           response: { 200: memberNotificationListResponseSchema, ...refusals },
         },

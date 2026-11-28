@@ -16,7 +16,7 @@ import {
   authErrorResponses,
   errorResponseSchema,
 } from '../dtos/error-response.dto';
-import { pageLimitSchema } from '../dtos/page-limit.dto';
+import { withPageLimit } from '../dtos/page-limit.dto';
 import {
   changeMinistryAccessBodySchema,
   churchAccessChangeBodySchema,
@@ -289,10 +289,9 @@ export class PeopleController implements FastifyController {
           summary: 'List people',
           description:
             "List the Active Church's members ordered by name. A ChurchAdmin sees every member, including those in no Ministry; a Ministry leader sees only members of Ministries they lead, with only those Ministries shown. Search (trimmed, case-insensitive literal name/email substring), Ministry, Access and `withoutMinistry` filters combine before pagination; `withoutMinistry=true` keeps exactly the members `counts.withoutMinistry` counts, so combined with `ministryId` or a leader/volunteer `access` it matches nobody. `counts` covers the caller's whole scope: it ignores the filters and the cursor, so every page repeats the same values. `leaders`/`volunteers` count members with an active membership at that level in a visible Ministry (one person can be both); `withoutMinistry` counts members with none, so it is always 0 for a leader.",
-          querystring: peopleListQuerystringSchema.extend({
-            limit: pageLimitSchema({
-              maxPageSize: this.maxPageSize,
-            }).optional(),
+          querystring: withPageLimit({
+            querystring: peopleListQuerystringSchema,
+            maxPageSize: this.maxPageSize,
           }),
           response: {
             200: peopleListResponseSchema,

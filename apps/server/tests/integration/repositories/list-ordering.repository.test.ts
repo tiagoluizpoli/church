@@ -1,4 +1,5 @@
-import { availabilityCheck } from '@church/db';
+import { appConfig } from '@church/app-config';
+import { availabilityCheck, ministryInvitationRole } from '@church/db';
 import { parseInstant, parseTimeOfDay } from '@church/time';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -6,6 +7,7 @@ import {
   ChurchId,
   CycleId,
   EventId,
+  EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
   ShiftId,
@@ -17,8 +19,11 @@ import { DrizzleChurchMembershipRepository } from '@/infrastructure/auth/drizzle
 import { DrizzleSchedulingScopeResolver } from '@/infrastructure/auth/drizzle-scheduling-scope-resolver';
 import { DrizzleAssignmentRepository } from '@/infrastructure/repositories/drizzle-assignment.repository';
 import { DrizzleAvailabilityCheckRepository } from '@/infrastructure/repositories/drizzle-availability-check.repository';
+import { DrizzleCycleRepository } from '@/infrastructure/repositories/drizzle-cycle.repository';
+import { DrizzleEventRepository } from '@/infrastructure/repositories/drizzle-event.repository';
 import { DrizzleEventTimeBlockRepository } from '@/infrastructure/repositories/drizzle-event-time-block.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
+import { DrizzleMinistryInvitationRepository } from '@/infrastructure/repositories/drizzle-ministry-invitation.repository';
 import { DrizzleMinistryParticipationRepository } from '@/infrastructure/repositories/drizzle-ministry-participation.repository';
 import { DrizzlePlanningEventRepository } from '@/infrastructure/repositories/drizzle-planning-event.repository';
 import { DrizzleShiftRepository } from '@/infrastructure/repositories/drizzle-shift.repository';
@@ -27,6 +32,7 @@ import { DrizzleVolunteerRepository } from '@/infrastructure/repositories/drizzl
 import { buildChurch, buildChurchMembership } from '@/seeds/builders/church';
 import {
   buildMinistry,
+  buildMinistryInvitation,
   buildRole,
   buildSector,
 } from '@/seeds/builders/ministry';
@@ -943,6 +949,201 @@ describe('repository list ordering', () => {
         [participationIds[1], at('02T09:00')],
         [participationIds[1], at('02T11:00')],
       ]);
+    });
+  });
+
+  // #1231: reads the list-order guard found without ORDER BY.
+  describe('reads the list-order guard found unordered', () => {
+    // A block with one shift and three requirements, inserted 3, 2, 1.
+    // Expected order: alpha/a (1), alpha/Y (2), Zulu/a (3).
+    async function seedBlockRequirements() {
+      const base = await seedBase();
+      const churchId = base.seed.churchAId;
+      const ministryId = base.seed.ministryAId;
+      const event = await seedEvent(base);
+      const participation = await buildMinistryParticipation({
+        db,
+        churchId,
+        ministryId,
+        eventId: event.id,
+        state: 'preparing',
+        eventTimeBlockIds: [],
+      });
+      const block = await buildEventTimeBlock({
+        db,
+        churchId,
+        eventId: event.id,
+        start: at('02T09:00'),
+        end: at('02T12:00'),
+      });
+      const shift = await buildShift({
+        db,
+        churchId,
+        participationId: participation.id,
+        eventTimeBlockId: block.id,
+        start: at('02T09:00'),
+        end: at('02T12:00'),
+      });
+      const zulu = await buildSector({
+        db,
+        churchId,
+        ministryId,
+        name: 'Zulu',
+      });
+      const alpha = await buildSector({
+        db,
+        churchId,
+        ministryId,
+        name: 'alpha',
+      });
+      const roleA = await buildRole({ db, churchId, ministryId, name: 'a' });
+      const roleY = await buildRole({ db, churchId, ministryId, name: 'Y' });
+      for (const [n, sector, role] of [
+        [3, zulu, roleA],
+        [2, alpha, roleY],
+        [1, alpha, roleA],
+      ] as const) {
+        await buildShiftRequirement({
+          db,
+          churchId,
+          participationId: participation.id,
+          shiftId: shift.id,
+          roleId: role.id,
+          sectorId: sector.id,
+          id: uuid(n),
+          peopleNeeded: 1,
+        });
+      }
+      return { ...base, event, block };
+    }
+
+    // Three event time blocks inserted 3, 2, 1. Expected: 1 (09:00), 2 (09:00,
+    // later id), 3 (10:00).
+    async function seedEventBlocks() {
+      const base = await seedBase();
+      const event = await seedEvent(base);
+      for (const [n, start] of [
+        [3, '02T10:00'],
+        [2, '02T09:00'],
+        [1, '02T09:00'],
+      ] as const) {
+        await buildEventTimeBlock({
+          db,
+          churchId: base.seed.churchAId,
+          eventId: event.id,
+          id: uuid(n),
+          start: at(start),
+          end: at('02T11:00'),
+        });
+      }
+      return { ...base, event };
+    }
+
+    // The base Cycle covers August; two September Cycles are inserted late,
+    // then early. Expected: August, early September, late September.
+    async function seedOverlappingCycles() {
+      const base = await seedBase();
+      const late = await createSchedulingPhase3Cycle({
+        churchId: base.seed.churchAId,
+        name: 'Late September',
+        startDate: new Date('2026-09-16T00:00:00.000Z'),
+        endDate: new Date('2026-09-30T00:00:00.000Z'),
+      });
+      const early = await createSchedulingPhase3Cycle({
+        churchId: base.seed.churchAId,
+        name: 'Early September',
+        startDate: new Date('2026-09-02T00:00:00.000Z'),
+        endDate: new Date('2026-09-15T00:00:00.000Z'),
+      });
+      const repo = new DrizzleCycleRepository({ db });
+      const cycles = await repo.findOverlapping({
+        churchId: base.churchId,
+        startDate: new Date('2026-08-15T00:00:00.000Z'),
+        endDate: new Date('2026-09-20T00:00:00.000Z'),
+      });
+      return { cycles, expected: [base.cycleId, early.id, late.id] };
+    }
+
+    // A Ministry Invitation with three Roles, linked Zeta, Beta, alpha.
+    async function seedInvitationRoles() {
+      const base = await seedBase();
+      const churchId = base.seed.churchAId;
+      const ministryId = base.seed.ministryAId;
+      const invitation = await buildMinistryInvitation({
+        db,
+        churchId,
+        ministryId,
+        inviteeUserId: base.seed.adminUserId,
+        inviterId: base.seed.adminUserId,
+        expiresAt: new Date('2026-12-31T00:00:00.000Z'),
+        ministryAccessLevel: 'volunteer',
+      });
+      for (const name of ['Zeta', 'Beta', 'alpha']) {
+        const role = await buildRole({ db, churchId, ministryId, name });
+        await db.insert(ministryInvitationRole).values({
+          churchId,
+          ministryInvitationId: invitation.id,
+          roleId: role.id,
+        });
+      }
+      const repo = new DrizzleMinistryInvitationRepository({
+        db,
+        config: appConfig,
+      });
+      const context = await repo.findMinistryInvitationContext({
+        ministryInvitationId: invitation.id,
+      });
+      return { roleNames: context?.roleNames };
+    }
+
+    const requirementIds = [uuid(1), uuid(2), uuid(3)];
+
+    it('characterization: each read returns every row it returned before #1231', async () => {
+      const blockRequirements = await seedBlockRequirements();
+      const eventTimeBlocks = new DrizzleEventTimeBlockRepository({ db });
+      const block = await eventTimeBlocks.getById({
+        churchId: blockRequirements.churchId,
+        eventTimeBlockId: EventTimeBlockId.from(blockRequirements.block.id),
+      });
+      const events = new DrizzleEventRepository({ db });
+      const withBlocks = await events.getWithEventTimeBlocks({
+        churchId: blockRequirements.churchId,
+        eventId: EventId.from(blockRequirements.event.id),
+      });
+      const planning = new DrizzlePlanningEventRepository({ db });
+      const [cycleEvent] = await planning.listCycleEvents({
+        churchId: blockRequirements.churchId,
+        cycleId: CycleId.from(blockRequirements.cycleId),
+      });
+      const sortedIds = (rows: { id: string }[] | undefined) =>
+        (rows ?? []).map((row) => row.id).toSorted();
+      expect(sortedIds(block.requirements)).toEqual(requirementIds);
+      expect(sortedIds(withBlocks.eventTimeBlocks[0]?.requirements)).toEqual(
+        requirementIds,
+      );
+      expect(sortedIds(cycleEvent?.eventTimeBlocks[0]?.requirements)).toEqual(
+        requirementIds,
+      );
+    });
+
+    it('characterization: event blocks, overlapping Cycles and invitation Roles keep their rows', async () => {
+      const { churchId, event } = await seedEventBlocks();
+      const events = new DrizzleEventRepository({ db });
+      const withBlocks = await events.getWithEventTimeBlocks({
+        churchId,
+        eventId: EventId.from(event.id),
+      });
+      expect(withBlocks.eventTimeBlocks.map((b) => b.id).toSorted()).toEqual([
+        uuid(1),
+        uuid(2),
+        uuid(3),
+      ]);
+      await resetSchedulingPhase3Db();
+      const { cycles, expected } = await seedOverlappingCycles();
+      expect(cycles.map((c) => c.id).toSorted()).toEqual(expected.toSorted());
+      await resetSchedulingPhase3Db();
+      const { roleNames } = await seedInvitationRoles();
+      expect(roleNames?.toSorted()).toEqual(['Beta', 'Zeta', 'alpha']);
     });
   });
 });

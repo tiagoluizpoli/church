@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
   addressReplacementsSchema,
   BRAZILIAN_UFS,
+  ChurchAddressesRefused,
   type ChurchAddressRefusal,
   churchAddressesSchema,
   PIN_SOURCES,
@@ -25,6 +26,8 @@ import {
   churchWebsiteSchema,
 } from '../../domain/church-settings';
 import { contactGroupOrderSchema } from '../../domain/contact-group';
+import { ChurchLegalDocumentTakenError } from '../../domain/errors/church-legal-document-taken';
+import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
 import { socialLinksSchema } from '../../domain/social-link';
 import type { ErrorMessage } from '../utils/error-table.types';
 import { idSchema } from './id.dto';
@@ -243,7 +246,7 @@ interface ChurchSettingsFieldErrorInput {
   locale: Locale;
 }
 
-export function churchSettingsFieldError({
+function churchSettingsFieldError({
   field,
   code,
   locale,
@@ -271,7 +274,7 @@ interface RefusalFieldErrorsInput {
   locale: Locale;
 }
 
-export function churchAddressRefusalsToFieldErrors({
+function churchAddressRefusalsToFieldErrors({
   refusals,
   locale,
 }: RefusalFieldErrorsInput): ChurchSettingsFieldError[] {
@@ -280,4 +283,58 @@ export function churchAddressRefusalsToFieldErrors({
     code,
     message: FIELD_CODE_MESSAGES[code]({}, { locale }),
   }));
+}
+
+interface ChurchSettingsValidationErrorInput {
+  fieldErrors: ChurchSettingsFieldError[];
+  locale: Locale;
+}
+
+/** The one 422 body of a refused save: one entry per refused field. */
+export function churchSettingsValidationError({
+  fieldErrors,
+  locale,
+}: ChurchSettingsValidationErrorInput) {
+  return {
+    error: 'VALIDATION_ERROR' as const,
+    message: m.common_validation_error({}, { locale }),
+    fieldErrors,
+  };
+}
+
+interface SaveRefusalFieldErrorsInput {
+  error: unknown;
+  locale: Locale;
+}
+
+/** The refused fields of a save the manager turned down; undefined for any other error. */
+export function saveRefusalFieldErrors({
+  error,
+  locale,
+}: SaveRefusalFieldErrorsInput): ChurchSettingsFieldError[] | undefined {
+  if (error instanceof ChurchAddressesRefused) {
+    return churchAddressRefusalsToFieldErrors({
+      refusals: error.refusals,
+      locale,
+    });
+  }
+  if (error instanceof ChurchLegalDocumentTakenError) {
+    return [
+      churchSettingsFieldError({
+        field: 'legalProfile.cnpj',
+        code: 'CNPJ_TAKEN',
+        locale,
+      }),
+    ];
+  }
+  if (error instanceof ChurchSlugTakenError) {
+    return [
+      churchSettingsFieldError({
+        field: 'slug',
+        code: 'CHURCH_SLUG_TAKEN',
+        locale,
+      }),
+    ];
+  }
+  return undefined;
 }

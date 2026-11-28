@@ -1,29 +1,25 @@
-import { m } from '@church/i18n/messages';
 import multipart from '@fastify/multipart';
-import { ChurchAddressesRefused } from '../../domain/church-address';
 import { LOGO_MAX_BYTES } from '../../domain/church-logo';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IChurchSettingsManager } from '../../domain/contracts/application/church-settings-manager';
-import { ChurchLegalDocumentTakenError } from '../../domain/errors/church-legal-document-taken';
 import {
   LogoTooLargeError,
   LogoUnsupportedTypeError,
 } from '../../domain/errors/church-logo';
-import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import { createChurchAdminHook } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   type ChurchSettingsValidationIssue,
-  churchAddressRefusalsToFieldErrors,
   churchAddressUsageParamsSchema,
   churchAddressUsageResponseSchema,
-  churchSettingsFieldError,
   churchSettingsResponseSchema,
+  churchSettingsValidationError,
   churchSettingsValidationErrorResponseSchema,
   restoreChurchLogoBodySchema,
+  saveRefusalFieldErrors,
   slugAvailabilityQuerySchema,
   slugAvailabilityResponseSchema,
   toChurchSettingsFieldErrors,
@@ -170,17 +166,16 @@ export class ChurchSettingsController implements FastifyController {
         },
       },
       async (request, reply) => {
+        const { locale } = request;
         if (request.validationError) {
-          const { locale } = request;
-          return reply.code(422).send({
-            error: 'VALIDATION_ERROR',
-            message: m.common_validation_error({}, { locale }),
-            fieldErrors: toChurchSettingsFieldErrors({
-              issues: request.validationError
-                .validation as ChurchSettingsValidationIssue[],
-              locale,
-            }),
+          const fieldErrors = toChurchSettingsFieldErrors({
+            issues: request.validationError
+              .validation as ChurchSettingsValidationIssue[],
+            locale,
           });
+          return reply
+            .code(422)
+            .send(churchSettingsValidationError({ fieldErrors, locale }));
         }
         try {
           const settings =
@@ -190,42 +185,11 @@ export class ChurchSettingsController implements FastifyController {
             });
           return reply.send(settings);
         } catch (error) {
-          const { locale } = request;
-          if (error instanceof ChurchAddressesRefused) {
-            return reply.code(422).send({
-              error: 'VALIDATION_ERROR',
-              message: m.common_validation_error({}, { locale }),
-              fieldErrors: churchAddressRefusalsToFieldErrors({
-                refusals: error.refusals,
-                locale,
-              }),
-            });
-          }
-          if (error instanceof ChurchLegalDocumentTakenError) {
-            return reply.code(422).send({
-              error: 'VALIDATION_ERROR',
-              message: m.common_validation_error({}, { locale }),
-              fieldErrors: [
-                churchSettingsFieldError({
-                  field: 'legalProfile.cnpj',
-                  code: 'CNPJ_TAKEN',
-                  locale,
-                }),
-              ],
-            });
-          }
-          if (!(error instanceof ChurchSlugTakenError)) throw error;
-          return reply.code(422).send({
-            error: 'VALIDATION_ERROR',
-            message: m.common_validation_error({}, { locale }),
-            fieldErrors: [
-              churchSettingsFieldError({
-                field: 'slug',
-                code: 'CHURCH_SLUG_TAKEN',
-                locale,
-              }),
-            ],
-          });
+          const fieldErrors = saveRefusalFieldErrors({ error, locale });
+          if (!fieldErrors) throw error;
+          return reply
+            .code(422)
+            .send(churchSettingsValidationError({ fieldErrors, locale }));
         }
       },
     );

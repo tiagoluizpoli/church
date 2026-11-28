@@ -39,8 +39,18 @@ interface CycleSpanInput {
   cycle: ExportCycle;
 }
 
+interface DaySpanInput {
+  from: string;
+  to: string;
+}
+
+/** Two CalendarDays as "01/01/2027 – 31/01/2027". */
+export function daySpan({ from, to }: DaySpanInput): string {
+  return `${formatCalendarDateOnly({ value: from })} – ${formatCalendarDateOnly({ value: to })}`;
+}
+
 export function cycleSpan({ cycle }: CycleSpanInput): string {
-  return `${formatCalendarDateOnly({ value: cycle.startDate })} – ${formatCalendarDateOnly({ value: cycle.endDate })}`;
+  return daySpan({ from: cycle.startDate, to: cycle.endDate });
 }
 
 interface ScheduleExportCyclePickerProps {

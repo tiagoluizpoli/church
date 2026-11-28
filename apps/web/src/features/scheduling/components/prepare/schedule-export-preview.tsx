@@ -1,5 +1,9 @@
 import { m } from '@church/i18n/messages';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  queryOptions,
+  useQuery,
+} from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { Spinner } from '@/components/ui/spinner';
@@ -14,12 +18,18 @@ interface PreviewRange {
   to: string;
 }
 
-export interface ScheduleExportPreviewProps {
+/** What one export is: the preview, the files and their summary follow it. */
+export interface ScheduleExportSettings {
   ministryId: string;
   cycleId: string;
   format: GetScheduleExportFileFormat;
   /** Null: the whole Cycle. */
   range: PreviewRange | null;
+}
+
+interface ScheduleExportPreviewProps {
+  /** Settled settings: see `useSettledExportSettings`. */
+  settings: ScheduleExportSettings;
 }
 
 interface PreviewPageProps {
@@ -36,7 +46,7 @@ async function readPreviewPages({
   cycleId,
   format,
   range,
-}: ScheduleExportPreviewProps): Promise<Blob[]> {
+}: ScheduleExportSettings): Promise<Blob[]> {
   const pages: Blob[] = [];
   for (;;) {
     const page = pages.length + 1;
@@ -86,8 +96,10 @@ function PreviewPage({ page, number }: PreviewPageProps) {
   );
 }
 
-/** The server's own render of the file, so the file never differs from it. */
-export function ScheduleExportPreview(settings: ScheduleExportPreviewProps) {
+/** The settings once they stopped changing for the preview's debounce. */
+export function useSettledExportSettings(
+  settings: ScheduleExportSettings,
+): ScheduleExportSettings {
   const [settled, setSettled] = useState(settings);
   const key = JSON.stringify(settings);
   // biome-ignore lint/correctness/useExhaustiveDependencies: settles on a real change of the settings, not on each render's new object
@@ -95,11 +107,23 @@ export function ScheduleExportPreview(settings: ScheduleExportPreviewProps) {
     const timer = setTimeout(() => setSettled(settings), PREVIEW_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [key]);
-  const preview = useQuery({
-    queryKey: ['schedule-export-preview', settled],
-    queryFn: () => readPreviewPages(settled),
+  return settled;
+}
+
+/** The preview pages of settled settings; the dialog waits on it too. */
+export function previewQueryOptions(settings: ScheduleExportSettings) {
+  return queryOptions({
+    queryKey: ['schedule-export-preview', settings],
+    queryFn: () => readPreviewPages(settings),
     placeholderData: keepPreviousData,
   });
+}
+
+/** The server's own render of the file, so the file never differs from it. */
+export function ScheduleExportPreview({
+  settings,
+}: ScheduleExportPreviewProps) {
+  const preview = useQuery(previewQueryOptions(settings));
   return (
     <section aria-label={m.export_preview_label()} className="space-y-3">
       {preview.isPending ? (

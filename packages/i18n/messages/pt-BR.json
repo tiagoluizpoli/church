@@ -2356,5 +2356,8 @@
   "export_no_cycles": "Nenhum ciclo encontrado.",
   "export_pick_dates": "Escolher datas…",
   "export_from": "De",
-  "export_to": "Até"
+  "export_to": "Até",
+  "export_draft_notice": "Esta escala nunca foi publicada, então o arquivo sai marcado como Rascunho e mostra as vagas.",
+  "export_unsent_changes": "Há mudanças ainda não enviadas aos voluntários",
+  "export_duplicate_names_title": "Dois voluntários com o mesmo nome"
 }

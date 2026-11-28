@@ -2356,5 +2356,8 @@
   "export_no_cycles": "No Cycle found.",
   "export_pick_dates": "Choose dates…",
   "export_from": "From",
-  "export_to": "To"
+  "export_to": "To",
+  "export_draft_notice": "This schedule was never published, so the file is marked as a draft and shows empty spots.",
+  "export_unsent_changes": "Some changes haven't been sent to the volunteers yet",
+  "export_duplicate_names_title": "Two volunteers with the same name"
 }

@@ -1,11 +1,12 @@
 import { exportFileName } from '@church/domain-rules/export-file-name';
 import { m } from '@church/i18n/messages';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { DatePickerField } from '@/components/date-picker-field';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -16,6 +17,7 @@ import {
   ScheduleExportCyclePicker,
 } from '@/features/scheduling/components/prepare/schedule-export-cycle-picker';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
+import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { exportApi } from '@/utils/api-instances';
 
 interface ScheduleExportProps {
@@ -59,7 +61,8 @@ interface ExportRange {
 /**
  * Exportar: the Schedule as an A4 PDF table (#1243), for any Cycle with a
  * Schedule and optionally only some of its dates (#1246). The page is only
- * reachable by the Ministry's leaders and ChurchAdmins.
+ * reachable by the Ministry's leaders and ChurchAdmins. The export data's
+ * facts drive the Rascunho, unsent-changes and same-name notices (#1245).
  */
 export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
   const [open, setOpen] = useState(false);
@@ -67,6 +70,16 @@ export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
   // Null: the whole Cycle.
   const [range, setRange] = useState<ExportRange | null>(null);
   const { data } = useSchedule({ ministryId, cycleId });
+  const selectedId = cycle?.id ?? cycleId;
+  const { data: exported, error: refused } = useQuery({
+    queryKey: ['schedule-export-data', ministryId, selectedId, range],
+    queryFn: () =>
+      range
+        ? exportApi.getScheduleExportData(ministryId, selectedId, range)
+        : exportApi.getScheduleExportData(ministryId, selectedId),
+    enabled: open,
+  });
+  const isDraft = exported?.isDraft ?? false;
   const download = useMutation({
     mutationFn: async (chosen: ExportCycle) => {
       try {
@@ -86,7 +99,8 @@ export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
         ministry: data.ministry.name,
         cycle: chosen.name,
       });
-      saveFile({ file, name: `${exportFileName({ name })}.pdf` });
+      const suffixes = isDraft ? [m.export_draft()] : [];
+      saveFile({ file, name: `${exportFileName({ name, suffixes })}.pdf` });
       setOpen(false);
     },
     onError: (error) => toast.error(error.message),
@@ -115,13 +129,21 @@ export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
         title={m.export_dialog_title()}
         description={m.export_dialog_description()}
         footer={
-          <Button
-            disabled={download.isPending}
-            onClick={() => download.mutate(selected)}
-          >
-            {download.isPending ? <Spinner /> : null}
-            {m.export_download()}
-          </Button>
+          <>
+            {isDraft ? (
+              <p className="text-muted-foreground text-xs sm:mr-auto sm:self-center">
+                {m.export_draft_notice()}
+              </p>
+            ) : null}
+            <Button
+              // The file name needs the draft fact, so wait for the data.
+              disabled={download.isPending || !exported}
+              onClick={() => download.mutate(selected)}
+            >
+              {download.isPending ? <Spinner /> : null}
+              {m.export_download()}
+            </Button>
+          </>
         }
       >
         <div className="space-y-4 text-sm">
@@ -182,6 +204,30 @@ export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
             <p className="font-medium">{m.export_format_pdf()}</p>
           </div>
         </div>
+        {refused ? (
+          <Alert role="alert" variant="destructive" className="mt-4">
+            <AlertDescription>{requestErrorMessage(refused)}</AlertDescription>
+          </Alert>
+        ) : null}
+        {exported?.hasUnsentChanges && !isDraft ? (
+          <Alert role="status" className="mt-4">
+            <AlertDescription>{m.export_unsent_changes()}</AlertDescription>
+          </Alert>
+        ) : null}
+        {exported && exported.duplicateNames.length > 0 ? (
+          <Alert role="status" className="mt-4">
+            <AlertTitle>{m.export_duplicate_names_title()}</AlertTitle>
+            <AlertDescription>
+              <ul>
+                {exported.duplicateNames.map((names) => (
+                  <li key={names.join('|')} className="whitespace-pre-wrap">
+                    {names.join(' · ')}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        ) : null}
       </ResponsiveFormSurface>
     </>
   );

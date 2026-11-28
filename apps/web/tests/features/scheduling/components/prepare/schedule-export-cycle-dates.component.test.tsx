@@ -16,6 +16,7 @@ import { renderWithProviders } from '@/tests/setup/render';
 const state = vi.hoisted(() => ({
   data: undefined as GetSchedule200 | undefined,
   getScheduleExportFile: vi.fn(),
+  getScheduleExportData: vi.fn(),
   listScheduleExportCycles: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -26,6 +27,7 @@ vi.mock('@/features/scheduling/hooks/use-schedule', () => ({
 vi.mock('@/utils/api-instances', () => ({
   exportApi: {
     getScheduleExportFile: state.getScheduleExportFile,
+    getScheduleExportData: state.getScheduleExportData,
     listScheduleExportCycles: state.listScheduleExportCycles,
   },
 }));
@@ -49,6 +51,10 @@ beforeEach(() => {
   vi.resetAllMocks();
   state.data = { ...SCHEDULE, stage: 'published' };
   state.getScheduleExportFile.mockResolvedValue(new Blob(['%PDF']));
+  state.getScheduleExportData.mockResolvedValue({
+    isDraft: false,
+    duplicateNames: [],
+  });
   state.listScheduleExportCycles.mockImplementation(
     async (_ministryId: string, params?: { q?: string }) => ({
       cycles: params?.q ? [QUARTER] : [FEBRUARY, JANUARY, DECEMBER, QUARTER],
@@ -58,6 +64,20 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn();
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 });
+
+interface DownloadInput {
+  user: ReturnType<typeof userEvent.setup>;
+  dialog: HTMLElement;
+}
+
+/** Baixar turns on once the export data has loaded. */
+async function download({ user, dialog }: DownloadInput) {
+  const button = within(dialog).getByRole('button', {
+    name: m.export_download(),
+  });
+  await waitFor(() => expect(button).toBeEnabled());
+  await user.click(button);
+}
 
 async function openDialog() {
   const user = userEvent.setup();
@@ -95,9 +115,7 @@ it('steps one Cycle at a time from the Schedule it came from', async () => {
     ),
   ).toBeVisible();
 
-  await user.click(
-    within(dialog).getByRole('button', { name: m.export_download() }),
-  );
+  await download({ user, dialog });
   await waitFor(() =>
     expect(state.getScheduleExportFile).toHaveBeenCalledExactlyOnceWith(
       'm',
@@ -157,9 +175,7 @@ it('narrows the export to dates inside the Cycle', async () => {
     trigger: within(dialog).getByRole('button', { name: m.export_to() }),
     date: '2027-01-20',
   });
-  await user.click(
-    within(dialog).getByRole('button', { name: m.export_download() }),
-  );
+  await download({ user, dialog });
   await waitFor(() =>
     expect(state.getScheduleExportFile).toHaveBeenLastCalledWith('m', 'c', {
       format: 'pdf',
@@ -167,6 +183,10 @@ it('narrows the export to dates inside the Cycle', async () => {
       to: '2027-01-20',
     }),
   );
+  expect(state.getScheduleExportData).toHaveBeenLastCalledWith('m', 'c', {
+    from: '2027-01-10',
+    to: '2027-01-20',
+  });
 });
 
 it('resets the dates to the whole Cycle when the Cycle changes', async () => {
@@ -197,9 +217,7 @@ it('resets the dates to the whole Cycle when the Cycle changes', async () => {
   expect(
     within(dialog).queryByRole('button', { name: m.export_from() }),
   ).toBeNull();
-  await user.click(
-    within(dialog).getByRole('button', { name: m.export_download() }),
-  );
+  await download({ user, dialog });
   await waitFor(() =>
     expect(state.getScheduleExportFile).toHaveBeenCalledExactlyOnceWith(
       'm',
@@ -227,13 +245,34 @@ it('shows the server message of a refused export', async () => {
   );
   const { user, dialog } = await openDialog();
 
-  await user.click(
-    within(dialog).getByRole('button', { name: m.export_download() }),
-  );
+  await download({ user, dialog });
 
   await waitFor(() =>
     expect(state.toastError).toHaveBeenCalledExactlyOnceWith(
       'Escolha datas entre 01/01/2027 e 31/01/2027.',
     ),
   );
+});
+
+it('shows the server message when the export data is refused', async () => {
+  state.getScheduleExportData.mockRejectedValue(
+    new AxiosError('400', 'ERR_BAD_REQUEST', undefined, undefined, {
+      status: 400,
+      statusText: '',
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+      data: {
+        error: 'INVALID_DATE_RANGE',
+        message: 'A data de término não pode ser anterior à data de início.',
+      },
+    }),
+  );
+  const { dialog } = await openDialog();
+
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+    'A data de término não pode ser anterior à data de início.',
+  );
+  expect(
+    within(dialog).getByRole('button', { name: m.export_download() }),
+  ).toBeDisabled();
 });

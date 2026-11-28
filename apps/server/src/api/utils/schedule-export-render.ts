@@ -67,17 +67,20 @@ export function scheduleExportRenderPayload(
   return { data, text: exportText(input), days, times };
 }
 
-/** `Escala - <Ministry> - <Cycle>` without characters file systems refuse. */
+/**
+ * `Escala - <Ministry> - <Cycle>`, plus ` - Rascunho` on a draft, without
+ * characters file systems refuse.
+ */
 export function scheduleExportFileName({
   data,
   locale,
 }: ScheduleExportTextInput): string {
-  return exportFileName({
-    name: m.export_file_name(
-      { ministry: data.ministry.name, cycle: data.cycle.name },
-      { locale },
-    ),
-  });
+  const name = m.export_file_name(
+    { ministry: data.ministry.name, cycle: data.cycle.name },
+    { locale },
+  );
+  const suffixes = data.isDraft ? [m.export_draft({}, { locale })] : [];
+  return exportFileName({ name, suffixes });
 }
 
 /** An attachment header: an ASCII `filename` fallback and the UTF-8 `filename*`. */

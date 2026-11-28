@@ -3,7 +3,6 @@ import { fromDate } from '@church/time';
 import {
   ChurchInvitationId,
   MinistryInvitationId,
-  UserId,
 } from '../../domain/branded-ids';
 import type {
   IRedemptionManager,
@@ -12,7 +11,6 @@ import type {
 import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import type { RedemptionBundleMinistry } from '../../domain/entities/redemption-bundle';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
-import { auth } from '../../main/di/server-auth';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
@@ -536,14 +534,14 @@ export class RedemptionController implements FastifyController {
     reply,
   }: RequireRedeemerInput): Promise<AuthenticatedRedeemer | null> {
     const headers = headersFromRequest(request);
-    const session = await auth.api.getSession({ headers }).catch(() => null);
+    const session = await request.server.sessionGateway.lookup({ headers });
     const sessionCookie = request.headers.cookie;
-    if (!session?.user || !sessionCookie) {
+    if (!session || !sessionCookie) {
       // FastifyReply is thenable: send without awaiting, return a plain value.
       refuse({ reply, request, code: 'UNAUTHORIZED' });
       return null;
     }
-    return { userId: UserId.from(session.user.id), sessionCookie };
+    return { userId: session.userId, sessionCookie };
   }
 }
 

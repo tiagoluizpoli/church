@@ -37,6 +37,7 @@ export * from './runtime-configuration.repository';
 export * from './scheduling-scope.repository';
 export * from './sector.repository';
 export * from './security-log.repository';
+export * from './session-gateway';
 export * from './setup-progress.repository';
 export * from './shift.repository';
 export * from './swap-request.repository';

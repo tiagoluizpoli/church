@@ -5,9 +5,6 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
-  ArchiveMinistry204,
-  ArchiveMinistryRole204,
-  ArchiveSector204,
   CreateMinistry201,
   CreateMinistryBody,
   CreateMinistryRole201,
@@ -30,7 +27,6 @@ import type {
   RenameSector200,
   RenameSectorBody,
   ResendMinistryInvitation200,
-  RevokeMinistryInvitation204,
   SaveUsualSetupBlock200,
   SaveUsualSetupBlockBody
 } from './churchAPI.schemas';
@@ -114,7 +110,7 @@ const renameMinistry = (
 const archiveMinistry = (
     ministryId: string,
  ) => {
-      return apiClient<ArchiveMinistry204>(
+      return apiClient<null>(
       {url: `/api/v1/ministries/${ministryId}/archive`, method: 'POST'
     },
       );
@@ -155,7 +151,7 @@ const revokeMinistryInvitation = (
     ministryId: string,
     invitationId: string,
  ) => {
-      return apiClient<RevokeMinistryInvitation204>(
+      return apiClient<null>(
       {url: `/api/v1/ministries/${ministryId}/invitations/${invitationId}/revoke`, method: 'POST'
     },
       );
@@ -211,7 +207,7 @@ const archiveMinistryRole = (
     ministryId: string,
     roleId: string,
  ) => {
-      return apiClient<ArchiveMinistryRole204>(
+      return apiClient<null>(
       {url: `/api/v1/ministries/${ministryId}/roles/${roleId}/archive`, method: 'POST'
     },
       );
@@ -267,7 +263,7 @@ const archiveSector = (
     ministryId: string,
     sectorId: string,
  ) => {
-      return apiClient<ArchiveSector204>(
+      return apiClient<null>(
       {url: `/api/v1/ministries/${ministryId}/sectors/${sectorId}/archive`, method: 'POST'
     },
       );

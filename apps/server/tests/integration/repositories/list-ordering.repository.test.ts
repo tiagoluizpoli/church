@@ -1098,6 +1098,11 @@ describe('repository list ordering', () => {
 
     const requirementIds = [uuid(1), uuid(2), uuid(3)];
 
+    it('findOverlapping returns Cycles by start date, then id', async () => {
+      const { cycles, expected } = await seedOverlappingCycles();
+      expect(cycles.map((c) => c.id)).toEqual(expected);
+    });
+
     it('characterization: each read returns every row it returned before #1231', async () => {
       const blockRequirements = await seedBlockRequirements();
       const eventTimeBlocks = new DrizzleEventTimeBlockRepository({ db });

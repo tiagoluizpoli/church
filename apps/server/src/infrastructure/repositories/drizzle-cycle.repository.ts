@@ -249,7 +249,8 @@ export class DrizzleCycleRepository implements CycleRepository {
           gte(cycle.endDate, input.startDate),
           input.excludeCycleId ? ne(cycle.id, input.excludeCycleId) : undefined,
         ),
-      );
+      )
+      .orderBy(cycle.startDate, cycle.id);
 
     return rows.map(mapCycle);
   }

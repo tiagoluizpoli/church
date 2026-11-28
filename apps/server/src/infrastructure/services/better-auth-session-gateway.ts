@@ -1,4 +1,5 @@
 import type { Auth } from '@church/auth';
+import { isAPIError } from 'better-auth/api';
 import { ChurchId, UserId } from '../../domain/branded-ids';
 import type {
   CallerSession,
@@ -6,7 +7,10 @@ import type {
   SessionGateway,
   SetSessionActiveChurchInput,
 } from '../../domain/contracts/infrastructure/session-gateway';
+import { AuthBackendUnavailableError } from './auth-backend-unavailable-error';
 import type { BetterAuthSessionGatewayInput } from './better-auth-session-gateway.types';
+
+const UNAUTHORIZED = 401;
 
 export class BetterAuthSessionGateway implements SessionGateway {
   private readonly auth: Auth;
@@ -18,7 +22,11 @@ export class BetterAuthSessionGateway implements SessionGateway {
   async lookup({ headers }: LookupSessionInput): Promise<CallerSession | null> {
     const session = await this.auth.api
       .getSession({ headers })
-      .catch(() => null);
+      .catch((error: unknown) => {
+        // Better Auth refuses a session it cannot refresh with its own 401.
+        if (isAPIError(error) && error.statusCode === UNAUTHORIZED) return null;
+        throw new AuthBackendUnavailableError({ cause: error });
+      });
     if (!session?.user) return null;
     const { activeOrganizationId } = session.session;
     return {

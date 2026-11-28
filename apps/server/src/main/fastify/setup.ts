@@ -47,6 +47,7 @@ import {
   serializeError,
   serializeRequest,
 } from '../../infrastructure/privacy/privacy';
+import { AuthBackendUnavailableError } from '../../infrastructure/services/auth-backend-unavailable-error';
 import { BetterAuthSessionGateway } from '../../infrastructure/services/better-auth-session-gateway';
 import { auth } from '../di/server-auth';
 import { fastifyOtel } from '../instrumentation';
@@ -306,6 +307,17 @@ export async function createFastify({
         error: 'INTERNAL_SERVER_ERROR',
         message: genericError,
         requestId: request.id,
+      });
+    }
+
+    if (error instanceof AuthBackendUnavailableError) {
+      // A transient auth outage is a 503, never a 401 the client reads as a sign-out.
+      // The cause's code only, as for the database: its message may carry the connection string.
+      const code = connectionErrorCode({ error }) ?? null;
+      request.log.error({ code, url }, 'Auth backend failure');
+      return reply.status(503).header('Retry-After', '5').send({
+        error: 'SERVICE_UNAVAILABLE',
+        message: genericError,
       });
     }
 

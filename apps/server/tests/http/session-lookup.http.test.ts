@@ -1,4 +1,5 @@
 import { appConfig } from '@church/app-config';
+import { m } from '@church/i18n/messages';
 import { APIError } from 'better-auth/api';
 import {
   afterAll,
@@ -113,5 +114,51 @@ describe.each(ENTRY_POINTS)('%s session lookup', (_name, url) => {
     expect(response.statusCode).toBe(401);
     expect(response.json()).toEqual(UNAUTHORIZED_BODY);
     expect(activeChurchResolver.resolve).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a thrown connection error', new Error('connect ECONNREFUSED')],
+    ['a Better Auth 500', new APIError('INTERNAL_SERVER_ERROR')],
+  ])('answers 503, not 401, when the auth backend fails with %s', async (_label, failure) => {
+    mockGetSession.mockRejectedValueOnce(failure);
+
+    const response = await app.inject({
+      method: 'GET',
+      url,
+      headers: { cookie: AUTH_COOKIE },
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.headers['retry-after']).toBe('5');
+    expect(response.json()).toEqual({
+      error: 'SERVICE_UNAVAILABLE',
+      message: m.common_generic_error({}, { locale: 'pt-BR' }),
+    });
+    expect(activeChurchResolver.resolve).not.toHaveBeenCalled();
+  });
+});
+
+describe('OpenAPI for the session routes', () => {
+  it('declares the 503 beside every 401 the active-church and redemption routes send', () => {
+    const { paths = {} } = app.swagger() as {
+      paths?: Record<string, Record<string, { responses: object }>>;
+    };
+    const sessionOperations = Object.entries(paths)
+      .filter(([path]) => /^\/api\/v1\/(active-church|redemption)\//.test(path))
+      .flatMap(([path, operations]) =>
+        Object.entries(operations).map(([method, operation]) => ({
+          route: `${method.toUpperCase()} ${path}`,
+          statuses: Object.keys(operation.responses),
+        })),
+      )
+      .filter(({ statuses }) => statuses.includes('401'));
+
+    expect(sessionOperations).toHaveLength(10);
+    for (const { route, statuses } of sessionOperations) {
+      expect({ route, declares503: statuses.includes('503') }).toEqual({
+        route,
+        declares503: true,
+      });
+    }
   });
 });

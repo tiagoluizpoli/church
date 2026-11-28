@@ -18,7 +18,11 @@ export interface SetSessionActiveChurchInput {
   churchId: ChurchId | null;
 }
 
-/** The caller's auth session. `lookup` answers null when there is none (a 401). */
+/**
+ * The caller's auth session. `lookup` answers null only for a missing or
+ * refused session (a 401); an auth-backend failure throws
+ * `AuthBackendUnavailableError`, which the error handler answers with 503.
+ */
 export interface SessionGateway {
   lookup(input: LookupSessionInput): Promise<CallerSession | null>;
   setActiveChurch(input: SetSessionActiveChurchInput): Promise<void>;

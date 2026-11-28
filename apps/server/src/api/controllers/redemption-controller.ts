@@ -36,6 +36,7 @@ import {
   unavailableRedemptionResponseSchema,
   verificationCodeRequestedResponseSchema,
 } from '../dtos/redemption.dto';
+import { serviceUnavailableResponseSchema } from '../dtos/service-unavailable.dto';
 import { debugEndpointsEnabled } from '../utils/debug-endpoints';
 import { headersFromRequest } from '../utils/headers';
 import { isRateLimited } from '../utils/rate-limit';
@@ -226,6 +227,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: churchInvitationReviewStatusResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -262,6 +264,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: churchInvitationAcceptOutcomeResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -294,6 +297,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: authenticatedInvitationStatusResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -336,6 +340,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: existingMemberOutcomeResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -368,6 +373,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: declineOutcomeResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -402,6 +408,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: transferPreviewResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -448,6 +455,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: confirmTransferOutcomeResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },

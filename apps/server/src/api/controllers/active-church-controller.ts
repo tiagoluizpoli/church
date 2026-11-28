@@ -13,6 +13,7 @@ import {
   churchSelectionListResponseSchema,
   selectActiveChurchBodySchema,
 } from '../dtos/active-church.dto';
+import { serviceUnavailableResponseSchema } from '../dtos/service-unavailable.dto';
 import { headersFromRequest } from '../utils/headers';
 import { refuse } from '../utils/refuse';
 import type {
@@ -82,6 +83,7 @@ export class ActiveChurchController implements FastifyController {
           response: {
             200: activeChurchStatusResponseSchema,
             401: errorResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -111,6 +113,7 @@ export class ActiveChurchController implements FastifyController {
           response: {
             200: churchSelectionListResponseSchema,
             401: errorResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -138,6 +141,7 @@ export class ActiveChurchController implements FastifyController {
           response: {
             200: activeChurchStatusResponseSchema,
             401: errorResponseSchema,
+            503: serviceUnavailableResponseSchema,
             403: errorResponseSchema,
             500: internalErrorResponseSchema,
           },

@@ -1,8 +1,9 @@
 # Church Tooling
 
 Bun and Node versions are pinned in `mise.toml` (`mise install`); `packageManager`
-in `package.json` must name the same Bun (`bun run validate:bun-version`, part of
-`lint` and `validate:affected`).
+in `package.json` and the `FROM oven/bun:<version>` images of
+`deployment/server.Dockerfile` and `deployment/web.Dockerfile` must name the same
+Bun (`bun run validate:bun-version`, part of `lint` and `validate:affected`).
 
 Run commands from the repository root through existing Bun scripts. Do not
 invoke package tools directly: root scripts carry required environment, filters,
@@ -20,7 +21,7 @@ and task ordering.
 | Seed contracts (every recipe, refusals) | `bun run test:seeds` |
 | Test placement guard | `bun run validate:test-placement` |
 | Named-parameter guard (constitution VII) | `bun run validate:named-parameters` |
-| Bun pin guard (`mise.toml` = `packageManager`) | `bun run validate:bun-version` |
+| Bun pin guard (`mise.toml` = `packageManager` = Dockerfile images) | `bun run validate:bun-version` |
 | Presentation-text guard (no hard-coded copy) | `bun run validate:presentation-text` (`-- <path>…` for files) |
 | Server types guard (no types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
 | List-order guard (list queries end in `ORDER BY`) | `bun run validate:list-order` (`-- <path>…` for files) |

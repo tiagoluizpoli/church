@@ -1493,3 +1493,73 @@ describe('Edit Sent Event details', () => {
     expect(response.statusCode).toBe(404);
   });
 });
+
+describe('Edited Event location trim', () => {
+  const blocks = (fixture: Fixture) => [
+    {
+      id: fixture.welcome.id,
+      label: 'Welcome',
+      startTime: at('09:00'),
+      endTime: at('10:00'),
+    },
+  ];
+
+  it('trims a padded location and drops a blank one on a Draft edit', async () => {
+    const { cycleId, fixture } = await setUp();
+    const edit = (location: string) =>
+      patchEvent({
+        cycleId,
+        eventId: fixture.eventId,
+        payload: {
+          title: 'Sunday',
+          location,
+          start: at('09:00'),
+          end: at('10:00'),
+          eventTimeBlocks: blocks(fixture),
+        },
+      });
+
+    const padded = await edit('  Annex  ');
+    expect(padded.statusCode).toBe(200);
+    expect(padded.json().event.location).toBe('Annex');
+
+    const blank = await edit('   ');
+    expect(blank.statusCode).toBe(200);
+    expect(blank.json().event.location).toBeUndefined();
+    const [stored] = await db
+      .select()
+      .from(event)
+      .where(eq(event.id, fixture.eventId));
+    expect(stored?.location).toBeNull();
+  });
+
+  it('trims a padded location and drops a blank one on a Sent details edit', async () => {
+    const seed = await signIn();
+    const { id: cycleId } = await seedCycle({
+      churchId: seed.churchAId,
+      state: 'sent',
+    });
+    const fixture = await seedGeneratedEvent({
+      churchId: seed.churchAId,
+      cycleId,
+    });
+    await db
+      .update(event)
+      .set({ status: 'scheduled' })
+      .where(eq(event.id, fixture.eventId));
+    const details = (location: string) =>
+      app.inject({
+        method: 'PATCH',
+        url: `/api/v1/admin/cycles/${cycleId}/events/${fixture.eventId}/details`,
+        payload: { title: 'Sunday', location },
+      });
+
+    const padded = await details('  Annex  ');
+    expect(padded.statusCode).toBe(200);
+    expect(padded.json().event.location).toBe('Annex');
+
+    const blank = await details('   ');
+    expect(blank.statusCode).toBe(200);
+    expect(blank.json().event.location).toBeUndefined();
+  });
+});

@@ -105,6 +105,8 @@ export const answerAvailabilityCheckBodySchema = z.object({
 
 export const answerConflictResponseSchema = z.object({
   error: z.enum([
+    // The Active Church hook's refusal, sent before the handler runs.
+    'ACTIVE_CHURCH_SELECTION_REQUIRED',
     'SHIFT_PUBLISHED',
     'ILLEGAL_STATE_TRANSITION',
     'CROSS_MINISTRY_SCOPE',

@@ -12,6 +12,10 @@ import {
 } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
+import {
   eventListResponseSchema,
   eventMapper,
   listEventsQuerySchema,
@@ -19,11 +23,6 @@ import {
 } from '../dtos/event.dto';
 import { idSchema } from '../dtos/id.dto';
 import type { EventControllerDependencies } from './event-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 export class EventController implements FastifyController {
   readonly prefix = '/events';
@@ -69,8 +68,7 @@ export class EventController implements FastifyController {
           }),
           response: {
             200: scheduleBuilderDataResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -102,8 +100,7 @@ export class EventController implements FastifyController {
           querystring: listEventsQuerySchema,
           response: {
             200: eventListResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },

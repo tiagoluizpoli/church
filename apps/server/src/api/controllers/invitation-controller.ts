@@ -21,6 +21,10 @@ import {
   churchInvitationResendResponseSchema,
 } from '../dtos/church-invitation-resend.dto';
 import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
+import {
   invitationListMapper,
   invitationListQuerystringSchema,
   invitationListResponseSchema,
@@ -29,11 +33,6 @@ import { pageLimitSchema } from '../dtos/page-limit.dto';
 import { RefusalError } from '../utils/refusal-error';
 import { requestCaller } from '../utils/request-caller';
 import type { InvitationControllerDependencies } from './invitation-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 /** The Invitations management page: the Active Church's offers within the caller's authority. */
 export class InvitationController implements FastifyController {
@@ -88,8 +87,7 @@ export class InvitationController implements FastifyController {
           }),
           response: {
             200: invitationListResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -125,8 +123,7 @@ export class InvitationController implements FastifyController {
           response: {
             200: adminInvitationResponseSchema,
             201: adminInvitationResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             409: mintAdminInvitationConflictSchema,
           },
         },
@@ -159,8 +156,7 @@ export class InvitationController implements FastifyController {
           params: z.object({ invitationId: z.string().min(1) }),
           response: {
             200: churchInvitationResendResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
             429: errorResponseSchema,
@@ -193,8 +189,7 @@ export class InvitationController implements FastifyController {
           params: z.object({ invitationId: z.string().min(1) }),
           response: {
             204: z.null(),
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },

@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { NotificationId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
@@ -6,6 +5,10 @@ import type { INotificationManager } from '../../domain/contracts/application/no
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import {
   markedResponseSchema,
   memberNotificationListResponseSchema,
@@ -17,11 +20,6 @@ import { pageLimitSchema } from '../dtos/page-limit.dto';
 import { RefusalError } from '../utils/refusal-error';
 import { requestCaller } from '../utils/request-caller';
 import type { NotificationControllerDependencies } from './notification-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 /**
  * A Church Member's own inbox. The session supplies User and Active Church —
@@ -72,8 +70,7 @@ export class NotificationController implements FastifyController {
     });
 
     const refusals = {
-      401: errorResponseSchema,
-      403: errorResponseSchema,
+      ...authErrorResponses,
       409: errorResponseSchema,
       422: errorResponseSchema,
     };

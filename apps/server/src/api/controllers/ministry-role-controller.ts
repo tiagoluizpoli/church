@@ -8,6 +8,10 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import { assertMinistryManagement } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import { ministryParamsSchema } from '../dtos/id.dto';
 import {
   ministryRoleParamsSchema,
@@ -17,11 +21,6 @@ import {
   roleResponseSchema,
 } from '../dtos/ministry-role.dto';
 import type { MinistryRoleControllerDependencies } from './ministry-role-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 /**
  * The Role registry of a Ministry, for ChurchAdmins and the Ministry's own
@@ -69,8 +68,7 @@ export class MinistryRoleController implements FastifyController {
             'Active Roles of a managed Ministry, alphabetical ignoring case. The active-choice read for new invitations, memberships and headcounts.',
           response: {
             200: roleListResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -103,8 +101,7 @@ export class MinistryRoleController implements FastifyController {
           body: roleNameBodySchema,
           response: {
             201: roleResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
@@ -140,8 +137,7 @@ export class MinistryRoleController implements FastifyController {
           body: roleNameBodySchema,
           response: {
             200: roleResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
@@ -178,8 +174,7 @@ export class MinistryRoleController implements FastifyController {
             'Hide a Role from new use, keeping qualifications, Memberships and Assignments. Refused with blockers while an upcoming ShiftRequirement or a UsualSetup headcount uses it.',
           response: {
             204: z.null(),
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: archiveBlockedResponseSchema,
           },

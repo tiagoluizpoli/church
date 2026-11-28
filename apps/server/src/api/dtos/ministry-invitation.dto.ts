@@ -31,6 +31,8 @@ export const ministryInvitationResponseSchema = z.object({
 /** 409 refusals; a duplicate points at the scope-checked original offer. */
 export const mintMinistryInvitationConflictSchema = z.object({
   error: z.enum([
+    // The Active Church hook's refusal, sent before the handler runs.
+    'ACTIVE_CHURCH_SELECTION_REQUIRED',
     'PENDING_MINISTRY_INVITATION_EXISTS',
     'INVITEE_ALREADY_MINISTRY_MEMBER',
   ]),

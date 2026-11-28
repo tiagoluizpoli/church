@@ -15,6 +15,7 @@ import {
 import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import { createChurchAdminHook } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   type ChurchSettingsValidationIssue,
@@ -32,7 +33,6 @@ import {
   uploadChurchLogoBodySchema,
 } from '../dtos/church-settings.dto';
 import { refuse } from '../utils/refuse';
-import { requestCaller } from '../utils/request-caller';
 import type { ChurchSettingsControllerDependencies } from './church-settings-controller.types';
 
 const errorResponseSchema = z.object({
@@ -72,14 +72,10 @@ export class ChurchSettingsController implements FastifyController {
       createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
     );
 
-    app.addHook('preValidation', async (request, reply) => {
-      const authorized = await this.authorityGuard.canManageChurch(
-        requestCaller({ request }),
-      );
-      if (!authorized) {
-        return refuse({ reply, request, code: 'FORBIDDEN' });
-      }
-    });
+    app.addHook(
+      'preValidation',
+      createChurchAdminHook({ authorityGuard: this.authorityGuard }),
+    );
 
     app.get(
       '',

@@ -17,9 +17,13 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IScheduleBuilderReader } from '../../domain/contracts/application/schedule-builder-reader';
 import type { ISchedulePublisher } from '../../domain/contracts/application/schedule-publisher';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
-import type { Assignment } from '../../domain/entities/assignment';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import {
+  denyParticipationScope,
+  denyRefusedDecision,
+  denyShiftScope,
+} from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   applyAssignmentProposalBodySchema,
@@ -47,16 +51,10 @@ import {
   publishCycleResponseSchema,
 } from '../dtos/cycle-builder.dto';
 import { assignmentParamsSchema, idSchema } from '../dtos/id.dto';
-import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
 import type {
   AssignControllerDependencies,
-  DenyAuthorityDecisionInput,
-  DenyParticipationScopeInput,
-  DenyShiftScopeInput,
-  ResolveOwnedAssignmentInput,
-  ResolveOwnedAssignmentResult,
-  ResolveScheduleShiftInput,
+  DenyAssignmentScopeInput,
   ReviewedPairBody,
 } from './assign-controller.types';
 
@@ -149,7 +147,8 @@ export class AssignController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -195,7 +194,8 @@ export class AssignController implements FastifyController {
             ministryId: MinistryId.from(ministryId),
           });
           if (
-            await this.denyAuthorityDecision({
+            await denyRefusedDecision({
+              authorityGuard: this.authorityGuard,
               request,
               reply,
               allowed: decision.allowed,
@@ -241,7 +241,8 @@ export class AssignController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -290,7 +291,8 @@ export class AssignController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -344,7 +346,8 @@ export class AssignController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -389,7 +392,8 @@ export class AssignController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -425,7 +429,12 @@ export class AssignController implements FastifyController {
       },
       async (request, reply) => {
         const { shiftId } = request.params;
-        const denied = await this.denyShiftScope({ request, reply, shiftId });
+        const denied = await denyShiftScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
+          shiftId,
+        });
         if (denied) return;
 
         const volunteers =
@@ -460,12 +469,13 @@ export class AssignController implements FastifyController {
       async (request, reply) => {
         const { shiftId } = request.params;
         const body = request.body;
-        const scope = await this.resolveScheduleShift({
+        const denied = await denyShiftScope({
+          authorityGuard: this.authorityGuard,
           request,
           reply,
           shiftId,
         });
-        if (scope.denied) return;
+        if (denied) return;
 
         const input = {
           churchId: request.churchId,
@@ -502,12 +512,12 @@ export class AssignController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params;
-        const resolved = await this.resolveScheduleAssignment({
+        const denied = await this.denyAssignmentScope({
           request,
           reply,
           assignmentId,
         });
-        if (resolved.denied) return;
+        if (denied) return;
 
         await this.assignmentManager.deleteAssignment({
           assignmentId: AssignmentId.from(assignmentId),
@@ -536,12 +546,12 @@ export class AssignController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params;
-        const resolved = await this.resolveScheduleAssignment({
+        const denied = await this.denyAssignmentScope({
           request,
           reply,
           assignmentId,
         });
-        if (resolved.denied) return;
+        if (denied) return;
         const body = request.body;
         const moved = await this.assignmentManager.moveParticipationAssignment({
           churchId: request.churchId,
@@ -575,12 +585,12 @@ export class AssignController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params;
-        const resolved = await this.resolveScheduleAssignment({
+        const denied = await this.denyAssignmentScope({
           request,
           reply,
           assignmentId,
         });
-        if (resolved.denied) return;
+        if (denied) return;
 
         const body = request.body;
         const reassigned =
@@ -613,7 +623,8 @@ export class AssignController implements FastifyController {
       },
       async (request, reply) => {
         const { participationId } = request.params;
-        const denied = await this.denyParticipationScope({
+        const denied = await denyParticipationScope({
+          authorityGuard: this.authorityGuard,
           request,
           reply,
           participationId,
@@ -630,110 +641,26 @@ export class AssignController implements FastifyController {
   }
 
   /**
-   * Returns whether access was denied. `FastifyReply` is a thenable (it
-   * resolves once the response is flushed) — `return reply.send(...)` from
-   * an `async` method would have its own returned promise silently adopt
-   * that reply's resolution instead of the reply object itself, so callers
-   * must never `await` a reply and branch on the awaited value. Each guard
-   * here sends the appropriate refusal as a side effect and returns a plain
-   * boolean.
+   * `denyShiftScope` for the Assignment's Shift. A missing Assignment, or one
+   * with no Shift, is refused as a denied object decision.
    */
-  private async denyParticipationScope({
-    request,
-    reply,
-    participationId,
-  }: DenyParticipationScopeInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageParticipation({
-      ...requestCaller({ request }),
-      participationId: MinistryParticipationId.from(participationId),
-    });
-    return this.denyAuthorityDecision({
-      request,
-      reply,
-      allowed: decision.allowed,
-    });
-  }
-
-  private async resolveScheduleAssignment({
+  private async denyAssignmentScope({
     request,
     reply,
     assignmentId,
-  }: ResolveOwnedAssignmentInput): Promise<ResolveOwnedAssignmentResult> {
-    let assignment: Assignment;
+  }: DenyAssignmentScopeInput): Promise<boolean> {
+    const access = { authorityGuard: this.authorityGuard, request, reply };
+    let shiftId: ShiftId | undefined;
     try {
-      assignment = await this.assignmentManager.getAssignment({
+      const assignment = await this.assignmentManager.getAssignment({
         churchId: request.churchId,
         assignmentId: AssignmentId.from(assignmentId),
       });
+      shiftId = assignment.shiftId;
     } catch (error) {
-      if (error instanceof NotFoundError) {
-        await this.denyAuthorityDecision({ request, reply, allowed: false });
-        return { denied: true };
-      }
-      throw error;
+      if (!(error instanceof NotFoundError)) throw error;
     }
-    if (!assignment.shiftId) {
-      await this.denyAuthorityDecision({ request, reply, allowed: false });
-      return { denied: true };
-    }
-
-    const scope = await this.resolveScheduleShift({
-      request,
-      reply,
-      shiftId: assignment.shiftId,
-    });
-    return scope.denied ? { denied: true } : { assignment, denied: false };
-  }
-
-  private async resolveScheduleShift({
-    request,
-    reply,
-    shiftId,
-  }: ResolveScheduleShiftInput): Promise<ResolveOwnedAssignmentResult> {
-    const caller = requestCaller({ request });
-    const brandedShiftId = ShiftId.from(shiftId);
-    const decision = await this.authorityGuard.decideManageShift({
-      ...caller,
-      shiftId: brandedShiftId,
-    });
-    if (decision.allowed) {
-      return { denied: false };
-    }
-
-    await this.denyAuthorityDecision({ request, reply, allowed: false });
-    return { denied: true };
-  }
-
-  private async denyShiftScope({
-    request,
-    reply,
-    shiftId,
-  }: DenyShiftScopeInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageShift({
-      ...requestCaller({ request }),
-      shiftId: ShiftId.from(shiftId),
-    });
-    return this.denyAuthorityDecision({
-      request,
-      reply,
-      allowed: decision.allowed,
-    });
-  }
-
-  private async denyAuthorityDecision({
-    request,
-    reply,
-    allowed,
-  }: DenyAuthorityDecisionInput): Promise<boolean> {
-    if (allowed) return false;
-    const functionDecision = await this.authorityGuard.decideManageAnyMinistry(
-      requestCaller({ request }),
-    );
-    if (!functionDecision.allowed) {
-      refuse({ reply, request, code: 'FORBIDDEN' });
-      return true;
-    }
-    refuse({ reply, request, code: 'NOT_FOUND' });
-    return true;
+    if (!shiftId) return denyRefusedDecision({ ...access, allowed: false });
+    return denyShiftScope({ ...access, shiftId });
   }
 }

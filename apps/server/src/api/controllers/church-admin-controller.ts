@@ -17,6 +17,7 @@ import type { IPlanningEventManager } from '../../domain/contracts/application/p
 import type { ISetupProgressManager } from '../../domain/contracts/application/setup-progress-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import { createChurchAdminHook } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   createCycleBodySchema,
@@ -78,7 +79,6 @@ import { setDefaultDirectionBodySchema } from '../dtos/usual-setup.dto';
 import { validationErrorResponseSchema } from '../dtos/validation-error.dto';
 import { assertCancelConfirmation } from '../utils/cancel-confirmation';
 import { refuse } from '../utils/refuse';
-import { requestCaller } from '../utils/request-caller';
 import {
   dateFromCalendarDayString,
   dateFromInstantString,
@@ -174,14 +174,10 @@ export class ChurchAdminController implements FastifyController {
       createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
     );
 
-    app.addHook('preValidation', async (request, reply) => {
-      const authorized = await this.authorityGuard.canManageChurch(
-        requestCaller({ request }),
-      );
-      if (!authorized) {
-        return refuse({ reply, request, code: 'FORBIDDEN' });
-      }
-    });
+    app.addHook(
+      'preValidation',
+      createChurchAdminHook({ authorityGuard: this.authorityGuard }),
+    );
 
     app.get(
       '/setup-progress',

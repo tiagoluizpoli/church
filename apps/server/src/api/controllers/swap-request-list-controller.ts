@@ -7,6 +7,7 @@ import type { ISwapRequestListManager } from '../../domain/contracts/application
 import type { ISwapRequestManager } from '../../domain/contracts/application/swap-request-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import { denyUnmanagedMinistry } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { idSchema } from '../dtos/id.dto';
 import {
@@ -15,7 +16,6 @@ import {
   leaderSwapRequestsResponseSchema,
 } from '../dtos/swap-request.dto';
 import { refuse } from '../utils/refuse';
-import { requestCaller } from '../utils/request-caller';
 import type { SwapRequestListControllerDependencies } from './swap-request-list-controller.types';
 
 const errorResponseSchema = z.object({
@@ -76,16 +76,15 @@ export class SwapRequestListController implements FastifyController {
       async (request, reply) => {
         const { ministryId } = request.params;
         const { cycleId } = request.query;
-        const caller = requestCaller({ request });
-        const { churchId } = caller;
-        const decision = await this.authorityGuard.decideManageMinistry({
-          ...caller,
+        const { churchId } = request;
+        // Concealed: no 403 first, so a caller cannot tell a foreign Ministry from a missing one.
+        const denied = await denyUnmanagedMinistry({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
           ministryId: MinistryId.from(ministryId),
         });
-        // Concealed: the caller cannot tell a foreign Ministry from a missing one.
-        if (!decision.allowed) {
-          return refuse({ reply, request, code: 'NOT_FOUND' });
-        }
+        if (denied) return;
         return reply.send(
           await this.swapRequestListManager.listForLeader({
             churchId,
@@ -118,15 +117,14 @@ export class SwapRequestListController implements FastifyController {
       async (request, reply) => {
         const { ministryId, swapRequestId } = request.params;
         const body = request.body;
-        const caller = requestCaller({ request });
-        const { churchId, userId } = caller;
-        const decision = await this.authorityGuard.decideManageMinistry({
-          ...caller,
+        const { churchId, userId } = request;
+        const denied = await denyUnmanagedMinistry({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
           ministryId: MinistryId.from(ministryId),
         });
-        if (!decision.allowed) {
-          return refuse({ reply, request, code: 'NOT_FOUND' });
-        }
+        if (denied) return;
         try {
           await this.swapRequestManager.keep({
             churchId,

@@ -11,6 +11,12 @@ import type { IMinistryInvitationManager } from '../../domain/contracts/applicat
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import {
+  createChurchAdminHook,
+  denyMinistryFunction,
+  denyMinistryManagement,
+  resolveLeadershipScope,
+} from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
 import { ministryParamsSchema } from '../dtos/id.dto';
@@ -31,14 +37,8 @@ import {
   mintMinistryInvitationUnprocessableSchema,
 } from '../dtos/ministry-invitation.dto';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
-import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
-import type {
-  DenyMissingMinistryFunctionInput,
-  DenyNonAdminInput,
-  DenyUnmanagedMinistryInput,
-  MinistryControllerDependencies,
-} from './ministry-controller.types';
+import type { MinistryControllerDependencies } from './ministry-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -81,6 +81,9 @@ export class MinistryController implements FastifyController {
         resolver: this.activeChurchResolver,
       }),
     );
+    const churchAdminOnly = createChurchAdminHook({
+      authorityGuard: this.authorityGuard,
+    });
 
     app.get(
       '/',
@@ -99,23 +102,20 @@ export class MinistryController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const caller = requestCaller({ request });
-        const { churchId } = caller;
-        const capabilities =
-          await this.authorityGuard.resolveCallerCapabilities(caller);
-        if (
-          !capabilities.isChurchAdmin &&
-          capabilities.ledMinistries.length === 0
-        ) {
-          refuse({ reply, request, code: 'FORBIDDEN' });
-          return;
-        }
-        const ministries = capabilities.isChurchAdmin
-          ? await this.ministryManager.listByChurch(churchId)
-          : await this.ministryManager.listByLeader({
-              churchId,
-              leaderId: request.volunteerId as VolunteerId,
-            });
+        const { churchId } = request;
+        const scope = await resolveLeadershipScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
+        });
+        if (!scope) return;
+        const ministries =
+          scope.kind === 'church'
+            ? await this.ministryManager.listByChurch(churchId)
+            : await this.ministryManager.listByLeader({
+                churchId,
+                leaderId: request.volunteerId as VolunteerId,
+              });
         const summaries = await this.ministryManager.summarize({
           churchId,
           ministries,
@@ -148,21 +148,16 @@ export class MinistryController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const caller = requestCaller({ request });
-        const { churchId } = caller;
-        const { isChurchAdmin, ledMinistries } =
-          await this.authorityGuard.resolveCallerCapabilities(caller);
-        if (!isChurchAdmin && ledMinistries.length === 0) {
-          return refuse({ reply, request, code: 'FORBIDDEN' });
-        }
-        const query = request.query;
+        const scope = await resolveLeadershipScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
+        });
+        if (!scope) return;
         const page = await this.ministryManager.listPage({
-          ...query,
-          churchId,
-          // A person who is both gets admin behavior.
-          ministryIds: isChurchAdmin
-            ? undefined
-            : ledMinistries.map((m) => MinistryId.from(m.ministryId)),
+          ...request.query,
+          churchId: request.churchId,
+          ministryIds: scope.kind === 'church' ? undefined : scope.ministryIds,
         });
         return reply.send(ministryMapper.toPageResponse(page));
       },
@@ -185,9 +180,9 @@ export class MinistryController implements FastifyController {
             409: errorResponseSchema,
           },
         },
+        preHandler: churchAdminOnly,
       },
       async (request, reply) => {
-        if (await this.denyNonAdmin({ request, reply })) return;
         const { name } = request.body;
         const ministry = await this.ministryManager.create({
           churchId: request.churchId,
@@ -216,9 +211,16 @@ export class MinistryController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (await this.denyMissingMinistryFunction({ request, reply })) return;
         const ministryId = MinistryId.from(request.params.ministryId);
-        if (await this.denyUnmanagedMinistry({ request, reply, ministryId })) {
+        const { authorityGuard } = this;
+        if (
+          await denyMinistryManagement({
+            authorityGuard,
+            request,
+            reply,
+            ministryId,
+          })
+        ) {
           return;
         }
         const ministry = await this.ministryManager.getActive({
@@ -248,9 +250,9 @@ export class MinistryController implements FastifyController {
             409: errorResponseSchema,
           },
         },
+        preHandler: churchAdminOnly,
       },
       async (request, reply) => {
-        if (await this.denyNonAdmin({ request, reply })) return;
         const { ministryId } = request.params;
         const { name } = request.body;
         const ministry = await this.ministryManager.rename({
@@ -280,9 +282,9 @@ export class MinistryController implements FastifyController {
             409: archiveBlockedResponseSchema,
           },
         },
+        preHandler: churchAdminOnly,
       },
       async (request, reply) => {
-        if (await this.denyNonAdmin({ request, reply })) return;
         const { ministryId } = request.params;
         await this.ministryManager.archive({
           churchId: request.churchId,
@@ -321,7 +323,10 @@ export class MinistryController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (await this.denyMissingMinistryFunction({ request, reply })) return;
+        const { authorityGuard } = this;
+        if (await denyMinistryFunction({ authorityGuard, request, reply })) {
+          return;
+        }
         const { ministryId } = request.params;
         const body = request.body;
 
@@ -373,7 +378,10 @@ export class MinistryController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (await this.denyMissingMinistryFunction({ request, reply })) return;
+        const { authorityGuard } = this;
+        if (await denyMinistryFunction({ authorityGuard, request, reply })) {
+          return;
+        }
         const { ministryId, invitationId } = request.params;
 
         const {
@@ -418,7 +426,10 @@ export class MinistryController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (await this.denyMissingMinistryFunction({ request, reply })) return;
+        const { authorityGuard } = this;
+        if (await denyMinistryFunction({ authorityGuard, request, reply })) {
+          return;
+        }
         const { ministryId, invitationId } = request.params;
 
         const {
@@ -436,49 +447,5 @@ export class MinistryController implements FastifyController {
         return reply.status(204).send(null);
       },
     );
-  }
-
-  /** Ministry lifecycle is ChurchAdmin-only, even for the target's leader. */
-  private async denyNonAdmin({
-    request,
-    reply,
-  }: DenyNonAdminInput): Promise<boolean> {
-    const allowed = await this.authorityGuard.canManageChurch(
-      requestCaller({ request }),
-    );
-    if (allowed) return false;
-    refuse({ reply, request, code: 'FORBIDDEN' });
-    return true;
-  }
-
-  /** A Ministry the admitted caller may not manage is indistinguishable from a missing one. */
-  private async denyUnmanagedMinistry({
-    request,
-    reply,
-    ministryId,
-  }: DenyUnmanagedMinistryInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageMinistry({
-      ...requestCaller({ request }),
-      ministryId,
-    });
-    if (decision.allowed) return false;
-    refuse({ reply, request, code: 'NOT_FOUND' });
-    return true;
-  }
-
-  /**
-   * Returns whether access was denied. `FastifyReply` is thenable, so the
-   * refusal is sent as a side effect and a plain boolean returned.
-   */
-  private async denyMissingMinistryFunction({
-    request,
-    reply,
-  }: DenyMissingMinistryFunctionInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageAnyMinistry(
-      requestCaller({ request }),
-    );
-    if (decision.allowed) return false;
-    refuse({ reply, request, code: 'FORBIDDEN' });
-    return true;
   }
 }

@@ -6,7 +6,7 @@ import type { IMinistryManager } from '../../domain/contracts/application/minist
 import type { IUsualSetupManager } from '../../domain/contracts/application/usual-setup-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import { denyMinistryManagement } from '../auth/ministry-management-access';
+import { resolveManagedMinistry } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { ministryParamsSchema } from '../dtos/id.dto';
 import {
@@ -16,10 +16,7 @@ import {
   usualSetupEntryBodySchema,
   usualSetupMapper,
 } from '../dtos/usual-setup.dto';
-import type {
-  ResolveManagedMinistryInput,
-  UsualSetupControllerDependencies,
-} from './usual-setup-controller.types';
+import type { UsualSetupControllerDependencies } from './usual-setup-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -78,10 +75,12 @@ export class UsualSetupController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const ministryId = await this.resolveManagedMinistry({
+        const ministryId = await resolveManagedMinistry({
+          authorityGuard: this.authorityGuard,
+          ministryManager: this.ministryManager,
           request,
           reply,
-          ministryId: request.params.ministryId,
+          ministryId: MinistryId.from(request.params.ministryId),
         });
         if (!ministryId) return;
         const blocks = await this.usualSetupManager.listUsualSetupBlocks({
@@ -112,10 +111,12 @@ export class UsualSetupController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const ministryId = await this.resolveManagedMinistry({
+        const ministryId = await resolveManagedMinistry({
+          authorityGuard: this.authorityGuard,
+          ministryManager: this.ministryManager,
           request,
           reply,
-          ministryId: request.params.ministryId,
+          ministryId: MinistryId.from(request.params.ministryId),
         });
         if (!ministryId) return;
         const { sourceTemplateTimeBlockId } = request.params;
@@ -132,29 +133,5 @@ export class UsualSetupController implements FastifyController {
         return reply.send(usualSetupMapper.toBlockResponse(block));
       },
     );
-  }
-
-  /**
-   * Function check (403) before object check (404), then the archived
-   * Ministry is 404 too. Returns the Ministry, or undefined once refused.
-   */
-  private async resolveManagedMinistry({
-    request,
-    reply,
-    ministryId: rawMinistryId,
-  }: ResolveManagedMinistryInput): Promise<MinistryId | undefined> {
-    const ministryId = MinistryId.from(rawMinistryId);
-    const denied = await denyMinistryManagement({
-      authorityGuard: this.authorityGuard,
-      request,
-      reply,
-      ministryId,
-    });
-    if (denied) return undefined;
-    await this.ministryManager.getActive({
-      churchId: request.churchId,
-      ministryId,
-    });
-    return ministryId;
   }
 }

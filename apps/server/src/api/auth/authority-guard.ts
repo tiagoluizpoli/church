@@ -17,10 +17,10 @@ import type {
 } from '../../domain/contracts/application/authority-manager';
 
 /**
- * Controller-facing wrapper around `IAuthorityManager` — supersedes
- * `SchedulingRbacGuard` and the inline `ctx.isAdmin` / `ctx.isLeader`
- * route-role checks it replaces. Every controller authorization check goes
- * through here.
+ * The controller-facing subset of `IAuthorityManager`, passed straight
+ * through. Controllers ask it through the shared guards in `authority-access`
+ * (which fix the 403-before-404 order and send the refusal), or directly
+ * for an object decision those guards then answer.
  */
 export class AuthorityGuard implements IAuthorityGuard {
   private readonly manager: IAuthorityManager;

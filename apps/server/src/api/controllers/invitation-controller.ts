@@ -1,12 +1,14 @@
 import { z } from 'zod';
-import { MinistryId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IInvitationListManager } from '../../domain/contracts/application/invitation-list-manager';
 import type { IMinistryInvitationManager } from '../../domain/contracts/application/ministry-invitation-manager';
-import type { InvitationListScope } from '../../domain/entities/invitation-list-item';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import {
+  createChurchAdminHook,
+  resolveLeadershipScope,
+} from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   adminInvitationMapper,
@@ -66,6 +68,9 @@ export class InvitationController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
     );
+    const churchAdminOnly = createChurchAdminHook({
+      authorityGuard: this.authorityGuard,
+    });
 
     app.get(
       '/',
@@ -91,20 +96,12 @@ export class InvitationController implements FastifyController {
       },
       async (request, reply) => {
         const caller = requestCaller({ request });
-        const { isChurchAdmin, ledMinistries } =
-          await this.authorityGuard.resolveCallerCapabilities(caller);
-        if (!isChurchAdmin && ledMinistries.length === 0) {
-          return refuse({ reply, request, code: 'FORBIDDEN' });
-        }
-        // A person who is both gets admin behavior.
-        const scope: InvitationListScope = isChurchAdmin
-          ? { kind: 'church' }
-          : {
-              kind: 'ministries',
-              ministryIds: ledMinistries.map((m) =>
-                MinistryId.from(m.ministryId),
-              ),
-            };
+        const scope = await resolveLeadershipScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
+        });
+        if (!scope) return;
         const { cursor, limit, ...filters } = request.query;
         const page = await this.invitationListManager.list({
           ...caller,
@@ -135,15 +132,11 @@ export class InvitationController implements FastifyController {
             409: mintAdminInvitationConflictSchema,
           },
         },
+        preHandler: churchAdminOnly,
       },
       async (request, reply) => {
         const caller = requestCaller({ request });
         const { churchId, userId: inviterId } = caller;
-        const canManageChurch =
-          await this.authorityGuard.canManageChurch(caller);
-        if (!canManageChurch) {
-          return refuse({ reply, request, code: 'FORBIDDEN' });
-        }
         const { email } = request.body;
         const invitation = await this.ministryInvitationManager.mintAdmin({
           churchId,
@@ -175,15 +168,11 @@ export class InvitationController implements FastifyController {
             429: errorResponseSchema,
           },
         },
+        preHandler: churchAdminOnly,
       },
       async (request, reply) => {
         const caller = requestCaller({ request });
         const { churchId } = caller;
-        const canManageChurch =
-          await this.authorityGuard.canManageChurch(caller);
-        if (!canManageChurch) {
-          return refuse({ reply, request, code: 'FORBIDDEN' });
-        }
         const { invitationId } = request.params;
         const resent = await this.ministryInvitationManager.resendChurch({
           churchId,
@@ -212,15 +201,11 @@ export class InvitationController implements FastifyController {
             409: errorResponseSchema,
           },
         },
+        preHandler: churchAdminOnly,
       },
       async (request, reply) => {
         const caller = requestCaller({ request });
         const { churchId, userId: callerId } = caller;
-        const canManageChurch =
-          await this.authorityGuard.canManageChurch(caller);
-        if (!canManageChurch) {
-          return refuse({ reply, request, code: 'FORBIDDEN' });
-        }
         const { invitationId } = request.params;
         const revoked = await this.ministryInvitationManager.revokeChurch({
           churchId,

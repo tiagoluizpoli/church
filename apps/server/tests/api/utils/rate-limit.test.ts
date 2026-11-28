@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isRateLimited } from '@/api/utils/rate-limit';
+import { createRateLimitStore, isRateLimited } from '@/api/utils/rate-limit';
 
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS = 2;
@@ -60,5 +60,32 @@ describe('isRateLimited', () => {
     hit(key, START + 2);
 
     expect(hit(key, START + WINDOW_MS)).toBe(true);
+  });
+});
+
+describe('createRateLimitStore', () => {
+  const policy = { windowMs: WINDOW_MS, maxRequests: MAX_REQUESTS };
+
+  it('holds no key once its window has expired', () => {
+    const store = createRateLimitStore();
+    store.hit({ key: 'visitor-1', ...policy, now: START });
+    store.hit({ key: 'visitor-2', ...policy, now: START + 1 });
+
+    // One window later both visitors' attempts are stale; only the new one counts.
+    store.hit({ key: 'visitor-3', ...policy, now: START + WINDOW_MS + 1 });
+
+    expect(store.size).toBe(1);
+  });
+
+  it('keeps a key while any attempt is inside its own window', () => {
+    const store = createRateLimitStore();
+    store.hit({ key: 'short', windowMs: 10, maxRequests: 1, now: START });
+    store.hit({ key: 'long', ...policy, now: START });
+
+    store.hit({ key: 'other', ...policy, now: START + 11 });
+
+    expect(store.size).toBe(2);
+    expect(store.hit({ key: 'long', ...policy, now: START + 12 })).toBe(false);
+    expect(store.hit({ key: 'long', ...policy, now: START + 13 })).toBe(true);
   });
 });

@@ -25,6 +25,12 @@ export interface RateLimitHitInput extends RateLimitPolicy {
   now: number;
 }
 
+/** One key's attempt times, oldest first, and the window they count in. */
+export interface RateLimitWindow {
+  windowMs: number;
+  attempts: number[];
+}
+
 export interface RateLimitStore {
   /** Records an attempt for `key`; true once it exceeds `maxRequests` within the window. */
   hit(input: RateLimitHitInput): boolean;

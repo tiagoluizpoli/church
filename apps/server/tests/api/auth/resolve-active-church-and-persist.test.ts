@@ -12,6 +12,11 @@ const { resolveActiveChurchAndPersist } = await import(
   '@/api/auth/resolve-active-church-and-persist'
 );
 const { auth } = await import('@/main/di/server-auth');
+const { BetterAuthSessionGateway } = await import(
+  '@/infrastructure/services/better-auth-session-gateway'
+);
+// The real session lookup over the mocked auth instance.
+const sessionGateway = new BetterAuthSessionGateway({ auth: auth as never });
 
 const mockSetActiveOrganization = vi.mocked(auth.api.setActiveOrganization);
 
@@ -20,10 +25,11 @@ const resolver = { resolve: vi.fn() };
 interface MockRequest {
   headers: Record<string, string>;
   log: { warn: ReturnType<typeof vi.fn> };
+  server: { sessionGateway: typeof sessionGateway };
 }
 
 function createRequest(): MockRequest {
-  return { headers: {}, log: { warn: vi.fn() } };
+  return { headers: {}, log: { warn: vi.fn() }, server: { sessionGateway } };
 }
 
 beforeEach(() => {

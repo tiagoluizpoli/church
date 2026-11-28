@@ -1,6 +1,10 @@
 export {};
 
 declare module 'fastify' {
+  interface FastifyInstance {
+    /** The one session lookup: pre-validation, active-church and redemption read it. */
+    sessionGateway: import('../../domain/contracts/infrastructure').SessionGateway;
+  }
   interface FastifyRequest {
     userId: import('../../domain/branded-ids').UserId;
     /** Absent for a caller with Church Membership but no Volunteer profile in the active Church — a Church admin, for instance. */

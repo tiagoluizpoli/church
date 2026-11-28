@@ -3,7 +3,6 @@ import { fromDate } from '@church/time';
 import {
   ChurchInvitationId,
   MinistryInvitationId,
-  UserId,
 } from '../../domain/branded-ids';
 import type {
   IRedemptionManager,
@@ -12,7 +11,6 @@ import type {
 import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
 import type { RedemptionBundleMinistry } from '../../domain/entities/redemption-bundle';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
-import { auth } from '../../main/di/server-auth';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
@@ -38,13 +36,13 @@ import {
   unavailableRedemptionResponseSchema,
   verificationCodeRequestedResponseSchema,
 } from '../dtos/redemption.dto';
+import { serviceUnavailableResponseSchema } from '../dtos/service-unavailable.dto';
 import { debugEndpointsEnabled } from '../utils/debug-endpoints';
 import { headersFromRequest } from '../utils/headers';
 import { isRateLimited } from '../utils/rate-limit';
 import { refuse } from '../utils/refuse';
 import type {
   AuthenticatedRedeemer,
-  ControllerRateLimitInput,
   InvitationPreviewFields,
   RedemptionControllerDependencies,
   RequireRedeemerInput,
@@ -66,11 +64,6 @@ export class RedemptionController implements FastifyController {
     this.volunteerTransferManager = volunteerTransferManager;
     const { redemptionRateLimit } = config;
     this.rateLimit = redemptionRateLimit;
-  }
-
-  private isRateLimitedRequest({ key }: ControllerRateLimitInput): boolean {
-    const { windowMs, maxRequests } = this.rateLimit;
-    return isRateLimited({ key: `redemption:${key}`, windowMs, maxRequests });
   }
 
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
@@ -96,7 +89,13 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (this.isRateLimitedRequest({ key: request.ip }))
+        if (
+          isRateLimited({
+            bucket: 'redemption',
+            key: request.ip,
+            limit: this.rateLimit,
+          })
+        )
           return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params;
         const preview = await this.redemptionManager.getPublicPreview({
@@ -126,7 +125,13 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (this.isRateLimitedRequest({ key: request.ip }))
+        if (
+          isRateLimited({
+            bucket: 'redemption',
+            key: request.ip,
+            limit: this.rateLimit,
+          })
+        )
           return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params;
         let sent: boolean;
@@ -164,7 +169,13 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (this.isRateLimitedRequest({ key: request.ip }))
+        if (
+          isRateLimited({
+            bucket: 'redemption',
+            key: request.ip,
+            limit: this.rateLimit,
+          })
+        )
           return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params;
         const body = request.body;
@@ -203,7 +214,13 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (this.isRateLimitedRequest({ key: request.ip }))
+        if (
+          isRateLimited({
+            bucket: 'redemption',
+            key: request.ip,
+            limit: this.rateLimit,
+          })
+        )
           return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params;
         const outcome = await this.redemptionManager.declineChurchInvitation({
@@ -228,6 +245,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: churchInvitationReviewStatusResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -264,6 +282,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: churchInvitationAcceptOutcomeResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -296,6 +315,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: authenticatedInvitationStatusResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -338,6 +358,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: existingMemberOutcomeResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -370,6 +391,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: declineOutcomeResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -404,6 +426,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: transferPreviewResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -450,6 +473,7 @@ export class RedemptionController implements FastifyController {
           response: {
             200: confirmTransferOutcomeResponseSchema,
             401: unauthorizedResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -536,14 +560,14 @@ export class RedemptionController implements FastifyController {
     reply,
   }: RequireRedeemerInput): Promise<AuthenticatedRedeemer | null> {
     const headers = headersFromRequest(request);
-    const session = await auth.api.getSession({ headers }).catch(() => null);
+    const session = await request.server.sessionGateway.lookup({ headers });
     const sessionCookie = request.headers.cookie;
-    if (!session?.user || !sessionCookie) {
+    if (!session || !sessionCookie) {
       // FastifyReply is thenable: send without awaiting, return a plain value.
       refuse({ reply, request, code: 'UNAUTHORIZED' });
       return null;
     }
-    return { userId: UserId.from(session.user.id), sessionCookie };
+    return { userId: session.userId, sessionCookie };
   }
 }
 

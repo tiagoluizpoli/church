@@ -2,13 +2,11 @@ import { NotFoundError } from '@church/core';
 import { parseInstant } from '@church/time';
 import { z } from 'zod';
 import {
-  ChurchId,
   CycleId,
   EventId,
   EventTemplateId,
   EventTimeBlockId,
   MinistryId,
-  UserId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
@@ -203,7 +201,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const churchId = ChurchId.from(request.churchId);
+        const churchId = request.churchId;
         const progress = await this.setupProgressManager.getSetupProgress({
           churchId,
         });
@@ -230,7 +228,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const body = request.body;
         const cycle = await this.cycleManager.createCycle({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           name: body.name,
           startDate: dateFromCalendarDayString({ value: body.startDate }),
           endDate: dateFromCalendarDayString({ value: body.endDate }),
@@ -255,7 +253,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const query = request.query;
         const list = await this.cycleManager.listCycles({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           state: query.state,
           period: query.period,
           search: query.search,
@@ -284,7 +282,7 @@ export class ChurchAdminController implements FastifyController {
       },
       async (request, reply) => {
         const anchors = await this.cycleManager.getCycleAnchors({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
         });
         return reply.send(cycleMapper.anchorsToResponse(anchors));
       },
@@ -305,7 +303,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId } = request.params;
         const details = await this.cycleManager.getCycle({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
         });
         return reply.send(cycleMapper.detailsToResponse(details));
@@ -331,7 +329,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId } = request.params;
         const summary = await this.cycleManager.getSendSummary({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
         });
         return reply.send(summary);
@@ -354,7 +352,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId } = request.params;
         await this.cycleManager.sendCycle({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
         });
         return reply.status(204).send(null);
@@ -382,7 +380,7 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId } = request.params;
         const body = request.body;
         const cycle = await this.cycleManager.updateCycle({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           name: body.name,
           startDate: dateFromCalendarDayString({ value: body.startDate }),
@@ -407,7 +405,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId } = request.params;
         await this.cycleManager.deleteCycle({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
         });
         return reply.status(204).send();
@@ -434,7 +432,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const body = request.body;
         const template = await this.eventTemplateManager.createTemplate({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           name: body.name,
           recurrence: body.recurrence,
           blocks: body.blocks,
@@ -457,7 +455,7 @@ export class ChurchAdminController implements FastifyController {
       },
       async (request, reply) => {
         const templates = await this.eventTemplateManager.listTemplates({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
         });
         return reply.send(eventTemplateMapper.listToResponse(templates));
       },
@@ -479,7 +477,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { templateId } = request.params;
         const template = await this.eventTemplateManager.getTemplate({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           templateId: EventTemplateId.from(templateId),
         });
         return reply.send(eventTemplateMapper.toResponse(template));
@@ -502,7 +500,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { templateId } = request.params;
         const usage = await this.eventTemplateManager.getTemplateUsage({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           templateId: EventTemplateId.from(templateId),
         });
         return reply.send(usage);
@@ -531,7 +529,7 @@ export class ChurchAdminController implements FastifyController {
         const { templateId } = request.params;
         const body = request.body;
         const template = await this.eventTemplateManager.updateTemplate({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           templateId: EventTemplateId.from(templateId),
           name: body.name,
           recurrence: body.recurrence,
@@ -558,7 +556,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { templateId } = request.params;
         const precedences = await this.eventTemplateManager.listPrecedences({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           templateId: EventTemplateId.from(templateId),
         });
         return reply.send({ precedences });
@@ -586,7 +584,7 @@ export class ChurchAdminController implements FastifyController {
         const { templateId, otherTemplateId } = request.params;
         const body = request.body;
         const precedence = await this.eventTemplateManager.changePrecedence({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           templateId: EventTemplateId.from(templateId),
           otherTemplateId: EventTemplateId.from(otherTemplateId),
           answer: body.answer,
@@ -609,7 +607,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { templateId } = request.params;
         await this.eventTemplateManager.deleteTemplate({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           templateId: EventTemplateId.from(templateId),
         });
         return reply.status(204).send();
@@ -634,7 +632,7 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId } = request.params;
         const body = request.body;
         const result = await this.planningEventManager.generateFromTemplates({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           templateIds: body.templateIds.map(EventTemplateId.from),
         });
@@ -682,8 +680,8 @@ export class ChurchAdminController implements FastifyController {
         const body = request.body;
         const location = body.location?.trim();
         const graph = await this.planningEventManager.createEvent({
-          churchId: ChurchId.from(request.churchId),
-          actingUserId: UserId.from(request.userId),
+          churchId: request.churchId,
+          actingUserId: request.userId,
           cycleId: CycleId.from(cycleId),
           title: body.title,
           location: location ? location : undefined,
@@ -724,7 +722,7 @@ export class ChurchAdminController implements FastifyController {
         const body = request.body;
         const location = body.location?.trim();
         const graph = await this.planningEventManager.updateEvent({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           title: body.title,
@@ -767,7 +765,7 @@ export class ChurchAdminController implements FastifyController {
         const body = request.body;
         const location = body.location?.trim();
         const details = {
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           title: body.title,
@@ -800,7 +798,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId, eventId } = request.params;
         await this.planningEventManager.deleteEvent({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
         });
@@ -827,7 +825,7 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId, eventId } = request.params;
         const impact = await this.planningEventManager.previewCancellation({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           scope: { kind: 'event' },
@@ -859,11 +857,11 @@ export class ChurchAdminController implements FastifyController {
         assertCancelConfirmation({ confirmation, locale: request.locale });
         const impact = await this.planningEventManager.confirmCancellation({
           hidden,
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           scope: { kind: 'event' },
-          actingUserId: UserId.from(request.userId),
+          actingUserId: request.userId,
         });
         return reply.send(impact);
       },
@@ -891,7 +889,7 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId, eventId } = request.params;
         const { hidden } = request.body;
         await this.planningEventManager.setHidden({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           scope: { kind: 'event' },
@@ -927,7 +925,7 @@ export class ChurchAdminController implements FastifyController {
           reply,
           operation: async () => {
             await this.planningEventManager.setHidden({
-              churchId: ChurchId.from(request.churchId),
+              churchId: request.churchId,
               cycleId: CycleId.from(cycleId),
               eventId: EventId.from(eventId),
               scope: {
@@ -965,7 +963,7 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId, eventId } = request.params;
         const body = request.body;
         const move = {
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           scope: { kind: 'event' } as const,
@@ -998,12 +996,12 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId, eventId } = request.params;
         const body = request.body;
         const move = {
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           scope: { kind: 'event' } as const,
           start: dateFromInstantString({ value: body.start }),
-          actingUserId: UserId.from(request.userId),
+          actingUserId: request.userId,
         };
         const result = await this.planningEventManager.confirmMove(move);
         const response = eventMoveMapper.toResponse(result);
@@ -1037,7 +1035,7 @@ export class ChurchAdminController implements FastifyController {
           reply,
           operation: () =>
             this.planningEventManager.previewEdit({
-              churchId: ChurchId.from(request.churchId),
+              churchId: request.churchId,
               cycleId: CycleId.from(cycleId),
               eventId: EventId.from(eventId),
               ...editInput({ body }),
@@ -1074,11 +1072,11 @@ export class ChurchAdminController implements FastifyController {
           reply,
           operation: () =>
             this.planningEventManager.confirmEdit({
-              churchId: ChurchId.from(request.churchId),
+              churchId: request.churchId,
               cycleId: CycleId.from(cycleId),
               eventId: EventId.from(eventId),
               ...editInput({ body }),
-              actingUserId: UserId.from(request.userId),
+              actingUserId: request.userId,
             }),
         });
         if (!result) return;
@@ -1112,7 +1110,7 @@ export class ChurchAdminController implements FastifyController {
           reply,
           operation: () =>
             this.planningEventManager.createEventTimeBlock({
-              churchId: ChurchId.from(request.churchId),
+              churchId: request.churchId,
               cycleId: CycleId.from(cycleId),
               eventId: EventId.from(eventId),
               startTime: dateFromInstantString({ value: body.startTime }),
@@ -1149,7 +1147,7 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId, eventId, eventTimeBlockId } = request.params;
         const body = request.body;
         const move = {
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           scope: {
@@ -1191,7 +1189,7 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId, eventId, eventTimeBlockId } = request.params;
         const body = request.body;
         const move = {
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
           scope: {
@@ -1199,7 +1197,7 @@ export class ChurchAdminController implements FastifyController {
             eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
           },
           start: dateFromInstantString({ value: body.start }),
-          actingUserId: UserId.from(request.userId),
+          actingUserId: request.userId,
         };
         const result = await this.withNestedNotFound({
           request,
@@ -1236,7 +1234,7 @@ export class ChurchAdminController implements FastifyController {
           reply,
           operation: () =>
             this.planningEventManager.previewCancellation({
-              churchId: ChurchId.from(request.churchId),
+              churchId: request.churchId,
               cycleId: CycleId.from(cycleId),
               eventId: EventId.from(eventId),
               scope: {
@@ -1277,14 +1275,14 @@ export class ChurchAdminController implements FastifyController {
           reply,
           operation: () =>
             this.planningEventManager.confirmCancellation({
-              churchId: ChurchId.from(request.churchId),
+              churchId: request.churchId,
               cycleId: CycleId.from(cycleId),
               eventId: EventId.from(eventId),
               scope: {
                 kind: 'eventTimeBlock',
                 eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
               },
-              actingUserId: UserId.from(request.userId),
+              actingUserId: request.userId,
               hidden,
             }),
         });
@@ -1319,7 +1317,7 @@ export class ChurchAdminController implements FastifyController {
           reply,
           operation: () =>
             this.planningEventManager.updateEventTimeBlock({
-              churchId: ChurchId.from(request.churchId),
+              churchId: request.churchId,
               cycleId: CycleId.from(cycleId),
               eventId: EventId.from(eventId),
               eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
@@ -1354,7 +1352,7 @@ export class ChurchAdminController implements FastifyController {
           reply,
           operation: async () => {
             await this.planningEventManager.deleteEventTimeBlock({
-              churchId: ChurchId.from(request.churchId),
+              churchId: request.churchId,
               cycleId: CycleId.from(cycleId),
               eventId: EventId.from(eventId),
               eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
@@ -1385,7 +1383,7 @@ export class ChurchAdminController implements FastifyController {
         const { ministryId } = request.params;
         const body = request.body;
         const ministry = await this.ministryManager.setDefaultDirection({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId: MinistryId.from(ministryId),
           defaultDirection: body.defaultDirection,
         });

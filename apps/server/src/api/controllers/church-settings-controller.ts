@@ -2,7 +2,6 @@ import { NotFoundError } from '@church/core';
 import { m } from '@church/i18n/messages';
 import multipart from '@fastify/multipart';
 import { z } from 'zod';
-import { ChurchId } from '../../domain/branded-ids';
 import { ChurchAddressesRefused } from '../../domain/church-address';
 import { LOGO_MAX_BYTES } from '../../domain/church-logo';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -101,7 +100,7 @@ export class ChurchSettingsController implements FastifyController {
       },
       async (request, reply) => {
         const settings = await this.churchSettingsManager.getChurchSettings({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
         });
         return reply.send(settings);
       },
@@ -127,7 +126,7 @@ export class ChurchSettingsController implements FastifyController {
       },
       async (request, reply) => {
         const status = await this.churchSettingsManager.getSlugAvailability({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           slug: request.query.slug,
         });
         return reply.send({ status });
@@ -156,7 +155,7 @@ export class ChurchSettingsController implements FastifyController {
       async (request, reply) => {
         try {
           const usage = await this.churchSettingsManager.getAddressUsage({
-            churchId: ChurchId.from(request.churchId),
+            churchId: request.churchId,
             addressId: request.params.addressId,
           });
           return reply.send(usage);
@@ -205,7 +204,7 @@ export class ChurchSettingsController implements FastifyController {
         try {
           const settings =
             await this.churchSettingsManager.updateChurchSettings({
-              churchId: ChurchId.from(request.churchId),
+              churchId: request.churchId,
               changes: request.body,
             });
           return reply.send(settings);
@@ -287,7 +286,7 @@ export class ChurchSettingsController implements FastifyController {
           throw error;
         });
         const settings = await this.churchSettingsManager.uploadLogo({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           bytes,
         });
         return reply.send(settings);
@@ -308,7 +307,7 @@ export class ChurchSettingsController implements FastifyController {
       },
       async (request, reply) => {
         const settings = await this.churchSettingsManager.removeLogo({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
         });
         return reply.send(settings);
       },
@@ -330,7 +329,7 @@ export class ChurchSettingsController implements FastifyController {
       async (request, reply) => {
         const { key } = request.body;
         const settings = await this.churchSettingsManager.restoreLogo({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           key,
         });
         return reply.send(settings);

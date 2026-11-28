@@ -40,6 +40,7 @@ import {
 import { errorStatus } from '../../api/utils/error-table';
 import { refuse } from '../../api/utils/refuse';
 import { requestLocale } from '../../api/utils/request-locale';
+import { ChurchId, UserId, VolunteerId } from '../../domain/branded-ids';
 import { HardConstraintError } from '../../domain/conflict/errors/hard-constraint-error';
 import {
   redactUrl,
@@ -142,9 +143,9 @@ export async function createFastify({
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  app.decorateRequest('userId', '');
-  app.decorateRequest('volunteerId', '');
-  app.decorateRequest('churchId', '');
+  app.decorateRequest('userId', UserId.from(''));
+  app.decorateRequest('volunteerId', VolunteerId.from(''));
+  app.decorateRequest('churchId', ChurchId.from(''));
   app.decorateRequest('locale', localeSettings.defaultLocale);
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', request.id);

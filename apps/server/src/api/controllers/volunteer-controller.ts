@@ -3,12 +3,10 @@ import { z } from 'zod';
 import {
   AssignmentId,
   AvailabilityCheckId,
-  ChurchId,
   CycleId,
   MinistryId,
   ShiftId,
-  UserId,
-  VolunteerId,
+  type VolunteerId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type {
@@ -55,7 +53,7 @@ const notFoundResponseSchema = z.object({
 
 export class VolunteerController implements FastifyController {
   readonly prefix = '/volunteer';
-  // `VolunteerId.from(request.volunteerId as string)` below: this
+  // `request.volunteerId as VolunteerId` below: this
   // controller's preValidation hook requires a Volunteer profile for every
   // route, so `volunteerId` is always present here despite being optional
   // on `FastifyRequest`.
@@ -98,9 +96,9 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const dashboard = await this.volunteerManager.getDashboard({
-          userId: UserId.from(request.userId),
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
+          userId: request.userId,
+          volunteerId: request.volunteerId as VolunteerId,
+          churchId: request.churchId,
         });
         return reply.send(volunteerMapper.dashboardToResponse(dashboard));
       },
@@ -130,9 +128,9 @@ export class VolunteerController implements FastifyController {
           operation: () =>
             this.volunteerManager.getAssignmentDetail({
               assignmentId: AssignmentId.from(assignmentId),
-              userId: UserId.from(request.userId),
-              volunteerId: VolunteerId.from(request.volunteerId as string),
-              churchId: ChurchId.from(request.churchId),
+              userId: request.userId,
+              volunteerId: request.volunteerId as VolunteerId,
+              churchId: request.churchId,
             }),
         });
         if (!detail) return;
@@ -165,8 +163,8 @@ export class VolunteerController implements FastifyController {
           schedule = await this.volunteerManager.getMinistrySchedule({
             ministryId: MinistryId.from(ministryId),
             cycleId: CycleId.from(cycleId),
-            volunteerId: VolunteerId.from(request.volunteerId as string),
-            churchId: ChurchId.from(request.churchId),
+            volunteerId: request.volunteerId as VolunteerId,
+            churchId: request.churchId,
           });
         } catch (error) {
           if (
@@ -197,8 +195,8 @@ export class VolunteerController implements FastifyController {
       async (request, reply) => {
         const { state } = request.query;
         const owner = {
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
+          volunteerId: request.volunteerId as VolunteerId,
+          churchId: request.churchId,
         };
         const [summaries, counts] = await Promise.all([
           this.volunteerManager.listAvailabilityChecks({ ...owner, state }),
@@ -234,8 +232,8 @@ export class VolunteerController implements FastifyController {
           operation: () =>
             this.volunteerManager.getAvailabilityCheck({
               checkId: AvailabilityCheckId.from(checkId),
-              volunteerId: VolunteerId.from(request.volunteerId as string),
-              churchId: ChurchId.from(request.churchId),
+              volunteerId: request.volunteerId as VolunteerId,
+              churchId: request.churchId,
             }),
         });
         if (!detail) return;
@@ -272,8 +270,8 @@ export class VolunteerController implements FastifyController {
           operation: () =>
             this.volunteerManager.answerAvailabilityCheck({
               checkId: AvailabilityCheckId.from(checkId),
-              volunteerId: VolunteerId.from(request.volunteerId as string),
-              churchId: ChurchId.from(request.churchId),
+              volunteerId: request.volunteerId as VolunteerId,
+              churchId: request.churchId,
               shiftIds: body.shiftIds.map((shiftId) => ShiftId.from(shiftId)),
               wholeDayDates: body.wholeDayDates,
             }),

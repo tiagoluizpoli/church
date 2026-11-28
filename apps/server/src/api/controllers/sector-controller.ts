@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ChurchId, MinistryId, SectorId } from '../../domain/branded-ids';
+import { MinistryId, SectorId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
@@ -87,7 +87,7 @@ export class SectorController implements FastifyController {
         });
         if (!ministryId) return;
         const sectors = await this.sectorManager.list({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
         });
         return reply.send(sectorMapper.toResponseList(sectors));
@@ -123,7 +123,7 @@ export class SectorController implements FastifyController {
         if (!ministryId) return;
         const { name } = request.body;
         const sector = await this.sectorManager.create({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
           name,
         });
@@ -161,7 +161,7 @@ export class SectorController implements FastifyController {
         const { sectorId } = request.params;
         const { name } = request.body;
         const sector = await this.sectorManager.rename({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
           sectorId: SectorId.from(sectorId),
           name,
@@ -198,7 +198,7 @@ export class SectorController implements FastifyController {
         if (!ministryId) return;
         const { sectorId } = request.params;
         await this.sectorManager.archive({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
           sectorId: SectorId.from(sectorId),
         });

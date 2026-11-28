@@ -1,4 +1,4 @@
-import { ChurchId, VolunteerId } from '../../domain/branded-ids';
+import type { VolunteerId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
@@ -53,8 +53,8 @@ export class VolunteerScheduleController implements FastifyController {
       async (request, reply) => {
         const schedule = await this.volunteerManager.getPublishedSchedule({
           // Non-null: this controller's preValidation requires a Volunteer profile.
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
+          volunteerId: request.volunteerId as VolunteerId,
+          churchId: request.churchId,
           filters: request.query,
         });
         return reply.send(schedule);

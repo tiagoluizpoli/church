@@ -28,7 +28,8 @@
 
 #set document(title: t.kicker + " · " + data.ministry.name + " · " + data.cycle.name)
 #let page-size = if d.media == "image" { (width: 297mm, height: auto) } else { (paper: "a4", flipped: true) }
-#set page(..page-size, margin: (x: 12mm, top: 11mm, bottom: 10mm), fill: oklch(99.2%, 0.002, 220deg))
+#let margin = (x: 12mm, top: 11mm, bottom: 10mm)
+#set page(..page-size, margin: margin, fill: oklch(99.2%, 0.002, 220deg))
 #set text(font: "Atkinson Hyperlegible", size: 9pt, fill: fg)
 #set par(leading: 0.45em)
 
@@ -68,6 +69,32 @@
 
 // A row never splits across pages; the column header repeats on each page.
 #set table.cell(breakable: false)
+#let cell-inset = (x: 6pt, y: 4pt)
+
+// A band (a grid Shift's Sector rows, a list-table Event) moves to a fresh page
+// whole when it fits there under its repeated header. A taller one breaks between
+// its rows: Typst lets an unbreakable rowspan taller than a page overflow, so the
+// template measures each band itself. One tall image is never cut.
+#let fits(columns, header, cells) = d.media == "image" or measure(
+  width: 297mm - 2 * margin.x,
+  table(columns: columns, inset: cell-inset, stroke: none, header, ..cells),
+).height <= 210mm - margin.top - margin.bottom
+
+// Typst does not repeat a rowspan's content on the next page, so each row of a
+// broken band marks itself, and the row that opens a page places the band's
+// labels, as is, over their own columns: (x from the table's left, width, body).
+// Goes first in a top-left cell of the row, where the cell's content starts.
+#let continued(id, previous, labels) = {
+  metadata(id)
+  if previous != none {
+    context if locate(metadata.where(value: previous)).page() != here().page() {
+      let dx = margin.x - here().position().x + cell-inset.x
+      for (x, width, body) in labels {
+        place(top + left, dx: dx + x, block(width: width - 2 * cell-inset.x, body))
+      }
+    }
+  }
+}
 
 // Dates as columns of one group table; a wider group continues in a new table.
 #let max-date-columns = 6
@@ -104,61 +131,82 @@
 #let panel(columns, header, cells) = {
   v(8pt)
   block(stroke: 0.75pt + bd, radius: 7pt, clip: true, width: 100%, fill: white,
-    table(columns: columns, inset: (x: 6pt, y: 4pt), stroke: none, header, ..cells))
+    table(columns: columns, inset: cell-inset, stroke: none, header, ..cells))
 }
 
 // The list table: Data · Evento · Horário · Setor · Quem serve, one Event after another.
-#let list-table(part, events, bar) = {
+// `key` names the table's rows apart from every other table's.
+#let list-table(part, events, bar, key) = {
   let sectors = part.singleSector == none
   let cols = if sectors { 5 } else { 4 }
-  let rows-of(b) = if b.cancelled or b.shifts.len() == 0 { 1 } else { b.shifts.map(s => s.sectors.len()).sum() }
-  let cells = ()
-  for (ei, ev) in events.enumerate() {
-    // A thick line between Events, a quiet one inside them.
-    let edge = if ei == 0 { none } else { edge }
-    let when = if ev.startDay == ev.endDay { day(ev.startDay) } else { [#day(ev.startDay) –#linebreak()#day(ev.endDay)] }
-    let date-cell(rowspan) = table.cell(rowspan: rowspan, stroke: (top: edge, right: 0.75pt + bd), text(weight: "bold", when))
-    if ev.cancelled {
-      cells.push(date-cell(1))
-      cells.push(table.cell(stroke: (top: edge), text(weight: "bold", ev.title)))
-      cells.push(table.cell(colspan: cols - 2, stroke: (top: edge), fill: des-bg, align: center + horizon, text(fill: des, weight: "bold", t.noService)))
-      continue
-    }
-    if ev.timeBlocks.len() == 0 { continue }
-    cells.push(date-cell(ev.timeBlocks.map(rows-of).sum()))
-    for (bi, b) in ev.timeBlocks.enumerate() {
-      let top = if bi == 0 { edge } else { quiet }
-      let title = if adds(b.label, ev.title) { ev.title + " · " + b.label } else { ev.title }
-      cells.push(table.cell(rowspan: rows-of(b), stroke: (top: top), text(weight: "bold", title)))
-      if b.cancelled {
-        cells.push(table.cell(colspan: cols - 2, stroke: (top: top), fill: des-bg, align: center + horizon, text(fill: des, weight: "bold", t.cancelled)))
-        continue
-      }
-      if b.shifts.len() == 0 {
-        cells.push(table.cell(colspan: cols - 2, stroke: (top: top), text(fill: mfg, "—")))
-        continue
-      }
-      for (si, s) in b.shifts.enumerate() {
-        let shift-top = if si == 0 { top } else { quiet }
-        for (ri, sec) in s.sectors.enumerate() {
-          let row-top = if ri == 0 { shift-top } else { quiet }
-          if ri == 0 {
-            cells.push(table.cell(rowspan: s.sectors.len(), stroke: (top: row-top, left: 0.75pt + bd), fill: acc, text(weight: "bold", fill: pri, shift-when(s))))
-          }
-          if sectors {
-            cells.push(table.cell(stroke: (top: row-top), sector-label(sec)))
-          }
-          cells.push(table.cell(stroke: (top: row-top), people(part, sec)))
-        }
-      }
-    }
-  }
+  let columns = (78pt, 125pt, 135pt) + (if sectors { (96pt,) } else { () }) + (1fr,)
   let labels = (t.columns.date, t.columns.event, t.columns.time) + (if sectors { (t.columns.sector,) } else { () }) + (t.columns.people,)
   let header = table.header(repeat: true,
     ..(if bar != none { (bar-cell(bar.name, none, cols),) } else { () }),
     ..labels.map(label => table.cell(fill: acc, stroke: (bottom: 0.75pt + bd), text(size: 8pt, weight: "bold", fill: mfg, label))),
   )
-  panel((78pt, 125pt, 135pt) + (if sectors { (96pt,) } else { () }) + (1fr,), header, cells)
+  let rows-of(b) = if b.cancelled or b.shifts.len() == 0 { 1 } else { b.shifts.map(s => s.sectors.len()).sum() }
+  let cells = ()
+  for (ei, ev) in events.enumerate() {
+    // A thick line between Events, a quiet one inside them.
+    let edge = if ei == 0 { none } else { edge }
+    let when = text(weight: "bold", if ev.startDay == ev.endDay { day(ev.startDay) } else { [#day(ev.startDay) –#linebreak()#day(ev.endDay)] })
+    if ev.cancelled {
+      cells.push(table.cell(stroke: (top: edge, right: 0.75pt + bd), when))
+      cells.push(table.cell(stroke: (top: edge), text(weight: "bold", ev.title)))
+      cells.push(table.cell(colspan: cols - 2, stroke: (top: edge), fill: des-bg, align: center + horizon, text(fill: des, weight: "bold", t.noService)))
+      continue
+    }
+    if ev.timeBlocks.len() == 0 { continue }
+    let id(row) = key + "-" + str(ei) + "-" + str(row)
+    let event-cells(broken) = {
+      let out = (table.cell(rowspan: ev.timeBlocks.map(rows-of).sum(), breakable: broken, stroke: (top: edge, right: 0.75pt + bd), when),)
+      let row = 0
+      for (bi, b) in ev.timeBlocks.enumerate() {
+        let top = if bi == 0 { edge } else { quiet }
+        let title = text(weight: "bold", if adds(b.label, ev.title) { ev.title + " · " + b.label } else { ev.title })
+        // The first cell of each row: the Event's labels continue over a page break.
+        let row-mark(row, continues) = if broken {
+          continued(id(row), if row > 0 { id(row - 1) }, ((0pt, columns.at(0), when),) + continues)
+        }
+        out.push(table.cell(rowspan: rows-of(b), breakable: broken, stroke: (top: top), { row-mark(row, ()); title }))
+        if b.cancelled {
+          out.push(table.cell(colspan: cols - 2, stroke: (top: top), fill: des-bg, align: center + horizon, text(fill: des, weight: "bold", t.cancelled)))
+          row += 1
+          continue
+        }
+        if b.shifts.len() == 0 {
+          out.push(table.cell(colspan: cols - 2, stroke: (top: top), text(fill: mfg, "—")))
+          row += 1
+          continue
+        }
+        for (si, s) in b.shifts.enumerate() {
+          let shift-top = if si == 0 { top } else { quiet }
+          let time = text(weight: "bold", fill: pri, shift-when(s))
+          for (ri, sec) in s.sectors.enumerate() {
+            let row-top = if ri == 0 { shift-top } else { quiet }
+            let mark = none
+            if ri == 0 {
+              if si > 0 { mark = row-mark(row, ((columns.at(0), columns.at(1), title),)) }
+              out.push(table.cell(rowspan: s.sectors.len(), breakable: broken, stroke: (top: row-top, left: 0.75pt + bd), fill: acc, { mark; time }))
+              mark = none
+            } else {
+              mark = row-mark(row, ((columns.at(0), columns.at(1), title), (columns.at(0) + columns.at(1), columns.at(2), time)))
+            }
+            if sectors {
+              out.push(table.cell(stroke: (top: row-top), { mark; sector-label(sec) }))
+              mark = none
+            }
+            out.push(table.cell(stroke: (top: row-top), { mark; people(part, sec) }))
+            row += 1
+          }
+        }
+      }
+      out
+    }
+    cells += event-cells(not fits(columns, header, event-cells(false)))
+  }
+  panel(columns, header, cells)
 }
 
 // A group's grid needs every live Event to repeat the same blocks and Shifts.
@@ -192,14 +240,34 @@
 }
 
 // One group as a grid: a time band per Shift spanning its Sector rows, the
-// dates as columns. A cancelled Event fills its column, a cancelled block its rows.
-#let group-grid(part, events, blocks, bar) = {
+// dates as columns. A cancelled Event fills its column, a cancelled block its
+// rows; both may break between bands.
+#let group-grid(part, events, blocks, bar, key) = {
   let sectors = part.singleSector == none
   let rows-of(b) = if b.shifts == none { 1 } else { b.shifts.map(s => calc.max(1, s.sectors.len())).sum() }
   let total = blocks.map(rows-of).sum()
-  for chunk in events.chunks(max-date-columns) {
+  let shared = shared-title(events)
+  let date-head(ev) = {
+    let parts = day(ev.startDay).split(" ")
+    text(size: 7.5pt, weight: "bold", fill: mfg, parts.first())
+    linebreak()
+    text(size: 10pt, weight: "bold", parts.slice(1).join(" "))
+    if shared == none {
+      linebreak()
+      text(size: 7.5pt, fill: mfg, ev.title)
+    }
+  }
+  let head-cell(body) = table.cell(fill: acc, stroke: (bottom: 0.75pt + bd, left: 0.75pt + bd), body)
+  for (ci, chunk) in events.chunks(max-date-columns).enumerate() {
     let lead = if sectors { 2 } else { 1 }
     let cols = lead + chunk.len()
+    let columns = (92pt,) + (if sectors { (86pt,) } else { () }) + (1fr,) * chunk.len()
+    let header = table.header(repeat: true,
+      bar-cell(bar.name, shared, cols),
+      table.cell(fill: acc, stroke: (bottom: 0.75pt + bd), []),
+      ..(if sectors { (head-cell([]),) } else { () }),
+      ..chunk.map(ev => head-cell(date-head(ev))),
+    )
     let cells = ()
     let row = 0
     for (bi, b) in blocks.enumerate() {
@@ -210,71 +278,70 @@
       for (si, band) in band-rows.enumerate() {
         let band-top = if si == 0 { top } else { quiet }
         let sector-rows = if band.sectors.len() == 0 { (none,) } else { band.sectors }
-        for (ri, sec) in sector-rows.enumerate() {
-          let row-top = if ri == 0 { band-top } else { quiet }
-          if ri == 0 {
-            cells.push(table.cell(rowspan: sector-rows.len(), stroke: (top: row-top), fill: acc, text(weight: "bold", fill: pri, if band.label == none { "—" } else { band.label })))
-          }
-          if sectors {
-            cells.push(table.cell(stroke: (top: row-top, left: 0.75pt + bd), if sec != none { sector-label(sec) }))
-          }
-          for ev in chunk {
-            if ev.cancelled {
-              if row == 0 {
-                cells.push(table.cell(rowspan: total, stroke: (left: 0.75pt + bd), fill: des-bg, align: center + horizon, text(fill: des, weight: "bold", t.noService)))
-              }
-              continue
+        let label = text(weight: "bold", fill: pri, if band.label == none { "—" } else { band.label })
+        let id(ri) = key + "-" + str(ci) + "-" + str(bi) + "-" + str(si) + "-" + str(ri)
+        // `alone` lays the band out by itself, to measure it.
+        let band-cells(alone, broken) = {
+          let out = ()
+          for (ri, sec) in sector-rows.enumerate() {
+            let row-top = if ri == 0 { band-top } else { quiet }
+            // The first cell of each row: the time label continues over a page break.
+            let mark = if broken { continued(id(ri), if ri > 0 { id(ri - 1) }, ((0pt, columns.at(0), label),)) }
+            if ri == 0 {
+              out.push(table.cell(rowspan: sector-rows.len(), breakable: broken, stroke: (top: row-top), fill: acc, { mark; label }))
+              mark = none
             }
-            let eb = ev.timeBlocks.at(bi)
-            if eb.cancelled or b.shifts == none {
-              if si == 0 and ri == 0 {
-                let cell-text = if eb.cancelled { t.cancelled } else { "—" }
-                cells.push(table.cell(rowspan: rows-of(b), stroke: (top: top, left: 0.75pt + bd), fill: if eb.cancelled { des-bg }, align: center + horizon, text(fill: if eb.cancelled { des } else { mfg }, weight: "bold", cell-text)))
-              }
-              continue
+            if sectors {
+              out.push(table.cell(stroke: (top: row-top, left: 0.75pt + bd), { mark; if sec != none { sector-label(sec) } }))
+              mark = none
             }
-            let mine = if eb.shifts.len() == 0 or sec == none { () } else { eb.shifts.at(si).sectors.filter(x => x.name == sec.name) }
-            cells.push(table.cell(stroke: (top: row-top, left: 0.75pt + bd),
-              if mine.len() == 0 { text(fill: mfg, "—") } else { people(part, mine.first()) }))
+            for ev in chunk {
+              let eb = if not ev.cancelled { ev.timeBlocks.at(bi) }
+              if ev.cancelled or eb.cancelled or b.shifts == none {
+                if alone {
+                  if ri == 0 { out.push(table.cell(rowspan: sector-rows.len(), [])) }
+                } else if ev.cancelled {
+                  if row + ri == 0 {
+                    out.push(table.cell(rowspan: total, breakable: true, stroke: (left: 0.75pt + bd), fill: des-bg, align: center + horizon, text(fill: des, weight: "bold", t.noService)))
+                  }
+                } else if si == 0 and ri == 0 {
+                  let cell-text = if eb.cancelled { t.cancelled } else { "—" }
+                  out.push(table.cell(rowspan: rows-of(b), breakable: true, stroke: (top: top, left: 0.75pt + bd), fill: if eb.cancelled { des-bg }, align: center + horizon, text(fill: if eb.cancelled { des } else { mfg }, weight: "bold", cell-text)))
+                }
+                continue
+              }
+              let mine = if eb.shifts.len() == 0 or sec == none { () } else { eb.shifts.at(si).sectors.filter(x => x.name == sec.name) }
+              out.push(table.cell(stroke: (top: row-top, left: 0.75pt + bd), {
+                mark
+                if mine.len() == 0 { text(fill: mfg, "—") } else { people(part, mine.first()) }
+              }))
+              mark = none
+            }
           }
-          row += 1
+          out
         }
+        cells += band-cells(false, not fits(columns, header, band-cells(true, false)))
+        row += sector-rows.len()
       }
     }
-    let shared = shared-title(events)
-    let date-head(ev) = {
-      let parts = day(ev.startDay).split(" ")
-      text(size: 7.5pt, weight: "bold", fill: mfg, parts.first())
-      linebreak()
-      text(size: 10pt, weight: "bold", parts.slice(1).join(" "))
-      if shared == none {
-        linebreak()
-        text(size: 7.5pt, fill: mfg, ev.title)
-      }
-    }
-    let head-cell(body) = table.cell(fill: acc, stroke: (bottom: 0.75pt + bd, left: 0.75pt + bd), body)
-    let header = table.header(repeat: true,
-      bar-cell(bar.name, shared, cols),
-      table.cell(fill: acc, stroke: (bottom: 0.75pt + bd), []),
-      ..(if sectors { (head-cell([]),) } else { () }),
-      ..chunk.map(ev => head-cell(date-head(ev))),
-    )
-    panel((92pt,) + (if sectors { (86pt,) } else { () }) + (1fr,) * chunk.len(), header, cells)
+    panel(columns, header, cells)
   }
 }
 
-#for part in data.parts {
-  for group in part.groups {
+// In context: each table measures its bands.
+#context for (pi, part) in data.parts.enumerate() {
+  for (gi, group) in part.groups.enumerate() {
+    let key = str(pi) + "-" + str(gi)
     if group.kind == "list" {
-      list-table(part, group.events, none)
+      list-table(part, group.events, none, key)
       continue
     }
     let bar = (name: if group.name == none { t.catchAll } else { group.name })
     let blocks = if group.kind == "group" { grid-rows(group.events) } else { none }
     if blocks == none {
-      list-table(part, group.events, bar)
+      list-table(part, group.events, bar, key)
     } else {
-      group-grid(part, group.events, blocks, bar)
+      group-grid(part, group.events, blocks, bar, key)
     }
   }
 }

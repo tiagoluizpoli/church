@@ -123,8 +123,12 @@ async function openDialog() {
   return { user, dialog };
 }
 
+/** The Cycle name button, whatever Cycle it names. */
 function cycleName(dialog: HTMLElement) {
-  return within(dialog).getByRole('button', { name: m.export_choose_cycle() });
+  const prefix = m.export_choose_cycle({ cycle: '' });
+  return within(dialog).getByRole('button', {
+    name: (name) => name.startsWith(prefix),
+  });
 }
 
 it('steps one Cycle at a time from the Schedule it came from', async () => {
@@ -137,9 +141,15 @@ it('steps one Cycle at a time from the Schedule it came from', async () => {
   });
 
   expect(cycleName(dialog)).toHaveTextContent('January 2027');
+  expect(cycleName(dialog)).toHaveAccessibleName(
+    m.export_choose_cycle({ cycle: 'January 2027' }),
+  );
   await waitFor(() => expect(next).toBeEnabled());
   await user.click(next);
   expect(cycleName(dialog)).toHaveTextContent('Fevereiro 2027');
+  expect(cycleName(dialog)).toHaveAccessibleName(
+    m.export_choose_cycle({ cycle: 'Fevereiro 2027' }),
+  );
   expect(next).toBeDisabled();
   await user.click(previous);
   await user.click(previous);

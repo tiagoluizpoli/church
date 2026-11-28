@@ -285,7 +285,7 @@ it('downloads one "Escala" sheet listing every spot in the export order, without
   const [sheet] = sheets;
   if (!sheet) throw new Error('no sheet');
   expect(sheetValues(sheet)).toEqual([
-    ['Escala do Kids · Janeiro 2027'],
+    ['Escala - Kids · Janeiro 2027'],
     ['01/01/2027 – 31/01/2027'],
     [],
     COLUMNS,
@@ -403,7 +403,7 @@ it('marks a draft under the title and lists its empty spots as muted "Vaga" rows
   const [sheet] = sheets;
   if (!sheet) throw new Error('no sheet');
   expect(sheetValues(sheet)).toEqual([
-    ['Escala do Kids · Janeiro 2027'],
+    ['Escala - Kids · Janeiro 2027'],
     ['01/01/2027 – 31/01/2027'],
     ['Rascunho'],
     [],
@@ -486,7 +486,7 @@ it('drops Setor and Função from a sheet with only one, stating it in the heade
   const [maternal, bercario] = sheets;
   if (!maternal || !bercario) throw new Error('missing sheets');
   expect(sheetValues(maternal)).toEqual([
-    ['Escala do Kids · Janeiro 2027'],
+    ['Escala - Kids · Janeiro 2027'],
     ['01/01/2027 – 31/01/2027'],
     ['Todos servem como Professor em Maternal'],
     [],

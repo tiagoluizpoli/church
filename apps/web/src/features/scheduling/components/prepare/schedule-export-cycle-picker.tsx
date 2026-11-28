@@ -101,7 +101,7 @@ export function ScheduleExportCyclePicker({
         <Button
           variant="ghost"
           className="min-w-0 flex-1 justify-center font-medium"
-          aria-label={m.export_choose_cycle()}
+          aria-label={m.export_choose_cycle({ cycle: value.name })}
           aria-expanded={listOpen}
           onClick={() => setListOpen(!listOpen)}
         >

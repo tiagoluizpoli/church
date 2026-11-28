@@ -62,6 +62,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
       throw new NotFoundError(`Volunteer not found: ${id}`);
     }
     const db = getClient({ db: this.db, tx });
+    // list-order: one volunteer by primary key
     const [row] = await db
       .select()
       .from(volunteer)
@@ -81,6 +82,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
     tx,
   }: FindVolunteerByUserIdInput): Promise<Volunteer | null> {
     const db = getClient({ db: this.db, tx });
+    // list-order: the one live volunteer profile per user (unique index)
     const [row] = await db
       .select()
       .from(volunteer)
@@ -126,6 +128,7 @@ export class DrizzleVolunteerRepository implements VolunteerRepository {
     tx,
   }: HasMembershipInMinistryInput): Promise<boolean> {
     const db = getClient({ db: this.db, tx });
+    // list-order: existence check; any row answers it
     const [row] = await db
       .select({ id: ministryMembership.id })
       .from(ministryMembership)

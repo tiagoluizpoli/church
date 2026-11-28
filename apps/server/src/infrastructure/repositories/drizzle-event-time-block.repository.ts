@@ -3,11 +3,12 @@ import {
   assignment,
   eventTimeBlock,
   ministryParticipation,
+  role,
   sector,
   shift,
   shiftRequirement,
 } from '@church/db';
-import { and, asc, count, eq, gt, inArray, lt, ne } from 'drizzle-orm';
+import { and, asc, count, eq, gt, inArray, lt, ne, sql } from 'drizzle-orm';
 import type {
   CountActiveAssignmentsInput,
   CreateEventTimeBlockRepositoryInput,
@@ -50,7 +51,13 @@ export class DrizzleEventTimeBlockRepository
       .from(shiftRequirement)
       .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
       .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
-      .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
+      .innerJoin(role, eq(role.id, shiftRequirement.roleId))
+      .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id))
+      .orderBy(
+        asc(sql`lower(${sector.name})`),
+        asc(sql`lower(${role.name})`),
+        asc(shiftRequirement.id),
+      );
     return mapEventTimeBlock({
       row: eventTimeBlockRow,
       requirements: reqRows.map(({ requirement, sectorName }) =>
@@ -72,6 +79,7 @@ export class DrizzleEventTimeBlockRepository
       throw new NotFoundError(`EventTimeBlock not found: ${eventTimeBlockId}`);
     }
     const db = getClient({ db: this.db, tx });
+    // list-order: one block by primary key
     const [row] = await db
       .select()
       .from(eventTimeBlock)
@@ -124,6 +132,7 @@ export class DrizzleEventTimeBlockRepository
       })
       .returning();
     if (!row) throw new Error('EventTimeBlock insert failed');
+    // list-order: one shift inserted per participation; order unused
     const participations = await db
       .select()
       .from(ministryParticipation)

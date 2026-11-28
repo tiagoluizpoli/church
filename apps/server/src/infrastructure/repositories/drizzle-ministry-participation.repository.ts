@@ -301,6 +301,7 @@ export class DrizzleMinistryParticipationRepository
     }
 
     const db = getClient({ db: this.db, tx: input.tx });
+    // list-order: one participation by primary key
     const [row] = await db
       .select()
       .from(ministryParticipation)
@@ -332,6 +333,7 @@ export class DrizzleMinistryParticipationRepository
       throw new NotFoundError(`Participation not found: ${participationId}`);
     }
 
+    // list-order: locks one participation by primary key
     const [row] = await getClient({ db: this.db, tx })
       .select()
       .from(ministryParticipation)
@@ -749,6 +751,7 @@ export class DrizzleMinistryParticipationRepository
 
     // Ministry-scoped participations joined to their cycle, church-isolated
     // on both sides of the join. No fanout risk here (one row per event).
+    // list-order: reduced to per-cycle counts
     const participations = await db
       .select({
         id: ministryParticipation.id,
@@ -1191,6 +1194,7 @@ export class DrizzleMinistryParticipationRepository
     cycleIds,
     tx,
   }: OpenSwapRequestCountsInput) {
+    // list-order: a builder: each caller orders it or aliases it as a subquery
     return getClient({ db: this.db, tx })
       .select({
         ministryId: ministryParticipation.ministryId,

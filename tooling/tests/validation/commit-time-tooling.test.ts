@@ -167,6 +167,7 @@ describe('lint scripts', () => {
       'bun run validate:date-time-seam',
       'bun run validate:bun-version',
       'bun run validate:constitution-version',
+      'bun run validate:list-order',
     ]);
   });
 

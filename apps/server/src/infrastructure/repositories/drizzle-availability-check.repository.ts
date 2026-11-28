@@ -191,6 +191,7 @@ export class DrizzleAvailabilityCheckRepository
   }
 
   async findAskRecord(input: ScheduleScopeInput): Promise<AskRecordRow | null> {
+    // list-order: one ask per church, ministry and cycle (unique index)
     const [row] = await getClient({ db: this.db, tx: input.tx })
       .select({ lastRemindedAt: availabilityAsk.lastRemindedAt })
       .from(availabilityAsk)
@@ -312,6 +313,7 @@ export class DrizzleAvailabilityCheckRepository
   }
 
   async findAnswerBy(input: ScheduleScopeInput): Promise<CalendarDay | null> {
+    // list-order: one ask per church, ministry and cycle (unique index)
     const [ask] = await getClient({ db: this.db, tx: input.tx })
       .select({ answerBy: availabilityAsk.answerBy })
       .from(availabilityAsk)
@@ -511,6 +513,7 @@ export class DrizzleAvailabilityCheckRepository
 
   async getCheckContext(input: GetCheckContextInput): Promise<CheckContext> {
     const db = getClient({ db: this.db, tx: input.tx });
+    // list-order: one check by primary key
     const query = db
       .select(this.contextSelection())
       .from(availabilityCheck)
@@ -550,6 +553,7 @@ export class DrizzleAvailabilityCheckRepository
 
     let check = row.check;
     if (input.tx && input.lockForAnswer) {
+      // list-order: locks one check by primary key
       const [locked] = await db
         .select()
         .from(availabilityCheck)

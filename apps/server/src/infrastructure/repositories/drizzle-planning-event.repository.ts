@@ -188,6 +188,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     }
 
     const db = getClient({ db: this.db, tx: input.tx });
+    // list-order: one event by primary key
     const [row] = await db
       .select()
       .from(event)
@@ -258,7 +259,13 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
               .from(shiftRequirement)
               .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
               .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
-              .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
+              .innerJoin(role, eq(role.id, shiftRequirement.roleId))
+              .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id))
+              .orderBy(
+                asc(sql`lower(${sector.name})`),
+                asc(sql`lower(${role.name})`),
+                asc(shiftRequirement.id),
+              );
 
             return mapEventTimeBlock({
               row: eventTimeBlockRow,
@@ -722,6 +729,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         withChurchIsolation({ table: eventTimeBlock, churchId }),
         eq(eventTimeBlock.id, eventTimeBlockId),
       );
+      // list-order: one block by primary key
       const [stored] = await client
         .select({
           start: eventTimeBlock.startTime,

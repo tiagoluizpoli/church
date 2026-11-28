@@ -10,23 +10,21 @@ The UI and server message catalog (Paraglide JS). Locales `en` (base) and `pt-BR
 2. Name it snake_case with an area prefix: `common_*` for shared words, `error_<code>` for server error codes, `error_validation_<reason>`, `auth_error_<code>`, and `<area>_<thing>` for a screen.
 3. Params are `{name}` in the text. Only their names are type-checked (values are untyped), so pass strings or numbers deliberately.
 
-## Plurals: always give `=0`
+## Plurals: a `_one`/`_other` pair
 
-pt-BR treats 0 as `one` ("0 pessoa necessária"). Every plural that can be 0 gets an exact `=0` case in both catalogs:
+Messages are plain strings; the catalog has no plural selectors (`declarations`, `match`), and
+`validate:i18n-parity` rejects a message that is not a string. A countable message is two keys,
+`<key>_one` and `<key>_other`, in both catalogs:
 
 ```json
-"people_needed": [
-  {
-    "declarations": ["input count", "local countPlural = count: plural"],
-    "selectors": ["countPlural"],
-    "match": {
-      "countPlural=0": "Nenhuma pessoa necessária",
-      "countPlural=one": "{count} pessoa necessária",
-      "countPlural=*": "{count} pessoas necessárias"
-    }
-  }
-]
+"prepare_publish_gaps_one": "{count} vaga ainda precisa de pessoas. Publicar mesmo assim?",
+"prepare_publish_gaps_other": "{count} vagas ainda precisam de pessoas. Publicar mesmo assim?"
 ```
+
+The web picks one with `pluralMessage` (`apps/web/src/shared/utils/plural.ts`): `_one` when
+`count` is 1, `_other` for every other count, 0 included. The server picks the same way with
+`count === 1` (`apps/server/src/infrastructure/services/email-templates.ts`). When 0 needs its own
+wording ("Nenhuma pessoa"), add a separate key and choose it before calling `pluralMessage`.
 
 ## Locale and the `?lang=` override
 

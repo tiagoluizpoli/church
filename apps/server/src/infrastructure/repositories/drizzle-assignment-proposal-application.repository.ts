@@ -48,6 +48,7 @@ export class DrizzleAssignmentProposalApplicationRepository
     applicationKey,
     tx,
   }: FindAssignmentProposalApplicationInput): Promise<AssignmentProposalApplication | null> {
+    // list-order: lookup by primary key (church, application key)
     const [row] = await getClient({ db: this.db, tx })
       .select()
       .from(assignmentProposalApplication)

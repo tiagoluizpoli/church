@@ -61,6 +61,7 @@ describe('the no-docker tier', () => {
       'date-time-seam',
       'bun-version',
       'constitution-version',
+      'list-order',
       'typecheck',
     ]);
     expect(steps.unitLane).toEqual([

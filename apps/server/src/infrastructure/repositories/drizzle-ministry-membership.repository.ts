@@ -82,6 +82,7 @@ export class DrizzleMinistryMembershipRepository
   }: LockMembershipTargetInput): Promise<MembershipTarget | undefined> {
     if (!isValidUuid(membershipId)) return undefined;
     const db = getClient({ db: this.db, tx });
+    // list-order: one member by primary key
     const [subject] = await db
       .select({ userId: churchMember.userId })
       .from(churchMember)
@@ -94,6 +95,7 @@ export class DrizzleMinistryMembershipRepository
     if (!subject) return undefined;
     // NO KEY UPDATE conflicts with Volunteer Transfer's and Assignment
     // qualification reads' locks, never with the KEY SHARE of FK inserts.
+    // list-order: locks the one live volunteer profile per user and church
     const [profile] = await db
       .select({ id: volunteer.id })
       .from(volunteer)
@@ -106,6 +108,7 @@ export class DrizzleMinistryMembershipRepository
       )
       .for('no key update');
     if (!profile) return undefined;
+    // list-order: locks one membership by primary key
     const [membership] = await db
       .select({
         ministryId: ministryMembership.ministryId,
@@ -124,6 +127,7 @@ export class DrizzleMinistryMembershipRepository
       )
       .for('no key update', { of: ministryMembership });
     if (!membership) return undefined;
+    // list-order: a set of role ids; no reader relies on their order
     const roleRows = await db
       .select({ roleId: ministryMembershipRole.roleId })
       .from(ministryMembershipRole)

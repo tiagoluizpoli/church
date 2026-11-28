@@ -63,6 +63,7 @@ export async function assertPlaceAddresses({
 }: AssertPlaceAddressesInput): Promise<void> {
   const ids = [...new Set(addressIds.filter((id): id is string => !!id))];
   if (ids.length === 0) return;
+  // list-order: only the number of addresses found is compared
   const found = await db
     .select({ id: churchAddress.id })
     .from(churchAddress)

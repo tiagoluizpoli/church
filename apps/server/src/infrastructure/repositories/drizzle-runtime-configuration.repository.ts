@@ -19,6 +19,7 @@ export class DrizzleRuntimeConfigurationRepository
   }
 
   async findEmailDeliveryMode(): Promise<unknown> {
+    // list-order: one value per configuration code (primary key)
     const [row] = await this.db
       .select({ value: runtimeConfiguration.value })
       .from(runtimeConfiguration)

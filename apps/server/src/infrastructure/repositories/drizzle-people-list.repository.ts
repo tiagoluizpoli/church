@@ -155,6 +155,7 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
   }: VisibleScopeInput): Promise<PeopleListCounts> {
     const countWhere = (condition: SQL) =>
       sql<number>`count(*) filter (where ${condition})`.mapWith(Number);
+    // list-order: aggregate counts: one row
     const [row] = await getClient({ db: this.db })
       .select({
         total: count(),
@@ -261,7 +262,8 @@ export class DrizzlePeopleListRepository implements PeopleListRepository {
     if (scope.kind !== 'church') return detail;
     const isAdmin = row.role === 'admin';
     const admins = isAdmin
-      ? await client
+      ? // list-order: counts up to two admins to spot the last one; order unused
+        await client
           .select({ id: churchMember.id })
           .from(churchMember)
           .where(

@@ -2,6 +2,7 @@ import {
   type ExecFileSyncOptionsWithStringEncoding,
   execFileSync,
 } from 'node:child_process';
+import { isCommit, requireMergeBase } from './base-commit';
 
 /**
  * Which commit supplied each `Seed-Impact` or `Journey-Impact` trailer, and
@@ -48,19 +49,10 @@ function readOpenPullRequestBase(): string | undefined {
   }
 }
 
-function isRef({ ref }: { ref: string }): boolean {
-  try {
-    execFileSync('git', ['rev-parse', '--verify', '--quiet', ref], QUIET);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** The remote-tracking ref first: it is what the PR is compared against. */
 function resolvePullRequestBase({ name }: { name: string }): string {
   const ref = [`origin/${name}`, name].find((candidate) =>
-    isRef({ ref: candidate }),
+    isCommit({ ref: candidate }),
   );
   if (ref === undefined) {
     throw new Error(
@@ -77,6 +69,7 @@ function readTrailers({
   baseRef: string;
   readReasons: ReadReasons;
 }) {
+  requireMergeBase({ ref: baseRef });
   const log = execFileSync(
     'git',
     ['log', '--format=%x01%h%x00%B', `${baseRef}..HEAD`],
@@ -109,6 +102,9 @@ export function readAcknowledgements({
 
   const name = readOpenPullRequestBase();
   const ownBaseRef = name ? resolvePullRequestBase({ name }) : baseRef;
+  // Without shared history `git log` would count every commit as the branch's
+  // own; readTrailers already checked baseRef.
+  if (ownBaseRef !== baseRef) requireMergeBase({ ref: ownBaseRef });
   const ownShas = new Set(
     execFileSync('git', ['log', '--format=%h', `${ownBaseRef}..HEAD`], {
       encoding: 'utf8',

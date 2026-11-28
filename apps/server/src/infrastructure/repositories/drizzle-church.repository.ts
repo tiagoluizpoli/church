@@ -114,6 +114,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     if (!isValidUuid(id)) {
       throw new NotFoundError(`Church not found: ${id}`);
     }
+    // list-order: one church by primary key
     const [row] = await getClient({ db: this.db, tx })
       .select(churchJoinShape)
       .from(church)
@@ -124,6 +125,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
   }
 
   async getBySlug({ slug }: GetChurchBySlugInput): Promise<Church> {
+    // list-order: one church by its unique slug
     const [row] = await getClient({ db: this.db })
       .select(churchJoinShape)
       .from(church)
@@ -154,6 +156,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     id,
     userId,
   }: FindChurchMemberEmailInput): Promise<string | null> {
+    // list-order: one membership per user and church (Better Auth)
     const [row] = await getClient({ db: this.db })
       .select({ email: user.email })
       .from(member)
@@ -166,6 +169,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     id,
     userId,
   }: FindChurchMemberEmailInput): Promise<ChurchMemberContact | null> {
+    // list-order: one membership per user and church (Better Auth)
     const [row] = await getClient({ db: this.db })
       .select({ email: user.email, name: user.name })
       .from(member)
@@ -178,6 +182,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     userId,
     tx,
   }: FindUserNameInput): Promise<string | null> {
+    // list-order: one user by primary key
     const [row] = await getClient({ db: this.db, tx })
       .select({ name: user.name })
       .from(user)
@@ -190,7 +195,8 @@ export class DrizzleChurchRepository implements ChurchRepository {
     tx,
   }: GetChurchSettingsInput): Promise<ChurchSettings> {
     const [row] = isValidUuid(id)
-      ? await getClient({ db: this.db, tx })
+      ? // list-order: one church by primary key
+        await getClient({ db: this.db, tx })
           .select({
             name: organization.name,
             slug: organization.slug,
@@ -276,6 +282,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     tx,
     onlyPublic = false,
   }: FindLegalProfileInput): Promise<ChurchLegalProfile | null> {
+    // list-order: one legal profile per church (primary key)
     const [row] = await getClient({ db: this.db, tx })
       .select({
         legalName: churchLegalProfile.legalName,
@@ -362,11 +369,13 @@ export class DrizzleChurchRepository implements ChurchRepository {
   }: FindSlugAvailabilityInput): Promise<
     Exclude<ChurchSlugAvailability, 'reserved' | 'invalid'>
   > {
+    // list-order: existence check; any row answers it
     const [live] = await client
       .select({ id: organization.id })
       .from(organization)
       .where(and(eq(organization.slug, slug), ne(organization.id, id)));
     if (live) return 'taken';
+    // list-order: one history row per slug (primary key)
     const [held] = await client
       .select({ churchId: churchSlugHistory.churchId })
       .from(churchSlugHistory)
@@ -482,6 +491,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     members,
   }: ReplaceGroupsInput): Promise<Map<string, string>> {
     const names = resolveContactGroups({ requested, members });
+    // list-order: read into a Map keyed by group name
     const stored = await client
       .select({ id: churchContactGroup.id, name: churchContactGroup.name })
       .from(churchContactGroup)
@@ -516,10 +526,12 @@ export class DrizzleChurchRepository implements ChurchRepository {
     id,
   }: DeleteUnusedGroupsInput): Promise<void> {
     const [contactRows, linkRows] = await Promise.all([
+      // list-order: group ids feed the delete below; order unused
       client
         .select({ groupId: churchContact.groupId })
         .from(churchContact)
         .where(eq(churchContact.churchId, id)),
+      // list-order: group ids feed the delete below; order unused
       client
         .select({ groupId: churchSocialLink.groupId })
         .from(churchSocialLink)
@@ -546,6 +558,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     tx,
   }: GetChurchAddressUsageInput): Promise<ChurchAddressUsage | null> {
     const client = getClient({ db: this.db, tx });
+    // list-order: one address by primary key
     const [address] = await client
       .select({ id: churchAddress.id })
       .from(churchAddress)
@@ -634,6 +647,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
           gt(eventTimeBlock.startTime, nowAsDate()),
         ),
       );
+    // list-order: read into a Set of address ids
     const rows = await union(templateUses, eventUses);
     return new Set(
       rows.flatMap(({ addressId }) => (addressId ? [addressId] : [])),
@@ -758,6 +772,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
     id,
     slug,
   }: ChangeSlugInput): Promise<void> {
+    // list-order: one organization by primary key
     const [current] = await client
       .select({ slug: organization.slug })
       .from(organization)
@@ -854,6 +869,7 @@ export class DrizzleChurchRepository implements ChurchRepository {
         ),
       // Only the area of the Main Address, public or not: a private one's
       // street, number and pin never leave the database.
+      // list-order: one main address per church (unique index)
       client
         .select({
           bairro: churchAddress.bairro,

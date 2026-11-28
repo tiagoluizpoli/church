@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { builderErrorMessage } from '@/features/scheduling/utils/builder/cycle-builder-error.utils';
+import {
+  publishGapsMessage,
+  publishUnansweredMessage,
+} from '@/features/scheduling/utils/publish-gaps-message';
 import { adminApi } from '@/utils/api-instances';
 
 interface SchedulePublishProps {
@@ -22,6 +26,13 @@ export function SchedulePublish({
   unanswered,
 }: SchedulePublishProps) {
   const [open, setOpen] = useState(false);
+  // The server refused the publish as below target, with this many places open.
+  const [refusedGapCount, setRefusedGapCount] = useState<number>();
+  const isRefused = refusedGapCount !== undefined;
+  const closeConfirmation = () => {
+    setOpen(false);
+    setRefusedGapCount(undefined);
+  };
   const { data } = useSchedule({ ministryId, cycleId });
   const queryClient = useQueryClient();
   async function refreshSchedule() {
@@ -39,15 +50,19 @@ export function SchedulePublish({
     mutationFn: () =>
       adminApi.publishCycle(
         cycleId,
-        { confirmBelowFull: (data?.gapCount ?? 0) > 0 },
+        { confirmBelowFull: isRefused || (data?.gapCount ?? 0) > 0 },
         { ministryId },
       ),
     onSuccess: async (result) => {
       await refreshSchedule();
-      if (result.published) {
-        setOpen(false);
-        toast.success(m.builder_logic_cycle_published());
-      } else toast.warning(m.builder_logic_cycle_not_published());
+      // A refusal keeps the confirmation open: the server saw gaps the summary
+      // did not, and the leader can confirm with its count.
+      if (!result.published) {
+        setRefusedGapCount(result.gapCount);
+        return;
+      }
+      closeConfirmation();
+      toast.success(m.builder_logic_cycle_published());
     },
     onError: (error) =>
       toast.error(
@@ -80,6 +95,7 @@ export function SchedulePublish({
   if (data.stage !== 'asking' && data.stage !== 'assigning') return null;
   const pending =
     unanswered ?? (data.asking ? data.asking.asked - data.asking.confirmed : 0);
+  const openPlaces = refusedGapCount ?? data.gapCount;
   return (
     <>
       <Button
@@ -94,12 +110,14 @@ export function SchedulePublish({
       <ResponsiveFormSurface
         open={open}
         onOpenChange={(value) => {
-          if (!publish.isPending) setOpen(value);
+          if (publish.isPending) return;
+          if (value) setOpen(true);
+          else closeConfirmation();
         }}
         title={m.builder_ui_publish_title()}
         description={
-          data.gapCount > 0
-            ? m.prepare_publish_gaps({ count: data.gapCount })
+          openPlaces > 0
+            ? publishGapsMessage({ count: openPlaces })
             : m.builder_ui_publish_full()
         }
         footer={
@@ -107,7 +125,7 @@ export function SchedulePublish({
             <Button
               variant="outline"
               disabled={publish.isPending}
-              onClick={() => setOpen(false)}
+              onClick={closeConfirmation}
             >
               {m.builder_ui_cancel()}
             </Button>
@@ -124,7 +142,7 @@ export function SchedulePublish({
         <p className="text-sm">{m.prepare_publish_notifications()}</p>
         {pending > 0 ? (
           <p className="text-sm">
-            {m.prepare_publish_unanswered({ count: pending })}
+            {publishUnansweredMessage({ count: pending })}
           </p>
         ) : null}
       </ResponsiveFormSurface>

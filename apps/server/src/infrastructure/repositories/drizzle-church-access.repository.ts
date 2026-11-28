@@ -24,6 +24,7 @@ export class DrizzleChurchAccessRepository implements ChurchAccessRepository {
 
   async lockChurch({ churchId, tx }: LockChurchAccessInput): Promise<void> {
     // NO KEY UPDATE serializes access changes without blocking the Church's FK inserts (KEY SHARE).
+    // list-order: locks one church by primary key; no rows read
     await getClient({ db: this.db, tx })
       .select({ id: church.id })
       .from(church)
@@ -36,6 +37,7 @@ export class DrizzleChurchAccessRepository implements ChurchAccessRepository {
     memberId,
     tx,
   }: FindChurchAccessTargetInput): Promise<ChurchAccessTarget | undefined> {
+    // list-order: one member by primary key
     const [row] = await getClient({ db: this.db, tx })
       .select({ userId: member.userId, role: member.role })
       .from(member)

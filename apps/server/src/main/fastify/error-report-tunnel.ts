@@ -49,8 +49,8 @@ export function registerErrorReportTunnel({
     { bodyLimit: BODY_LIMIT_BYTES, schema: { hide: true } },
     async (request, reply) => {
       if (!(dsn && url)) return reply.code(NO_CONTENT).send();
-      const key = `error-report:${request.ip}`;
-      if (isRateLimited({ key, windowMs, maxRequests })) {
+      const limit = { windowMs, maxRequests };
+      if (isRateLimited({ bucket: 'error-report', key: request.ip, limit })) {
         return reply.code(TOO_MANY_REQUESTS).send();
       }
       const outcome = parseErrorEnvelope({ body: request.body, dsn });

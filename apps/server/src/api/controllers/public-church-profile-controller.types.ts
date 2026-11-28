@@ -3,14 +3,6 @@ import type { IPublicChurchProfileManager } from '../../domain/contracts/applica
 import type { IPublicEventManager } from '../../domain/contracts/application/public-event-manager';
 import type { WebShell } from '../../domain/contracts/infrastructure';
 
-export interface LimitedInput {
-  bucket:
-    | 'public-church-profile'
-    | 'public-church-events'
-    | 'public-church-page';
-  ip: string;
-}
-
 export interface ChurchPageInput {
   ip: string;
   slug: string;

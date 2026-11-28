@@ -19,6 +19,18 @@ export type GetActiveChurchStatus401 = {
   message: string;
 };
 
+export type GetActiveChurchStatus503Error = typeof GetActiveChurchStatus503Error[keyof typeof GetActiveChurchStatus503Error];
+
+
+export const GetActiveChurchStatus503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetActiveChurchStatus503 = {
+  error: GetActiveChurchStatus503Error;
+  message: string;
+};
+
 export type ListActiveChurchOptions200ChurchesItemAccessLevel = typeof ListActiveChurchOptions200ChurchesItemAccessLevel[keyof typeof ListActiveChurchOptions200ChurchesItemAccessLevel];
 
 
@@ -63,6 +75,18 @@ export type ListActiveChurchOptions401 = {
   message: string;
 };
 
+export type ListActiveChurchOptions503Error = typeof ListActiveChurchOptions503Error[keyof typeof ListActiveChurchOptions503Error];
+
+
+export const ListActiveChurchOptions503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListActiveChurchOptions503 = {
+  error: ListActiveChurchOptions503Error;
+  message: string;
+};
+
 export type SelectActiveChurchBody = {
   churchId: string;
 };
@@ -91,6 +115,18 @@ export type SelectActiveChurch500 = {
   error: string;
   message: string;
   requestId: string;
+};
+
+export type SelectActiveChurch503Error = typeof SelectActiveChurch503Error[keyof typeof SelectActiveChurch503Error];
+
+
+export const SelectActiveChurch503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type SelectActiveChurch503 = {
+  error: SelectActiveChurch503Error;
+  message: string;
 };
 
 export type GetSetupProgress200 = {
@@ -8781,6 +8817,18 @@ export type GetChurchInvitationReviewStatus401 = {
   message: string;
 };
 
+export type GetChurchInvitationReviewStatus503Error = typeof GetChurchInvitationReviewStatus503Error[keyof typeof GetChurchInvitationReviewStatus503Error];
+
+
+export const GetChurchInvitationReviewStatus503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetChurchInvitationReviewStatus503 = {
+  error: GetChurchInvitationReviewStatus503Error;
+  message: string;
+};
+
 export type AcceptChurchInvitationBody = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   idempotencyKey: string;
@@ -8816,6 +8864,18 @@ export const AcceptChurchInvitation401Error = {
 
 export type AcceptChurchInvitation401 = {
   error: AcceptChurchInvitation401Error;
+  message: string;
+};
+
+export type AcceptChurchInvitation503Error = typeof AcceptChurchInvitation503Error[keyof typeof AcceptChurchInvitation503Error];
+
+
+export const AcceptChurchInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type AcceptChurchInvitation503 = {
+  error: AcceptChurchInvitation503Error;
   message: string;
 };
 
@@ -8864,6 +8924,18 @@ export type GetMinistryInvitationStatus401 = {
   message: string;
 };
 
+export type GetMinistryInvitationStatus503Error = typeof GetMinistryInvitationStatus503Error[keyof typeof GetMinistryInvitationStatus503Error];
+
+
+export const GetMinistryInvitationStatus503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetMinistryInvitationStatus503 = {
+  error: GetMinistryInvitationStatus503Error;
+  message: string;
+};
+
 export type AcceptMinistryInvitationBody = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   idempotencyKey: string;
@@ -8909,6 +8981,18 @@ export type AcceptMinistryInvitation401 = {
   message: string;
 };
 
+export type AcceptMinistryInvitation503Error = typeof AcceptMinistryInvitation503Error[keyof typeof AcceptMinistryInvitation503Error];
+
+
+export const AcceptMinistryInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type AcceptMinistryInvitation503 = {
+  error: AcceptMinistryInvitation503Error;
+  message: string;
+};
+
 export type DeclineMinistryInvitation200 = {
   kind: 'declined';
 } | {
@@ -8927,6 +9011,18 @@ export const DeclineMinistryInvitation401Error = {
 
 export type DeclineMinistryInvitation401 = {
   error: DeclineMinistryInvitation401Error;
+  message: string;
+};
+
+export type DeclineMinistryInvitation503Error = typeof DeclineMinistryInvitation503Error[keyof typeof DeclineMinistryInvitation503Error];
+
+
+export const DeclineMinistryInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type DeclineMinistryInvitation503 = {
+  error: DeclineMinistryInvitation503Error;
   message: string;
 };
 
@@ -8960,6 +9056,18 @@ export const GetVolunteerTransferPreview401Error = {
 
 export type GetVolunteerTransferPreview401 = {
   error: GetVolunteerTransferPreview401Error;
+  message: string;
+};
+
+export type GetVolunteerTransferPreview503Error = typeof GetVolunteerTransferPreview503Error[keyof typeof GetVolunteerTransferPreview503Error];
+
+
+export const GetVolunteerTransferPreview503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetVolunteerTransferPreview503 = {
+  error: GetVolunteerTransferPreview503Error;
   message: string;
 };
 
@@ -8998,6 +9106,18 @@ export const ConfirmVolunteerTransfer401Error = {
 
 export type ConfirmVolunteerTransfer401 = {
   error: ConfirmVolunteerTransfer401Error;
+  message: string;
+};
+
+export type ConfirmVolunteerTransfer503Error = typeof ConfirmVolunteerTransfer503Error[keyof typeof ConfirmVolunteerTransfer503Error];
+
+
+export const ConfirmVolunteerTransfer503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ConfirmVolunteerTransfer503 = {
+  error: ConfirmVolunteerTransfer503Error;
   message: string;
 };
 

@@ -1,5 +1,6 @@
 import { env } from '@church/env/server';
 import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/services/better-auth-redemption-identity-gateway';
+import { BetterAuthSessionGateway } from '../../infrastructure/services/better-auth-session-gateway';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
 import { HttpWebShell } from '../../infrastructure/services/http-web-shell';
 import { OtelTracing } from '../../infrastructure/services/otel-tracing';
@@ -16,6 +17,8 @@ export function buildServices({ overrides }: BuildServicesInput): Services {
       auth,
       createTransactionAuth: createServerAuth,
     });
+  const sessionGateway =
+    overrides.sessionGateway ?? new BetterAuthSessionGateway({ auth });
   const emailSender = overrides.emailSender ?? serverEmailSender;
   useResetMailSender(emailSender);
   const verificationCodeInspector =
@@ -45,6 +48,7 @@ export function buildServices({ overrides }: BuildServicesInput): Services {
   return {
     webShell,
     redemptionIdentityGateway,
+    sessionGateway,
     emailSender,
     verificationCodeInspector,
     errorReporter,

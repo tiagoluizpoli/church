@@ -16,6 +16,8 @@ export interface ObjectKeyInput {
 export interface ObjectStorage {
   put(input: PutObjectInput): Promise<void>;
   delete(input: ObjectKeyInput): Promise<void>;
+  /** The bytes stored at `key`, or null when nothing is. */
+  get(input: ObjectKeyInput): Promise<Uint8Array | null>;
   /** Whether an object is stored at `key`. */
   exists(input: ObjectKeyInput): Promise<boolean>;
   /** The anonymous URL of `key`, from the configured public base. */

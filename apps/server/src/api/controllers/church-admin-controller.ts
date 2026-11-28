@@ -1,4 +1,3 @@
-import { NotFoundError } from '@church/core';
 import { parseInstant } from '@church/time';
 import { z } from 'zod';
 import {
@@ -78,7 +77,6 @@ import { setupProgressResponseSchema } from '../dtos/setup-progress.dto';
 import { setDefaultDirectionBodySchema } from '../dtos/usual-setup.dto';
 import { validationErrorResponseSchema } from '../dtos/validation-error.dto';
 import { assertCancelConfirmation } from '../utils/cancel-confirmation';
-import { refuse } from '../utils/refuse';
 import {
   dateFromCalendarDayString,
   dateFromInstantString,
@@ -87,7 +85,6 @@ import {
 import type {
   ChurchAdminControllerDependencies,
   EditInputInput,
-  NestedObjectOperationInput,
   PrecedenceBody,
 } from './church-admin-controller.types';
 
@@ -916,24 +913,16 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId, eventId, eventTimeBlockId } = request.params;
         const { hidden } = request.body;
-        const updated = await this.withNestedNotFound({
-          request,
-          reply,
-          operation: async () => {
-            await this.planningEventManager.setHidden({
-              churchId: request.churchId,
-              cycleId: CycleId.from(cycleId),
-              eventId: EventId.from(eventId),
-              scope: {
-                kind: 'eventTimeBlock',
-                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-              },
-              hidden,
-            });
-            return true;
+        await this.planningEventManager.setHidden({
+          churchId: request.churchId,
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          scope: {
+            kind: 'eventTimeBlock',
+            eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
           },
+          hidden,
         });
-        if (!updated) return;
         return reply.status(204).send(null);
       },
     );
@@ -1026,18 +1015,12 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId, eventId } = request.params;
         const body = request.body;
-        const preview = await this.withNestedNotFound({
-          request,
-          reply,
-          operation: () =>
-            this.planningEventManager.previewEdit({
-              churchId: request.churchId,
-              cycleId: CycleId.from(cycleId),
-              eventId: EventId.from(eventId),
-              ...editInput({ body }),
-            }),
+        const preview = await this.planningEventManager.previewEdit({
+          churchId: request.churchId,
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          ...editInput({ body }),
         });
-        if (!preview) return;
         return reply.send(eventEditPreviewMapper.toResponse(preview));
       },
     );
@@ -1063,19 +1046,13 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId, eventId } = request.params;
         const body = request.body;
-        const result = await this.withNestedNotFound({
-          request,
-          reply,
-          operation: () =>
-            this.planningEventManager.confirmEdit({
-              churchId: request.churchId,
-              cycleId: CycleId.from(cycleId),
-              eventId: EventId.from(eventId),
-              ...editInput({ body }),
-              actingUserId: request.userId,
-            }),
+        const result = await this.planningEventManager.confirmEdit({
+          churchId: request.churchId,
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          ...editInput({ body }),
+          actingUserId: request.userId,
         });
-        if (!result) return;
         return reply.send(eventMoveMapper.toResponse(result));
       },
     );
@@ -1101,20 +1078,15 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId, eventId } = request.params;
         const body = request.body;
-        const eventTimeBlock = await this.withNestedNotFound({
-          request,
-          reply,
-          operation: () =>
-            this.planningEventManager.createEventTimeBlock({
-              churchId: request.churchId,
-              cycleId: CycleId.from(cycleId),
-              eventId: EventId.from(eventId),
-              startTime: dateFromInstantString({ value: body.startTime }),
-              endTime: dateFromInstantString({ value: body.endTime }),
-              label: body.label,
-            }),
-        });
-        if (!eventTimeBlock) return;
+        const eventTimeBlock =
+          await this.planningEventManager.createEventTimeBlock({
+            churchId: request.churchId,
+            cycleId: CycleId.from(cycleId),
+            eventId: EventId.from(eventId),
+            startTime: dateFromInstantString({ value: body.startTime }),
+            endTime: dateFromInstantString({ value: body.endTime }),
+            label: body.label,
+          });
         return reply
           .status(201)
           .send(eventTimeBlockMapper.toResponse(eventTimeBlock));
@@ -1152,12 +1124,7 @@ export class ChurchAdminController implements FastifyController {
           },
           start: dateFromInstantString({ value: body.start }),
         };
-        const preview = await this.withNestedNotFound({
-          request,
-          reply,
-          operation: () => this.planningEventManager.previewMove(move),
-        });
-        if (!preview) return;
+        const preview = await this.planningEventManager.previewMove(move);
         const response = eventMovePreviewMapper.toResponse(preview);
         return reply.send(response);
       },
@@ -1195,12 +1162,7 @@ export class ChurchAdminController implements FastifyController {
           start: dateFromInstantString({ value: body.start }),
           actingUserId: request.userId,
         };
-        const result = await this.withNestedNotFound({
-          request,
-          reply,
-          operation: () => this.planningEventManager.confirmMove(move),
-        });
-        if (!result) return;
+        const result = await this.planningEventManager.confirmMove(move);
         const response = eventMoveMapper.toResponse(result);
         return reply.send(response);
       },
@@ -1225,21 +1187,15 @@ export class ChurchAdminController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId, eventId, eventTimeBlockId } = request.params;
-        const impact = await this.withNestedNotFound({
-          request,
-          reply,
-          operation: () =>
-            this.planningEventManager.previewCancellation({
-              churchId: request.churchId,
-              cycleId: CycleId.from(cycleId),
-              eventId: EventId.from(eventId),
-              scope: {
-                kind: 'eventTimeBlock',
-                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-              },
-            }),
+        const impact = await this.planningEventManager.previewCancellation({
+          churchId: request.churchId,
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          scope: {
+            kind: 'eventTimeBlock',
+            eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+          },
         });
-        if (!impact) return;
         return reply.send(impact);
       },
     );
@@ -1266,23 +1222,17 @@ export class ChurchAdminController implements FastifyController {
         const { cycleId, eventId, eventTimeBlockId } = request.params;
         const { confirmation, hidden } = request.body;
         assertCancelConfirmation({ confirmation, locale: request.locale });
-        const impact = await this.withNestedNotFound({
-          request,
-          reply,
-          operation: () =>
-            this.planningEventManager.confirmCancellation({
-              churchId: request.churchId,
-              cycleId: CycleId.from(cycleId),
-              eventId: EventId.from(eventId),
-              scope: {
-                kind: 'eventTimeBlock',
-                eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-              },
-              actingUserId: request.userId,
-              hidden,
-            }),
+        const impact = await this.planningEventManager.confirmCancellation({
+          churchId: request.churchId,
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          scope: {
+            kind: 'eventTimeBlock',
+            eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+          },
+          actingUserId: request.userId,
+          hidden,
         });
-        if (!impact) return;
         return reply.send(impact);
       },
     );
@@ -1308,23 +1258,18 @@ export class ChurchAdminController implements FastifyController {
       async (request, reply) => {
         const { cycleId, eventId, eventTimeBlockId } = request.params;
         const body = request.body;
-        const eventTimeBlock = await this.withNestedNotFound({
-          request,
-          reply,
-          operation: () =>
-            this.planningEventManager.updateEventTimeBlock({
-              churchId: request.churchId,
-              cycleId: CycleId.from(cycleId),
-              eventId: EventId.from(eventId),
-              eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-              startTime: optionalDateFromInstantString({
-                value: body.startTime,
-              }),
-              endTime: optionalDateFromInstantString({ value: body.endTime }),
-              label: body.label,
+        const eventTimeBlock =
+          await this.planningEventManager.updateEventTimeBlock({
+            churchId: request.churchId,
+            cycleId: CycleId.from(cycleId),
+            eventId: EventId.from(eventId),
+            eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
+            startTime: optionalDateFromInstantString({
+              value: body.startTime,
             }),
-        });
-        if (!eventTimeBlock) return;
+            endTime: optionalDateFromInstantString({ value: body.endTime }),
+            label: body.label,
+          });
         return reply.send(eventTimeBlockMapper.toResponse(eventTimeBlock));
       },
     );
@@ -1343,20 +1288,12 @@ export class ChurchAdminController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId, eventId, eventTimeBlockId } = request.params;
-        const deleted = await this.withNestedNotFound({
-          request,
-          reply,
-          operation: async () => {
-            await this.planningEventManager.deleteEventTimeBlock({
-              churchId: request.churchId,
-              cycleId: CycleId.from(cycleId),
-              eventId: EventId.from(eventId),
-              eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-            });
-            return true;
-          },
+        await this.planningEventManager.deleteEventTimeBlock({
+          churchId: request.churchId,
+          cycleId: CycleId.from(cycleId),
+          eventId: EventId.from(eventId),
+          eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
         });
-        if (!deleted) return;
         return reply.status(204).send(null);
       },
     );
@@ -1386,21 +1323,5 @@ export class ChurchAdminController implements FastifyController {
         return reply.send(ministryMapper.toResponse(ministry));
       },
     );
-  }
-
-  private async withNestedNotFound<T>({
-    request,
-    reply,
-    operation,
-  }: NestedObjectOperationInput<T>): Promise<T | undefined> {
-    try {
-      return await operation();
-    } catch (error) {
-      if (error instanceof NotFoundError) {
-        refuse({ reply, request, code: 'NOT_FOUND' });
-        return undefined;
-      }
-      throw error;
-    }
   }
 }

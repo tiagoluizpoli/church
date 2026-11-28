@@ -537,7 +537,8 @@ export class DrizzleMinistryInvitationRepository
         eq(ministryInvitationRole.ministryInvitationId, ministryInvitation.id),
       )
       .leftJoin(role, eq(role.id, ministryInvitationRole.roleId))
-      .where(eq(ministryInvitation.id, ministryInvitationId));
+      .where(eq(ministryInvitation.id, ministryInvitationId))
+      .orderBy(asc(sql`lower(${role.name})`), asc(role.id));
     const first = rows[0];
     if (!first) return null;
     const roleIds = rows.flatMap((row) =>

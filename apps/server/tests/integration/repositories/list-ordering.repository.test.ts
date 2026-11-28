@@ -1151,6 +1151,11 @@ describe('repository list ordering', () => {
       ).toEqual(requirementIds);
     });
 
+    it('findMinistryInvitationContext returns Role names by name (case-insensitive), then id', async () => {
+      const { roleNames } = await seedInvitationRoles();
+      expect(roleNames).toEqual(['alpha', 'Beta', 'Zeta']);
+    });
+
     it('characterization: each read returns every row it returned before #1231', async () => {
       const blockRequirements = await seedBlockRequirements();
       const eventTimeBlocks = new DrizzleEventTimeBlockRepository({ db });

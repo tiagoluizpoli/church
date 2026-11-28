@@ -54,6 +54,7 @@ import {
   seedInvitationManagementGraph,
 } from '@/tests/test-support/invitation-management-graph';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -103,6 +104,7 @@ async function buildApp({ wrapRepo }: BuildAppInput = {}) {
     errorReporter: testErrorReporter,
   });
   const controller = new MinistryController({
+    sessionGateway: testSessionGateway(),
     config: appConfig,
     ministryManager: {} as never,
     ministryInvitationManager: manager,

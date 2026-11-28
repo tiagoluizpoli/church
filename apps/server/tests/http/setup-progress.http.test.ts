@@ -42,6 +42,7 @@ import {
 import { ChurchAdminControllers } from '@/tests/test-support/church-admin-controllers';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -77,6 +78,7 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   const controller = new ChurchAdminControllers({
+    sessionGateway: testSessionGateway(),
     cycleManager: {} as never,
     eventTemplateManager: {} as never,
     planningEventManager: {} as never,

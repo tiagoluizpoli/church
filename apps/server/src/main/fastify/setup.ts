@@ -49,7 +49,6 @@ import {
   serializeRequest,
 } from '../../infrastructure/privacy/privacy';
 import { AuthBackendUnavailableError } from '../../infrastructure/services/auth-backend-unavailable-error';
-import { BetterAuthSessionGateway } from '../../infrastructure/services/better-auth-session-gateway';
 import { auth } from '../di/server-auth';
 import { fastifyOtel } from '../instrumentation';
 import { requestId } from './request-id';
@@ -58,6 +57,7 @@ import type {
   FastifyFactory,
   LoggingOptionsInput,
   ReportUnexpectedInput,
+  SendServiceUnavailableInput,
 } from './setup.types';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
@@ -83,6 +83,17 @@ function reportUnexpected({
     userId,
     churchId,
     request: { method, url, headers },
+  });
+}
+
+/** A transient outage (auth backend or database): retry shortly, nothing to report. */
+function sendServiceUnavailable({
+  reply,
+  message,
+}: SendServiceUnavailableInput) {
+  return reply.status(503).header('Retry-After', '5').send({
+    error: 'SERVICE_UNAVAILABLE',
+    message,
   });
 }
 
@@ -113,7 +124,6 @@ export async function createFastify({
   locale: localeSettings,
   errorReporter,
   logStream,
-  sessionGateway = new BetterAuthSessionGateway({ auth }),
 }: CreateFastifyInput) {
   const isTest = env.NODE_ENV === 'test';
   const isProd = env.NODE_ENV === 'production';
@@ -147,7 +157,6 @@ export async function createFastify({
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  app.decorate('sessionGateway', sessionGateway);
   app.decorateRequest('userId', UserId.from(''));
   app.decorateRequest('volunteerId', VolunteerId.from(''));
   app.decorateRequest('churchId', ChurchId.from(''));
@@ -319,10 +328,7 @@ export async function createFastify({
       // The cause's code only, as for the database: its message may carry the connection string.
       const code = connectionErrorCode({ error }) ?? null;
       request.log.error({ code, url }, 'Auth backend failure');
-      return reply.status(503).header('Retry-After', '5').send({
-        error: 'SERVICE_UNAVAILABLE',
-        message: genericError,
-      });
+      return sendServiceUnavailable({ reply, message: genericError });
     }
 
     const connectionCode = connectionErrorCode({ error });
@@ -332,10 +338,7 @@ export async function createFastify({
         { code: connectionCode, url },
         'Database connection failure',
       );
-      return reply.status(503).header('Retry-After', '5').send({
-        error: 'SERVICE_UNAVAILABLE',
-        message: genericError,
-      });
+      return sendServiceUnavailable({ reply, message: genericError });
     }
 
     request.log.error({ err: error, url }, 'Unhandled error');

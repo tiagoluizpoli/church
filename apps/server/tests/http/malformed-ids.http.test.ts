@@ -14,6 +14,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: {
@@ -207,33 +208,54 @@ beforeAll(async () => {
   });
   const controllers = [
     new MinistryController({
+      sessionGateway: testSessionGateway(),
       ...deps,
       config: appConfig,
       ministryManager: none,
       ministryInvitationManager: none,
     }),
-    new MinistryRoleController({ ...deps, ministryRoleManager: none }),
+    new MinistryRoleController({
+      sessionGateway: testSessionGateway(),
+      ...deps,
+      ministryRoleManager: none,
+    }),
     new SectorController({
+      sessionGateway: testSessionGateway(),
       ...deps,
       ministryManager: none,
       sectorManager: none,
     }),
     new UsualSetupController({
+      sessionGateway: testSessionGateway(),
       ...deps,
       ministryManager: none,
       usualSetupManager: none,
     }),
     new PrepareController({
+      sessionGateway: testSessionGateway(),
       ...deps,
       config: appConfig,
       prepareManager: none,
       scheduleReadModel: none,
       availabilityCheckManager: none,
     }),
-    new SwapRequestController({ ...deps, swapRequestManager: none }),
-    new VolunteerController({ ...deps, volunteerManager: none }),
-    new EventController({ ...deps, eventManager: none }),
+    new SwapRequestController({
+      sessionGateway: testSessionGateway(),
+      ...deps,
+      swapRequestManager: none,
+    }),
+    new VolunteerController({
+      sessionGateway: testSessionGateway(),
+      ...deps,
+      volunteerManager: none,
+    }),
+    new EventController({
+      sessionGateway: testSessionGateway(),
+      ...deps,
+      eventManager: none,
+    }),
     new PeopleController({
+      sessionGateway: testSessionGateway(),
       ...deps,
       config: appConfig,
       peopleListManager: none,

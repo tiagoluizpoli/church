@@ -3,6 +3,7 @@ import type { IActiveChurchResolver } from '../../domain/contracts/application/a
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IInvitationListManager } from '../../domain/contracts/application/invitation-list-manager';
 import type { IMinistryInvitationManager } from '../../domain/contracts/application/ministry-invitation-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import {
@@ -41,6 +42,7 @@ export class InvitationController implements FastifyController {
   private readonly invitationListManager: IInvitationListManager;
   private readonly ministryInvitationManager: IMinistryInvitationManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
   private readonly maxPageSize: number;
 
@@ -48,12 +50,14 @@ export class InvitationController implements FastifyController {
     invitationListManager,
     ministryInvitationManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
     maxPageSize,
   }: InvitationControllerDependencies) {
     this.invitationListManager = invitationListManager;
     this.ministryInvitationManager = ministryInvitationManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
     this.maxPageSize = maxPageSize;
   }
@@ -65,7 +69,10 @@ export class InvitationController implements FastifyController {
   ): void {
     app.addHook(
       'preValidation',
-      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
+      }),
     );
     const churchAdminOnly = createChurchAdminHook({
       authorityGuard: this.authorityGuard,

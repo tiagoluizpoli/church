@@ -17,6 +17,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn(), setActiveOrganization: vi.fn() } },
@@ -53,14 +54,17 @@ beforeAll(async () => {
   });
   const controllers = [
     new CallerCapabilitiesController({
+      sessionGateway: testSessionGateway(),
       activeChurchResolver: activeChurchResolver as never,
       authorityGuard: none,
     }),
     new ActiveChurchController({
+      sessionGateway: testSessionGateway(),
       activeChurchResolver: activeChurchResolver as never,
       selectionManager: none,
     }),
     new RedemptionController({
+      sessionGateway: testSessionGateway(),
       redemptionManager: none,
       volunteerTransferManager: none,
       config: appConfig,
@@ -104,6 +108,24 @@ describe.each(ENTRY_POINTS)('%s session lookup', (_name, url) => {
 
   it('answers 401 when Better Auth refuses the session with its own 401', async () => {
     mockGetSession.mockRejectedValueOnce(new APIError('UNAUTHORIZED'));
+
+    const response = await app.inject({
+      method: 'GET',
+      url,
+      headers: { cookie: AUTH_COOKIE },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual(UNAUTHORIZED_BODY);
+    expect(activeChurchResolver.resolve).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['400', new APIError('BAD_REQUEST')],
+    ['403', new APIError('FORBIDDEN')],
+    ['404', new APIError('NOT_FOUND')],
+  ])('answers 401 when Better Auth refuses the session with its own %s', async (_status, refusal) => {
+    mockGetSession.mockRejectedValueOnce(refusal);
 
     const response = await app.inject({
       method: 'GET',

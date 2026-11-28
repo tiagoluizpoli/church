@@ -2,6 +2,7 @@ import { MinistryId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import { createChurchAdminHook } from '../auth/authority-access';
@@ -18,15 +19,18 @@ export class MinistryAdminController implements FastifyController {
 
   private readonly ministryManager: IMinistryManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     ministryManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
   }: MinistryAdminControllerDependencies) {
     this.ministryManager = ministryManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -37,7 +41,10 @@ export class MinistryAdminController implements FastifyController {
   ): void {
     app.addHook(
       'preValidation',
-      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
+      }),
     );
 
     app.addHook(

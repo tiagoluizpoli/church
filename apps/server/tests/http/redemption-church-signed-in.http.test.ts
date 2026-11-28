@@ -39,6 +39,7 @@ import {
   type TwoChurchIdentityFixture,
 } from '@/tests/test-support/identity-fixtures';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 const verificationCodeRepository =
   new DrizzleInvitationVerificationCodeRepository({
@@ -108,6 +109,7 @@ beforeEach(async () => {
     errorReporter: testErrorReporter,
   });
   const controller = new RedemptionController({
+    sessionGateway: testSessionGateway(),
     redemptionManager,
     volunteerTransferManager,
     config: appConfig,

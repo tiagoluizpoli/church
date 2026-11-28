@@ -5,8 +5,10 @@ import {
 } from '../../domain/branded-ids';
 import type { IRedemptionManager } from '../../domain/contracts/application/redemption-manager';
 import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
+import { requireSession } from '../auth/require-session';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   acceptExistingMemberBodySchema,
@@ -34,8 +36,7 @@ import {
 } from '../dtos/redemption.dto';
 import { serviceUnavailableResponseSchema } from '../dtos/service-unavailable.dto';
 import { debugEndpointsEnabled } from '../utils/debug-endpoints';
-import { headersFromRequest } from '../utils/headers';
-import { isRateLimited } from '../utils/rate-limit';
+import { assertNotRateLimited } from '../utils/rate-limit';
 import { RefusalError } from '../utils/refusal-error';
 import type {
   AuthenticatedRedeemer,
@@ -49,12 +50,15 @@ export class RedemptionController implements FastifyController {
   private readonly redemptionManager: IRedemptionManager;
   private readonly volunteerTransferManager: IVolunteerTransferManager;
   private readonly rateLimit: AppConfig['redemptionRateLimit'];
+  private readonly sessionGateway: SessionGateway;
 
   constructor({
     redemptionManager,
     volunteerTransferManager,
+    sessionGateway,
     config,
   }: RedemptionControllerDependencies) {
+    this.sessionGateway = sessionGateway;
     this.redemptionManager = redemptionManager;
     this.volunteerTransferManager = volunteerTransferManager;
     const { redemptionRateLimit } = config;
@@ -84,14 +88,11 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (
-          isRateLimited({
-            bucket: 'redemption',
-            key: request.ip,
-            limit: this.rateLimit,
-          })
-        )
-          throw new RefusalError({ code: 'RATE_LIMITED' });
+        assertNotRateLimited({
+          bucket: 'redemption',
+          key: request.ip,
+          limit: this.rateLimit,
+        });
         const params = request.params;
         const preview = await this.redemptionManager.getPublicPreview({
           churchInvitationId: ChurchInvitationId.from(params.invitationId),
@@ -120,14 +121,11 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (
-          isRateLimited({
-            bucket: 'redemption',
-            key: request.ip,
-            limit: this.rateLimit,
-          })
-        )
-          throw new RefusalError({ code: 'RATE_LIMITED' });
+        assertNotRateLimited({
+          bucket: 'redemption',
+          key: request.ip,
+          limit: this.rateLimit,
+        });
         const params = request.params;
         let sent: boolean;
         try {
@@ -163,14 +161,11 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (
-          isRateLimited({
-            bucket: 'redemption',
-            key: request.ip,
-            limit: this.rateLimit,
-          })
-        )
-          throw new RefusalError({ code: 'RATE_LIMITED' });
+        assertNotRateLimited({
+          bucket: 'redemption',
+          key: request.ip,
+          limit: this.rateLimit,
+        });
         const params = request.params;
         const body = request.body;
         const outcome = await this.redemptionManager.redeemNewUser({
@@ -208,14 +203,11 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (
-          isRateLimited({
-            bucket: 'redemption',
-            key: request.ip,
-            limit: this.rateLimit,
-          })
-        )
-          throw new RefusalError({ code: 'RATE_LIMITED' });
+        assertNotRateLimited({
+          bucket: 'redemption',
+          key: request.ip,
+          limit: this.rateLimit,
+        });
         const params = request.params;
         const outcome = await this.redemptionManager.declineChurchInvitation({
           churchInvitationId: ChurchInvitationId.from(params.invitationId),
@@ -515,12 +507,12 @@ export class RedemptionController implements FastifyController {
   private async requireRedeemer({
     request,
   }: RequireRedeemerInput): Promise<AuthenticatedRedeemer> {
-    const headers = headersFromRequest(request);
-    const session = await request.server.sessionGateway.lookup({ headers });
+    const session = await requireSession({
+      sessionGateway: this.sessionGateway,
+      request,
+    });
     const sessionCookie = request.headers.cookie;
-    if (!session || !sessionCookie) {
-      throw new RefusalError({ code: 'UNAUTHORIZED' });
-    }
+    if (!sessionCookie) throw new RefusalError({ code: 'UNAUTHORIZED' });
     return { userId: session.userId, sessionCookie };
   }
 }

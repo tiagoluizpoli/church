@@ -5,6 +5,7 @@ import type {
   RateLimitStore,
   RateLimitWindow,
 } from './rate-limit.types';
+import { RefusalError } from './refusal-error';
 
 /** An in-process sliding window of attempt times per key. */
 export function createRateLimitStore(): RateLimitStore {
@@ -45,4 +46,9 @@ export function isRateLimited({
   now = nowAsDate().getTime(),
 }: RateLimitInput): boolean {
   return store.hit({ key: `${bucket}:${key}`, ...limit, now });
+}
+
+/** Counts this attempt as `isRateLimited` does and refuses it with RATE_LIMITED (429) when over. */
+export function assertNotRateLimited(input: RateLimitInput): void {
+  if (isRateLimited(input)) throw new RefusalError({ code: 'RATE_LIMITED' });
 }

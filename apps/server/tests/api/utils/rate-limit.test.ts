@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createRateLimitStore, isRateLimited } from '@/api/utils/rate-limit';
+import {
+  assertNotRateLimited,
+  createRateLimitStore,
+  isRateLimited,
+} from '@/api/utils/rate-limit';
+import { RefusalError } from '@/api/utils/refusal-error';
 
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS = 2;
@@ -87,5 +92,24 @@ describe('createRateLimitStore', () => {
     expect(store.size).toBe(2);
     expect(store.hit({ key: 'long', ...policy, now: START + 12 })).toBe(false);
     expect(store.hit({ key: 'long', ...policy, now: START + 13 })).toBe(true);
+  });
+});
+
+describe('assertNotRateLimited', () => {
+  it('passes within the window and refuses the next attempt with RATE_LIMITED', () => {
+    const key = freshKey();
+    const attempt = (now: number) =>
+      assertNotRateLimited({
+        bucket: 'redemption',
+        key,
+        limit: { windowMs: WINDOW_MS, maxRequests: MAX_REQUESTS },
+        now,
+      });
+
+    attempt(START);
+    attempt(START + 1);
+    expect(() => attempt(START + 2)).toThrow(
+      new RefusalError({ code: 'RATE_LIMITED' }),
+    );
   });
 });

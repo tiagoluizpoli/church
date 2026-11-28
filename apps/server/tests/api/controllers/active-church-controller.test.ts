@@ -13,6 +13,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: {
@@ -48,6 +49,7 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   const controller = new ActiveChurchController({
+    sessionGateway: testSessionGateway(),
     activeChurchResolver: activeChurchResolver as never,
     selectionManager: selectionManager as never,
   });

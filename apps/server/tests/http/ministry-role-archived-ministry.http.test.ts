@@ -33,6 +33,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 // #1225: the Role routes answer an archived Ministry as 404, like the Sector
 // and Usual setup routes. The Role manager checks the Ministry is active.
@@ -60,6 +61,7 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   const controller = new MinistryRoleController({
+    sessionGateway: testSessionGateway(),
     ministryRoleManager: new DbMinistryRoleManager({
       ministryRepository,
       roleRepository: new DrizzleRoleRepository({ db }),

@@ -81,6 +81,7 @@ import { ChurchAdminControllers } from '@/tests/test-support/church-admin-contro
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -123,6 +124,7 @@ beforeAll(async () => {
   // Real managers, repositories and AuthorityService decision; only the
   // session, the Active Church selection and the actor lookup are seams.
   const controller = new ChurchAdminControllers({
+    sessionGateway: testSessionGateway(),
     cycleManager: new DbCycleManager({
       cycleRepository,
       eventRepository,

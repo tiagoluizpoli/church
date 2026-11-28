@@ -39,6 +39,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -72,6 +73,7 @@ beforeAll(async () => {
   });
   // Real managers, repositories, AuthorityService and PostgreSQL; only session and Active Church are seams.
   const controller = new PeopleController({
+    sessionGateway: testSessionGateway(),
     peopleListManager: new DbPeopleListManager({
       peopleListRepository: new DrizzlePeopleListRepository({ db }),
       authorityManager,

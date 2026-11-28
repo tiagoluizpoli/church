@@ -2,6 +2,7 @@ import { NotificationId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { INotificationManager } from '../../domain/contracts/application/notification-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
@@ -30,17 +31,20 @@ export class NotificationController implements FastifyController {
 
   private readonly notificationManager: INotificationManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
   private readonly maxPageSize: number;
 
   constructor({
     notificationManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
     maxPageSize,
   }: NotificationControllerDependencies) {
     this.notificationManager = notificationManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
     this.maxPageSize = maxPageSize;
   }
@@ -52,7 +56,10 @@ export class NotificationController implements FastifyController {
   ): void {
     app.addHook(
       'preValidation',
-      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
+      }),
     );
 
     // Every route is the caller's own inbox: the owner is the session User,

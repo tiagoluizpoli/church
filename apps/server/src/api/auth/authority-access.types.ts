@@ -13,11 +13,6 @@ export interface AssertManagedMinistryInput extends AuthorityAccessInput {
   ministryId: MinistryId;
 }
 
-export interface AssertMinistryManagementInput extends AuthorityAccessInput {
-  /** Omit for the function-level check only (403); pass for the object check too (404). */
-  ministryId?: MinistryId;
-}
-
 export interface ResolveManagedMinistryInput extends AuthorityAccessInput {
   ministryManager: IMinistryManager;
   ministryId: MinistryId;

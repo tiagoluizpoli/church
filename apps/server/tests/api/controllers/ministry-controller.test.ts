@@ -16,6 +16,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: {
@@ -69,6 +70,7 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   const controller = new MinistryController({
+    sessionGateway: testSessionGateway(),
     config: appConfig,
     ministryManager: ministryManager as never,
     ministryInvitationManager: ministryInvitationManager as never,

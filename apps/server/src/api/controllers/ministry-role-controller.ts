@@ -3,6 +3,7 @@ import { MinistryId, RoleId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryRoleManager } from '../../domain/contracts/application/ministry-role-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import { assertMinistryManagement } from '../auth/authority-access';
@@ -31,15 +32,18 @@ export class MinistryRoleController implements FastifyController {
 
   private readonly ministryRoleManager: IMinistryRoleManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     ministryRoleManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
   }: MinistryRoleControllerDependencies) {
     this.ministryRoleManager = ministryRoleManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -52,6 +56,7 @@ export class MinistryRoleController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
       }),
     );
     const authorityGuard = this.authorityGuard;

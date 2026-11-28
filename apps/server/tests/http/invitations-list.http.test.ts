@@ -41,6 +41,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 import { compareStatementCounts } from '@/tests/test-support/statement-count';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -83,6 +84,7 @@ beforeAll(async () => {
   });
   // Real manager, repository and AuthorityService; only session and Active Church are seams.
   const controller = new InvitationController({
+    sessionGateway: testSessionGateway(),
     invitationListManager: new DbInvitationListManager({
       invitationListRepository: new DrizzleInvitationListRepository({ db }),
       authorityManager,

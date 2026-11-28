@@ -47,6 +47,7 @@ import {
   createUnitOfWorkFake,
   createVolunteerRepositoryFake,
 } from '@/tests/test-support/repository-contract-fakes';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -96,6 +97,7 @@ beforeAll(async () => {
     config: appConfig,
   });
   const controller = new VolunteerController({
+    sessionGateway: testSessionGateway(),
     volunteerManager: manager,
     activeChurchResolver: {
       resolve: vi.fn().mockResolvedValue({

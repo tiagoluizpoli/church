@@ -3,6 +3,7 @@ import type { IActiveChurchResolver } from '../../domain/contracts/application/a
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { IUsualSetupManager } from '../../domain/contracts/application/usual-setup-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import { resolveManagedMinistry } from '../auth/authority-access';
@@ -28,17 +29,20 @@ export class UsualSetupController implements FastifyController {
   private readonly ministryManager: IMinistryManager;
   private readonly usualSetupManager: IUsualSetupManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     ministryManager,
     usualSetupManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
   }: UsualSetupControllerDependencies) {
     this.ministryManager = ministryManager;
     this.usualSetupManager = usualSetupManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -51,6 +55,7 @@ export class UsualSetupController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
       }),
     );
 

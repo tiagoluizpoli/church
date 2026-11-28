@@ -43,6 +43,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 import { compareStatementCounts } from '@/tests/test-support/statement-count';
 
 // Only the Better Auth session is a seam, so every statement a request costs is counted.
@@ -83,6 +84,7 @@ beforeAll(async () => {
   });
   const controllers = [
     new MinistryController({
+      sessionGateway: testSessionGateway(),
       config: appConfig,
       ministryManager: new DbMinistryManager({
         ministryRepo,
@@ -97,6 +99,7 @@ beforeAll(async () => {
       authorityGuard,
     }),
     new PeopleController({
+      sessionGateway: testSessionGateway(),
       peopleListManager: new DbPeopleListManager({
         peopleListRepository: new DrizzlePeopleListRepository({ db }),
         authorityManager,

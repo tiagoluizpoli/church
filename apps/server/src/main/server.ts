@@ -25,7 +25,6 @@ async function start(): Promise<void> {
   const app = await createFastify({
     locale: root.locale,
     errorReporter: root.errorReporter,
-    sessionGateway: root.sessionGateway,
   });
 
   await app.register(

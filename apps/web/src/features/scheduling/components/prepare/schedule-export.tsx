@@ -1,13 +1,21 @@
 import { exportFileName } from '@church/domain-rules/export-file-name';
 import { m } from '@church/i18n/messages';
 import { useMutation } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { DatePickerField } from '@/components/date-picker-field';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  cycleSpan,
+  type ExportCycle,
+  ScheduleExportCyclePicker,
+} from '@/features/scheduling/components/prepare/schedule-export-cycle-picker';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
-import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { exportApi } from '@/utils/api-instances';
 
 interface ScheduleExportProps {
@@ -30,40 +38,72 @@ function saveFile({ file, name }: SaveFileInput) {
   URL.revokeObjectURL(url);
 }
 
+/** The refusal's translated message; a blob download carries it as a Blob. */
+async function refusalMessage(error: unknown): Promise<string | undefined> {
+  if (!isAxiosError(error) || !(error.response?.data instanceof Blob)) {
+    return undefined;
+  }
+  try {
+    const { message } = JSON.parse(await error.response.data.text());
+    return typeof message === 'string' && message ? message : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+interface ExportRange {
+  from: string;
+  to: string;
+}
+
 /**
- * Exportar: the Schedule's whole Cycle as an A4 PDF table (#1243). The page
- * is only reachable by the Ministry's leaders and ChurchAdmins.
+ * Exportar: the Schedule as an A4 PDF table (#1243), for any Cycle with a
+ * Schedule and optionally only some of its dates (#1246). The page is only
+ * reachable by the Ministry's leaders and ChurchAdmins.
  */
 export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
   const [open, setOpen] = useState(false);
+  const [cycle, setCycle] = useState<ExportCycle | null>(null);
+  // Null: the whole Cycle.
+  const [range, setRange] = useState<ExportRange | null>(null);
   const { data } = useSchedule({ ministryId, cycleId });
   const download = useMutation({
-    mutationFn: () =>
-      exportApi.getScheduleExportFile(ministryId, cycleId, { format: 'pdf' }),
-    onSuccess: (file) => {
+    mutationFn: async (chosen: ExportCycle) => {
+      try {
+        return await exportApi.getScheduleExportFile(ministryId, chosen.id, {
+          format: 'pdf',
+          ...range,
+        });
+      } catch (error) {
+        throw new Error(
+          (await refusalMessage(error)) ?? m.export_download_failed(),
+        );
+      }
+    },
+    onSuccess: (file, chosen) => {
       if (!data) return;
       const name = m.export_file_name({
         ministry: data.ministry.name,
-        cycle: data.cycle.name,
+        cycle: chosen.name,
       });
       saveFile({ file, name: `${exportFileName({ name })}.pdf` });
       setOpen(false);
     },
-    onError: () => toast.error(m.export_download_failed()),
+    onError: (error) => toast.error(error.message),
   });
   if (!data) return null;
-  const span = `${formatCalendarDateOnly({ value: data.cycle.startDate })} – ${formatCalendarDateOnly({ value: data.cycle.endDate })}`;
-  const settings = [
-    [m.export_cycle_label(), data.cycle.name],
-    [m.export_dates_label(), m.export_whole_cycle({ span })],
-    [m.export_format_label(), m.export_format_pdf()],
-  ];
+  const selected = cycle ?? { ...data.cycle, id: cycleId };
+  const span = cycleSpan({ cycle: selected });
   return (
     <>
       <Button
         variant="outline"
         className="min-h-11 md:min-h-8"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setCycle(null);
+          setRange(null);
+          setOpen(true);
+        }}
       >
         {m.export_open()}
       </Button>
@@ -77,21 +117,71 @@ export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
         footer={
           <Button
             disabled={download.isPending}
-            onClick={() => download.mutate()}
+            onClick={() => download.mutate(selected)}
           >
             {download.isPending ? <Spinner /> : null}
             {m.export_download()}
           </Button>
         }
       >
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-          {settings.map(([label, value]) => (
-            <div key={label} className="contents">
-              <dt className="text-muted-foreground">{label}</dt>
-              <dd className="font-medium">{value}</dd>
-            </div>
-          ))}
-        </dl>
+        <div className="space-y-4 text-sm">
+          <div className="space-y-1">
+            <p className="text-muted-foreground">{m.export_cycle_label()}</p>
+            <ScheduleExportCyclePicker
+              ministryId={ministryId}
+              value={selected}
+              onChange={(next) => {
+                setCycle(next);
+                setRange(null);
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <p className="text-muted-foreground">{m.export_dates_label()}</p>
+            <RadioGroup
+              aria-label={m.export_dates_label()}
+              value={range ? 'pick' : 'whole'}
+              onValueChange={(value) =>
+                setRange(
+                  value === 'pick'
+                    ? { from: selected.startDate, to: selected.endDate }
+                    : null,
+                )
+              }
+            >
+              <Label className="font-normal">
+                <RadioGroupItem value="whole" />
+                {m.export_whole_cycle({ span })}
+              </Label>
+              <Label className="font-normal">
+                <RadioGroupItem value="pick" />
+                {m.export_pick_dates()}
+              </Label>
+            </RadioGroup>
+            {range ? (
+              <div className="grid grid-cols-2 gap-2">
+                {(['from', 'to'] as const).map((side) => (
+                  <div key={side} className="space-y-1">
+                    <Label id={`schedule-export-${side}`}>
+                      {side === 'from' ? m.export_from() : m.export_to()}
+                    </Label>
+                    <DatePickerField
+                      aria-labelledby={`schedule-export-${side}`}
+                      value={range[side]}
+                      onChange={(day) => setRange({ ...range, [side]: day })}
+                      minDate={selected.startDate}
+                      maxDate={selected.endDate}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <div className="space-y-1">
+            <p className="text-muted-foreground">{m.export_format_label()}</p>
+            <p className="font-medium">{m.export_format_pdf()}</p>
+          </div>
+        </div>
       </ResponsiveFormSurface>
     </>
   );

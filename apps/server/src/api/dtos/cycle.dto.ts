@@ -13,12 +13,13 @@ import {
   eventTimeBlockMapper,
   eventTimeBlockResponseSchema,
 } from './event-time-block.dto';
+import { idSchema } from './id.dto';
 
 /** Matches the `cycle.name` column length. */
 const CYCLE_NAME_MAX_LENGTH = 255;
 
 /** The `:cycleId` route param. */
-export const cycleParamsSchema = z.object({ cycleId: z.guid() });
+export const cycleParamsSchema = z.object({ cycleId: idSchema });
 
 export const createCycleBodySchema = z.object({
   name: z.string().trim().min(1).max(CYCLE_NAME_MAX_LENGTH),

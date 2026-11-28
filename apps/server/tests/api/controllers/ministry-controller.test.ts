@@ -234,7 +234,7 @@ describe('Ministry Invitation minting routes', () => {
 
   it('POST .../invitations/:invitationId/resend refreshes and maps the response', async () => {
     ministryInvitationManager.resend.mockResolvedValue({
-      id: 'ministry-invitation-1',
+      id: '44444444-4444-4444-8444-444444444444',
       kind: 'ministry-only',
       status: 'pending',
       expiresAt: parseInstant({ value: '2030-02-01T00:00:00Z' }),
@@ -243,26 +243,27 @@ describe('Ministry Invitation minting routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: `/api/v1/ministries/${ministryId}/invitations/ministry-invitation-1/resend`,
+      url: `/api/v1/ministries/${ministryId}/invitations/44444444-4444-4444-8444-444444444444/resend`,
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
-      id: 'ministry-invitation-1',
+      id: '44444444-4444-4444-8444-444444444444',
       kind: 'ministry-only',
       status: 'pending',
       expiresAt: '2030-02-01T00:00:00.000Z',
-      redemptionPath: '/app/invitations/ministry/ministry-invitation-1',
+      redemptionPath:
+        '/app/invitations/ministry/44444444-4444-4444-8444-444444444444',
       deliveryStatus: 'pending',
     });
     expect(ministryInvitationManager.getDeliveryStatus).toHaveBeenCalledWith({
       churchId: '11111111-1111-1111-1111-111111111111',
-      ministryInvitationId: 'ministry-invitation-1',
+      ministryInvitationId: '44444444-4444-4444-8444-444444444444',
     });
     expect(ministryInvitationManager.resend).toHaveBeenCalledWith({
       churchId: '11111111-1111-1111-1111-111111111111',
       ministryId,
-      ministryInvitationId: 'ministry-invitation-1',
+      ministryInvitationId: '44444444-4444-4444-8444-444444444444',
       callerId: 'admin-leader-user',
     });
   });
@@ -281,7 +282,7 @@ describe('Ministry Invitation minting routes', () => {
     {
       route: 'resend',
       method: 'POST' as const,
-      url: `/api/v1/ministries/${ministryId}/invitations/ministry-invitation-1/resend`,
+      url: `/api/v1/ministries/${ministryId}/invitations/44444444-4444-4444-8444-444444444444/resend`,
       payload: undefined,
     },
   ])('$route returns 403 before any lookup for a caller who manages no Ministry', async ({

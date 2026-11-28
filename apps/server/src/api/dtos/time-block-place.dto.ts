@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { idSchema } from './id.dto';
 
 /**
  * The place of a TemplateTimeBlock or EventTimeBlock: a Church Address of the
@@ -7,7 +8,7 @@ import { z } from 'zod';
  */
 export const timeBlockPlaceFields = {
   place: z.string().trim().max(120).optional(),
-  placeAddressId: z.string().uuid().toLowerCase().nullable().optional(),
+  placeAddressId: idSchema.toLowerCase().nullable().optional(),
 };
 
 interface PlaceFields {

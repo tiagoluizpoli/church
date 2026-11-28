@@ -12,6 +12,7 @@ import {
   eventTimeBlockMapper,
   eventTimeBlockResponseSchema,
 } from './event-time-block.dto';
+import { idSchema } from './id.dto';
 import { timeBlockPlaceFields, withOnePlace } from './time-block-place.dto';
 
 const planningEventTimeBlockFieldsSchema = z.object({
@@ -41,7 +42,7 @@ export const updatePlanningEventBodySchema = createPlanningEventBodySchema
     eventTimeBlocks: z.array(
       withOnePlace(
         planningEventTimeBlockFieldsSchema.extend({
-          id: z.guid().optional(),
+          id: idSchema.optional(),
         }),
       ),
     ),
@@ -55,7 +56,7 @@ export const updatePlanningEventDetailsBodySchema = z.object({
     .array(
       withOnePlace(
         z.object({
-          id: z.guid(),
+          id: idSchema,
           isPublic: z.boolean(),
           ...timeBlockPlaceFields,
         }),
@@ -178,7 +179,7 @@ export const editPlanningEventBodySchema = z.object({
   end: z.string().datetime(),
   eventTimeBlocks: z.array(
     z.object({
-      id: z.guid().optional(),
+      id: idSchema.optional(),
       label: z.string().trim().min(1),
       startTime: z.string().datetime(),
       endTime: z.string().datetime(),

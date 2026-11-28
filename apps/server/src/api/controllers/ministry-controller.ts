@@ -15,7 +15,9 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
+import { ministryParamsSchema } from '../dtos/id.dto';
 import {
+  ministryInvitationParamsSchema,
   ministryListResponseSchema,
   ministryMapper,
   ministryNameBodySchema,
@@ -38,9 +40,6 @@ import type {
   DenyNonAdminInput,
   DenyUnmanagedMinistryInput,
   MinistryControllerDependencies,
-  MinistryInvitationActionRouteParams,
-  MinistryInvitationRouteParams,
-  MinistryRouteParams,
 } from './ministry-controller.types';
 
 const errorResponseSchema = z.object({
@@ -206,6 +205,7 @@ export class MinistryController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'getMinistry',
+          params: ministryParamsSchema,
           summary: 'Get a managed Ministry',
           description:
             'Get an active Ministry the caller manages: any for a ChurchAdmin, a led one for a Ministry leader.',
@@ -219,9 +219,7 @@ export class MinistryController implements FastifyController {
       },
       async (request, reply) => {
         if (await this.denyMissingMinistryFunction({ request, reply })) return;
-        const ministryId = MinistryId.from(
-          (request.params as MinistryRouteParams).ministryId,
-        );
+        const ministryId = MinistryId.from(request.params.ministryId);
         if (await this.denyUnmanagedMinistry({ request, reply, ministryId })) {
           return;
         }
@@ -239,6 +237,7 @@ export class MinistryController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'renameMinistry',
+          params: ministryParamsSchema,
           summary: 'Rename a Ministry',
           description:
             'Rename an active Ministry, keeping its identity. ChurchAdmin only; active names are unique ignoring case.',
@@ -254,7 +253,7 @@ export class MinistryController implements FastifyController {
       },
       async (request, reply) => {
         if (await this.denyNonAdmin({ request, reply })) return;
-        const { ministryId } = request.params as MinistryRouteParams;
+        const { ministryId } = request.params;
         const { name } = request.body;
         const ministry = await this.ministryManager.rename({
           churchId: ChurchId.from(request.churchId),
@@ -271,6 +270,7 @@ export class MinistryController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'archiveMinistry',
+          params: ministryParamsSchema,
           summary: 'Archive a Ministry',
           description:
             'Archive an active Ministry, keeping its history and freeing its name. In the same transaction, every pending Ministry Invitation to it (expired included) is revoked as the caller with the reason `ministry-archived`, and so is its Church Invitation when no other pending Ministry Invitation still uses it; accepted Memberships are untouched and no notice is sent. ChurchAdmin only; refused with the blocking Cycles while it participates in an Event that has not ended, changing nothing.',
@@ -285,7 +285,7 @@ export class MinistryController implements FastifyController {
       },
       async (request, reply) => {
         if (await this.denyNonAdmin({ request, reply })) return;
-        const { ministryId } = request.params as MinistryRouteParams;
+        const { ministryId } = request.params;
         await this.ministryManager.archive({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),
@@ -307,6 +307,7 @@ export class MinistryController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'mintMinistryInvitation',
+          params: ministryParamsSchema,
           summary: 'Mint a Ministry Invitation',
           description:
             'Create a Ministry Invitation granting a Ministry Access Level and Roles to an emailed recipient.',
@@ -323,7 +324,7 @@ export class MinistryController implements FastifyController {
       },
       async (request, reply) => {
         if (await this.denyMissingMinistryFunction({ request, reply })) return;
-        const { ministryId } = request.params as MinistryInvitationRouteParams;
+        const { ministryId } = request.params;
         const body = request.body;
 
         const {
@@ -359,6 +360,7 @@ export class MinistryController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'resendMinistryInvitation',
+          params: ministryInvitationParamsSchema,
           summary: 'Resend a Ministry Invitation',
           description:
             'Queue one fresh delivery of a pending or expired Ministry Invitation and restart its validity: the Ministry lifetime when standalone, or the Church lifetime for the Church Invitation and every still-pending Ministry Invitation sharing it. IDs, inviter, Access Levels and Roles are kept. A ChurchAdmin may resend any; a Ministry leader only volunteer-level invitations in Ministries they lead (403 INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and other-Church targets are one 404. 409 INVITATION_NOT_PENDING when the invitation or its Church Invitation was already accepted, declined or revoked. 429 when the per-invitation cooldown or daily cap applies.',
@@ -374,8 +376,7 @@ export class MinistryController implements FastifyController {
       },
       async (request, reply) => {
         if (await this.denyMissingMinistryFunction({ request, reply })) return;
-        const { ministryId, invitationId } =
-          request.params as MinistryInvitationActionRouteParams;
+        const { ministryId, invitationId } = request.params;
 
         const {
           churchId,
@@ -405,6 +406,7 @@ export class MinistryController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'revokeMinistryInvitation',
+          params: ministryInvitationParamsSchema,
           summary: 'Revoke a Ministry Invitation',
           description:
             'Revoke a pending or expired Ministry Invitation, recording the caller, the time and the reason `manual`; the body takes no actor or reason. Its Church Invitation is revoked too when no other pending Ministry Invitation still uses it. Accepted Memberships are untouched and no notice is sent. A ChurchAdmin may revoke any; a Ministry leader only volunteer-level invitations in Ministries they lead (403 INSUFFICIENT_INVITATION_AUTHORITY otherwise). Unmanaged, missing and other-Church targets are one 404. 409 INVITATION_NOT_PENDING when it was already accepted, declined or revoked.',
@@ -419,8 +421,7 @@ export class MinistryController implements FastifyController {
       },
       async (request, reply) => {
         if (await this.denyMissingMinistryFunction({ request, reply })) return;
-        const { ministryId, invitationId } =
-          request.params as MinistryInvitationActionRouteParams;
+        const { ministryId, invitationId } = request.params;
 
         const {
           churchId,

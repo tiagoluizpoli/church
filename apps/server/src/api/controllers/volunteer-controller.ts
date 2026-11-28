@@ -22,27 +22,30 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  assignmentParamsSchema,
+  idSchema,
+  ministryParamsSchema,
+} from '../dtos/id.dto';
+import {
   answerAvailabilityCheckBodySchema,
   answerConflictResponseSchema,
   assignmentDetailResponseSchema,
   availabilityCheckDetailResponseSchema,
   availabilityCheckListQuerystringSchema,
   availabilityCheckListResponseSchema,
+  availabilityCheckParamsSchema,
   dashboardResponseSchema,
   ministryScheduleResponseSchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
 import { refuse } from '../utils/refuse';
 import type {
-  AssignmentRouteParams,
-  AvailabilityCheckRouteParams,
-  MinistryRouteParams,
   PrivateObjectOperationInput,
   VolunteerControllerDependencies,
 } from './volunteer-controller.types';
 
 const ministryScheduleQuerySchema = z.object({
-  cycleId: z.string().uuid(),
+  cycleId: idSchema,
 });
 
 const notFoundResponseSchema = z.object({
@@ -109,6 +112,7 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getAssignmentDetail',
+          params: assignmentParamsSchema,
           summary: "Get one of the caller's Assignments",
           description:
             "Get one of the current Volunteer's own published Assignments with its Shift roster. Anyone else's, or one no longer on the schedule, is 404.",
@@ -119,7 +123,7 @@ export class VolunteerController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as AssignmentRouteParams;
+        const { assignmentId } = request.params;
         const detail = await this.withPrivateObjectNotFound({
           request,
           reply,
@@ -142,6 +146,7 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getMinistrySchedule',
+          params: ministryParamsSchema,
           querystring: ministryScheduleQuerySchema,
           summary: "Get the caller's published Ministry schedule",
           description:
@@ -153,7 +158,7 @@ export class VolunteerController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { ministryId } = request.params as MinistryRouteParams;
+        const { ministryId } = request.params;
         const { cycleId } = request.query;
         let schedule: MinistrySchedule;
         try {
@@ -211,6 +216,7 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getAvailabilityCheck',
+          params: availabilityCheckParamsSchema,
           summary: "Get one of the caller's AvailabilityChecks",
           description:
             'Get the detail of a single AvailabilityCheck belonging to the current Volunteer.',
@@ -221,7 +227,7 @@ export class VolunteerController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { checkId } = request.params as AvailabilityCheckRouteParams;
+        const { checkId } = request.params;
         const detail = await this.withPrivateObjectNotFound({
           request,
           reply,
@@ -245,6 +251,7 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'answerAvailabilityCheck',
+          params: availabilityCheckParamsSchema,
           summary: 'Answer an AvailabilityCheck',
           description:
             "Record the current Volunteer's unavailable shifts — by Shift or by whole CalendarDay — against an AvailabilityCheck.",
@@ -257,7 +264,7 @@ export class VolunteerController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { checkId } = request.params as AvailabilityCheckRouteParams;
+        const { checkId } = request.params;
         const body = request.body;
         const detail = await this.withPrivateObjectNotFound({
           request,

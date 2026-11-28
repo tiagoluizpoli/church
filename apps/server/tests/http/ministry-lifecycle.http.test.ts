@@ -325,12 +325,7 @@ describe('GET /ministries/:ministryId', () => {
     expect((await detail(fixture.kidsId)).statusCode).toBe(404);
 
     signIn('admin');
-    for (const id of [
-      fixture.archivedId,
-      fixture.foreignId,
-      randomUUID(),
-      'nope',
-    ]) {
+    for (const id of [fixture.archivedId, fixture.foreignId, randomUUID()]) {
       const res = await detail(id);
       expect(res.statusCode).toBe(404);
       expect(res.json()).toEqual({
@@ -338,6 +333,13 @@ describe('GET /ministries/:ministryId', () => {
         message: m.error_not_found({}, PT_BR),
       });
     }
+    // A malformed id fails validation (#1221).
+    const malformed = await detail('nope');
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      message: m.common_validation_error({}, PT_BR),
+    });
   });
 
   it('refuses a Volunteer with 403 before looking the Ministry up', async () => {
@@ -703,14 +705,16 @@ describe('POST /ministries/:ministryId/archive', () => {
 
   it('answers 404 for an archived, foreign, missing or malformed Ministry and 401 without a session', async () => {
     signIn('admin');
-    for (const id of [
-      fixture.archivedId,
-      fixture.foreignId,
-      randomUUID(),
-      'nope',
-    ]) {
+    for (const id of [fixture.archivedId, fixture.foreignId, randomUUID()]) {
       expect((await archive(id)).statusCode).toBe(404);
     }
+    // A malformed id fails validation (#1221).
+    const malformed = await archive('nope');
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      message: m.common_validation_error({}, PT_BR),
+    });
 
     mockGetSession.mockResolvedValue(null as never);
     expect((await archive(fixture.worshipId)).statusCode).toBe(401);

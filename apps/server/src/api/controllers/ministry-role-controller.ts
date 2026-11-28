@@ -8,17 +8,15 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import { denyMinistryManagement } from '../auth/ministry-management-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
+import { ministryParamsSchema } from '../dtos/id.dto';
 import {
+  ministryRoleParamsSchema,
   roleListResponseSchema,
   roleMapper,
   roleNameBodySchema,
   roleResponseSchema,
 } from '../dtos/ministry-role.dto';
-import type {
-  MinistryRoleControllerDependencies,
-  MinistryRoleRouteParams,
-  MinistryRolesRouteParams,
-} from './ministry-role-controller.types';
+import type { MinistryRoleControllerDependencies } from './ministry-role-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -65,6 +63,7 @@ export class MinistryRoleController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'listMinistryRoles',
+          params: ministryParamsSchema,
           summary: "List a Ministry's active Roles",
           description:
             'Active Roles of a managed Ministry, alphabetical ignoring case. The active-choice read for new invitations, memberships and headcounts.',
@@ -77,9 +76,7 @@ export class MinistryRoleController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const ministryId = MinistryId.from(
-          (request.params as MinistryRolesRouteParams).ministryId,
-        );
+        const ministryId = MinistryId.from(request.params.ministryId);
         if (
           await denyMinistryManagement({
             authorityGuard,
@@ -104,6 +101,7 @@ export class MinistryRoleController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'createMinistryRole',
+          params: ministryParamsSchema,
           summary: 'Add a Role to a Ministry',
           description:
             'Add an active Role by name. Active Role names are unique per Ministry ignoring case.',
@@ -118,9 +116,7 @@ export class MinistryRoleController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const ministryId = MinistryId.from(
-          (request.params as MinistryRolesRouteParams).ministryId,
-        );
+        const ministryId = MinistryId.from(request.params.ministryId);
         if (
           await denyMinistryManagement({
             authorityGuard,
@@ -147,6 +143,7 @@ export class MinistryRoleController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'renameMinistryRole',
+          params: ministryRoleParamsSchema,
           summary: 'Rename a Role',
           description:
             'Rename an active Role, keeping its identity, qualifications and history.',
@@ -161,7 +158,7 @@ export class MinistryRoleController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const params = request.params as MinistryRoleRouteParams;
+        const { params } = request;
         const ministryId = MinistryId.from(params.ministryId);
         if (
           await denyMinistryManagement({
@@ -190,6 +187,7 @@ export class MinistryRoleController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'archiveMinistryRole',
+          params: ministryRoleParamsSchema,
           summary: 'Archive a Role',
           description:
             'Hide a Role from new use, keeping qualifications, Memberships and Assignments. Refused with blockers while an upcoming ShiftRequirement or a UsualSetup headcount uses it.',
@@ -203,7 +201,7 @@ export class MinistryRoleController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const params = request.params as MinistryRoleRouteParams;
+        const { params } = request;
         const ministryId = MinistryId.from(params.ministryId);
         if (
           await denyMinistryManagement({

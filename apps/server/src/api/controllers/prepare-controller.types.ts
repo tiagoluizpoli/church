@@ -7,19 +7,6 @@ import type { IPrepareManager } from '../../domain/contracts/application/prepare
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
 import type { SavePreparationBody } from '../dtos/participation.dto';
 
-export interface CycleParticipationRouteParams {
-  cycleId: string;
-}
-
-export interface ScheduleSummaryRouteParams {
-  ministryId: string;
-}
-
-export interface ParticipationEventTimeBlockRouteParams {
-  participationId: string;
-  eventTimeBlockId: string;
-}
-
 export interface DenyParticipationScopeInput {
   request: FastifyRequest;
   reply: FastifyReply;
@@ -39,11 +26,6 @@ export interface PrepareControllerDependencies {
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: IAuthorityGuard;
   config: AppConfig;
-}
-
-/** The page size the route's own schema bounds by the configured maximum. */
-export interface ListLimitQuery {
-  limit: number;
 }
 
 export interface ToPreparationSplitInput {

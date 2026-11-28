@@ -3,11 +3,6 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IInvitationListManager } from '../../domain/contracts/application/invitation-list-manager';
 import type { IMinistryInvitationManager } from '../../domain/contracts/application/ministry-invitation-manager';
 
-/** The page size the route's own schema bounds by the configured maximum. */
-export interface ListLimitQuery {
-  limit?: number;
-}
-
 export interface InvitationControllerDependencies {
   invitationListManager: IInvitationListManager;
   ministryInvitationManager: IMinistryInvitationManager;

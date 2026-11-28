@@ -1,6 +1,5 @@
 import type { AppConfig } from '@church/app-config';
 import { fromDate } from '@church/time';
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   ChurchInvitationId,
   MinistryInvitationId,
@@ -48,7 +47,6 @@ import type {
   ControllerRateLimitInput,
   InvitationPreviewFields,
   RedemptionControllerDependencies,
-  RedemptionParams,
   RequireRedeemerInput,
 } from './redemption-controller.types';
 
@@ -375,7 +373,20 @@ export class RedemptionController implements FastifyController {
           },
         },
       },
-      this.handleDecline.bind(this),
+      // Authenticated Ministry decline: the invitation's own `kind` decides
+      // whether the chained pair is rejected alongside it (spec §7.3).
+      async (request, reply) => {
+        const redeemer = await this.requireRedeemer({ request, reply });
+        if (!redeemer) return;
+        const outcome = await this.redemptionManager.declineInvitation({
+          ministryInvitationId: MinistryInvitationId.from(
+            request.params.invitationId,
+          ),
+          userId: redeemer.userId,
+          sessionCookie: redeemer.sessionCookie,
+        });
+        reply.send(outcome);
+      },
     );
 
     // Volunteer Transfer (spec §8) — reachable only from a redemption that hit
@@ -511,26 +522,6 @@ export class RedemptionController implements FastifyController {
         },
       );
     }
-  }
-
-  /**
-   * Authenticated Ministry decline: the invitation's own `kind` decides
-   * whether the chained pair is rejected alongside it (spec §7.3).
-   */
-  // named-parameters-ignore: Fastify route handler signature (request, reply); bound as a route handler
-  private async handleDecline(
-    request: FastifyRequest,
-    reply: FastifyReply,
-  ): Promise<void> {
-    const redeemer = await this.requireRedeemer({ request, reply });
-    if (!redeemer) return;
-    const params = request.params as RedemptionParams;
-    const outcome = await this.redemptionManager.declineInvitation({
-      ministryInvitationId: MinistryInvitationId.from(params.invitationId),
-      userId: redeemer.userId,
-      sessionCookie: redeemer.sessionCookie,
-    });
-    reply.send(outcome);
   }
 
   /**

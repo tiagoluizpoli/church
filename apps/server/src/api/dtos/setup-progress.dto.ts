@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { idSchema } from './id.dto';
 
 export const setupProgressResponseSchema = z.object({
-  churchId: z.uuid(),
+  churchId: idSchema,
   hasMinistry: z.boolean(),
   hasMinistryWithSectorsAndRoles: z.boolean(),
   hasInvitedLeader: z.boolean(),

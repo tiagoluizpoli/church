@@ -8,10 +8,12 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
+import { ministryParamsSchema } from '../dtos/id.dto';
 import {
   sectorListResponseSchema,
   sectorMapper,
   sectorNameBodySchema,
+  sectorParamsSchema,
   sectorResponseSchema,
 } from '../dtos/sector.dto';
 import { refuse } from '../utils/refuse';
@@ -19,8 +21,6 @@ import { requestCaller } from '../utils/request-caller';
 import type {
   ResolveManagedMinistryInput,
   SectorControllerDependencies,
-  SectorRouteParams,
-  SectorsRouteParams,
 } from './sector-controller.types';
 
 const errorResponseSchema = z.object({
@@ -70,6 +70,7 @@ export class SectorController implements FastifyController {
           summary: "List a Ministry's active Sectors",
           description:
             "List the managed Ministry's active Sectors, alphabetically ignoring case.",
+          params: ministryParamsSchema,
           response: {
             200: sectorListResponseSchema,
             401: errorResponseSchema,
@@ -82,6 +83,7 @@ export class SectorController implements FastifyController {
         const ministryId = await this.resolveManagedMinistry({
           request,
           reply,
+          ministryId: request.params.ministryId,
         });
         if (!ministryId) return;
         const sectors = await this.sectorManager.list({
@@ -101,6 +103,7 @@ export class SectorController implements FastifyController {
           summary: 'Add a Sector',
           description:
             'Add an active Sector to the managed Ministry; active names are unique within it ignoring case.',
+          params: ministryParamsSchema,
           body: sectorNameBodySchema,
           response: {
             201: sectorResponseSchema,
@@ -115,6 +118,7 @@ export class SectorController implements FastifyController {
         const ministryId = await this.resolveManagedMinistry({
           request,
           reply,
+          ministryId: request.params.ministryId,
         });
         if (!ministryId) return;
         const { name } = request.body;
@@ -136,6 +140,7 @@ export class SectorController implements FastifyController {
           summary: 'Rename a Sector',
           description:
             'Rename an active Sector, keeping its identity, so history shows the new name too.',
+          params: sectorParamsSchema,
           body: sectorNameBodySchema,
           response: {
             200: sectorResponseSchema,
@@ -150,9 +155,10 @@ export class SectorController implements FastifyController {
         const ministryId = await this.resolveManagedMinistry({
           request,
           reply,
+          ministryId: request.params.ministryId,
         });
         if (!ministryId) return;
-        const { sectorId } = request.params as SectorRouteParams;
+        const { sectorId } = request.params;
         const { name } = request.body;
         const sector = await this.sectorManager.rename({
           churchId: ChurchId.from(request.churchId),
@@ -173,6 +179,7 @@ export class SectorController implements FastifyController {
           summary: 'Archive a Sector',
           description:
             'Retire an active Sector from new use, keeping its history. Refused with typed blocker locations while upcoming ShiftRequirements or a UsualSetup headcount use it.',
+          params: sectorParamsSchema,
           response: {
             204: z.null(),
             401: errorResponseSchema,
@@ -186,9 +193,10 @@ export class SectorController implements FastifyController {
         const ministryId = await this.resolveManagedMinistry({
           request,
           reply,
+          ministryId: request.params.ministryId,
         });
         if (!ministryId) return;
-        const { sectorId } = request.params as SectorRouteParams;
+        const { sectorId } = request.params;
         await this.sectorManager.archive({
           churchId: ChurchId.from(request.churchId),
           ministryId,
@@ -206,6 +214,7 @@ export class SectorController implements FastifyController {
   private async resolveManagedMinistry({
     request,
     reply,
+    ministryId: rawMinistryId,
   }: ResolveManagedMinistryInput): Promise<MinistryId | undefined> {
     const caller = requestCaller({ request });
     const { churchId } = caller;
@@ -215,9 +224,7 @@ export class SectorController implements FastifyController {
       refuse({ reply, request, code: 'FORBIDDEN' });
       return undefined;
     }
-    const ministryId = MinistryId.from(
-      (request.params as SectorsRouteParams).ministryId,
-    );
+    const ministryId = MinistryId.from(rawMinistryId);
     const decision = await this.authorityGuard.decideManageMinistry({
       ...caller,
       ministryId,

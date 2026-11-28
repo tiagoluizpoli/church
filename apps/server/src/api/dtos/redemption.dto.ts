@@ -1,6 +1,7 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../domain/authority/types';
+import { idSchema } from './id.dto';
 
 const ministryAccessLevelValues = ['volunteer', 'leader'] as const;
 const terminalFailureReasons = [
@@ -10,14 +11,14 @@ const terminalFailureReasons = [
 ] as const;
 
 export const redemptionParamsSchema = z.object({
-  invitationId: z.string().uuid(),
+  invitationId: idSchema,
 });
 
 export const redeemNewUserBodySchema = z.object({
   name: z.string().trim().min(1).max(255),
   password: z.string().min(8),
   code: z.string().regex(/^\d{6}$/),
-  idempotencyKey: z.string().uuid(),
+  idempotencyKey: idSchema,
 });
 
 export const unavailableRedemptionResponseSchema = z.object({
@@ -32,7 +33,7 @@ export const rateLimitedResponseSchema = z.object({
 
 /** The Ministry half a paired Church Invitation also grants. */
 export const redemptionPreviewMinistrySchema = z.object({
-  invitationId: z.string().uuid(),
+  invitationId: idSchema,
   name: z.string(),
   ministryAccessLevel: z.enum(ministryAccessLevelValues),
   roleNames: z.array(z.string()),
@@ -78,7 +79,7 @@ export const churchOnlyOutcomeSchema = z.object({
   sourceChurchName: z.string(),
   destinationChurchId: z.string(),
   destinationChurchName: z.string(),
-  ministryInvitationId: z.string().uuid(),
+  ministryInvitationId: idSchema,
   ministryName: z.string(),
 });
 
@@ -151,7 +152,7 @@ export const authenticatedInvitationStatusResponseSchema = z.discriminatedUnion(
 );
 
 export const acceptExistingMemberBodySchema = z.object({
-  idempotencyKey: z.string().uuid(),
+  idempotencyKey: idSchema,
   /** The `reviewToken` of the reviewed status; a changed offer is refused. */
   reviewToken: z.string().min(1),
 });
@@ -191,7 +192,7 @@ export const churchInvitationReviewStatusResponseSchema = z.discriminatedUnion(
     z.object({
       kind: z.literal('paired'),
       /** The oldest pending Ministry half, whose review covers the whole offer. */
-      ministryInvitationId: z.string().uuid(),
+      ministryInvitationId: idSchema,
     }),
     z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
     z.object({
@@ -264,7 +265,7 @@ export const transferPreviewResponseSchema = z.discriminatedUnion('kind', [
 export const confirmTransferBodySchema = z.object({
   destinationChurchName: z.string().min(1),
   password: z.string().min(8),
-  idempotencyKey: z.string().uuid(),
+  idempotencyKey: idSchema,
 });
 
 const transferTerminalReasons = [

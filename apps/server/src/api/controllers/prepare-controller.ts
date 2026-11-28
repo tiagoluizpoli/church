@@ -18,6 +18,8 @@ import type { ShiftSplitStrategy } from '../../domain/services/scheduling/shift-
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import { cycleParamsSchema } from '../dtos/cycle.dto';
+import { idSchema, ministryParamsSchema } from '../dtos/id.dto';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import {
   answersQuerystringSchema,
@@ -32,6 +34,7 @@ import {
   headcountBelowAssignedResponseSchema,
   participationEventTimeBlockViewSchema,
   participationMapper,
+  preparationRouteParamsSchema,
   preparationValidationErrorResponseSchema,
   remindOnCooldownResponseSchema,
   remindScheduleBodySchema,
@@ -49,17 +52,14 @@ import {
 import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
 import type {
-  CycleParticipationRouteParams,
   DenyAuthorityDecisionInput,
   DenyParticipationScopeInput,
-  ParticipationEventTimeBlockRouteParams,
   PrepareControllerDependencies,
-  ScheduleSummaryRouteParams,
   ToPreparationSplitInput,
 } from './prepare-controller.types';
 
 const cycleParticipationQuerySchema = z.object({
-  ministryId: z.string(),
+  ministryId: idSchema,
 });
 
 const errorResponseSchema = z.object({
@@ -236,6 +236,7 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'getCycleParticipation',
+          params: cycleParamsSchema,
           summary: "Get a Ministry's prepare view of a cycle",
           description:
             "Get a Ministry's MinistryParticipation prepare state across every Event in a Cycle. `day` (church-local date), `q` (block label or Event title), a time window (`timeMode` starts, ends or within, with `timeFrom`/`timeTo` as church-local HH:mm; either bound may be omitted) and `needsAttention` (served blocks with a Shift lacking a headcount) filter the blocks; Events left with none are dropped. Blocks come ordered by start then id. `dayMarkers` and `totals` always describe the unfiltered Cycle.",
@@ -248,7 +249,7 @@ export class PrepareController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { cycleId } = request.params;
         const {
           ministryId,
           day,
@@ -293,6 +294,7 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'getAskPreview',
+          params: cycleParamsSchema,
           summary: 'Preview what an Ask for availability would cover',
           description:
             'Read the eligible Volunteer count, served Shift and Event counts, flagged blocks and needed Roles nobody holds for one Ministry in one Cycle. Writes nothing; a Ministry serving nothing answers zeroes.',
@@ -306,7 +308,7 @@ export class PrepareController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { cycleId } = request.params;
         const { ministryId } = request.query;
 
         const decision = await this.authorityGuard.decideManageMinistry({
@@ -337,6 +339,7 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'listScheduleSummaries',
+          params: ministryParamsSchema,
           summary: "List a Ministry's cycle prepare summaries",
           description:
             "List summaries of a Ministry's MinistryParticipation prepare progress across its Cycles.",
@@ -348,7 +351,7 @@ export class PrepareController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { ministryId } = request.params as ScheduleSummaryRouteParams;
+        const { ministryId } = request.params;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
@@ -379,6 +382,7 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'saveEventTimeBlockPreparation',
+          params: preparationRouteParamsSchema,
           summary: "Save one EventTimeBlock's preparation",
           description:
             'Apply the complete desired Serves, Shift split and headcounts of one EventTimeBlock in one transaction. Omitted or zero headcounts remove their ShiftRequirement; other blocks are untouched. Serving with neither split nor headcounts opts a block with no Shifts in from the Usual setup. A headcount cannot drop below its active Assignments. Re-splitting, deleting a Shift or opting out is refused while an affected Shift carries UnavailableShift marks or active Assignments. A block under a cancelled Event or EventTimeBlock is refused as EVENT_CANCELLED or EVENT_TIME_BLOCK_CANCELLED.',
@@ -399,8 +403,7 @@ export class PrepareController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { participationId, eventTimeBlockId } =
-          request.params as ParticipationEventTimeBlockRouteParams;
+        const { participationId, eventTimeBlockId } = request.params;
         const denied = await this.denyParticipationScope({
           request,
           reply,
@@ -433,6 +436,7 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'askScheduleAvailability',
+          params: cycleParamsSchema,
           summary: 'Ask availability for a Schedule',
           description:
             "Move every MinistryParticipation of a Ministry's Schedule to availability_requested, write the ask record, spawn one AvailabilityCheck per Volunteer holding a needed Role and notify each, in one transaction. Refused while a served Shift is flagged, with zero eligible Volunteers, and on a repeat Ask.",
@@ -451,7 +455,7 @@ export class PrepareController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { cycleId } = request.params;
         const { ministryId, answerBy } = request.body;
 
         const decision = await this.authorityGuard.decideManageMinistry({
@@ -483,6 +487,7 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'setAvailabilityDeadline',
+          params: cycleParamsSchema,
           summary: "Set, move or clear a Schedule's Deadline",
           description:
             'Write the answer-by Deadline on the ask record, silently: no Notification is enqueued. Refused before the Ask, on a published Schedule and on a Past Cycle.',
@@ -498,7 +503,7 @@ export class PrepareController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { cycleId } = request.params;
         const { ministryId, answerBy } = request.body;
 
         const decision = await this.authorityGuard.decideManageMinistry({
@@ -530,6 +535,7 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'remindSchedule',
+          params: cycleParamsSchema,
           summary: 'Remind a Schedule',
           description:
             'In one transaction, create checks and enqueue availability_opened for newly eligible Volunteers, enqueue availability_reminder for every not-confirmed check and stamp the cooldown, even with zero recipients. Refused before the Ask, after publish, on a Past Cycle and inside the cooldown.',
@@ -544,7 +550,7 @@ export class PrepareController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { cycleId } = request.params;
         const { ministryId } = request.body;
 
         const decision = await this.authorityGuard.decideManageMinistry({
@@ -575,6 +581,7 @@ export class PrepareController implements FastifyController {
         schema: {
           tags: ['prepare'],
           operationId: 'getCycleAvailabilityStatus',
+          params: cycleParamsSchema,
           summary: "Get the Answers to a Schedule's Ask",
           description:
             'List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, per-status `counts`, Deadline and Remind cooldown. `status` (pending, available, unavailable) and `q` (name search) filter the list; `limit` pages it by `cursor` (omitted, every match comes back) ordered by name then id, and `nextCursor` is null on the last page. `asked`, `confirmed` and `counts` ignore the filters.',
@@ -591,7 +598,7 @@ export class PrepareController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as CycleParticipationRouteParams;
+        const { cycleId } = request.params;
         const { ministryId, status, q, cursor, limit } = request.query;
 
         const decision = await this.authorityGuard.decideManageMinistry({

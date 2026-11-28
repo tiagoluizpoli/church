@@ -4,6 +4,7 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import { idSchema } from '../dtos/id.dto';
 import { requestCaller } from '../utils/request-caller';
 import type { CallerCapabilitiesControllerDependencies } from './caller-capabilities-controller.types';
 
@@ -13,9 +14,9 @@ const errorResponseSchema = z.object({
 });
 
 const callerCapabilitiesResponseSchema = z.object({
-  churchId: z.uuid(),
+  churchId: idSchema,
   isChurchAdmin: z.boolean(),
-  ledMinistries: z.array(z.object({ ministryId: z.uuid(), name: z.string() })),
+  ledMinistries: z.array(z.object({ ministryId: idSchema, name: z.string() })),
   hasVolunteerMembership: z.boolean(),
 });
 

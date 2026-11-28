@@ -416,14 +416,17 @@ describe('POST /ministries/:ministryId/invitations/:invitationId/revoke — auth
       await revoke(fx.foreignMinistryId, foreignOffer),
       await revoke(fx.worshipId, foreignOffer),
       await revoke(fx.worshipId, randomUUID()),
-      await revoke(fx.worshipId, 'not-a-uuid'),
     ];
+    const malformed = await revoke(fx.worshipId, 'not-a-uuid');
 
     expect(responses.map((res) => res.statusCode)).toEqual(
       Array(responses.length).fill(404),
     );
     expect(new Set(responses.map((res) => res.body)).size).toBe(1);
     expect(unmanaged.json().error).toBe('MINISTRY_NOT_FOUND');
+    // A malformed id fails validation (#1221).
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json().error).toBe('VALIDATION_ERROR');
     expect(await snapshot()).toEqual(before);
   });
 

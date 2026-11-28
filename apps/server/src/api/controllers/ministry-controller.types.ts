@@ -6,17 +6,6 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IMinistryInvitationManager } from '../../domain/contracts/application/ministry-invitation-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 
-export interface MinistryRouteParams {
-  ministryId: string;
-}
-
-export type MinistryInvitationRouteParams = MinistryRouteParams;
-
-export interface MinistryInvitationActionRouteParams {
-  ministryId: string;
-  invitationId: string;
-}
-
 export interface DenyMissingMinistryFunctionInput {
   request: FastifyRequest;
   reply: FastifyReply;

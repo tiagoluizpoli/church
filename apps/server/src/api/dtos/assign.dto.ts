@@ -12,6 +12,7 @@ import {
   VOLUNTEER_DECIDING_RULE_OPTIONS,
 } from '../../domain/services/scheduling/assignment-proposal';
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
+import { idSchema } from './id.dto';
 
 interface AssignmentWarningResponseInput {
   type: 'UNAVAILABLE' | 'DOUBLE_BOOKED';
@@ -122,7 +123,7 @@ const reviewedPairSchema = z
 export const applyAssignmentProposalBodySchema = z
   .object({
     /** One per reviewed preview; resend it on every retry of that preview. */
-    applicationKey: z.uuid(),
+    applicationKey: idSchema,
     reviewToken: z.string().min(1),
     additions: z.array(reviewedPairSchema).min(1),
     /** Reviewed pairs to leave out; never added or edited pairs. */

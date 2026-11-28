@@ -252,7 +252,10 @@ describe('Volunteer Assignment detail', () => {
     expect((await get('99999999-9999-4999-8999-999999999999')).statusCode).toBe(
       404,
     );
-    expect((await get('not-a-uuid')).statusCode).toBe(404);
+    // A malformed id fails validation (#1221).
+    const malformed = await get('not-a-uuid');
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json().error).toBe('VALIDATION_ERROR');
 
     await db
       .update(assignment)

@@ -1,6 +1,7 @@
 import { fromDate, instantSchema, timeOfDaySchema } from '@church/time';
 import { z } from 'zod';
 import type { EventTemplate } from '../../domain/entities/event-template';
+import { idSchema } from './id.dto';
 import { timeBlockPlaceFields, withOnePlace } from './time-block-place.dto';
 
 /** The single trim point for template names and block labels. */
@@ -23,7 +24,7 @@ export const eventTemplateTimeBlockBodySchema = withOnePlace(
 
 /** Edit may name a persisted block `id` to update it in place; absent creates a block. */
 export const updateEventTemplateTimeBlockBodySchema = withOnePlace(
-  templateTimeBlockFieldsSchema.extend({ id: z.string().uuid().optional() }),
+  templateTimeBlockFieldsSchema.extend({ id: idSchema.optional() }),
 );
 
 type UpdateEventTemplateTimeBlockBody = z.infer<
@@ -93,7 +94,7 @@ export const createEventTemplateBodySchema = z.object({
   precedences: z
     .array(
       z.object({
-        otherTemplateId: z.string().uuid(),
+        otherTemplateId: idSchema,
         answer: precedenceAnswerSchema,
       }),
     )

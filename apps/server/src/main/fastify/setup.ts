@@ -38,6 +38,7 @@ import {
   validationReason,
 } from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
+import { RefusalError } from '../../api/utils/refusal-error';
 import { refuse } from '../../api/utils/refuse';
 import { requestLocale } from '../../api/utils/request-locale';
 import { ChurchId, UserId, VolunteerId } from '../../domain/branded-ids';
@@ -163,12 +164,12 @@ export async function createFastify({
   // on every non-GET; an allowed one may be cross-site (CORS), any other
   // Origin, or a cross-site request without one, is refused. After the
   // locale hook, so the refusal reads in the request locale.
-  app.addHook('onRequest', async (request, reply) => {
+  app.addHook('onRequest', async (request) => {
     if (SAFE_METHODS.has(request.method)) return;
     const { origin, 'sec-fetch-site': fetchSite } = request.headers;
     const allowed = origin !== undefined && allowedOrigins.includes(origin);
     if (allowed || (origin === undefined && fetchSite !== 'cross-site')) return;
-    return refuse({ reply, request, code: 'FORBIDDEN' });
+    throw new RefusalError({ code: 'FORBIDDEN' });
   });
 
   await app.register(swagger, {
@@ -240,6 +241,9 @@ export async function createFastify({
     const { locale } = request;
     const url = redactUrl({ url: request.url });
     const genericError = m.common_generic_error({}, { locale });
+    if (error instanceof RefusalError) {
+      return refuse({ reply, request, code: error.code });
+    }
     if (error instanceof DomainError) {
       const status = errorStatus({ code: error.code }) ?? 500;
       request.log.warn(

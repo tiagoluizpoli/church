@@ -7,6 +7,7 @@ import {
 } from '@church/time';
 import type {
   AttachmentDispositionInput,
+  ScheduleExportFileNameInput,
   ScheduleExportRenderPayload,
   ScheduleExportRenderPayloadInput,
   ScheduleExportText,
@@ -70,19 +71,20 @@ export function scheduleExportRenderPayload({
 }
 
 /**
- * `Escala - <Ministry> - <Cycle>`, plus ` - Rascunho` on a draft, without
- * characters file systems refuse.
+ * `Escala - <Ministry> - <Cycle>`, plus ` - Rascunho` on a draft and then the
+ * given suffixes, without characters file systems refuse.
  */
 export function scheduleExportFileName({
   data,
   locale,
-}: ScheduleExportTextInput): string {
+  suffixes = [],
+}: ScheduleExportFileNameInput): string {
   const name = m.export_file_name(
     { ministry: data.ministry.name, cycle: data.cycle.name },
     { locale },
   );
-  const suffixes = data.isDraft ? [m.export_draft({}, { locale })] : [];
-  return exportFileName({ name, suffixes });
+  const draft = data.isDraft ? [m.export_draft({}, { locale })] : [];
+  return exportFileName({ name, suffixes: [...draft, ...suffixes] });
 }
 
 /** An attachment header: an ASCII `filename` fallback and the UTF-8 `filename*`. */

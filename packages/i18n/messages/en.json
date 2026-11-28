@@ -2333,6 +2333,7 @@
   "export_block_cancelled": "Cancelled",
   "export_empty_spot": "Open spot",
   "export_draft": "Draft",
+  "export_image_part": "part {part} of {parts}",
   "export_single_role_and_sector": "Everyone serves as {role} in {sector}",
   "export_single_role": "Everyone serves as {role}",
   "export_single_sector": "Everyone serves in {sector}",

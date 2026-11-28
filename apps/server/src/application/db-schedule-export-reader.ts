@@ -13,6 +13,7 @@ import {
 import type { IScheduleChangeReader } from '../domain/contracts/application/schedule-change-reader';
 import type {
   BuildScheduleExportEventsInput,
+  CountScheduleExportPagesInput,
   DbScheduleExportReaderDependencies,
   DuplicateNamesInput,
   IScheduleExportReader,
@@ -39,7 +40,9 @@ import {
 } from '../domain/errors';
 
 /** The Grid Typst template: the A4 landscape PDF table. */
-const GRID_TEMPLATE = 'schedule-grid';
+const TEMPLATES = { grid: 'schedule-grid', cards: 'schedule-cards' } as const;
+/** The cards page is 540pt wide: 1080 px at 144 ppi. */
+const CARDS_PPI = 144;
 
 /**
  * Folds the ordered rows into Events → time blocks → Shifts → Sectors →
@@ -222,13 +225,28 @@ export class DbScheduleExportReader implements IScheduleExportReader {
   renderFile({
     exported,
     payload,
+    layout,
     format,
     page,
   }: RenderScheduleExportFileInput): Promise<Uint8Array> {
     return this.typstRenderer.render({
-      template: GRID_TEMPLATE,
+      template: TEMPLATES[layout],
       format,
       page,
+      ppi: layout === 'cards' ? CARDS_PPI : undefined,
+      payload,
+      creationTimestamp: exported.changedAt,
+      logoKey: exported.logoKey ?? undefined,
+    });
+  }
+
+  countPages({
+    exported,
+    payload,
+    layout,
+  }: CountScheduleExportPagesInput): Promise<number> {
+    return this.typstRenderer.countPages({
+      template: TEMPLATES[layout],
       payload,
       creationTimestamp: exported.changedAt,
       logoKey: exported.logoKey ?? undefined,

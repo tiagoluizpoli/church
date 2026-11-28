@@ -1,7 +1,10 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
-import type { IScheduleExportReader } from '../../domain/contracts/application/schedule-export-reader';
+import type {
+  IScheduleExportReader,
+  ScheduleExportLayout,
+} from '../../domain/contracts/application/schedule-export-reader';
 
 export interface ScheduleExportRouteParams {
   ministryId: string;
@@ -17,4 +20,9 @@ export interface ScheduleExportControllerDependencies {
 export interface ScheduleExportRequestInput {
   request: FastifyRequest;
   reply: FastifyReply;
+}
+
+export interface ScheduleExportLayoutInput {
+  format: 'pdf' | 'png';
+  layout: ScheduleExportLayout;
 }

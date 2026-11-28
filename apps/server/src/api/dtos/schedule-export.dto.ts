@@ -63,7 +63,7 @@ export const scheduleExportDataSchema = z.object({
 export const scheduleExportFileSchema = z
   .string()
   .meta({ format: 'binary' })
-  .describe('The PDF or PNG file');
+  .describe('The PDF or one PNG image');
 
 /** One SVG page; a Buffer skips serialization. */
 export const scheduleExportPreviewSchema = z
@@ -79,17 +79,26 @@ export const scheduleExportRangeQuerySchema = z.object({
   to: calendarDaySchema.optional(),
 });
 
+/** `cards`: the card images (PNG only); `grid`: the table. The PDF is always the table. */
+const exportLayoutSchema = z.enum(['grid', 'cards']).default('grid');
+
+/** 1-based; past the last page or image is 404. */
+const exportPageSchema = z.coerce.number().int().min(1).default(1);
+
 export const scheduleExportFileQuerySchema =
   scheduleExportRangeQuerySchema.extend({
     format: exportFormatSchema,
+    layout: exportLayoutSchema,
+    /** The PNG image: one per 1600 px cut of the cards, one for the table. */
+    page: exportPageSchema,
   });
 
 export const scheduleExportPreviewQuerySchema =
   scheduleExportRangeQuerySchema.extend({
-    /** The file this previews: the A4 PDF pages or the one table image. */
+    /** The file this previews: the A4 PDF pages, the table image or the card images. */
     format: exportFormatSchema,
-    /** 1-based; past the last page is 404. */
-    page: z.coerce.number().int().min(1).default(1),
+    layout: exportLayoutSchema,
+    page: exportPageSchema,
   });
 
 export const scheduleExportCyclesQuerySchema = z.object({

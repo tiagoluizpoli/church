@@ -22,10 +22,17 @@ export interface TypstRenderInput {
   logoKey?: string;
 }
 
+export type TypstPageCountInput = Omit<
+  TypstRenderInput,
+  'format' | 'page' | 'ppi'
+>;
+
 /** Renders Typst templates to files, one CLI process per render (#1242). */
 export interface TypstRenderer {
   /** Throws `TypstRenderError` when the render fails or times out. */
   render(input: TypstRenderInput): Promise<Uint8Array>;
+  /** The template's page count for the input; throws as `render` does. */
+  countPages(input: TypstPageCountInput): Promise<number>;
 }
 
 export interface TypstCliRendererConfig {

@@ -154,11 +154,19 @@ export interface DbScheduleExportReaderDependencies {
   typstRenderer: TypstRenderer;
 }
 
-export interface RenderScheduleExportFileInput {
+/** `grid`: the table (every PDF); `cards`: the card images and their preview. */
+export type ScheduleExportLayout = 'grid' | 'cards';
+
+export interface CountScheduleExportPagesInput {
   exported: ScheduleExport;
   /** The data with its fixed text, localized by the caller. */
   payload: unknown;
-  /** `svg` is one preview page of what the payload's media lays out. */
+  layout: ScheduleExportLayout;
+}
+
+export interface RenderScheduleExportFileInput
+  extends CountScheduleExportPagesInput {
+  /** `svg` is one preview page of what the layout and payload's media lay out. */
   format: TypstFormat;
   /** 1-based page of a PNG or SVG; an empty file past the last page. */
   page?: number;
@@ -175,6 +183,11 @@ export interface IScheduleExportReader {
    * `ExportRangeOutsideCycleError` when either reaches past the Cycle.
    */
   read(input: ReadScheduleExportInput): Promise<ScheduleExport>;
-  /** The Grid template's file or page; throws `TypstRenderError` when it fails. */
+  /**
+   * The layout's file or page; a card page is 1080 px wide and at most
+   * 1600 px tall unless one card is taller. Throws `TypstRenderError` when it fails.
+   */
   renderFile(input: RenderScheduleExportFileInput): Promise<Uint8Array>;
+  /** How many pages (card images) the layout lays the payload out on. */
+  countPages(input: CountScheduleExportPagesInput): Promise<number>;
 }

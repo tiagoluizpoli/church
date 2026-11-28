@@ -6,8 +6,11 @@ export interface ScheduleExportTextInput {
   locale: Locale;
 }
 
-/** `print`: A4 landscape pages (the PDF); `image`: one page as tall as the grid (the PNG). */
-export type ScheduleExportMedia = 'print' | 'image';
+/**
+ * `print`: A4 landscape pages (the PDF); `image`: one page as tall as the grid
+ * (the table PNG); `cards`: the card images, which the cards template lays out.
+ */
+export type ScheduleExportMedia = 'print' | 'image' | 'cards';
 
 export interface ScheduleExportRenderPayloadInput
   extends ScheduleExportTextInput {
@@ -45,6 +48,11 @@ export interface ScheduleExportRenderPayload {
   text: ScheduleExportText;
   days: Record<string, string>;
   times: Record<string, string>;
+}
+
+export interface ScheduleExportFileNameInput extends ScheduleExportTextInput {
+  /** After ` - Rascunho`, such as ` - parte 2 de 3`. */
+  suffixes?: string[];
 }
 
 export interface AttachmentDispositionInput {

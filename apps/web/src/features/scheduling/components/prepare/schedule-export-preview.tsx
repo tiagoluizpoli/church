@@ -1,5 +1,9 @@
 import { m } from '@church/i18n/messages';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  queryOptions,
+  useQuery,
+} from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { Spinner } from '@/components/ui/spinner';
@@ -23,7 +27,8 @@ export const FILE_PARAMS = {
 /** Formato: the card images, the PDF table or the table image. */
 export type ExportFormat = keyof typeof FILE_PARAMS;
 
-export interface ScheduleExportPreviewProps {
+/** What one export is: the preview, the files and their summary follow it. */
+export interface ScheduleExportSettings {
   ministryId: string;
   cycleId: string;
   format: ExportFormat;
@@ -31,25 +36,37 @@ export interface ScheduleExportPreviewProps {
   range: PreviewRange | null;
 }
 
+interface ScheduleExportPreviewProps {
+  /** Settled settings: see `useSettledExportSettings`. */
+  settings: ScheduleExportSettings;
+}
+
 interface PreviewPageProps {
   page: Blob;
   number: number;
 }
 
-interface ReadPagesInput {
-  read: (page: number) => Promise<Blob>;
-}
-
 /**
- * Every page or image, in order: the server answers 404 past the last one,
- * so they are read until then.
+ * Every SVG page of the file, in order: the server answers 404 past the
+ * last page, so pages are read until then.
  */
-export async function readPages({ read }: ReadPagesInput): Promise<Blob[]> {
+async function readPreviewPages({
+  ministryId,
+  cycleId,
+  format,
+  range,
+}: ScheduleExportSettings): Promise<Blob[]> {
   const pages: Blob[] = [];
   for (;;) {
     const page = pages.length + 1;
     try {
-      pages.push(await read(page));
+      pages.push(
+        await exportApi.getScheduleExportPreview(ministryId, cycleId, {
+          ...FILE_PARAMS[format],
+          page,
+          ...range,
+        }),
+      );
     } catch (error) {
       if (page > 1 && isAxiosError(error) && error.response?.status === 404) {
         return pages;
@@ -57,23 +74,6 @@ export async function readPages({ read }: ReadPagesInput): Promise<Blob[]> {
       throw error;
     }
   }
-}
-
-/** Every SVG page of the file: the card images preview as one page each. */
-function readPreviewPages({
-  ministryId,
-  cycleId,
-  format,
-  range,
-}: ScheduleExportPreviewProps): Promise<Blob[]> {
-  return readPages({
-    read: (page) =>
-      exportApi.getScheduleExportPreview(ministryId, cycleId, {
-        ...FILE_PARAMS[format],
-        page,
-        ...range,
-      }),
-  });
 }
 
 function PreviewPage({ page, number }: PreviewPageProps) {
@@ -105,8 +105,10 @@ function PreviewPage({ page, number }: PreviewPageProps) {
   );
 }
 
-/** The server's own render of the file, so the file never differs from it. */
-export function ScheduleExportPreview(settings: ScheduleExportPreviewProps) {
+/** The settings once they stopped changing for the preview's debounce. */
+export function useSettledExportSettings(
+  settings: ScheduleExportSettings,
+): ScheduleExportSettings {
   const [settled, setSettled] = useState(settings);
   const key = JSON.stringify(settings);
   // biome-ignore lint/correctness/useExhaustiveDependencies: settles on a real change of the settings, not on each render's new object
@@ -114,11 +116,23 @@ export function ScheduleExportPreview(settings: ScheduleExportPreviewProps) {
     const timer = setTimeout(() => setSettled(settings), PREVIEW_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [key]);
-  const preview = useQuery({
-    queryKey: ['schedule-export-preview', settled],
-    queryFn: () => readPreviewPages(settled),
+  return settled;
+}
+
+/** The preview pages of settled settings; the dialog waits on it too. */
+export function previewQueryOptions(settings: ScheduleExportSettings) {
+  return queryOptions({
+    queryKey: ['schedule-export-preview', settings],
+    queryFn: () => readPreviewPages(settings),
     placeholderData: keepPreviousData,
   });
+}
+
+/** The server's own render of the file, so the file never differs from it. */
+export function ScheduleExportPreview({
+  settings,
+}: ScheduleExportPreviewProps) {
+  const preview = useQuery(previewQueryOptions(settings));
   return (
     <section aria-label={m.export_preview_label()} className="space-y-3">
       {preview.isPending ? (

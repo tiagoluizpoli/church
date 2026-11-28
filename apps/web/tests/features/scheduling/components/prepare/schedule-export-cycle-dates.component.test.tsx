@@ -17,6 +17,7 @@ const state = vi.hoisted(() => ({
   data: undefined as GetSchedule200 | undefined,
   getScheduleExportFile: vi.fn(),
   getScheduleExportData: vi.fn(),
+  getScheduleExportPreview: vi.fn(),
   listScheduleExportCycles: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -35,6 +36,7 @@ vi.mock('@/utils/api-instances', () => ({
   exportApi: {
     getScheduleExportFile: state.getScheduleExportFile,
     getScheduleExportData: state.getScheduleExportData,
+    getScheduleExportPreview: state.getScheduleExportPreview,
     listScheduleExportCycles: state.listScheduleExportCycles,
   },
 }));
@@ -58,7 +60,28 @@ const QUARTER = cycle('q1', '1º trimestre 2026', '2026-01-01', '2026-03-31');
 beforeEach(() => {
   vi.resetAllMocks();
   state.data = { ...SCHEDULE, stage: 'published' };
-  state.getScheduleExportFile.mockResolvedValue(new Blob(['%PDF']));
+  const notFound = () =>
+    Promise.reject(
+      new AxiosError('404', 'ERR_BAD_REQUEST', undefined, undefined, {
+        status: 404,
+        statusText: '',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+        data: null,
+      }),
+    );
+  // One page or image of each file; 404 past it, as the server answers.
+  state.getScheduleExportFile.mockImplementation(
+    (_ministryId: string, _cycleId: string, params: { page?: number }) =>
+      (params.page ?? 1) === 1
+        ? Promise.resolve(new Blob(['%PDF']))
+        : notFound(),
+  );
+  // The files are fetched once the preview settles.
+  state.getScheduleExportPreview.mockImplementation(
+    (_ministryId: string, _cycleId: string, params: { page: number }) =>
+      params.page === 1 ? Promise.resolve(new Blob(['<svg/>'])) : notFound(),
+  );
   state.getScheduleExportData.mockResolvedValue({
     isDraft: false,
     duplicateNames: [],
@@ -79,11 +102,7 @@ interface DownloadInput {
 }
 
 /** Baixar turns on once the export data has loaded. */
-/** Downloads the PDF: these cases are about the Cycle and dates, not the format. */
 async function download({ user, dialog }: DownloadInput) {
-  await user.click(
-    within(dialog).getByRole('radio', { name: m.export_format_pdf() }),
-  );
   const button = within(dialog).getByRole('button', {
     name: m.export_download(),
   });
@@ -97,6 +116,10 @@ async function openDialog() {
   await user.click(screen.getByRole('button', { name: m.export_open() }));
   await waitForDialogFocus();
   const dialog = screen.getByRole('dialog', { name: m.export_dialog_title() });
+  // These cases are about the Cycle and dates: they export the PDF.
+  await user.click(
+    within(dialog).getByRole('radio', { name: m.export_format_pdf() }),
+  );
   return { user, dialog };
 }
 
@@ -129,11 +152,9 @@ it('steps one Cycle at a time from the Schedule it came from', async () => {
 
   await download({ user, dialog });
   await waitFor(() =>
-    expect(state.getScheduleExportFile).toHaveBeenCalledExactlyOnceWith(
-      'm',
-      'dec',
-      { format: 'pdf' },
-    ),
+    expect(state.getScheduleExportFile).toHaveBeenLastCalledWith('m', 'dec', {
+      format: 'pdf',
+    }),
   );
 });
 
@@ -187,6 +208,15 @@ it('narrows the export to dates inside the Cycle', async () => {
     trigger: within(dialog).getByRole('button', { name: m.export_to() }),
     date: '2027-01-20',
   });
+  expect(
+    await within(dialog).findByText(
+      m.export_summary({
+        files: m.export_files_one(),
+        format: m.export_format_pdf(),
+        span: '10/01/2027 – 20/01/2027',
+      }),
+    ),
+  ).toBeVisible();
   await download({ user, dialog });
   await waitFor(() =>
     expect(state.getScheduleExportFile).toHaveBeenLastCalledWith('m', 'c', {
@@ -231,11 +261,9 @@ it('resets the dates to the whole Cycle when the Cycle changes', async () => {
   ).toBeNull();
   await download({ user, dialog });
   await waitFor(() =>
-    expect(state.getScheduleExportFile).toHaveBeenCalledExactlyOnceWith(
-      'm',
-      'dec',
-      { format: 'pdf' },
-    ),
+    expect(state.getScheduleExportFile).toHaveBeenLastCalledWith('m', 'dec', {
+      format: 'pdf',
+    }),
   );
 });
 
@@ -255,15 +283,14 @@ it('shows the server message of a refused export', async () => {
       data: body,
     }),
   );
-  const { user, dialog } = await openDialog();
+  const { dialog } = await openDialog();
 
-  await download({ user, dialog });
-
-  await waitFor(() =>
-    expect(state.toastError).toHaveBeenCalledExactlyOnceWith(
-      'Escolha datas entre 01/01/2027 e 31/01/2027.',
-    ),
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+    'Escolha datas entre 01/01/2027 e 31/01/2027.',
   );
+  expect(
+    within(dialog).getByRole('button', { name: m.export_download() }),
+  ).toBeDisabled();
 });
 
 it('shows the server message when the export data is refused', async () => {

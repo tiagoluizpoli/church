@@ -178,7 +178,7 @@ export class ScheduleExportController implements FastifyController {
           operationId: 'getScheduleExportFile',
           summary: "Download a Ministry's Schedule for one Cycle",
           description:
-            'The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`, whatever the layout), the whole grid in one PNG never cut by size (`png`), or with `layout=cards` card image `page`: 1080 px wide, cut at most 1600 px tall only between cards, a taller card being an image of its own. Fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>", plus " - parte N de M" when the cards make several images. 404 past the last image; otherwise the same access, range and errors as the data.',
+            'The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`, whatever the layout, one file), the whole grid in one PNG never cut by size (`png`), or with `layout=cards` card image `page`: 1080 px wide, cut at most 1600 px tall only between cards, a taller card being an image of its own. Fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>", plus " - parte N de M" when the cards make several images. `page` is 1-based, default 1; 404 past the last, so a client reads every file in order until then. Same access, range and errors as the data.',
           params: paramsSchema,
           querystring: scheduleExportFileQuerySchema,
           response: {
@@ -193,6 +193,9 @@ export class ScheduleExportController implements FastifyController {
         if (!exported) return;
         const query = request.query as ScheduleExportFileQuery;
         const { format, page } = query;
+        // The PDF holds every page in its one file.
+        if (format === 'pdf' && page > 1)
+          throw new NotFoundError('Export file');
         const { locale } = request;
         const layout = layoutOf(query);
         const payload = scheduleExportRenderPayload({
@@ -207,11 +210,11 @@ export class ScheduleExportController implements FastifyController {
             payload,
             layout,
           });
-          if (page > parts) throw new NotFoundError('Card image');
+          if (page > parts) throw new NotFoundError('Export file');
           if (parts > 1) {
             suffixes.push(
-              m.export_image_part(
-                { part: String(page), parts: String(parts) },
+              m.export_file_part(
+                { part: String(page), count: String(parts) },
                 { locale },
               ),
             );
@@ -225,7 +228,7 @@ export class ScheduleExportController implements FastifyController {
           payload,
         });
         // Typst writes nothing for a page past the last.
-        if (file.byteLength === 0) throw new NotFoundError('Export image');
+        if (file.byteLength === 0) throw new NotFoundError('Export file');
         const name = `${scheduleExportFileName({ data: exported.data, locale, suffixes })}.${format}`;
         return reply
           .type(CONTENT_TYPE[format])

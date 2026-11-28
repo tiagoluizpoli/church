@@ -1,4 +1,3 @@
-import { NotFoundError } from '@church/core';
 import { z } from 'zod';
 import { AssignmentId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -12,8 +11,11 @@ import {
   raiseSwapRequestBodySchema,
   swapRequestResponseSchema,
 } from '../dtos/swap-request.dto';
-import { refuse } from '../utils/refuse';
+import { hideAsNotFound } from '../utils/hide-as-not-found';
 import type { SwapRequestControllerDependencies } from './swap-request-controller.types';
+
+/** Another Volunteer's Assignment answers 404, as for a missing one. */
+const OTHERS_ASSIGNMENT_ERRORS = [AssignmentAccessDeniedError];
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -69,23 +71,17 @@ export class SwapRequestController implements FastifyController {
       async (request, reply) => {
         const { assignmentId } = request.params;
         const body = request.body;
-        try {
-          const raised = await this.swapRequestManager.raise({
-            churchId: request.churchId,
-            userId: request.userId,
-            assignmentId: AssignmentId.from(assignmentId),
-            note: body.note,
-          });
-          return reply.status(201).send(raised);
-        } catch (error) {
-          if (
-            error instanceof AssignmentAccessDeniedError ||
-            error instanceof NotFoundError
-          ) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
+        const raised = await hideAsNotFound({
+          errors: OTHERS_ASSIGNMENT_ERRORS,
+          operation: () =>
+            this.swapRequestManager.raise({
+              churchId: request.churchId,
+              userId: request.userId,
+              assignmentId: AssignmentId.from(assignmentId),
+              note: body.note,
+            }),
+        });
+        return reply.status(201).send(raised);
       },
     );
 
@@ -109,22 +105,16 @@ export class SwapRequestController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params;
-        try {
-          await this.swapRequestManager.withdraw({
-            churchId: request.churchId,
-            userId: request.userId,
-            assignmentId: AssignmentId.from(assignmentId),
-          });
-          return reply.status(204).send(null);
-        } catch (error) {
-          if (
-            error instanceof AssignmentAccessDeniedError ||
-            error instanceof NotFoundError
-          ) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
+        await hideAsNotFound({
+          errors: OTHERS_ASSIGNMENT_ERRORS,
+          operation: () =>
+            this.swapRequestManager.withdraw({
+              churchId: request.churchId,
+              userId: request.userId,
+              assignmentId: AssignmentId.from(assignmentId),
+            }),
+        });
+        return reply.status(204).send(null);
       },
     );
   }

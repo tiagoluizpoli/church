@@ -75,9 +75,19 @@
   line(length: 100%, stroke: 1pt + bd)
 }
 
-// A part's name over its cards, when the export is split.
-#let part-bar(name) = block(width: 100%, fill: pri, radius: 10pt, inset: (x: 12pt, y: 8pt),
-  text(size: 16pt, weight: "bold", fill: white, name))
+// A bar over cards: a split part's name, or an Event group's name and its
+// Events' title when they share one (the cards then leave it out).
+#let bar(name, shared) = block(width: 100%, fill: pri, radius: 10pt, inset: (x: 12pt, y: 8pt), {
+  text(size: 16pt, weight: "bold", fill: white, name)
+  if shared != none {
+    h(8pt)
+    text(size: 12.5pt, fill: oklch(88%, 0.03, 255deg), shared)
+  }
+})
+#let shared-title(events) = {
+  let titles = events.map(ev => ev.title).dedup()
+  if titles.len() == 1 { titles.first() } else { none }
+}
 
 // The time band left of a row: a plain time reads vertically in a narrow
 // band; a label, a day or a span reads horizontally in a wider one.
@@ -131,7 +141,7 @@
 
 #let cancelled(label) = align(center, pad(y: 5pt, text(weight: "bold", fill: des, label)))
 
-#let card(part, ev) = {
+#let card(part, ev, shared) = {
   let (weekday, ..date) = day(ev.startDay).split(" ")
   let when = if ev.startDay == ev.endDay {
     [#text(size: 11pt, weight: "bold", fill: mfg, upper(weekday)) #h(4pt) #text(size: 17pt, weight: "bold", date.join(" "))]
@@ -161,21 +171,28 @@
       columns: (auto, 1fr),
       align: (left + horizon, right + horizon),
       when,
-      text(size: 12.5pt, fill: mfg, ev.title),
+      if shared == none { text(size: 12.5pt, fill: mfg, ev.title) },
     )),
     ..rows.enumerate().map(((i, r)) => if i == 0 { (r,) } else { (line(length: 100%, stroke: 2pt + pri), r) }).flatten(),
   ))
 }
 
 // Pack whole units into pages no taller than max-content-height. Each part
-// starts a page with the header; its bar travels with its first card.
+// starts a page with the header; its bars travel with the card below them.
 #context {
   let pages = ()
   for part in data.parts {
     let units = (header,)
-    for (i, ev) in part.events.enumerate() {
-      let c = card(part, ev)
-      units.push(if i == 0 and part.name != none { stack(spacing: gap, part-bar(part.name), c) } else { c })
+    let bars = if part.name != none { (bar(part.name, none),) } else { () }
+    for group in part.groups {
+      let shared = if group.kind == "list" { none } else { shared-title(group.events) }
+      if group.kind != "list" {
+        bars.push(bar(if group.name == none { t.catchAll } else { group.name }, shared))
+      }
+      for ev in group.events {
+        units.push(stack(spacing: gap, ..bars, card(part, ev, shared)))
+        bars = ()
+      }
     }
     let current = ()
     let height = 0pt

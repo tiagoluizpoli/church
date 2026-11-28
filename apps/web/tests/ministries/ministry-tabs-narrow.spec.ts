@@ -57,3 +57,20 @@ for (const theme of ['light', 'dark'] as const) {
     }
   });
 }
+
+// The tabs that already fit: pinned so a change to the bar's scrolling keeps them.
+for (const tab of ['operational', 'usual-setup'] as const) {
+  test(`the ${tab} tab is on screen at 320px with the bar unscrolled`, async ({
+    page,
+  }, testInfo) => {
+    const journey = loadMinistryWorkspaceIndexJourney({ testInfo });
+    await page.setViewportSize({ width: 320, height: 640 });
+    await signInPersonaPage({ page, persona: journey.personas.admin });
+    await page.goto(`/app/ministries/${journey.ministries.worship.id}/${tab}`);
+
+    const list = page.getByRole('navigation').getByRole('list').first();
+    const active = list.locator('[data-status="active"]');
+    await expect(active).toBeInViewport({ ratio: 1 });
+    expect(await list.evaluate((el) => el.scrollLeft)).toBe(0);
+  });
+}

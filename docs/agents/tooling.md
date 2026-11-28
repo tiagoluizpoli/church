@@ -23,6 +23,7 @@ and task ordering.
 | Bun pin guard (`mise.toml` = `packageManager`) | `bun run validate:bun-version` |
 | Presentation-text guard (no hard-coded copy) | `bun run validate:presentation-text` (`-- <path>…` for files) |
 | Server types guard (no types in implementation files) | `bun run validate:server-types` (`-- <path>…` for files) |
+| List-order guard (list queries end in `ORDER BY`) | `bun run validate:list-order` (`-- <path>…` for files) |
 | Generated API guard (CI-only: rewrites the tree) | `bun run validate:api-generated` |
 | Journey-map integrity guard | `bun run validate:journey-map` |
 | E2E lane-list guard (no Playwright start) | `bun run validate:e2e-lanes` |
@@ -290,6 +291,29 @@ entities and errors sit outside those folders. `bun run lint` and every
 reported type to its home:
 [Contracts and composition](backend.md#contracts-and-composition). The guard
 checks only where types are declared; the rest of that section is review's job.
+
+## List order
+
+`bun run validate:list-order` (`tooling/validation/list-order-guard.ts`) holds
+the backend's ordering rule ([List queries](backend.md#list-queries)). It fails
+on a Drizzle `.select()`, `.selectDistinct()` or `.selectDistinctOn()` chain, or
+a `union`/`intersect`/`except` call, in `apps/server/src/infrastructure/` that
+can return several rows and has no `.orderBy()`. `bun run lint` and every
+`validate:affected` run it. These pass without a comment:
+
+- a chain with `.limit(1)`;
+- a select of aggregates only (`count()`, `max(…)`, or a `sql` template that
+  starts with `count(`, `sum(` and the like) with no `.groupBy()`;
+- a subquery: a chain passed straight to a call (`exists`, `inArray`), aliased
+  with `.as()`, the source of an `INSERT … SELECT`, or a builder variable used
+  only as call arguments.
+
+Any other read whose order does not matter carries a one-line
+`// list-order: <reason>` comment. The comment leads the statement or the chain,
+wherever Biome puts it (after a ternary's `?`, inside parentheses). An opt-out
+without a reason fails. The guard sees only chains, so a builder returned to
+the caller needs the comment or its callers' `.orderBy()`. It does not judge
+whether an `ORDER BY` is total: that, and filtering in SQL, stay with review.
 
 ## Presentation text
 
@@ -943,6 +967,8 @@ a rule is added; a new mechanical rule lands with its check or an issue.
 | Business logic is separated from framework code | Constitution, backend | Judgement | — | Review: what counts as business logic is a judgement; the import shape is the row below |
 | Server layers import inward only (`api`/`application`/`infrastructure` → `domain`) | Backend | Mechanical | Biome rule | Enforced: `noRestrictedImports` overrides in `biome.json` |
 | Server implementation files declare no `interface`/`type`; each lives in its contract | Backend | Mechanical | Validation guard | Report-only: `bun run validate:server-types` ([#1180](https://github.com/tiagoluizpoli/church/issues/1180)); fails in `lint` after [#1191](https://github.com/tiagoluizpoli/church/issues/1191) |
+| Every list query ends in a total `ORDER BY`; a read whose order is unused says why | Backend | Mechanical | Validation guard | Enforced: `bun run validate:list-order`, part of `lint` and `validate:affected` ([#1231](https://github.com/tiagoluizpoli/church/issues/1231)); whether the last key is unique stays with review |
+| List filters, search and counts are applied in SQL, not in memory | Backend | Judgement | — | Review: an in-memory filter has many shapes |
 | Server classes are built in `main/di/` and injected, never `new`-ed inside another class | Backend | Mechanical | Validation guard | Follow-up [#1129](https://github.com/tiagoluizpoli/church/issues/1129) |
 | Web interfaces get their own file when large or several | Frontend | Judgement | — | Review: "large" and whether a split makes sense are judgements |
 | Shared packages hold only generic code; application code lives in `apps/server` | Constitution, backend | Judgement | — | Review: "application-specific" is a judgement about meaning |

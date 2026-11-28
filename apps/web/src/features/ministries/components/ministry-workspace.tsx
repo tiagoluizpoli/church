@@ -148,9 +148,10 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
       </div>
       <MinistrySetupGuide open={guideOpen} onDismiss={dismissGuide} />
       <nav aria-label={m.ministry_tabs_label()}>
+        {/* px-px + scroll-mx-px: scroll offsets are whole pixels, tab widths are not (#1213). */}
         <ul
           ref={tabList}
-          className="flex gap-1 overflow-x-auto border-border border-b pb-px"
+          className="flex gap-1 overflow-x-auto border-border border-b px-px pb-px"
         >
           {tabs.map((tab) => (
             <li key={tab.to}>
@@ -158,7 +159,7 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
                 to={tab.to}
                 params={{ ministryId }}
                 className={cn(
-                  '-mb-px inline-block whitespace-nowrap border-transparent border-b-2 px-3 py-2 font-medium text-muted-foreground text-sm hover:text-foreground',
+                  '-mb-px inline-block scroll-mx-px whitespace-nowrap border-transparent border-b-2 px-3 py-2 font-medium text-muted-foreground text-sm hover:text-foreground',
                   // Inset: the scroll container would clip an outer ring.
                   'outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                   'data-[status=active]:border-primary data-[status=active]:text-foreground',

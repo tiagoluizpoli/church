@@ -347,6 +347,7 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/data', () => {
         startDate: '2026-10-01',
         endDate: '2026-10-31',
       },
+      range: { from: '2026-10-01', to: '2026-10-31' },
       isDraft: false,
       hasUnsentChanges: true,
       singleSector: null,

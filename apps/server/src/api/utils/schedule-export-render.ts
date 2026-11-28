@@ -19,7 +19,7 @@ function exportText({
   const { singleRole: role, singleSector: sector } = data;
   return {
     kicker: m.export_schedule_kicker({}, { locale }),
-    range: `${formatCalendarDay({ day: data.cycle.startDate })} – ${formatCalendarDay({ day: data.cycle.endDate })}`,
+    range: `${formatCalendarDay({ day: data.range.from })} – ${formatCalendarDay({ day: data.range.to })}`,
     single:
       role && sector
         ? m.export_single_role_and_sector({ role, sector }, { locale })

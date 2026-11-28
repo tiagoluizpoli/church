@@ -15687,19 +15687,142 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/export/ministries/{ministryId}/cycles:
+    get:
+      operationId: listScheduleExportCycles
+      summary: The Cycles a Ministry has a Schedule in
+      tags:
+        - export
+      description: Newest first, for the export's Cycle picker; `isCurrent` marks the
+        one running on the Church's today. `q` keeps the Cycles where every word
+        is found in the name, a date (DD/MM/YYYY or YYYY-MM-DD) or a month
+        covered with its year, in the locale-cookie language, ignoring case and
+        accents. For the Ministry's leaders and ChurchAdmins.
+      parameters:
+        - schema:
+            type: string
+            maxLength: 100
+          in: query
+          name: q
+          required: false
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cycles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        startDate:
+                          type: string
+                          format: date
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                        endDate:
+                          type: string
+                          format: date
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                        isCurrent:
+                          type: boolean
+                      required:
+                        - id
+                        - name
+                        - startDate
+                        - endDate
+                        - isCurrent
+                      additionalProperties: false
+                required:
+                  - cycles
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/export/ministries/{ministryId}/cycles/{cycleId}/data:
     get:
       operationId: getScheduleExportData
       summary: A Ministry's Schedule for one Cycle as export data
       tags:
         - export
-      description: The whole Cycle as one ordered tree of facts (parts → Events → time
-        blocks → Shifts → Sectors → people), Church-local days and HH:mm times,
-        with the draft, unsent-changes, single Sector/Role and duplicate-name
-        facts. Only Events and blocks the Ministry serves; hidden cancelled
-        scopes are left out. Never ready-made text. For the Ministry's leaders
-        and ChurchAdmins; 404 when the Ministry has no Schedule in the Cycle.
+      description: The Cycle, or its inclusive `from`/`to` days (an Event belongs by
+        its Church-local start day), as one ordered tree of facts (parts →
+        Events → time blocks → Shifts → Sectors → people), Church-local days and
+        HH:mm times, with the draft, unsent-changes, single Sector/Role and
+        duplicate-name facts. Only Events and blocks the Ministry serves; hidden
+        cancelled scopes are left out. Never ready-made text. For the Ministry's
+        leaders and ChurchAdmins; 404 `EXPORT_SCHEDULE_NOT_FOUND` when the
+        Ministry has no Schedule in the Cycle; 400 `INVALID_DATE_RANGE` when
+        `from` is after `to`; 422 `EXPORT_RANGE_OUTSIDE_CYCLE` when either
+        reaches past the Cycle.
       parameters:
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: from
+          required: false
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: to
+          required: false
         - schema:
             type: string
           in: path
@@ -15743,6 +15866,21 @@ paths:
                       - name
                       - startDate
                       - endDate
+                    additionalProperties: false
+                  range:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                      to:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                    required:
+                      - from
+                      - to
                     additionalProperties: false
                   isDraft:
                     type: boolean
@@ -15876,12 +16014,28 @@ paths:
                 required:
                   - ministry
                   - cycle
+                  - range
                   - isDraft
                   - hasUnsentChanges
                   - singleSector
                   - singleRole
                   - duplicateNames
                   - parts
+                additionalProperties: false
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "401":
           description: Default Response
@@ -15928,16 +16082,45 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/export/ministries/{ministryId}/cycles/{cycleId}/file:
     get:
       operationId: getScheduleExportFile
       summary: Download a Ministry's Schedule for one Cycle
       tags:
         - export
-      description: The whole Cycle as an A4 landscape text PDF table, fixed text in
-        the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same
-        access and 404 as the data.
+      description: The Cycle or its `from`/`to` days as an A4 landscape text PDF
+        table, fixed text in the locale-cookie language, named "Escala -
+        <Ministry> - <Cycle>". Same access, range and errors as the data.
       parameters:
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: from
+          required: false
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: to
+          required: false
         - schema:
             type: string
             enum:
@@ -15964,6 +16147,21 @@ paths:
                 type: string
                 format: binary
                 description: The PDF file
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "401":
           description: Default Response
           content:
@@ -15995,6 +16193,21 @@ paths:
                   - message
                 additionalProperties: false
         "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
           description: Default Response
           content:
             application/json:

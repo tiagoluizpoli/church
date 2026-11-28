@@ -49,6 +49,8 @@ export const scheduleExportDataSchema = z.object({
     startDate: calendarDaySchema,
     endDate: calendarDaySchema,
   }),
+  /** The inclusive days exported: the Cycle's span unless narrowed. */
+  range: z.object({ from: calendarDaySchema, to: calendarDaySchema }),
   isDraft: z.boolean(),
   hasUnsentChanges: z.boolean(),
   singleSector: z.string().nullable(),
@@ -63,9 +65,42 @@ export const scheduleExportFileSchema = z
   .meta({ format: 'binary' })
   .describe('The PDF file');
 
-export const scheduleExportFileQuerySchema = z.object({
-  format: z.enum(['pdf']),
+/** Inclusive Church-local days inside the Cycle; an Event belongs by its start day. */
+export const scheduleExportRangeQuerySchema = z.object({
+  from: calendarDaySchema.optional(),
+  to: calendarDaySchema.optional(),
 });
+
+export const scheduleExportFileQuerySchema =
+  scheduleExportRangeQuerySchema.extend({
+    format: z.enum(['pdf']),
+  });
+
+export const scheduleExportCyclesQuerySchema = z.object({
+  /** Words each found in the name, a date or a month covered, ignoring case and accents. */
+  q: z.string().trim().max(100).optional(),
+});
+
+export const scheduleExportCyclesSchema = z.object({
+  cycles: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      startDate: calendarDaySchema,
+      endDate: calendarDaySchema,
+      /** The Church's today falls inside it. */
+      isCurrent: z.boolean(),
+    }),
+  ),
+});
+
+export type ScheduleExportRangeQuery = z.infer<
+  typeof scheduleExportRangeQuerySchema
+>;
+
+export type ScheduleExportCyclesQuery = z.infer<
+  typeof scheduleExportCyclesQuerySchema
+>;
 
 export type ScheduleExportFileQuery = z.infer<
   typeof scheduleExportFileQuerySchema

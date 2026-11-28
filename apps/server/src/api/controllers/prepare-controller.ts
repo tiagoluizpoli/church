@@ -16,6 +16,11 @@ import type { IScheduleReadModel } from '../../domain/contracts/application/sche
 import type { ShiftSplitStrategy } from '../../domain/services/scheduling/shift-splitter.types';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import {
+  denyParticipationScope,
+  denyRefusedDecision,
+  resolveLeadershipScope,
+} from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { cycleParamsSchema } from '../dtos/cycle.dto';
 import { idSchema, ministryParamsSchema } from '../dtos/id.dto';
@@ -48,11 +53,8 @@ import {
   setAvailabilityDeadlineBodySchema,
   shiftHasResponsesResponseSchema,
 } from '../dtos/participation.dto';
-import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
 import type {
-  DenyAuthorityDecisionInput,
-  DenyParticipationScopeInput,
   PrepareControllerDependencies,
   ToPreparationSplitInput,
 } from './prepare-controller.types';
@@ -128,21 +130,18 @@ export class PrepareController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const caller = requestCaller({ request });
-        const { churchId } = caller;
-        const { isChurchAdmin, ledMinistries } =
-          await this.authorityGuard.resolveCallerCapabilities(caller);
-        if (!isChurchAdmin && ledMinistries.length === 0) {
-          refuse({ reply, request, code: 'FORBIDDEN' });
-          return;
-        }
+        const { churchId } = request;
+        const scope = await resolveLeadershipScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
+        });
+        if (!scope) return;
 
         const { cursor, limit, ministryId, ...filters } = request.query;
         const page = await this.scheduleReadModel.listSchedules({
           churchId,
-          ministryIds: isChurchAdmin
-            ? undefined
-            : ledMinistries.map(({ ministryId }) => ministryId),
+          ministryIds: scope.kind === 'church' ? undefined : scope.ministryIds,
           filters: {
             ...filters,
             ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
@@ -171,19 +170,16 @@ export class PrepareController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const caller = requestCaller({ request });
-        const { churchId } = caller;
-        const { isChurchAdmin, ledMinistries } =
-          await this.authorityGuard.resolveCallerCapabilities(caller);
-        if (!isChurchAdmin && ledMinistries.length === 0) {
-          refuse({ reply, request, code: 'FORBIDDEN' });
-          return;
-        }
+        const { churchId } = request;
+        const scope = await resolveLeadershipScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
+        });
+        if (!scope) return;
         const insights = await this.scheduleReadModel.getScheduleInsights({
           churchId,
-          ministryIds: isChurchAdmin
-            ? undefined
-            : ledMinistries.map(({ ministryId }) => ministryId),
+          ministryIds: scope.kind === 'church' ? undefined : scope.ministryIds,
         });
         return reply.send(insights);
       },
@@ -208,20 +204,17 @@ export class PrepareController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const caller = requestCaller({ request });
-        const { churchId } = caller;
-        const { isChurchAdmin, ledMinistries } =
-          await this.authorityGuard.resolveCallerCapabilities(caller);
-        if (!isChurchAdmin && ledMinistries.length === 0) {
-          refuse({ reply, request, code: 'FORBIDDEN' });
-          return;
-        }
+        const { churchId } = request;
+        const scope = await resolveLeadershipScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
+        });
+        if (!scope) return;
         const { ministryId, cycleId } = request.params;
         const schedule = await this.scheduleReadModel.getSchedule({
           churchId,
-          ministryIds: isChurchAdmin
-            ? undefined
-            : ledMinistries.map(({ ministryId }) => ministryId),
+          ministryIds: scope.kind === 'church' ? undefined : scope.ministryIds,
           ministryId: MinistryId.from(ministryId),
           cycleId: CycleId.from(cycleId),
         });
@@ -264,7 +257,8 @@ export class PrepareController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -315,7 +309,8 @@ export class PrepareController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -357,7 +352,8 @@ export class PrepareController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -403,7 +399,8 @@ export class PrepareController implements FastifyController {
       },
       async (request, reply) => {
         const { participationId, eventTimeBlockId } = request.params;
-        const denied = await this.denyParticipationScope({
+        const denied = await denyParticipationScope({
+          authorityGuard: this.authorityGuard,
           request,
           reply,
           participationId,
@@ -462,7 +459,8 @@ export class PrepareController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -510,7 +508,8 @@ export class PrepareController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -557,7 +556,8 @@ export class PrepareController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -605,7 +605,8 @@ export class PrepareController implements FastifyController {
           ministryId: MinistryId.from(ministryId),
         });
         if (
-          await this.denyAuthorityDecision({
+          await denyRefusedDecision({
+            authorityGuard: this.authorityGuard,
             request,
             reply,
             allowed: decision.allowed,
@@ -626,48 +627,6 @@ export class PrepareController implements FastifyController {
         return reply.send(answers);
       },
     );
-  }
-
-  /**
-   * Returns whether access was denied. `FastifyReply` is a thenable (it
-   * resolves once the response is flushed) — `return reply.send(...)` from
-   * an `async` method would have its own returned promise silently adopt
-   * that reply's resolution instead of the reply object itself, so callers
-   * must never `await` a reply and branch on the awaited value. Each guard
-   * here sends the 403 as a side effect and returns a plain boolean.
-   */
-  private async denyParticipationScope({
-    request,
-    reply,
-    participationId,
-  }: DenyParticipationScopeInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageParticipation({
-      ...requestCaller({ request }),
-      participationId: MinistryParticipationId.from(participationId),
-    });
-
-    return this.denyAuthorityDecision({
-      request,
-      reply,
-      allowed: decision.allowed,
-    });
-  }
-
-  private async denyAuthorityDecision({
-    request,
-    reply,
-    allowed,
-  }: DenyAuthorityDecisionInput): Promise<boolean> {
-    if (allowed) return false;
-    const functionDecision = await this.authorityGuard.decideManageAnyMinistry(
-      requestCaller({ request }),
-    );
-    if (!functionDecision.allowed) {
-      refuse({ reply, request, code: 'FORBIDDEN' });
-      return true;
-    }
-    refuse({ reply, request, code: 'NOT_FOUND' });
-    return true;
   }
 }
 

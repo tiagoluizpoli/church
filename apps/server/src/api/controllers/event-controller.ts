@@ -7,6 +7,10 @@ import type { IEventManager } from '../../domain/contracts/application/event-man
 import type { EventStatus } from '../../domain/entities/event';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import {
+  denyMinistryFunction,
+  denyMinistryManagement,
+} from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   eventListResponseSchema,
@@ -16,12 +20,7 @@ import {
 } from '../dtos/event.dto';
 import { idSchema } from '../dtos/id.dto';
 import { refuse } from '../utils/refuse';
-import { requestCaller } from '../utils/request-caller';
-import type {
-  DenyMinistryObjectInput,
-  DenySchedulingFunctionInput,
-  EventControllerDependencies,
-} from './event-controller.types';
+import type { EventControllerDependencies } from './event-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -79,11 +78,10 @@ export class EventController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const deniedFunction = await this.denyMissingSchedulingFunction({
-          request,
-          reply,
-        });
-        if (deniedFunction) return;
+        const { authorityGuard } = this;
+        if (await denyMinistryFunction({ authorityGuard, request, reply })) {
+          return;
+        }
 
         const { eventId, ministryId } = request.query;
         try {
@@ -123,18 +121,13 @@ export class EventController implements FastifyController {
       },
       async (request, reply) => {
         const { ministryId, status } = request.query;
-        const deniedFunction = await this.denyMissingSchedulingFunction({
+        const denied = await denyMinistryManagement({
+          authorityGuard: this.authorityGuard,
           request,
           reply,
+          ministryId: MinistryId.from(ministryId),
         });
-        if (deniedFunction) return;
-
-        const deniedObject = await this.denyInaccessibleMinistry({
-          request,
-          reply,
-          ministryId,
-        });
-        if (deniedObject) return;
+        if (denied) return;
 
         const events = await this.eventManager.listEvents({
           churchId: request.churchId,
@@ -144,41 +137,5 @@ export class EventController implements FastifyController {
         return reply.send(eventMapper.listToResponse(events));
       },
     );
-  }
-
-  /**
-   * Returns whether access was denied. `FastifyReply` is a thenable (it
-   * resolves once the response is flushed) — `return reply.send(...)` from
-   * an `async` method would have its own returned promise silently adopt
-   * that reply's resolution instead of the reply object itself, so callers
-   * must never `await` a reply and branch on the awaited value. Each guard
-   * here sends the refusal as a side effect and returns a plain boolean.
-   */
-  private async denyMissingSchedulingFunction({
-    request,
-    reply,
-  }: DenySchedulingFunctionInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageAnyMinistry(
-      requestCaller({ request }),
-    );
-    if (decision.allowed) return false;
-
-    refuse({ reply, request, code: 'FORBIDDEN' });
-    return true;
-  }
-
-  private async denyInaccessibleMinistry({
-    request,
-    reply,
-    ministryId,
-  }: DenyMinistryObjectInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageMinistry({
-      ...requestCaller({ request }),
-      ministryId: MinistryId.from(ministryId),
-    });
-    if (decision.allowed) return false;
-
-    refuse({ reply, request, code: 'NOT_FOUND' });
-    return true;
   }
 }

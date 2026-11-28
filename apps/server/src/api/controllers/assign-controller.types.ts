@@ -8,7 +8,6 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IScheduleBuilderReader } from '../../domain/contracts/application/schedule-builder-reader';
 import type { ISchedulePublisher } from '../../domain/contracts/application/schedule-publisher';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
-import type { Assignment } from '../../domain/entities/assignment';
 import type { applyAssignmentProposalBodySchema } from '../dtos/assign.dto';
 
 export type ApplyAssignmentProposalBody = z.infer<
@@ -17,39 +16,10 @@ export type ApplyAssignmentProposalBody = z.infer<
 
 export type ReviewedPairBody = ApplyAssignmentProposalBody['additions'][number];
 
-export interface ResolveOwnedAssignmentInput {
+export interface DenyAssignmentScopeInput {
   request: FastifyRequest;
   reply: FastifyReply;
   assignmentId: string;
-}
-
-export interface ResolveOwnedAssignmentResult {
-  assignment?: Assignment;
-  denied: boolean;
-}
-
-export interface ResolveScheduleShiftInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  shiftId: string;
-}
-
-export interface DenyAuthorityDecisionInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  allowed: boolean;
-}
-
-export interface DenyParticipationScopeInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  participationId: string;
-}
-
-export interface DenyShiftScopeInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  shiftId: string;
 }
 
 export interface AssignControllerDependencies {

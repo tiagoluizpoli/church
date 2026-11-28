@@ -1,14 +1,17 @@
 import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { MinistryId, RoleId } from '../../domain/branded-ids';
+import { RoleId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IChurchAccessManager } from '../../domain/contracts/application/church-access-manager';
 import type { IMinistryMembershipManager } from '../../domain/contracts/application/ministry-membership-manager';
 import type { IPeopleListManager } from '../../domain/contracts/application/people-list-manager';
-import type { PeopleListScope } from '../../domain/entities/people-list-item';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import {
+  createChurchAdminHook,
+  resolveLeadershipScope,
+} from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import {
@@ -29,7 +32,6 @@ import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
 import type {
   PeopleControllerDependencies,
-  ResolveScopeInput,
   SendMembershipOutcomeInput,
 } from './people-controller.types';
 
@@ -81,26 +83,6 @@ export class PeopleController implements FastifyController {
     this.maxPageSize = config.people.maxPageSize;
   }
 
-  /** The caller's reach, or undefined without the People capability. A person who is both gets admin behavior. */
-  private async resolveScope({
-    churchId,
-    userId,
-    actor,
-  }: ResolveScopeInput): Promise<PeopleListScope | undefined> {
-    const { isChurchAdmin, ledMinistries } =
-      await this.authorityGuard.resolveCallerCapabilities({
-        churchId,
-        userId,
-        actor,
-      });
-    if (isChurchAdmin) return { kind: 'church' };
-    if (ledMinistries.length === 0) return undefined;
-    return {
-      kind: 'ministries',
-      ministryIds: ledMinistries.map((m) => MinistryId.from(m.ministryId)),
-    };
-  }
-
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
   registerRoutes(
     app: FastifyTypedInstance,
@@ -110,6 +92,9 @@ export class PeopleController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
     );
+    const churchAdminOnly = createChurchAdminHook({
+      authorityGuard: this.authorityGuard,
+    });
 
     app.patch(
       '/:memberId/church-access',
@@ -130,13 +115,12 @@ export class PeopleController implements FastifyController {
             409: errorResponseSchema,
           },
         },
+        // A non-admin is refused before any target lookup; the manager rechecks under the Church lock.
+        preHandler: churchAdminOnly,
       },
       async (request, reply) => {
         const caller = requestCaller({ request });
         const { churchId, userId: actorId } = caller;
-        // Refuse a non-admin before any target lookup; the manager rechecks under the Church lock.
-        const isAdmin = await this.authorityGuard.canManageChurch(caller);
-        if (!isAdmin) return refuse({ reply, request, code: 'FORBIDDEN' });
         const { memberId } = request.params;
         const { accessLevel } = request.body;
         const outcome = await this.churchAccessManager.changeChurchAccess({
@@ -187,8 +171,12 @@ export class PeopleController implements FastifyController {
         const caller = requestCaller({ request });
         const { churchId, userId: actorId } = caller;
         // The area gate; the manager decides the target under the Church lock.
-        const scope = await this.resolveScope(caller);
-        if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const scope = await resolveLeadershipScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
+        });
+        if (!scope) return;
         const { memberId, membershipId } = request.params;
         const { roleIds } = request.body;
         const outcome = await this.ministryMembershipManager.setMinistryRoles({
@@ -225,13 +213,12 @@ export class PeopleController implements FastifyController {
             422: errorResponseSchema,
           },
         },
+        // A non-admin is refused before any target lookup; the manager rechecks under the Church lock.
+        preHandler: churchAdminOnly,
       },
       async (request, reply) => {
         const caller = requestCaller({ request });
         const { churchId, userId: actorId } = caller;
-        // Refuse a non-admin before any target lookup; the manager rechecks under the Church lock.
-        const isAdmin = await this.authorityGuard.canManageChurch(caller);
-        if (!isAdmin) return refuse({ reply, request, code: 'FORBIDDEN' });
         const { memberId, membershipId } = request.params;
         const { accessLevel, roleIds } = request.body;
         const outcome =
@@ -273,8 +260,12 @@ export class PeopleController implements FastifyController {
         const caller = requestCaller({ request });
         const { churchId, userId: actorId } = caller;
         // The area gate; the manager decides the target under the Church lock.
-        const scope = await this.resolveScope(caller);
-        if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const scope = await resolveLeadershipScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
+        });
+        if (!scope) return;
         const { memberId, membershipId } = request.params;
         const outcome =
           await this.ministryMembershipManager.endMinistryMembership({
@@ -308,8 +299,12 @@ export class PeopleController implements FastifyController {
       async (request, reply) => {
         const caller = requestCaller({ request });
         const { churchId, userId: callerId, actor: callerActor } = caller;
-        const scope = await this.resolveScope(caller);
-        if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const scope = await resolveLeadershipScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
+        });
+        if (!scope) return;
         const result = await this.peopleListManager.get({
           churchId,
           scope,
@@ -348,8 +343,12 @@ export class PeopleController implements FastifyController {
       async (request, reply) => {
         const caller = requestCaller({ request });
         const { churchId } = caller;
-        const scope = await this.resolveScope(caller);
-        if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
+        const scope = await resolveLeadershipScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          reply,
+        });
+        if (!scope) return;
         const { cursor, limit, ...filters } = request.query;
         return reply.send(
           await this.peopleListManager.list({

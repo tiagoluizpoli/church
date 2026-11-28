@@ -6,6 +6,7 @@ import type { IMinistryManager } from '../../domain/contracts/application/minist
 import type { ISectorManager } from '../../domain/contracts/application/sector-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import { resolveManagedMinistry } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
 import { ministryParamsSchema } from '../dtos/id.dto';
@@ -16,12 +17,7 @@ import {
   sectorParamsSchema,
   sectorResponseSchema,
 } from '../dtos/sector.dto';
-import { refuse } from '../utils/refuse';
-import { requestCaller } from '../utils/request-caller';
-import type {
-  ResolveManagedMinistryInput,
-  SectorControllerDependencies,
-} from './sector-controller.types';
+import type { SectorControllerDependencies } from './sector-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -80,10 +76,12 @@ export class SectorController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const ministryId = await this.resolveManagedMinistry({
+        const ministryId = await resolveManagedMinistry({
+          authorityGuard: this.authorityGuard,
+          ministryManager: this.ministryManager,
           request,
           reply,
-          ministryId: request.params.ministryId,
+          ministryId: MinistryId.from(request.params.ministryId),
         });
         if (!ministryId) return;
         const sectors = await this.sectorManager.list({
@@ -115,10 +113,12 @@ export class SectorController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const ministryId = await this.resolveManagedMinistry({
+        const ministryId = await resolveManagedMinistry({
+          authorityGuard: this.authorityGuard,
+          ministryManager: this.ministryManager,
           request,
           reply,
-          ministryId: request.params.ministryId,
+          ministryId: MinistryId.from(request.params.ministryId),
         });
         if (!ministryId) return;
         const { name } = request.body;
@@ -152,10 +152,12 @@ export class SectorController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const ministryId = await this.resolveManagedMinistry({
+        const ministryId = await resolveManagedMinistry({
+          authorityGuard: this.authorityGuard,
+          ministryManager: this.ministryManager,
           request,
           reply,
-          ministryId: request.params.ministryId,
+          ministryId: MinistryId.from(request.params.ministryId),
         });
         if (!ministryId) return;
         const { sectorId } = request.params;
@@ -190,10 +192,12 @@ export class SectorController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const ministryId = await this.resolveManagedMinistry({
+        const ministryId = await resolveManagedMinistry({
+          authorityGuard: this.authorityGuard,
+          ministryManager: this.ministryManager,
           request,
           reply,
-          ministryId: request.params.ministryId,
+          ministryId: MinistryId.from(request.params.ministryId),
         });
         if (!ministryId) return;
         const { sectorId } = request.params;
@@ -205,35 +209,5 @@ export class SectorController implements FastifyController {
         return reply.status(204).send(null);
       },
     );
-  }
-
-  /**
-   * Function check (403) before object check (404), then the archived parent
-   * is 404 too. Returns the Ministry, or undefined once a refusal was sent.
-   */
-  private async resolveManagedMinistry({
-    request,
-    reply,
-    ministryId: rawMinistryId,
-  }: ResolveManagedMinistryInput): Promise<MinistryId | undefined> {
-    const caller = requestCaller({ request });
-    const { churchId } = caller;
-    const anyMinistry =
-      await this.authorityGuard.decideManageAnyMinistry(caller);
-    if (!anyMinistry.allowed) {
-      refuse({ reply, request, code: 'FORBIDDEN' });
-      return undefined;
-    }
-    const ministryId = MinistryId.from(rawMinistryId);
-    const decision = await this.authorityGuard.decideManageMinistry({
-      ...caller,
-      ministryId,
-    });
-    if (!decision.allowed) {
-      refuse({ reply, request, code: 'NOT_FOUND' });
-      return undefined;
-    }
-    await this.ministryManager.getActive({ churchId, ministryId });
-    return ministryId;
   }
 }

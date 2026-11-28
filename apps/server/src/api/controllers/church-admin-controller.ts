@@ -35,6 +35,10 @@ import {
   updateCycleConflictResponseSchema,
 } from '../dtos/cycle.dto';
 import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
+import {
   applyTemplatesBodySchema,
   changeTemplatePrecedenceBodySchema,
   createEventTemplateBodySchema,
@@ -130,11 +134,6 @@ function precedenceAnswers(precedences: PrecedenceBody) {
   }));
 }
 
-const notFoundResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
-
 export class ChurchAdminController implements FastifyController {
   readonly prefix = '/admin';
 
@@ -190,9 +189,8 @@ export class ChurchAdminController implements FastifyController {
             'Five independently derived setup facts of the Active Church: an active Ministry; one active Ministry holding both an active Sector and an active Role; an issued leader-level Ministry Invitation (pending or accepted); an event template; and a Cycle ever sent, which an expired unsent draft never is. Nothing is persisted.',
           response: {
             200: setupProgressResponseSchema,
-            401: notFoundResponseSchema,
-            403: notFoundResponseSchema,
-            409: notFoundResponseSchema,
+            ...authErrorResponses,
+            409: errorResponseSchema,
           },
         },
       },
@@ -217,6 +215,7 @@ export class ChurchAdminController implements FastifyController {
           body: createCycleBodySchema,
           response: {
             201: cycleResponseSchema,
+            ...authErrorResponses,
             409: overlappingCycleResponseSchema,
           },
         },
@@ -243,7 +242,7 @@ export class ChurchAdminController implements FastifyController {
           description:
             'List the Church Cycles newest start first, filtered by state or period, name and an overlapping day range, with the per-state counts of all of them.',
           querystring: listCyclesQuerySchema,
-          response: { 200: cycleListResponseSchema },
+          response: { 200: cycleListResponseSchema, ...authErrorResponses },
         },
       },
       async (request, reply) => {
@@ -273,7 +272,7 @@ export class ChurchAdminController implements FastifyController {
           summary: 'Get the current and next Cycle',
           description:
             "The Cycle running on the Church's today (neither Draft nor Past) and the earliest Cycle starting after today that is not Past (Drafts included); either is null. Ties break on start date, then id.",
-          response: { 200: cycleAnchorsResponseSchema },
+          response: { 200: cycleAnchorsResponseSchema, ...authErrorResponses },
         },
       },
       async (request, reply) => {
@@ -293,7 +292,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'getCycle',
           summary: 'Get a Cycle',
           description: 'Get the details of a single Cycle.',
-          response: { 200: cycleDetailsResponseSchema },
+          response: { 200: cycleDetailsResponseSchema, ...authErrorResponses },
         },
       },
       async (request, reply) => {
@@ -318,6 +317,7 @@ export class ChurchAdminController implements FastifyController {
             'Advisory confirmation facts for a Draft Cycle: its Event count and the distinct active Ministries the Usual setup would pre-fill. Send rechecks everything itself. Refuses an empty Draft (EMPTY_CYCLE), legacy Events breaking the final-graph rules (INVALID_CYCLE_EVENTS) and Sent/Past Cycles.',
           response: {
             200: cycleSendSummaryResponseSchema,
+            ...authErrorResponses,
             409: sendCycleConflictResponseSchema,
           },
         },
@@ -342,7 +342,11 @@ export class ChurchAdminController implements FastifyController {
           summary: 'Send a Cycle',
           description:
             'Send a Draft Cycle to its Ministries in one transaction: schedule its Events, pre-fill staffing from the Usual setup and enqueue one Cycle-ready Notification per User leading an active Ministry. Refuses an empty Draft (EMPTY_CYCLE), legacy Events breaking the final-graph rules (INVALID_CYCLE_EVENTS), a Draft already holding staffing (DRAFT_STAFFING_RECONCILIATION_REQUIRED) and Sent/Past Cycles (ILLEGAL_STATE_TRANSITION).',
-          response: { 204: z.null(), 409: sendCycleConflictResponseSchema },
+          response: {
+            204: z.null(),
+            ...authErrorResponses,
+            409: sendCycleConflictResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -368,6 +372,7 @@ export class ChurchAdminController implements FastifyController {
           body: updateCycleBodySchema,
           response: {
             200: cycleResponseSchema,
+            ...authErrorResponses,
             409: updateCycleConflictResponseSchema,
           },
         },
@@ -396,6 +401,7 @@ export class ChurchAdminController implements FastifyController {
           summary: 'Delete a Draft Cycle',
           description:
             'Hard-delete a Draft Cycle with every Event, Time Block and participation it owns. Sent and Past Cycles are refused.',
+          response: { 204: z.null(), ...authErrorResponses },
         },
       },
       async (request, reply) => {
@@ -404,7 +410,7 @@ export class ChurchAdminController implements FastifyController {
           churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
         });
-        return reply.status(204).send();
+        return reply.status(204).send(null);
       },
     );
 
@@ -420,6 +426,7 @@ export class ChurchAdminController implements FastifyController {
           body: createEventTemplateBodySchema,
           response: {
             201: eventTemplateResponseSchema,
+            ...authErrorResponses,
             409: templateCollisionsResponseSchema,
             422: validationErrorResponseSchema,
           },
@@ -446,7 +453,10 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'listEventTemplates',
           summary: 'List EventTemplates',
           description: 'List the Church EventTemplates.',
-          response: { 200: eventTemplateListResponseSchema },
+          response: {
+            200: eventTemplateListResponseSchema,
+            ...authErrorResponses,
+          },
         },
       },
       async (request, reply) => {
@@ -467,7 +477,7 @@ export class ChurchAdminController implements FastifyController {
           summary: 'Get an EventTemplate',
           description:
             'Get one Church EventTemplate with its ordered TemplateTimeBlocks for direct editing.',
-          response: { 200: eventTemplateResponseSchema },
+          response: { 200: eventTemplateResponseSchema, ...authErrorResponses },
         },
       },
       async (request, reply) => {
@@ -490,7 +500,10 @@ export class ChurchAdminController implements FastifyController {
           summary: 'Get EventTemplate usage',
           description:
             'Count the distinct Ministries whose UsualSetup references each current TemplateTimeBlock, and across the template.',
-          response: { 200: eventTemplateUsageResponseSchema },
+          response: {
+            200: eventTemplateUsageResponseSchema,
+            ...authErrorResponses,
+          },
         },
       },
       async (request, reply) => {
@@ -516,6 +529,7 @@ export class ChurchAdminController implements FastifyController {
           body: updateEventTemplateBodySchema,
           response: {
             200: eventTemplateResponseSchema,
+            ...authErrorResponses,
             409: templateCollisionsResponseSchema,
             422: validationErrorResponseSchema,
           },
@@ -546,7 +560,10 @@ export class ChurchAdminController implements FastifyController {
           summary: 'List Template Precedences',
           description:
             "The template's stored Template Precedences, each as this template sees the pair, ordered by the other template's name.",
-          response: { 200: templatePrecedenceListResponseSchema },
+          response: {
+            200: templatePrecedenceListResponseSchema,
+            ...authErrorResponses,
+          },
         },
       },
       async (request, reply) => {
@@ -572,6 +589,7 @@ export class ChurchAdminController implements FastifyController {
           body: changeTemplatePrecedenceBodySchema,
           response: {
             200: templatePrecedenceResponseSchema,
+            ...authErrorResponses,
             422: validationErrorResponseSchema,
           },
         },
@@ -598,6 +616,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'deleteEventTemplate',
           summary: 'Delete an EventTemplate',
           description: 'Delete an EventTemplate from the Church.',
+          response: { 204: z.null(), ...authErrorResponses },
         },
       },
       async (request, reply) => {
@@ -606,7 +625,7 @@ export class ChurchAdminController implements FastifyController {
           churchId: request.churchId,
           templateId: EventTemplateId.from(templateId),
         });
-        return reply.status(204).send();
+        return reply.status(204).send(null);
       },
     );
 
@@ -621,7 +640,10 @@ export class ChurchAdminController implements FastifyController {
           description:
             'Generate one Event per matching CalendarDay in the Cycle for each selected EventTemplate, with one EventTimeBlock per TemplateTimeBlock. A loser of a Template Precedence skips only its blocks overlapping the winner’s on days the winner’s Recurrence names; blocks already in the Cycle that would now lose are listed in `leftoverEventTimeBlocks` and never deleted.',
           body: applyTemplatesBodySchema,
-          response: { 201: generatedPlanningCountsResponseSchema },
+          response: {
+            201: generatedPlanningCountsResponseSchema,
+            ...authErrorResponses,
+          },
         },
       },
       async (request, reply) => {
@@ -667,6 +689,7 @@ export class ChurchAdminController implements FastifyController {
           body: createPlanningEventBodySchema,
           response: {
             201: eventGraphResponseSchema,
+            ...authErrorResponses,
             422: validationErrorResponseSchema,
           },
         },
@@ -709,6 +732,7 @@ export class ChurchAdminController implements FastifyController {
           body: updatePlanningEventBodySchema,
           response: {
             200: eventGraphResponseSchema,
+            ...authErrorResponses,
             422: validationErrorResponseSchema,
           },
         },
@@ -752,6 +776,7 @@ export class ChurchAdminController implements FastifyController {
           body: updatePlanningEventDetailsBodySchema,
           response: {
             200: eventGraphResponseSchema,
+            ...authErrorResponses,
             422: validationErrorResponseSchema,
           },
         },
@@ -788,7 +813,7 @@ export class ChurchAdminController implements FastifyController {
           summary: 'Delete a Draft Event',
           description:
             'Hard-delete an unsent Draft Event of a Draft Cycle with its draft calendar and participation data. No Notification is created.',
-          response: { 204: z.null() },
+          response: { 204: z.null(), ...authErrorResponses },
         },
       },
       async (request, reply) => {
@@ -814,6 +839,7 @@ export class ChurchAdminController implements FastifyController {
             'Preview cancelling a scheduled Event of a Sent Cycle, writing and sending nothing. Returns the scope bounds, the distinct published Volunteers who would be told (N9) and the Ministries they span, one told-count row per participating Ministry, and the open SwapRequests that would close. Advisory only: confirm recalculates. Refuses a Draft or Past Cycle or non-scheduled Event (ILLEGAL_STATE_TRANSITION) and an Event that has started (ADMIN_CANCELLATION_WINDOW_CLOSED).',
           response: {
             200: cancellationImpactResponseSchema,
+            ...authErrorResponses,
             422: validationErrorResponseSchema,
           },
         },
@@ -843,6 +869,7 @@ export class ChurchAdminController implements FastifyController {
           body: cancelPlanningEventBodySchema,
           response: {
             200: cancellationImpactResponseSchema,
+            ...authErrorResponses,
             422: validationErrorResponseSchema,
           },
         },
@@ -876,7 +903,8 @@ export class ChurchAdminController implements FastifyController {
           body: setPlanningHiddenBodySchema,
           response: {
             204: z.null(),
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -908,7 +936,8 @@ export class ChurchAdminController implements FastifyController {
           body: setPlanningHiddenBodySchema,
           response: {
             204: z.null(),
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -951,6 +980,7 @@ export class ChurchAdminController implements FastifyController {
           body: movePlanningEventBodySchema,
           response: {
             200: eventMovePreviewResponseSchema,
+            ...authErrorResponses,
             422: validationErrorResponseSchema,
           },
         },
@@ -984,6 +1014,7 @@ export class ChurchAdminController implements FastifyController {
           body: movePlanningEventBodySchema,
           response: {
             200: eventMoveResponseSchema,
+            ...authErrorResponses,
             422: validationErrorResponseSchema,
           },
         },
@@ -1018,7 +1049,8 @@ export class ChurchAdminController implements FastifyController {
           body: editPlanningEventBodySchema,
           response: {
             200: eventEditPreviewResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1055,7 +1087,8 @@ export class ChurchAdminController implements FastifyController {
           body: editPlanningEventBodySchema,
           response: {
             200: eventMoveResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1093,7 +1126,8 @@ export class ChurchAdminController implements FastifyController {
           body: createEventTimeBlockBodySchema,
           response: {
             201: eventTimeBlockResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1134,7 +1168,8 @@ export class ChurchAdminController implements FastifyController {
           body: movePlanningEventBodySchema,
           response: {
             200: eventMovePreviewResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1176,7 +1211,8 @@ export class ChurchAdminController implements FastifyController {
           body: movePlanningEventBodySchema,
           response: {
             200: eventMoveResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1218,7 +1254,8 @@ export class ChurchAdminController implements FastifyController {
             'Preview cancelling one future EventTimeBlock of a scheduled Event in a Sent Cycle, writing and sending nothing. Same impact shape as the Event preview, limited to that block. Refuses as the Event preview does; a block that has started is ADMIN_CANCELLATION_WINDOW_CLOSED, a cancelled block is ILLEGAL_STATE_TRANSITION, an unknown or foreign block is 404.',
           response: {
             200: cancellationImpactResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1257,7 +1294,8 @@ export class ChurchAdminController implements FastifyController {
           body: cancelPlanningEventBodySchema,
           response: {
             200: cancellationImpactResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1300,7 +1338,8 @@ export class ChurchAdminController implements FastifyController {
           body: updateEventTimeBlockBodySchema,
           response: {
             200: eventTimeBlockResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1338,7 +1377,11 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'deletePlanningEventTimeBlock',
           summary: 'Delete a EventTimeBlock',
           description: 'Delete a EventTimeBlock from an Event.',
-          response: { 204: z.null(), 404: notFoundResponseSchema },
+          response: {
+            204: z.null(),
+            ...authErrorResponses,
+            404: errorResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -1372,7 +1415,7 @@ export class ChurchAdminController implements FastifyController {
           description:
             "Set a Ministry's defaultDirection (all_in or all_out) for source-linked EventTimeBlocks with no UsualSetup entry at Send: all_out (the default) excludes them, all_in includes them with one whole-block Shift and no requirements. An explicit UsualSetup entry always wins, and source-less blocks are never auto-included.",
           body: setDefaultDirectionBodySchema,
-          response: { 200: ministryResponseSchema },
+          response: { 200: ministryResponseSchema, ...authErrorResponses },
         },
       },
       async (request, reply) => {

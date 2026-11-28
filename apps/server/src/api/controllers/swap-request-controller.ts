@@ -7,6 +7,10 @@ import { AssignmentAccessDeniedError } from '../../domain/errors/assignment-acce
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import { assignmentParamsSchema } from '../dtos/id.dto';
 import {
   raiseSwapRequestBodySchema,
@@ -14,11 +18,6 @@ import {
 } from '../dtos/swap-request.dto';
 import { refuse } from '../utils/refuse';
 import type { SwapRequestControllerDependencies } from './swap-request-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 export class SwapRequestController implements FastifyController {
   readonly prefix = '/volunteer';
@@ -60,6 +59,7 @@ export class SwapRequestController implements FastifyController {
           body: raiseSwapRequestBodySchema,
           response: {
             201: swapRequestResponseSchema,
+            ...authErrorResponses,
             400: errorResponseSchema,
             404: errorResponseSchema,
             409: errorResponseSchema,
@@ -102,6 +102,7 @@ export class SwapRequestController implements FastifyController {
             'Close the caller’s open swap request as withdrawn. The Assignment is not changed and nobody is notified. 409 when the request is already closed.',
           response: {
             204: z.null(),
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },

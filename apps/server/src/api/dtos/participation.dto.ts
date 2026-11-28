@@ -31,6 +31,7 @@ import type { Shift } from '../../domain/entities/shift';
 import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
 import { VALIDATION_REASONS } from '../../domain/errors/validation-rule-error';
 import { decodeScheduleListCursor } from '../../domain/schedule-list-cursor';
+import { errorResponseSchema } from './error-response.dto';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
   eventTimeBlockMapper,
@@ -110,9 +111,7 @@ export const participationEventViewSchema = z.object({
 });
 
 /** A 409 `HEADCOUNT_BELOW_ASSIGNED`: the localized envelope plus every refused floor. */
-export const headcountBelowAssignedResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+export const headcountBelowAssignedResponseSchema = errorResponseSchema.extend({
   headcountFloors: z.array(
     z.object({
       shiftId: z.string(),
@@ -124,9 +123,7 @@ export const headcountBelowAssignedResponseSchema = z.object({
 });
 
 /** A 409 `SHIFT_HAS_RESPONSES`: the localized envelope plus per-Shift counts. */
-export const shiftHasResponsesResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+export const shiftHasResponsesResponseSchema = errorResponseSchema.extend({
   shiftResponses: z.array(
     z.object({
       shiftId: z.string(),
@@ -191,12 +188,11 @@ export const savePreparationBodySchema = z.object({
 export type SavePreparationBody = z.infer<typeof savePreparationBodySchema>;
 
 /** A 422: a named rule's `reason`, or the body schema's field-aware `issues`. */
-export const preparationValidationErrorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-  reason: z.enum(VALIDATION_REASONS).optional(),
-  issues: z.array(z.unknown()).optional(),
-});
+export const preparationValidationErrorResponseSchema =
+  errorResponseSchema.extend({
+    reason: z.enum(VALIDATION_REASONS).optional(),
+    issues: z.array(z.unknown()).optional(),
+  });
 
 const flaggedBlockResponseSchema = z.object({
   eventTimeBlockId: z.string(),
@@ -238,11 +234,11 @@ export const askScheduleResponseSchema = z.object({
 });
 
 /** A 409 `ASK_BLOCKED_FLAGGED_SHIFTS`: the localized envelope plus every flagged block. */
-export const askBlockedFlaggedShiftsResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-  flaggedBlocks: z.array(flaggedBlockResponseSchema),
-});
+export const askBlockedFlaggedShiftsResponseSchema = errorResponseSchema.extend(
+  {
+    flaggedBlocks: z.array(flaggedBlockResponseSchema),
+  },
+);
 
 export const remindScheduleBodySchema = z.object({
   ministryId: z.string(),
@@ -255,9 +251,7 @@ export const remindScheduleResponseSchema = z.object({
 });
 
 /** A 409 `REMIND_ON_COOLDOWN`: the localized envelope plus the next-available Instant. */
-export const remindOnCooldownResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+export const remindOnCooldownResponseSchema = errorResponseSchema.extend({
   remindAvailableAt: instantSchema,
 });
 

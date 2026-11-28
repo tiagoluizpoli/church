@@ -50,6 +50,10 @@ import {
   publishCycleMapper,
   publishCycleResponseSchema,
 } from '../dtos/cycle-builder.dto';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import { assignmentParamsSchema, idSchema } from '../dtos/id.dto';
 import { requestCaller } from '../utils/request-caller';
 import type {
@@ -62,11 +66,6 @@ const shiftParamsSchema = z.object({ shiftId: idSchema });
 const participationParamsSchema = z.object({ participationId: idSchema });
 
 const cycleMinistryQuerySchema = z.object({ ministryId: idSchema });
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 const toReviewedAddition = ({
   shiftRequirementId,
@@ -133,7 +132,7 @@ export class AssignController implements FastifyController {
           querystring: cycleMinistryQuerySchema,
           response: {
             200: cycleBuilderResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -180,7 +179,7 @@ export class AssignController implements FastifyController {
             querystring: cycleMinistryQuerySchema,
             response: {
               200: auditListResponseSchema,
-              403: errorResponseSchema,
+              ...authErrorResponses,
               404: errorResponseSchema,
             },
           },
@@ -226,7 +225,7 @@ export class AssignController implements FastifyController {
           querystring: cycleMinistryQuerySchema,
           response: {
             200: assignmentProposalResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
@@ -274,7 +273,7 @@ export class AssignController implements FastifyController {
           body: applyAssignmentProposalBodySchema,
           response: {
             200: assignmentProposalOutcomeResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
             422: errorResponseSchema,
@@ -332,7 +331,7 @@ export class AssignController implements FastifyController {
           response: {
             200: publishCycleResponseSchema,
             409: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -378,7 +377,7 @@ export class AssignController implements FastifyController {
           querystring: cycleMinistryQuerySchema,
           response: {
             200: z.object({ notifiedCount: z.number() }),
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
@@ -422,7 +421,7 @@ export class AssignController implements FastifyController {
             'List the Volunteers eligible to be assigned to a Shift, for the schedule builder.',
           response: {
             200: eligibleVolunteerListResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -461,7 +460,7 @@ export class AssignController implements FastifyController {
           body: createParticipationAssignmentBodySchema,
           response: {
             201: createParticipationAssignmentResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -505,7 +504,7 @@ export class AssignController implements FastifyController {
           description: 'Remove a Volunteer Assignment from its Shift.',
           response: {
             204: z.null(),
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -539,7 +538,7 @@ export class AssignController implements FastifyController {
           body: moveAssignmentBodySchema,
           response: {
             200: assignmentResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -578,7 +577,7 @@ export class AssignController implements FastifyController {
           body: reassignAssignmentBodySchema,
           response: {
             200: assignmentResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -616,7 +615,7 @@ export class AssignController implements FastifyController {
             'Get how fully a MinistryParticipation is staffed against its ShiftRequirements.',
           response: {
             200: participationCompletionResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },

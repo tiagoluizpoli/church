@@ -4,6 +4,7 @@ import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../domain/authority/types';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
 import { PEOPLE_ACCESS_OPTIONS } from '../../domain/entities/people-list-item';
 import { decodePeopleListCursor } from '../../domain/people-list-cursor';
+import { errorResponseSchema } from './error-response.dto';
 import { idSchema } from './id.dto';
 
 export const peopleListResponseSchema = z.object({
@@ -158,8 +159,6 @@ export const upcomingAssignmentSchema = z.object({
 });
 
 /** A 409 `UPCOMING_ASSIGNMENTS`: the localized envelope plus every blocking Assignment. */
-export const upcomingAssignmentsResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+export const upcomingAssignmentsResponseSchema = errorResponseSchema.extend({
   assignments: z.array(upcomingAssignmentSchema),
 });

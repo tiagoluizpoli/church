@@ -9,6 +9,10 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import { resolveManagedMinistry } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import { ministryParamsSchema } from '../dtos/id.dto';
 import {
   sectorListResponseSchema,
@@ -18,11 +22,6 @@ import {
   sectorResponseSchema,
 } from '../dtos/sector.dto';
 import type { SectorControllerDependencies } from './sector-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 /** A Ministry's Sector registry, for ChurchAdmins and the Ministry's own leaders. */
 export class SectorController implements FastifyController {
@@ -69,8 +68,7 @@ export class SectorController implements FastifyController {
           params: ministryParamsSchema,
           response: {
             200: sectorListResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -105,8 +103,7 @@ export class SectorController implements FastifyController {
           body: sectorNameBodySchema,
           response: {
             201: sectorResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
@@ -144,8 +141,7 @@ export class SectorController implements FastifyController {
           body: sectorNameBodySchema,
           response: {
             200: sectorResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
@@ -184,8 +180,7 @@ export class SectorController implements FastifyController {
           params: sectorParamsSchema,
           response: {
             204: z.null(),
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: archiveBlockedResponseSchema,
           },

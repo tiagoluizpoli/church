@@ -13,7 +13,11 @@ import {
   churchSelectionListResponseSchema,
   selectActiveChurchBodySchema,
 } from '../dtos/active-church.dto';
-import { serviceUnavailableResponseSchema } from '../dtos/service-unavailable.dto';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+  sessionErrorResponses,
+} from '../dtos/error-response.dto';
 import { headersFromRequest } from '../utils/headers';
 import { refuse } from '../utils/refuse';
 import type {
@@ -21,11 +25,6 @@ import type {
   BuildStatusResponseInput,
   RequireSessionInput,
 } from './active-church-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 // The request id doubles as the reference code a Person reads out to support.
 const internalErrorResponseSchema = errorResponseSchema.extend({
@@ -82,8 +81,7 @@ export class ActiveChurchController implements FastifyController {
             'Resolve the session Active Church, returning its status or a selection_required result when none is set yet.',
           response: {
             200: activeChurchStatusResponseSchema,
-            401: errorResponseSchema,
-            503: serviceUnavailableResponseSchema,
+            ...sessionErrorResponses,
           },
         },
       },
@@ -112,8 +110,7 @@ export class ActiveChurchController implements FastifyController {
             'List the Churches the current User holds Church Membership in and may select as their Active Church.',
           response: {
             200: churchSelectionListResponseSchema,
-            401: errorResponseSchema,
-            503: serviceUnavailableResponseSchema,
+            ...sessionErrorResponses,
           },
         },
       },
@@ -140,9 +137,7 @@ export class ActiveChurchController implements FastifyController {
           body: selectActiveChurchBodySchema,
           response: {
             200: activeChurchStatusResponseSchema,
-            401: errorResponseSchema,
-            503: serviceUnavailableResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             500: internalErrorResponseSchema,
           },
         },

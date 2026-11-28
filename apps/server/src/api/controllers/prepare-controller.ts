@@ -23,6 +23,10 @@ import {
 } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { cycleParamsSchema } from '../dtos/cycle.dto';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import { idSchema, ministryParamsSchema } from '../dtos/id.dto';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import {
@@ -61,11 +65,6 @@ import type {
 
 const cycleParticipationQuerySchema = z.object({
   ministryId: idSchema,
-});
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
 });
 
 export class PrepareController implements FastifyController {
@@ -124,8 +123,7 @@ export class PrepareController implements FastifyController {
           }),
           response: {
             200: scheduleListResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
           },
         },
       },
@@ -164,8 +162,7 @@ export class PrepareController implements FastifyController {
             "Totals over the caller's Ministries (every active one for a ChurchAdmin, the led ones for a leader): for each of the latest six Sent or Past Cycles, oldest first, the requirement headcount (`needed`), the seats held by a draft or pending assignment (`filled`, capped per requirement), and availability checks asked and answered; plus, for the Cycle running on the Church's today (else the latest), the same staffing totals per serving Ministry, least covered first, then by name. Cancelled Events, inactive blocks and archived Ministries, Sectors and Roles are left out.",
           response: {
             200: scheduleInsightsResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
           },
         },
       },
@@ -197,8 +194,7 @@ export class PrepareController implements FastifyController {
           params: scheduleRouteParamsSchema,
           response: {
             200: scheduleResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -235,7 +231,7 @@ export class PrepareController implements FastifyController {
           querystring: cycleParticipationQuerystringSchema,
           response: {
             200: cycleParticipationResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -294,8 +290,7 @@ export class PrepareController implements FastifyController {
           querystring: cycleParticipationQuerySchema,
           response: {
             200: askPreviewResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -339,7 +334,7 @@ export class PrepareController implements FastifyController {
             "List summaries of a Ministry's MinistryParticipation prepare progress across its Cycles.",
           response: {
             200: scheduleSummaryListResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -385,8 +380,7 @@ export class PrepareController implements FastifyController {
           response: {
             200: participationEventTimeBlockViewSchema,
             400: errorResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: z.union([
               headcountBelowAssignedResponseSchema,
@@ -439,8 +433,7 @@ export class PrepareController implements FastifyController {
           body: askScheduleBodySchema,
           response: {
             200: askScheduleResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: z.union([
               askBlockedFlaggedShiftsResponseSchema,
@@ -491,8 +484,7 @@ export class PrepareController implements FastifyController {
           body: setAvailabilityDeadlineBodySchema,
           response: {
             200: availabilityDeadlineResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
             422: preparationValidationErrorResponseSchema,
@@ -540,8 +532,7 @@ export class PrepareController implements FastifyController {
           body: remindScheduleBodySchema,
           response: {
             200: remindScheduleResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: z.union([remindOnCooldownResponseSchema, errorResponseSchema]),
           },
@@ -591,7 +582,7 @@ export class PrepareController implements FastifyController {
           }),
           response: {
             200: answersResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },

@@ -9,6 +9,10 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import { denyUnmanagedMinistry } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import { idSchema } from '../dtos/id.dto';
 import {
   keepSwapRequestBodySchema,
@@ -17,11 +21,6 @@ import {
 } from '../dtos/swap-request.dto';
 import { refuse } from '../utils/refuse';
 import type { SwapRequestListControllerDependencies } from './swap-request-list-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 /** The leader-facing Swap request read (Spec 28 consumes it). */
 export class SwapRequestListController implements FastifyController {
@@ -69,6 +68,7 @@ export class SwapRequestListController implements FastifyController {
           querystring: leaderSwapRequestsQuerySchema,
           response: {
             200: leaderSwapRequestsResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -109,6 +109,7 @@ export class SwapRequestListController implements FastifyController {
           body: keepSwapRequestBodySchema,
           response: {
             204: z.null(),
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },

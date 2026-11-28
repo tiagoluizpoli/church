@@ -4,12 +4,14 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import type { ExportPage } from '@/features/scheduling/components/prepare/schedule-export-preview';
-import { EXPORT_FILE_TYPE } from '@/features/scheduling/hooks/use-schedule-export-files';
-import type { GetScheduleExportFileFormat } from '@/infrastructure/api/churchAPI.schemas';
+import {
+  EXPORT_FILE_TYPE,
+  type ExportFormat,
+} from '@/features/scheduling/hooks/use-schedule-export-files';
 
 interface ExportFilesInput {
   files: ExportPage[];
-  format: GetScheduleExportFileFormat;
+  format: ExportFormat;
   /** The localized "Escala - <Ministry> - <Cycle>". */
   name: string;
   isDraft: boolean;
@@ -56,9 +58,14 @@ function saveFile(file: File) {
   URL.revokeObjectURL(url);
 }
 
-/** Whether this device's share sheet takes files of the format. */
-function canShareFormat(format: GetScheduleExportFileFormat): boolean {
-  if (typeof navigator.canShare !== 'function') return false;
+/**
+ * Whether this device's share sheet takes files of the format. Never the
+ * workbook: share sheets that claim to take it still reject it (#1108).
+ */
+function canShareFormat(format: ExportFormat): boolean {
+  if (format === 'xlsx' || typeof navigator.canShare !== 'function') {
+    return false;
+  }
   const probe = new File([], `probe.${format}`, {
     type: EXPORT_FILE_TYPE[format],
   });
@@ -66,7 +73,7 @@ function canShareFormat(format: GetScheduleExportFileFormat): boolean {
 }
 
 interface ScheduleExportFooterProps {
-  format: GetScheduleExportFileFormat;
+  format: ExportFormat;
   /** The files' "Escala - <Ministry> - <Cycle>" name, once known. */
   name: string;
   isDraft: boolean;
@@ -86,7 +93,7 @@ interface ScheduleExportFooterProps {
 
 /**
  * Baixar everywhere, Compartilhar where the share sheet takes the files
- * (#1251): both act on the prefetched files at once, so the share sheet
+ * (#1251), never for Excel (#1252): both act on the prefetched files at once, so the share sheet
  * opens on the tap itself. Every file goes in one share call.
  */
 export function ScheduleExportFooter({

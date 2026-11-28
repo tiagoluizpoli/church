@@ -22,13 +22,15 @@ import {
   ScheduleExportPreview,
   useSettledExportSettings,
 } from '@/features/scheduling/components/prepare/schedule-export-preview';
+import { ScheduleExportWorkbookPreview } from '@/features/scheduling/components/prepare/schedule-export-workbook-preview';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
-import { useScheduleExportFiles } from '@/features/scheduling/hooks/use-schedule-export-files';
+import {
+  type ExportFormat,
+  useScheduleExportFiles,
+} from '@/features/scheduling/hooks/use-schedule-export-files';
+import { useScheduleExportWorkbook } from '@/features/scheduling/hooks/use-schedule-export-workbook';
 import { useOnlineState } from '@/features/volunteers/hooks/use-online-state';
-import type {
-  GetScheduleExportDataSplit,
-  GetScheduleExportFileFormat,
-} from '@/infrastructure/api/churchAPI.schemas';
+import type { GetScheduleExportDataSplit } from '@/infrastructure/api/churchAPI.schemas';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { exportApi } from '@/utils/api-instances';
 
@@ -44,6 +46,7 @@ interface ScheduleExportProps {
 const FORMATS = [
   { format: 'pdf', label: m.export_format_pdf },
   { format: 'png', label: m.export_format_table_image },
+  { format: 'xlsx', label: m.export_format_excel },
 ] as const;
 
 const SPLITS = [
@@ -76,7 +79,8 @@ function splitQuery({ split }: SplitQueryInput) {
  * facts drive the Rascunho, unsent-changes and same-name notices (#1245).
  * The files are prefetched once the preview settles, for Baixar and, on a
  * phone, Compartilhar (#1251). Separar (#1248) splits every format into
- * parts: PDF pages per part, table images per part.
+ * parts: PDF pages per part, table images per part. Planilha Excel (#1252)
+ * is built here from the export data, one sheet per part, download only.
  */
 export function ScheduleExport({
   ministryId,
@@ -92,7 +96,7 @@ export function ScheduleExport({
   const [cycle, setCycle] = useState<ExportCycle | null>(null);
   // Null: the whole Cycle.
   const [range, setRange] = useState<ExportRange | null>(null);
-  const [format, setFormat] = useState<GetScheduleExportFileFormat>('pdf');
+  const [format, setFormat] = useState<ExportFormat>('pdf');
   // Null: the Ministry's default, never remembered between exports.
   const [split, setSplit] = useState<GetScheduleExportDataSplit | null>(null);
   const online = useOnlineState();
@@ -122,10 +126,12 @@ export function ScheduleExport({
   const partNames = (exported?.parts ?? []).map((part) =>
     exportPartName({ part }),
   );
+  const isExcel = format === 'xlsx';
   const settings = {
     ministryId,
     cycleId: selectedId,
-    format,
+    // The workbook is built here: the server's settings fetch nothing for it.
+    format: isExcel ? ('pdf' as const) : format,
     range,
     ...splitQuery({ split: chosenSplit }),
   };
@@ -133,8 +139,13 @@ export function ScheduleExport({
   const changing = JSON.stringify(settled) !== JSON.stringify(settings);
   const files = useScheduleExportFiles({
     settings: settled,
-    enabled: ready && online && !refused,
+    enabled: ready && online && !refused && !isExcel,
   });
+  const workbook = useScheduleExportWorkbook({
+    data: exported,
+    enabled: isExcel,
+  });
+  const exportFiles = isExcel ? workbook.file : files;
   if (!data) return null;
   const selected = cycle ?? { ...data.cycle, id: cycleId };
   const span = cycleSpan({ cycle: selected });
@@ -167,10 +178,12 @@ export function ScheduleExport({
             })}
             isDraft={isDraft}
             // The file name needs the draft fact, so wait for the data.
-            files={exported && online && !changing ? files.data : undefined}
+            files={
+              exported && online && !changing ? exportFiles.data : undefined
+            }
             partNames={partNames}
-            isFetching={files.isFetching}
-            error={files.error}
+            isFetching={exportFiles.isFetching}
+            error={exportFiles.error}
             formatLabel={formatOption?.label() ?? ''}
             span={range ? daySpan(range) : span}
             onDone={() => setOpen(false)}
@@ -302,7 +315,9 @@ export function ScheduleExport({
             <p className="text-muted-foreground text-sm">
               {m.export_offline()}
             </p>
-          ) : refused || !ready ? null : (
+          ) : refused || !ready ? null : isExcel ? (
+            <ScheduleExportWorkbookPreview sheets={workbook.sheets} />
+          ) : (
             <ScheduleExportPreview settings={settled} partNames={partNames} />
           )}
         </div>

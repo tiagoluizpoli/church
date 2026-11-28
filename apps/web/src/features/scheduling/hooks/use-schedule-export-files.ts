@@ -10,11 +10,15 @@ import {
 import type { GetScheduleExportFileFormat } from '@/infrastructure/api/churchAPI.schemas';
 import { exportApi } from '@/utils/api-instances';
 
+/** What the leader exports: a server-rendered file, or the workbook built here. */
+export type ExportFormat = GetScheduleExportFileFormat | 'xlsx';
+
 /** Each format's MIME type; the share sheet takes the PDF as a document. */
 export const EXPORT_FILE_TYPE = {
   pdf: 'application/pdf',
   png: 'image/png',
-} as const satisfies Record<GetScheduleExportFileFormat, string>;
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+} as const satisfies Record<ExportFormat, string>;
 
 /** The refusal's translated message; a blob download carries it as a Blob. */
 async function refusalMessage(error: unknown): Promise<string | undefined> {

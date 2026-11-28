@@ -15,6 +15,8 @@ import {
   createChurch,
   cycle,
   event,
+  eventGroup,
+  eventGroupTemplate,
   eventTemplate,
   eventTimeBlock,
   eventTimeBlockMove,
@@ -90,6 +92,7 @@ const IDS = {
   ministryInvitation: 'aaaaaaa1-0000-4000-8000-000000000010',
   outboxMessage: 'aaaaaaa1-0000-4000-8000-000000000011',
   sector: 'aaaaaaa1-0000-4000-8000-000000000012',
+  eventGroup: 'aaaaaaa1-0000-4000-8000-000000000013',
 } as const;
 
 interface TableRowCount {
@@ -352,6 +355,22 @@ async function seedEveryTenantedTable(): Promise<void> {
     startTime: '09:00:00',
     endTime: '11:00:00',
     order: 0,
+  });
+
+  await testDb.insert(eventGroup).values({
+    id: IDS.eventGroup,
+    churchId: IDS.church,
+    ministryId: IDS.ministry,
+    name: 'Truncation group',
+    position: 0,
+  });
+
+  await testDb.insert(eventGroupTemplate).values({
+    churchId: IDS.church,
+    ministryId: IDS.ministry,
+    groupId: IDS.eventGroup,
+    eventTemplateId: IDS.eventTemplate,
+    position: 0,
   });
 
   await testDb.insert(usualSetup).values({

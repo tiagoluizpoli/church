@@ -59,6 +59,7 @@ import {
   type ExportPersona,
   type ScheduleExportFixture,
   seedScheduleExport,
+  seedTallBands,
 } from '@/tests/test-support/schedule-export-fixture';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -534,7 +535,72 @@ describe('Event groups in the export', () => {
     expect(text).toContain('Culto de Quarta');
     expect(text).toContain('Retiro');
   });
+
+  it('breaks tall bands only between Sector rows, repeating the header, bar and labels', async () => {
+    const { cycleId } = await seedTallBands({
+      ministryId: fixture.kidsId,
+      sundayTemplateId: templates.familia,
+    });
+    await saveGroups({
+      groups: [{ name: 'Domingos', templateIds: [templates.familia] }],
+    });
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/export/ministries/${fixture.kidsId}/cycles/${cycleId}/file?format=pdf`,
+      cookies: { [appConfig.localeCookieName]: 'pt-BR' },
+    });
+    expect(response.statusCode).toBe(200);
+    const pages = pdfPages(response.rawPayload);
+    expect(pages).toHaveLength(4);
+    // Manhã fits under the header; Tarde then fits only on a fresh page and
+    // moves there whole, under the repeated bar and date header.
+    expect(pages[0]).toContain('Manhã Sala 1 Voluntário 01 Conceição');
+    expect(pages[0]).not.toContain('Tarde');
+    expect(pages[1]).toMatch(
+      /^Domingos Culto da Família dom 7 fev Tarde Sala 1 Voluntário 01 Conceição 14h00–17h00 /,
+    );
+    // Noite is taller than a page: it breaks after Sala 2's last person, and
+    // the next page repeats the bar, the date header and the time label as is.
+    expect(pages[1]).toMatch(
+      /Sala 2 Voluntário 09 Conceição .*Voluntário 16 Conceição$/,
+    );
+    expect(pages[2]).toMatch(
+      /^Domingos Culto da Família dom 7 fev Noite Sala 3 Voluntário 17 Conceição 18h00–21h00 /,
+    );
+    // The catch-all list table breaks the same way and repeats Data · Evento · Horário.
+    expect(pages[2]).toMatch(
+      /Outros Data Evento Horário Setor Quem serve sáb 13 fev Retiro 08h00–12h00 Sala 1 .*Voluntário 08 Conceição$/,
+    );
+    expect(pages[3]).toMatch(
+      /^Outros Data Evento Horário Setor Quem serve sáb 13 fev Retiro 08h00–12h00 Sala 2 Voluntário 09 Conceição /,
+    );
+    // Nobody is cut: 20 in Manhã, 28 in Tarde, 48 in Noite and 48 in Retiro.
+    expect(pages.join(' ').match(/Conceição/g)).toHaveLength(144);
+    expect(pages.join(' ')).not.toMatch(/cont\./i);
+    // The table image is still one image, never cut into pages.
+    const preview = (page: number) =>
+      app.inject({
+        method: 'GET',
+        url: `/api/v1/export/ministries/${fixture.kidsId}/cycles/${cycleId}/preview?format=png&page=${page}`,
+      });
+    expect((await preview(1)).statusCode).toBe(200);
+    expect((await preview(2)).statusCode).toBe(404);
+  });
 });
+
+/** Each page's text, whitespace collapsed. */
+function pdfPages(pdf: Buffer) {
+  const dir = mkdtempSync(join(tmpdir(), 'event-groups-test-'));
+  const path = join(dir, 'out.pdf');
+  writeFileSync(path, pdf);
+  const text = execFileSync('pdftotext', ['-layout', path, '-'], {
+    encoding: 'utf8',
+  });
+  return text
+    .split('\f')
+    .slice(0, -1)
+    .map((page) => page.replace(/\s+/g, ' ').trim());
+}
 
 function pdfText(pdf: Buffer) {
   const dir = mkdtempSync(join(tmpdir(), 'event-groups-test-'));

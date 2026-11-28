@@ -586,3 +586,154 @@ export async function seedScheduleExport() {
 export type ScheduleExportFixture = Awaited<
   ReturnType<typeof seedScheduleExport>
 >;
+
+interface SeedTallBandsInput {
+  ministryId: string;
+  /** The EventTemplate the Sunday comes from, so a saved group can hold it. */
+  sundayTemplateId: string;
+}
+
+/** One block and its one Shift: its first `sectors` Sectors, `perSector` people each. */
+interface BandSpec {
+  label: string;
+  start: string;
+  end: string;
+  sectors: number;
+  perSector: number;
+}
+
+/**
+ * February 2027 in the given Ministry, too large for one A4 page: a Sunday
+ * whose Manhã band fits under the header, whose Tarde band then fits only on a
+ * fresh page and whose Noite band is taller than a page; and a one-off Retiro,
+ * taller than a page, for the catch-all list table. One Role throughout.
+ */
+export async function seedTallBands({
+  ministryId,
+  sundayTemplateId,
+}: SeedTallBandsInput) {
+  const churchId = EXPORT_CHURCH_A;
+  const child = { db, churchId, ministryId };
+  const role = await buildRole({ ...child, name: 'Monitor' });
+  const sectors: { id: string }[] = [];
+  for (let index = 1; index <= 6; index += 1) {
+    sectors.push(await buildSector({ ...child, name: `Sala ${index}` }));
+  }
+  const volunteerIds: string[] = [];
+  // One person serves once per Shift: the pool covers the largest band.
+  for (let index = 1; index <= 48; index += 1) {
+    const userId = `export-tall-${index}`;
+    await buildUser({
+      db,
+      id: userId,
+      name: `Voluntário ${String(index).padStart(2, '0')} Conceição`,
+      email: `${userId}@export.test`,
+    });
+    const volunteer = await buildVolunteer({ db, churchId, userId });
+    await buildMinistryMembership({
+      db,
+      churchId,
+      volunteerId: volunteer.id,
+      ministryId,
+      ministryAccessLevel: 'volunteer',
+      roleIds: [],
+    });
+    volunteerIds.push(volunteer.id);
+  }
+  const cycle = await buildCycle({
+    db,
+    churchId,
+    name: 'Fevereiro 2027',
+    state: 'sent',
+    startDate: parseCalendarDay({ value: '2027-02-01' }),
+    endDate: parseCalendarDay({ value: '2027-02-28' }),
+  });
+
+  async function serve(title: string, day: string, bands: BandSpec[]) {
+    const first = bands[0] as BandSpec;
+    const last = bands.at(-1) as BandSpec;
+    const created = await buildEvent({
+      db,
+      churchId,
+      cycleId: cycle.id,
+      title,
+      start: local(day, first.start),
+      end: local(day, last.end),
+      status: 'scheduled',
+    });
+    const blocks = [];
+    for (const band of bands) {
+      blocks.push(
+        await buildEventTimeBlock({
+          db,
+          churchId,
+          eventId: created.id,
+          start: local(day, band.start),
+          end: local(day, band.end),
+          label: band.label,
+        }),
+      );
+    }
+    const participation = await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId,
+      eventId: created.id,
+      state: 'published',
+      eventTimeBlockIds: blocks.map((block) => block.id),
+    });
+    for (const [index, band] of bands.entries()) {
+      const shift = await buildShift({
+        db,
+        churchId,
+        participationId: participation.id,
+        eventTimeBlockId: blocks[index]?.id as string,
+        start: local(day, band.start),
+        end: local(day, band.end),
+      });
+      for (const [sectorIndex, sector] of sectors
+        .slice(0, band.sectors)
+        .entries()) {
+        const requirement = await buildShiftRequirement({
+          db,
+          churchId,
+          participationId: participation.id,
+          shiftId: shift.id,
+          roleId: role.id,
+          sectorId: sector.id,
+          peopleNeeded: band.perSector,
+        });
+        // Each Sector takes the next people of the pool.
+        for (let person = 0; person < band.perSector; person += 1) {
+          await buildAssignment({
+            db,
+            churchId,
+            participationId: participation.id,
+            shiftId: shift.id,
+            volunteerId: volunteerIds[
+              sectorIndex * band.perSector + person
+            ] as string,
+            roleId: role.id,
+            shiftRequirementId: requirement.id,
+            status: 'pending',
+          });
+        }
+      }
+    }
+    return created;
+  }
+
+  const sunday = await serve('Culto da Família', '2027-02-07', [
+    { label: 'Manhã', start: '09:00', end: '12:00', sectors: 4, perSector: 5 },
+    { label: 'Tarde', start: '14:00', end: '17:00', sectors: 4, perSector: 7 },
+    { label: 'Noite', start: '18:00', end: '21:00', sectors: 6, perSector: 8 },
+  ]);
+  await db
+    .update(event)
+    .set({ sourceTemplateId: sundayTemplateId })
+    .where(eq(event.id, sunday.id));
+  await serve('Retiro', '2027-02-13', [
+    { label: 'Retiro', start: '08:00', end: '12:00', sectors: 6, perSector: 8 },
+  ]);
+  return { cycleId: cycle.id };
+}

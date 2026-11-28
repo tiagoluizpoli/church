@@ -1,4 +1,3 @@
-import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { RoleId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -23,6 +22,7 @@ import {
   churchAccessChangeBodySchema,
   churchAccessChangeResponseSchema,
   endMinistryMembershipResponseSchema,
+  membershipOutcomeMapper,
   ministryMembershipChangeResponseSchema,
   ministryMembershipParamsSchema,
   peopleListQuerystringSchema,
@@ -34,25 +34,7 @@ import {
 } from '../dtos/people-list.dto';
 import { RefusalError } from '../utils/refusal-error';
 import { requestCaller } from '../utils/request-caller';
-import type {
-  PeopleControllerDependencies,
-  SendMembershipOutcomeInput,
-} from './people-controller.types';
-
-/** Maps the shared refusals and sends the applied change without its `kind`. */
-function sendMembershipOutcome({
-  reply,
-  outcome,
-}: SendMembershipOutcomeInput): FastifyReply {
-  if (outcome.kind === 'forbidden') {
-    throw new RefusalError({ code: 'FORBIDDEN' });
-  }
-  if (outcome.kind === 'not-found') {
-    throw new RefusalError({ code: 'NOT_FOUND' });
-  }
-  const { kind: _applied, ...result } = outcome;
-  return reply.send(result);
-}
+import type { PeopleControllerDependencies } from './people-controller.types';
 
 /** The People directory: the Active Church's members within the caller's authority. */
 export class PeopleController implements FastifyController {
@@ -126,17 +108,10 @@ export class PeopleController implements FastifyController {
           memberId,
           accessLevel,
         });
-        if (outcome.kind === 'forbidden') {
-          throw new RefusalError({ code: 'FORBIDDEN' });
-        }
-        if (outcome.kind === 'not-found') {
-          throw new RefusalError({ code: 'NOT_FOUND' });
-        }
         if (outcome.kind === 'last-admin') {
           throw new RefusalError({ code: 'LAST_CHURCH_ADMIN' });
         }
-        const { kind: _applied, ...result } = outcome;
-        return reply.send(result);
+        return reply.send(membershipOutcomeMapper.toResponse(outcome));
       },
     );
 
@@ -180,7 +155,7 @@ export class PeopleController implements FastifyController {
           membershipId,
           roleIds: roleIds.map(RoleId.from),
         });
-        return sendMembershipOutcome({ reply, outcome });
+        return reply.send(membershipOutcomeMapper.toResponse(outcome));
       },
     );
 
@@ -223,7 +198,7 @@ export class PeopleController implements FastifyController {
             accessLevel,
             roleIds: roleIds?.map(RoleId.from),
           });
-        return sendMembershipOutcome({ reply, outcome });
+        return reply.send(membershipOutcomeMapper.toResponse(outcome));
       },
     );
 
@@ -264,7 +239,7 @@ export class PeopleController implements FastifyController {
             memberId,
             membershipId,
           });
-        return sendMembershipOutcome({ reply, outcome });
+        return reply.send(membershipOutcomeMapper.toResponse(outcome));
       },
     );
 

@@ -4,6 +4,7 @@ import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../domain/authority/types';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
 import { PEOPLE_ACCESS_OPTIONS } from '../../domain/entities/people-list-item';
 import { decodePeopleListCursor } from '../../domain/people-list-cursor';
+import { RefusalError } from '../utils/refusal-error';
 import { errorResponseSchema } from './error-response.dto';
 import { idSchema } from './id.dto';
 
@@ -162,3 +163,25 @@ export const upcomingAssignmentSchema = z.object({
 export const upcomingAssignmentsResponseSchema = errorResponseSchema.extend({
   assignments: z.array(upcomingAssignmentSchema),
 });
+
+/** A People manager outcome: a refused or hidden target, or the applied change. */
+type MembershipOutcome<Applied extends { kind: 'applied' }> =
+  | { kind: 'forbidden' }
+  | { kind: 'not-found' }
+  | Applied;
+
+export const membershipOutcomeMapper = {
+  /** Throws the shared refusals and answers the applied change without its `kind`. */
+  toResponse<Applied extends { kind: 'applied' }>(
+    outcome: MembershipOutcome<Applied>,
+  ): Omit<Applied, 'kind'> {
+    if (outcome.kind === 'forbidden') {
+      throw new RefusalError({ code: 'FORBIDDEN' });
+    }
+    if (outcome.kind === 'not-found') {
+      throw new RefusalError({ code: 'NOT_FOUND' });
+    }
+    const { kind: _applied, ...result } = outcome;
+    return result;
+  },
+};

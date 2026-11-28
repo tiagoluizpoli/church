@@ -1,5 +1,5 @@
 import type { Locale } from '@church/i18n/runtime';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { DestinationStream } from 'pino';
 import type { ErrorReporter } from '../../domain/contracts/infrastructure/error-reporter';
 import type { createFastify } from './setup';
@@ -25,6 +25,11 @@ export interface ReportUnexpectedInput {
   errorReporter: ErrorReporter;
   error: unknown;
   request: FastifyRequest;
+}
+
+export interface SendServiceUnavailableInput {
+  reply: FastifyReply;
+  message: string;
 }
 
 export interface LoggingOptionsInput {

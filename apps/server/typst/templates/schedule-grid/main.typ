@@ -273,6 +273,9 @@
     let lead = if sectors { 2 } else { 1 }
     let cols = lead + chunk.len()
     let columns = (92pt,) + (if sectors { (86pt,) } else { () }) + (1fr,) * chunk.len()
+    let lead-width = columns.slice(0, lead).sum()
+    let date-width = (297mm - 2 * margin.x - lead-width) / chunk.len()
+    let row-id(n) = key + "-" + str(ci) + "-" + str(n)
     let header = table.header(repeat: true,
       bar-cell(bar.name, shared, cols),
       table.cell(fill: acc, stroke: (bottom: 0.75pt + bd), []),
@@ -290,14 +293,25 @@
         let band-top = if si == 0 { top } else { quiet }
         let sector-rows = if band.sectors.len() == 0 { (none,) } else { band.sectors }
         let label = text(weight: "bold", fill: pri, if band.label == none { "—" } else { band.label })
-        let id(ri) = key + "-" + str(ci) + "-" + str(bi) + "-" + str(si) + "-" + str(ri)
+        // A cancelled Event's column, or a cancelled block's cell, reaching
+        // into row `ri` of this band past the row it starts on.
+        let spanned(ri) = chunk.enumerate().map(((k, ev)) => {
+          let eb = if not ev.cancelled { ev.timeBlocks.at(bi) }
+          let body = if ev.cancelled and row + ri > 0 { t.noService } else if eb != none and eb.cancelled and si + ri > 0 { t.cancelled }
+          if body != none { (lead-width + k * date-width, date-width, align(center, text(fill: des, weight: "bold", body))) }
+        }).filter(x => x != none)
         // `alone` lays the band out by itself, to measure it.
         let band-cells(alone, broken) = {
           let out = ()
           for (ri, sec) in sector-rows.enumerate() {
             let row-top = if ri == 0 { band-top } else { quiet }
-            // The first cell of each row: the time label continues over a page break.
-            let mark = if broken { continued(id(ri), if ri > 0 { id(ri - 1) }, ((0pt, columns.at(0), label),)) }
+            // The first cell of each row: the time label of a broken band and
+            // the cancelled cells spanning into the row continue over a page break.
+            let mark = if not alone {
+              let n = row + ri
+              let labels = (if broken and ri > 0 { ((0pt, columns.at(0), label),) } else { () }) + spanned(ri)
+              continued(row-id(n), if n > 0 { row-id(n - 1) }, labels)
+            }
             if ri == 0 {
               out.push(table.cell(rowspan: sector-rows.len(), breakable: broken, stroke: (top: row-top), fill: acc, { mark; label }))
               mark = none

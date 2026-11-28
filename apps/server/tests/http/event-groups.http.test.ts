@@ -586,6 +586,38 @@ describe('Event groups in the export', () => {
     expect((await preview(1)).statusCode).toBe(200);
     expect((await preview(2)).statusCode).toBe(404);
   });
+
+  it('repeats a cancelled Event and a cancelled band on every page their columns reach', async () => {
+    const { cycleId } = await seedTallBands({
+      ministryId: fixture.kidsId,
+      sundayTemplateId: templates.familia,
+      withCancellations: true,
+    });
+    await saveGroups({
+      groups: [{ name: 'Domingos', templateIds: [templates.familia] }],
+    });
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/export/ministries/${fixture.kidsId}/cycles/${cycleId}/file?format=pdf`,
+      cookies: { [appConfig.localeCookieName]: 'pt-BR' },
+    });
+    expect(response.statusCode).toBe(200);
+    const sundays = pdfPages(response.rawPayload).filter((page) =>
+      page.startsWith(
+        'Domingos Culto da Família dom dom dom 7 fev 14 fev 21 fev',
+      ),
+    );
+    const noite = sundays.filter((page) => page.includes('Noite'));
+
+    expect(sundays.length).toBeGreaterThan(1);
+    expect(noite.length).toBeGreaterThan(1);
+    for (const page of sundays) {
+      expect(page.match(/Não haverá culto/g)).toHaveLength(1);
+    }
+    for (const page of noite) {
+      expect(page.match(/Cancelado/g)).toHaveLength(1);
+    }
+  });
 });
 
 /** Each page's text, whitespace collapsed. */

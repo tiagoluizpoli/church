@@ -674,6 +674,16 @@ interface SeedTallBandsInput {
   ministryId: string;
   /** The EventTemplate the Sunday comes from, so a saved group can hold it. */
   sundayTemplateId: string;
+  /**
+   * Adds two Sundays of the same template: one cancelled whole, one with its
+   * Noite band cancelled, so their columns run onto continuation pages.
+   */
+  withCancellations?: boolean;
+}
+
+interface ServeOptions {
+  cancelled?: boolean;
+  cancelledBlocks?: string[];
 }
 
 /** One block and its one Shift: its first `sectors` Sectors, `perSector` people each. */
@@ -694,6 +704,7 @@ interface BandSpec {
 export async function seedTallBands({
   ministryId,
   sundayTemplateId,
+  withCancellations = false,
 }: SeedTallBandsInput) {
   const churchId = EXPORT_CHURCH_A;
   const child = { db, churchId, ministryId };
@@ -732,7 +743,12 @@ export async function seedTallBands({
     endDate: parseCalendarDay({ value: '2027-02-28' }),
   });
 
-  async function serve(title: string, day: string, bands: BandSpec[]) {
+  async function serve(
+    title: string,
+    day: string,
+    bands: BandSpec[],
+    { cancelled = false, cancelledBlocks = [] }: ServeOptions = {},
+  ) {
     const first = bands[0] as BandSpec;
     const last = bands.at(-1) as BandSpec;
     const created = await buildEvent({
@@ -742,7 +758,7 @@ export async function seedTallBands({
       title,
       start: local(day, first.start),
       end: local(day, last.end),
-      status: 'scheduled',
+      status: cancelled ? 'cancelled' : 'scheduled',
     });
     const blocks = [];
     for (const band of bands) {
@@ -754,6 +770,7 @@ export async function seedTallBands({
           start: local(day, band.start),
           end: local(day, band.end),
           label: band.label,
+          status: cancelledBlocks.includes(band.label) ? 'cancelled' : 'active',
         }),
       );
     }
@@ -806,15 +823,28 @@ export async function seedTallBands({
     return created;
   }
 
-  const sunday = await serve('Culto da Família', '2027-02-07', [
+  const sundayBands: BandSpec[] = [
     { label: 'Manhã', start: '09:00', end: '12:00', sectors: 4, perSector: 5 },
     { label: 'Tarde', start: '14:00', end: '17:00', sectors: 4, perSector: 7 },
     { label: 'Noite', start: '18:00', end: '21:00', sectors: 6, perSector: 8 },
-  ]);
-  await db
-    .update(event)
-    .set({ sourceTemplateId: sundayTemplateId })
-    .where(eq(event.id, sunday.id));
+  ];
+  const sundays = [await serve('Culto da Família', '2027-02-07', sundayBands)];
+  if (withCancellations) {
+    sundays.push(
+      await serve('Culto da Família', '2027-02-14', sundayBands, {
+        cancelled: true,
+      }),
+      await serve('Culto da Família', '2027-02-21', sundayBands, {
+        cancelledBlocks: ['Noite'],
+      }),
+    );
+  }
+  for (const sunday of sundays) {
+    await db
+      .update(event)
+      .set({ sourceTemplateId: sundayTemplateId })
+      .where(eq(event.id, sunday.id));
+  }
   await serve('Retiro', '2027-02-13', [
     { label: 'Retiro', start: '08:00', end: '12:00', sectors: 6, perSector: 8 },
   ]);

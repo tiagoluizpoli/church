@@ -14,6 +14,7 @@ import {
   type ValidationPlan,
   WORKSPACES,
 } from './affected-plan';
+import { isCommit, MISSING_BASE_FIX, requireMergeBase } from './base-commit';
 import { readE2eImportGraph } from './e2e-import-graph';
 import {
   findReusablePass,
@@ -175,18 +176,27 @@ const VALIDATE_BASE_CONFIG = 'validateBase';
  * changes landing on the target after the branch forked don't inflate the
  * local plan.
  */
-function resolveDefaultBaseRef(): string | undefined {
+function resolveDefaultBaseRef(): string {
   const configured = readConfiguredBaseRef();
   if (configured !== undefined) {
     // A silent develop fallback would bring back the whole-spec diff.
-    if (!isRef({ ref: configured })) {
+    if (!isCommit({ ref: configured })) {
       throw new Error(
-        `git config ${VALIDATE_BASE_CONFIG} names "${configured}", which does not resolve; fix it or pass --base.`,
+        `git config ${VALIDATE_BASE_CONFIG} names "${configured}", which does not resolve; fix it or pass --base, or ${MISSING_BASE_FIX}.`,
       );
     }
     return configured;
   }
-  return ['develop', 'origin/develop'].find((ref) => isRef({ ref }));
+  const fallback = ['develop', 'origin/develop'].find((ref) =>
+    isCommit({ ref }),
+  );
+  if (fallback === undefined) {
+    // A working-tree-only diff of a clean clone would check nothing (#1233).
+    throw new Error(
+      `No base ref found: set git config branch.<branch>.${VALIDATE_BASE_CONFIG} or pass --base, or ${MISSING_BASE_FIX}.`,
+    );
+  }
+  return fallback;
 }
 
 const QUIET_GIT: ExecFileSyncOptionsWithStringEncoding = {
@@ -205,15 +215,6 @@ function readConfiguredBaseRef(): string | undefined {
     return execFileSync('git', ['config', '--get', key], QUIET_GIT).trim();
   } catch {
     return undefined; // detached HEAD or no setting
-  }
-}
-
-function isRef({ ref }: { ref: string }): boolean {
-  try {
-    execFileSync('git', ['rev-parse', '--verify', '--quiet', ref], QUIET_GIT);
-    return true;
-  } catch {
-    return false;
   }
 }
 
@@ -241,17 +242,18 @@ function collectChangedPaths({
   baseRef,
 }: CollectChangedPathsInput): CollectChangedPathsResult {
   const resolvedBaseRef = baseRef ?? resolveDefaultBaseRef();
+  // Fails closed, naming the fix, when the clone lacks the base or its
+  // shared history with HEAD (a shallow checkout).
+  requireMergeBase({ ref: resolvedBaseRef });
 
   // CI checks out a merge commit with a clean tree, so the working-tree
   // diffs below are always empty there; --base there is always explicit
   // (the PR's target branch). Locally, `...` diffs against the merge base so
   // committed branch work is included alongside the uncommitted diffs below.
-  const baseComparisonPaths = resolvedBaseRef
-    ? runCommand({
-        args: ['diff', '--name-only', `${resolvedBaseRef}...HEAD`],
-        command: 'git',
-      })
-    : [];
+  const baseComparisonPaths = runCommand({
+    args: ['diff', '--name-only', `${resolvedBaseRef}...HEAD`],
+    command: 'git',
+  });
 
   const changedPaths = [
     ...baseComparisonPaths,
@@ -268,14 +270,12 @@ function collectChangedPaths({
     (path, index, paths) => path.length > 0 && paths.indexOf(path) === index,
   );
 
-  const packageJson =
-    resolvedBaseRef && changedPaths.includes('package.json')
-      ? readBaseAndHead({ baseRef: resolvedBaseRef, path: 'package.json' })
-      : undefined;
-  const turboJson =
-    resolvedBaseRef && changedPaths.includes('turbo.json')
-      ? readBaseAndHead({ baseRef: resolvedBaseRef, path: 'turbo.json' })
-      : undefined;
+  const packageJson = changedPaths.includes('package.json')
+    ? readBaseAndHead({ baseRef: resolvedBaseRef, path: 'package.json' })
+    : undefined;
+  const turboJson = changedPaths.includes('turbo.json')
+    ? readBaseAndHead({ baseRef: resolvedBaseRef, path: 'turbo.json' })
+    : undefined;
 
   return {
     baseRef: resolvedBaseRef,

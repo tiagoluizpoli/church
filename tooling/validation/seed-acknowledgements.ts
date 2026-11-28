@@ -2,6 +2,7 @@ import {
   type ExecFileSyncOptionsWithStringEncoding,
   execFileSync,
 } from 'node:child_process';
+import { isCommit, requireMergeBase } from './base-commit';
 
 /**
  * Which commit supplied each `Seed-Impact` or `Journey-Impact` trailer, and
@@ -48,25 +49,18 @@ function readOpenPullRequestBase(): string | undefined {
   }
 }
 
-function isRef({ ref }: { ref: string }): boolean {
-  try {
-    execFileSync('git', ['rev-parse', '--verify', '--quiet', ref], QUIET);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** The remote-tracking ref first: it is what the PR is compared against. */
 function resolvePullRequestBase({ name }: { name: string }): string {
   const ref = [`origin/${name}`, name].find((candidate) =>
-    isRef({ ref: candidate }),
+    isCommit({ ref: candidate }),
   );
   if (ref === undefined) {
     throw new Error(
       `The open PR's base "${name}" is not available locally; run git fetch origin ${name}.`,
     );
   }
+  // Without shared history `git log` would count every commit as the branch's own.
+  requireMergeBase({ ref });
   return ref;
 }
 
@@ -77,6 +71,7 @@ function readTrailers({
   baseRef: string;
   readReasons: ReadReasons;
 }) {
+  requireMergeBase({ ref: baseRef });
   const log = execFileSync(
     'git',
     ['log', '--format=%x01%h%x00%B', `${baseRef}..HEAD`],

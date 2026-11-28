@@ -1506,7 +1506,6 @@
   "builder_logic_removed": "{volunteerName} foi removido(a) desta função",
   "builder_logic_remove_failed": "Não foi possível remover {volunteerName}: {message}",
   "builder_logic_cycle_published": "Escala publicada",
-  "builder_logic_cycle_not_published": "Ciclo não publicado — confirme para publicar abaixo da meta.",
   "builder_logic_best_for_role": "Melhores para esta função",
   "builder_logic_no_candidates": "Nenhum candidato para esta função",
   "builder_logic_everyone_else": "Demais voluntários",

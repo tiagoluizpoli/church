@@ -143,27 +143,47 @@ it('publishes nothing when the confirmation is cancelled', async () => {
   );
   expect(state.publishCycle).not.toHaveBeenCalled();
 });
-it('only warns when the server refuses the publish', async () => {
+it('asks to confirm with the server gap count when publish is refused', async () => {
+  // The summary skips started Shifts, so it can read full while the server does not.
+  state.data = { ...SCHEDULE, stage: 'assigning', gapCount: 0 };
+  state.publishCycle.mockResolvedValueOnce({ published: false, gapCount: 2 });
+  renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />);
+  openConfirmation();
+  confirmPublish();
+  expect(
+    await screen.findByText(m.prepare_publish_gaps({ count: 2 })),
+  ).toBeVisible();
+  expect(toast.warning).not.toHaveBeenCalled();
+  expect(toast.success).not.toHaveBeenCalled();
+  confirmPublish();
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  expect(state.publishCycle).toHaveBeenCalledTimes(2);
+  expect(state.publishCycle).toHaveBeenLastCalledWith(
+    'c',
+    { confirmBelowFull: true },
+    { ministryId: 'm' },
+  );
+  expect(toast.success).toHaveBeenCalledOnce();
+});
+it('forgets the refusal when the leader cancels the confirmation', async () => {
   state.data = { ...SCHEDULE, stage: 'assigning', gapCount: 0 };
   state.publishCycle.mockResolvedValue({ published: false, gapCount: 2 });
   renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />);
   openConfirmation();
   confirmPublish();
+  await screen.findByText(m.prepare_publish_gaps({ count: 2 }));
+  fireEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', {
+      name: m.builder_ui_cancel(),
+    }),
+  );
   await waitFor(() =>
-    expect(toast.warning).toHaveBeenCalledExactlyOnceWith(
-      m.builder_logic_cycle_not_published(),
-    ),
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
   );
   expect(
-    within(screen.getByRole('dialog')).getByText(m.builder_ui_publish_full()),
+    within(openConfirmation()).getByText(m.builder_ui_publish_full()),
   ).toBeVisible();
-  expect(toast.success).not.toHaveBeenCalled();
-});
-it('words several open places in the plural', () => {
-  expect(m.prepare_publish_gaps({ count: 2 }, { locale: 'en' })).toBe(
-    '2 places still need people. Publish anyway?',
-  );
-  expect(m.prepare_publish_gaps({ count: 2 }, { locale: 'pt-BR' })).toBe(
-    '2 vagas ainda precisam de pessoas. Publicar mesmo assim?',
-  );
+  expect(state.publishCycle).toHaveBeenCalledOnce();
 });

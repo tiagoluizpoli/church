@@ -1506,7 +1506,6 @@
   "builder_logic_removed": "Removed {volunteerName} from this role",
   "builder_logic_remove_failed": "Could not remove {volunteerName}: {message}",
   "builder_logic_cycle_published": "Schedule published",
-  "builder_logic_cycle_not_published": "Cycle not published — confirm to publish below target.",
   "builder_logic_best_for_role": "Best for this role",
   "builder_logic_no_candidates": "No candidates for this role",
   "builder_logic_everyone_else": "Everyone else",

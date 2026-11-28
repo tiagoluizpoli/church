@@ -16,7 +16,7 @@ import {
   publicEventsToResponse,
 } from '../dtos/public-event.dto';
 import { renderChurchPageHead } from '../utils/church-page-head';
-import { isRateLimited } from '../utils/rate-limit';
+import { assertNotRateLimited, isRateLimited } from '../utils/rate-limit';
 import { RefusalError } from '../utils/refusal-error';
 import type {
   ChurchPageAnswer,
@@ -71,14 +71,11 @@ export class PublicChurchProfileController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (
-          isRateLimited({
-            bucket: 'public-church-profile',
-            key: request.ip,
-            limit: this.rateLimit,
-          })
-        )
-          throw new RefusalError({ code: 'RATE_LIMITED' });
+        assertNotRateLimited({
+          bucket: 'public-church-profile',
+          key: request.ip,
+          limit: this.rateLimit,
+        });
         const { slug } = request.params;
         const profile = await this.publicChurchProfileManager.getProfile({
           slug,
@@ -130,14 +127,11 @@ export class PublicChurchProfileController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (
-          isRateLimited({
-            bucket: 'public-church-events',
-            key: request.ip,
-            limit: this.rateLimit,
-          })
-        )
-          throw new RefusalError({ code: 'RATE_LIMITED' });
+        assertNotRateLimited({
+          bucket: 'public-church-events',
+          key: request.ip,
+          limit: this.rateLimit,
+        });
         const { slug } = request.params;
         const { cursor } = request.query;
         const result = await this.publicEventManager.listPublicEventsBySlug({

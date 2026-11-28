@@ -13,4 +13,13 @@ describe('exportFileName', () => {
       'Escala - Berçário - Março · 2026',
     );
   });
+
+  it('appends each suffix after " - "', () => {
+    expect(
+      exportFileName({
+        name: 'Escala - Kids - Outubro',
+        suffixes: ['Rascunho', 'parte 1 de 2'],
+      }),
+    ).toBe('Escala - Kids - Outubro - Rascunho - parte 1 de 2');
+  });
 });

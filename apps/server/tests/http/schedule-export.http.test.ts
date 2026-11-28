@@ -8,6 +8,7 @@ import {
   event,
   eventTimeBlock,
   ministryParticipation,
+  user,
 } from '@church/db';
 import { parseInstant, resetClock, setTestClock } from '@church/time';
 import { eq, inArray } from 'drizzle-orm';
@@ -416,6 +417,33 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/data', () => {
     });
   });
 
+  it('is no draft once any Event of the Cycle was published, and shows no empty spots', async () => {
+    const [published, ...rest] = fixture.participationIds;
+    await db
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(inArray(ministryParticipation.id, rest));
+
+    const body = (await readData()).json();
+
+    expect(published).toBeDefined();
+    expect(body.isDraft).toBe(false);
+    expect(body.parts[0].events).toEqual(OCTOBER_EVENTS);
+  });
+
+  it('flags names that clash ignoring case, accents and extra spaces', async () => {
+    await db
+      .update(user)
+      .set({ name: ' ANA souza ' })
+      .where(eq(user.name, 'Bruno Lima'));
+
+    const body = (await readData()).json();
+
+    expect(body.duplicateNames).toEqual([
+      [' ANA souza ', 'Ana Souza', 'Ána  Souza'],
+    ]);
+  });
+
   it('states a whole-export single Sector and Role once', async () => {
     const body = (await readData({ cycleId: fixture.novemberId })).json();
 
@@ -497,6 +525,45 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/file?format=pdf', (
     expect(single.replace(/\s+/g, ' ')).toContain(
       'Todos servem como Professor em Berçário',
     );
+  });
+
+  it('suffixes a draft file name with Rascunho, in the locale', async () => {
+    await db
+      .update(ministryParticipation)
+      .set({ state: 'assigning' })
+      .where(inArray(ministryParticipation.id, fixture.participationIds));
+
+    const pt = await readPdf();
+    const en = await readPdf({ locale: 'en' });
+
+    expect(pt.headers['content-disposition']).toContain(
+      'filename="Escala - Kids - Outubro 2026 - Rascunho.pdf"',
+    );
+    expect(en.headers['content-disposition']).toContain(
+      'filename="Schedule - Kids - Outubro 2026 - Draft.pdf"',
+    );
+  });
+
+  it('exports a published Schedule with unsent changes as it stands, unstamped', async () => {
+    const data = (await readData()).json();
+    const text = poppler('pdftotext', (await readPdf()).rawPayload).replace(
+      /\s+/g,
+      ' ',
+    );
+
+    expect(data).toMatchObject({ isDraft: false, hasUnsentChanges: true });
+    // Ána Souza's Assignment was made after publishing and not sent yet.
+    expect(text).toContain('Ána Souza (Professor)');
+    expect(text).not.toContain('Rascunho');
+    expect(text).not.toContain('Vaga');
+  });
+
+  it('prints clashing names exactly as registered', async () => {
+    // pdftotext reads Typst's two spaces as one; the accent shows nothing was folded.
+    const text = poppler('pdftotext', (await readPdf()).rawPayload);
+
+    expect(text).toContain('Ána Souza (Professor)');
+    expect(text).toContain('Ana Souza (Auxiliar)');
   });
 
   it('returns byte-identical files for identical requests', async () => {

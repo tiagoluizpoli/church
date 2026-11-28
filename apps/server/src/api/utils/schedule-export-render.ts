@@ -4,23 +4,45 @@ import {
   type CalendarDay,
   formatCalendarDay,
   formatDayLabel,
+  formatDaySpanShort,
 } from '@church/time';
 import type {
   AttachmentDispositionInput,
+  ScheduleExportFileNameInput,
+  ScheduleExportPartNameInput,
+  ScheduleExportPartText,
   ScheduleExportRenderPayload,
   ScheduleExportRenderPayloadInput,
   ScheduleExportText,
   ScheduleExportTextInput,
 } from './schedule-export-render.types';
 
-function exportText({
-  data,
+/**
+ * A part's name in the locale: the group, Sector or Role as written, "Semana
+ * 02–08 mar", the catch-all's default name; null for the unsplit export.
+ */
+export function scheduleExportPartName({
+  part,
   locale,
-}: ScheduleExportTextInput): ScheduleExportText {
-  const { singleRole: role, singleSector: sector } = data;
+}: ScheduleExportPartNameInput): string | null {
+  if (part.kind === 'all') return null;
+  if (part.week) {
+    const span = formatDaySpanShort({ ...part.week, locale });
+    return m.export_part_week({ span }, { locale });
+  }
+  if (part.kind === 'catchAll' && part.name === null) {
+    return m.export_catch_all_default({}, { locale });
+  }
+  return part.name;
+}
+
+function partText({
+  part,
+  locale,
+}: ScheduleExportPartNameInput): ScheduleExportPartText {
+  const { singleRole: role, singleSector: sector } = part;
   return {
-    kicker: m.export_schedule_kicker({}, { locale }),
-    range: `${formatCalendarDay({ day: data.range.from })} – ${formatCalendarDay({ day: data.range.to })}`,
+    name: scheduleExportPartName({ part, locale }),
     single:
       role && sector
         ? m.export_single_role_and_sector({ role, sector }, { locale })
@@ -29,6 +51,17 @@ function exportText({
           : sector
             ? m.export_single_sector({ sector }, { locale })
             : null,
+  };
+}
+
+function exportText({
+  data,
+  locale,
+}: ScheduleExportTextInput): ScheduleExportText {
+  return {
+    kicker: m.export_schedule_kicker({}, { locale }),
+    range: `${formatCalendarDay({ day: data.range.from })} – ${formatCalendarDay({ day: data.range.to })}`,
+    parts: data.parts.map((part) => partText({ part, locale })),
     draft: m.export_draft({}, { locale }),
     noService: m.export_no_service({}, { locale }),
     cancelled: m.export_block_cancelled({}, { locale }),
@@ -72,18 +105,23 @@ export function scheduleExportRenderPayload({
 }
 
 /**
- * `Escala - <Ministry> - <Cycle>`, plus ` - Rascunho` on a draft, without
- * characters file systems refuse.
+ * `Escala - <Ministry> - <Cycle>`, plus ` - Rascunho` on a draft and
+ * ` - <part>` for one part of a split, without characters file systems refuse.
  */
 export function scheduleExportFileName({
   data,
   locale,
-}: ScheduleExportTextInput): string {
+  part,
+}: ScheduleExportFileNameInput): string {
   const name = m.export_file_name(
     { ministry: data.ministry.name, cycle: data.cycle.name },
     { locale },
   );
-  const suffixes = data.isDraft ? [m.export_draft({}, { locale })] : [];
+  const partName = part ? scheduleExportPartName({ part, locale }) : null;
+  const suffixes = [
+    ...(data.isDraft ? [m.export_draft({}, { locale })] : []),
+    ...(partName ? [partName] : []),
+  ];
   return exportFileName({ name, suffixes });
 }
 

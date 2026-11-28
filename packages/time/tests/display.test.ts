@@ -6,6 +6,7 @@ import {
   formatDayAndMonth,
   formatDayLabel,
   formatDayMonthShort,
+  formatDaySpanShort,
   formatInstant,
   formatInstantPrecise,
   formatLongCalendarDay,
@@ -512,6 +513,35 @@ describe('formatDayMonthShort', () => {
     expect(
       formatDayMonthShort({ day: day('2026-10-04'), locale: 'pt-BR' }),
     ).toBe('4 out');
+  });
+});
+
+describe('formatDaySpanShort', () => {
+  it('reads like `02–08 mar`, naming the month once inside one month', () => {
+    expect(
+      formatDaySpanShort({
+        from: day('2026-03-02'),
+        to: day('2026-03-08'),
+        locale: 'pt-BR',
+      }),
+    ).toBe('02–08 mar');
+  });
+
+  it('names both months across a month and stays one day on a single day', () => {
+    expect(
+      formatDaySpanShort({
+        from: day('2026-09-28'),
+        to: day('2026-10-04'),
+        locale: 'en',
+      }),
+    ).toBe('28 Sep–04 Oct');
+    expect(
+      formatDaySpanShort({
+        from: day('2026-10-04'),
+        to: day('2026-10-04'),
+        locale: 'pt-BR',
+      }),
+    ).toBe('04 out');
   });
 });
 

@@ -399,7 +399,9 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/data', () => {
       duplicateNames: [['Ana Souza', 'Ána  Souza']],
       parts: [
         {
+          kind: 'all',
           name: null,
+          week: null,
           singleSector: null,
           singleRole: null,
           groups: [{ kind: 'list', name: null, events: OCTOBER_EVENTS }],

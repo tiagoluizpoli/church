@@ -62,6 +62,7 @@ export interface ScheduleExportRow {
   requirementId: string | null;
   sectorId: string | null;
   sectorName: string | null;
+  roleId: string | null;
   roleName: string | null;
   peopleNeeded: number | null;
   volunteerId: string | null;
@@ -97,4 +98,6 @@ export interface ScheduleExportRepository {
   ): Promise<ScheduleExportCycleRow[]>;
   /** Every Sector of the Ministry, alphabetical ignoring case. */
   listSectorIds(input: ScheduleExportScopeInput): Promise<string[]>;
+  /** Every Role of the Ministry, alphabetical ignoring case. */
+  listRoleIds(input: ScheduleExportScopeInput): Promise<string[]>;
 }

@@ -15,6 +15,12 @@ import type {
 } from '@/domain/contracts/infrastructure/typst-renderer';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
+/**
+ * Separar: one part for everything (`none`), or one per Event group, per
+ * Monday-to-Sunday week, per Sector or per Role.
+ */
+export type ScheduleExportSplit = 'none' | 'group' | 'week' | 'sector' | 'role';
+
 export interface ReadScheduleExportInput {
   churchId: ChurchId;
   ministryId: MinistryId;
@@ -22,6 +28,8 @@ export interface ReadScheduleExportInput {
   /** Inclusive Church-local days inside the Cycle; an open side is the Cycle's own. */
   from?: CalendarDay;
   to?: CalendarDay;
+  /** `none` when left out. */
+  split?: ScheduleExportSplit;
 }
 
 export interface ListScheduleExportCyclesInput {
@@ -93,9 +101,27 @@ export interface ScheduleExportGroup {
   events: ScheduleExportEvent[];
 }
 
+/**
+ * What a part holds: `all` the whole export, else one Event group (`group`,
+ * `catchAll`), week, Sector or Role.
+ */
+export type ScheduleExportPartKind =
+  | 'all'
+  | 'group'
+  | 'catchAll'
+  | 'week'
+  | 'sector'
+  | 'role';
+
 export interface ScheduleExportPart {
-  /** Null for the one part of an unsplit export. */
+  kind: ScheduleExportPartKind;
+  /**
+   * The group, Sector or Role name as the church wrote it; null for `all`,
+   * a `week` and a catch-all keeping its default name.
+   */
   name: string | null;
+  /** A `week` part's Monday to Sunday, kept inside the exported range. */
+  week: ScheduleExportRange | null;
   singleSector: string | null;
   singleRole: string | null;
   /** In the Ministry's order, the catch-all last; never an empty group. */
@@ -148,6 +174,51 @@ export interface BuildScheduleExportEventsInput {
   paletteIndexBySectorId: Map<string, number>;
   withEmptySpots: boolean;
   timeZone: string;
+}
+
+export interface ScheduleExportPartContext {
+  paletteIndexBySectorId: Map<string, number>;
+  withEmptySpots: boolean;
+  timeZone: string;
+  setup: EventGroupSetup;
+}
+
+export interface BuildScheduleExportPartInput {
+  rows: ScheduleExportRow[];
+  context: ScheduleExportPartContext;
+  kind: ScheduleExportPartKind;
+  name?: string | null;
+  week?: ScheduleExportRange | null;
+}
+
+export interface SplitScheduleExportInput {
+  split: ScheduleExportSplit;
+  /** The unsplit export's one part. */
+  whole: ScheduleExportPart;
+  rows: ScheduleExportRow[];
+  context: ScheduleExportPartContext;
+  range: ScheduleExportRange;
+  sectorIds: string[];
+  roleIds: string[];
+}
+
+export interface WeekOfInput {
+  day: CalendarDay;
+  range: ScheduleExportRange;
+}
+
+export interface RowsByInput {
+  rows: ScheduleExportRow[];
+  key: (row: ScheduleExportRow) => string | null;
+}
+
+export interface ScheduleExportSingles {
+  singleSector: string | null;
+  singleRole: string | null;
+}
+
+export interface ExportSinglesInput {
+  events: ScheduleExportEvent[];
 }
 
 export interface SingleValueInput {

@@ -1,4 +1,4 @@
-// Schedule export, Grid template (#1243, Event groups #1247): the A4 landscape PDF
+// Schedule export, Grid template (#1243, Event groups #1247, split parts #1248): the A4 landscape PDF
 // table, and (#1244) the table image: `media: "image"` lays the grid out on one page
 // of the same width, as tall as the grid, never cut by size.
 // From prototype variant E (prototype/schedule-export-layouts) and the
@@ -38,33 +38,40 @@
 #let adds(label, title) = label != none and lower(label) != lower(title)
 #let swatch(index) = box(width: 6pt, height: 6pt, radius: 1.5pt, baseline: -0.5pt, fill: palette.at(calc.rem(index, palette.len())))
 
-// Header: logo, "Escala", Ministry, single Sector/Role line, draft tag; Cycle and its span.
-#grid(
-  columns: (auto, 1fr, auto),
-  column-gutter: 10pt,
-  align: horizon,
-  if "logo" in sys.inputs { box(image(sys.inputs.logo, width: 33pt), radius: 7pt, clip: true) },
-  {
-    text(size: 8pt, weight: "bold", fill: mfg, t.kicker)
-    linebreak()
-    text(size: 16.5pt, weight: "bold", data.ministry.name)
-    if t.single != none {
+// A part's header: logo, "Escala", Ministry, the part's name, its single
+// Sector/Role line, the draft tag; Cycle and its span.
+#let header(pt) = {
+  grid(
+    columns: (auto, 1fr, auto),
+    column-gutter: 10pt,
+    align: horizon,
+    if "logo" in sys.inputs { box(image(sys.inputs.logo, width: 33pt), radius: 7pt, clip: true) },
+    {
+      text(size: 8pt, weight: "bold", fill: mfg, t.kicker)
       linebreak()
-      text(size: 9pt, weight: "bold", fill: pri, t.single)
-    }
-    if data.isDraft {
+      text(size: 16.5pt, weight: "bold", data.ministry.name)
+      if pt.name != none {
+        linebreak()
+        text(size: 12pt, weight: "bold", fill: pri, pt.name)
+      }
+      if pt.single != none {
+        linebreak()
+        text(size: 9pt, weight: "bold", fill: pri, pt.single)
+      }
+      if data.isDraft {
+        linebreak()
+        box(stroke: 1pt + des, inset: (x: 5pt, y: 2pt), radius: 3pt, text(size: 8pt, weight: "bold", fill: des, t.draft))
+      }
+    },
+    align(right, {
+      text(size: 11pt, weight: "bold", data.cycle.name)
       linebreak()
-      box(stroke: 1pt + des, inset: (x: 5pt, y: 2pt), radius: 3pt, text(size: 8pt, weight: "bold", fill: des, t.draft))
-    }
-  },
-  align(right, {
-    text(size: 11pt, weight: "bold", data.cycle.name)
-    linebreak()
-    text(size: 9.5pt, fill: mfg, t.range)
-  }),
-)
-#v(-2pt)
-#line(length: 100%, stroke: 0.75pt + bd)
+      text(size: 9.5pt, fill: mfg, t.range)
+    }),
+  )
+  v(-2pt)
+  line(length: 100%, stroke: 0.75pt + bd)
+}
 
 // A row never splits across pages; the column header repeats on each page.
 #set table.cell(breakable: false)
@@ -263,7 +270,10 @@
   }
 }
 
-#for part in data.parts {
+// Each part starts on a new page under its own header.
+#for (pi, part) in data.parts.enumerate() {
+  if pi > 0 { pagebreak() }
+  header(t.parts.at(pi))
   for group in part.groups {
     if group.kind == "list" {
       list-table(part, group.events, none)

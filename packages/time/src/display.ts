@@ -184,6 +184,31 @@ export function formatDayMonthShort({
   return `${dayOfMonth} ${formatMonthShort({ day, locale })}`;
 }
 
+export interface DaySpanLocaleInput {
+  from: CalendarDay;
+  to: CalendarDay;
+  locale: Locale;
+}
+
+/**
+ * `02–08 mar`, `28 Sep–04 Oct` or `04 out`: zero-padded days, each month
+ * named once, no dot.
+ */
+export function formatDaySpanShort({
+  from,
+  to,
+  locale,
+}: DaySpanLocaleInput): string {
+  const end = `${splitCalendarDay({ day: to }).dayOfMonth} ${formatMonthShort({ day: to, locale })}`;
+  if (from === to) return end;
+  const { dayOfMonth } = splitCalendarDay({ day: from });
+  const sameMonth = from.slice(0, 7) === to.slice(0, 7);
+  const start = sameMonth
+    ? dayOfMonth
+    : `${dayOfMonth} ${formatMonthShort({ day: from, locale })}`;
+  return `${start}–${end}`;
+}
+
 /** `October 2026` / `Outubro 2026`: the month and year of the day. */
 export function formatMonthYear({
   day,

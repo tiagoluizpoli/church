@@ -1,6 +1,8 @@
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   HeadObjectCommand,
+  NoSuchKey,
   NotFound,
   PutObjectCommand,
   type S3Client,
@@ -41,6 +43,18 @@ export class S3ObjectStorage implements ObjectStorage {
     await this.client.send(
       new DeleteObjectCommand({ Bucket: this.bucket, Key: input.key }),
     );
+  }
+
+  async get(input: ObjectKeyInput): Promise<Uint8Array | null> {
+    try {
+      const object = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: input.key }),
+      );
+      return (await object.Body?.transformToByteArray()) ?? null;
+    } catch (error) {
+      if (error instanceof NoSuchKey) return null;
+      throw error;
+    }
   }
 
   async exists(input: ObjectKeyInput): Promise<boolean> {

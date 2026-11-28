@@ -154,3 +154,24 @@ export async function invalidateSectorReads({
     ),
   );
 }
+
+export function eventGroupsQueryKey({
+  churchId,
+  ministryId,
+}: MinistryScopeInput) {
+  return [
+    ...MINISTRIES_QUERY_KEY,
+    churchId,
+    'event-groups',
+    ministryId,
+  ] as const;
+}
+
+/** The Ministry's Event groups and every EventTemplate they can hold. */
+export function useEventGroups({ ministryId }: UseMinistryInput) {
+  const churchId = useCallerCapabilitiesScope()?.churchId;
+  return useQuery({
+    queryKey: eventGroupsQueryKey({ churchId, ministryId }),
+    queryFn: () => adminApi.getEventGroups(ministryId),
+  });
+}

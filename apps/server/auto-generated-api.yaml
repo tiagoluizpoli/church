@@ -15687,6 +15687,1073 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/export/ministries/{ministryId}/cycles:
+    get:
+      operationId: listScheduleExportCycles
+      summary: The Cycles a Ministry has a Schedule in
+      tags:
+        - export
+      description: Newest first, for the export's Cycle picker; `isCurrent` marks the
+        one running on the Church's today. `q` keeps the Cycles where every word
+        is found in the name, a date (DD/MM/YYYY or YYYY-MM-DD) or a month
+        covered with its year, in the locale-cookie language, ignoring case and
+        accents. For the Ministry's leaders and ChurchAdmins.
+      parameters:
+        - schema:
+            type: string
+            maxLength: 100
+          in: query
+          name: q
+          required: false
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cycles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        startDate:
+                          type: string
+                          format: date
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                        endDate:
+                          type: string
+                          format: date
+                          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                        isCurrent:
+                          type: boolean
+                      required:
+                        - id
+                        - name
+                        - startDate
+                        - endDate
+                        - isCurrent
+                      additionalProperties: false
+                required:
+                  - cycles
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/export/ministries/{ministryId}/cycles/{cycleId}/data:
+    get:
+      operationId: getScheduleExportData
+      summary: A Ministry's Schedule for one Cycle as export data
+      tags:
+        - export
+      description: "The Cycle, or its inclusive `from`/`to` days (an Event belongs by
+        its Church-local start day), as one ordered tree of facts (parts →
+        Events → time blocks → Shifts → Sectors → people), Church-local days and
+        HH:mm times, with the draft, unsent-changes, single Sector/Role and
+        duplicate-name facts. `split` gives the parts in order: Event groups as
+        saved with the catch-all last, Monday-to-Sunday weeks kept inside the
+        range by date, Sectors or Roles alphabetical, each holding only its own
+        spots. Only Events and blocks the Ministry serves; hidden cancelled
+        scopes are left out. Never ready-made text. For the Ministry's leaders
+        and ChurchAdmins; 404 `EXPORT_SCHEDULE_NOT_FOUND` when the Ministry has
+        no Schedule in the Cycle; 400 `INVALID_DATE_RANGE` when `from` is after
+        `to`; 422 `EXPORT_RANGE_OUTSIDE_CYCLE` when either reaches past the
+        Cycle."
+      parameters:
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: from
+          required: false
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: to
+          required: false
+        - schema:
+            default: none
+            type: string
+            enum:
+              - none
+              - group
+              - week
+              - sector
+              - role
+          in: query
+          name: split
+          required: false
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ministry:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                    required:
+                      - name
+                    additionalProperties: false
+                  cycle:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      startDate:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                      endDate:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                    required:
+                      - name
+                      - startDate
+                      - endDate
+                    additionalProperties: false
+                  range:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                      to:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                    required:
+                      - from
+                      - to
+                    additionalProperties: false
+                  isDraft:
+                    type: boolean
+                  hasUnsentChanges:
+                    type: boolean
+                  singleSector:
+                    nullable: true
+                    type: string
+                  singleRole:
+                    nullable: true
+                    type: string
+                  duplicateNames:
+                    type: array
+                    items:
+                      type: array
+                      items:
+                        type: string
+                  parts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind:
+                          type: string
+                          enum:
+                            - all
+                            - group
+                            - catchAll
+                            - week
+                            - sector
+                            - role
+                        name:
+                          nullable: true
+                          type: string
+                        week:
+                          nullable: true
+                          type: object
+                          properties:
+                            from:
+                              type: string
+                              format: date
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                            to:
+                              type: string
+                              format: date
+                              pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                          required:
+                            - from
+                            - to
+                          additionalProperties: false
+                        singleSector:
+                          nullable: true
+                          type: string
+                        singleRole:
+                          nullable: true
+                          type: string
+                        groups:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              kind:
+                                type: string
+                                enum:
+                                  - list
+                                  - group
+                                  - catchAll
+                              name:
+                                nullable: true
+                                type: string
+                              events:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    startDay:
+                                      type: string
+                                      format: date
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                    endDay:
+                                      type: string
+                                      format: date
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                    title:
+                                      type: string
+                                    cancelled:
+                                      type: boolean
+                                    timeBlocks:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          label:
+                                            nullable: true
+                                            type: string
+                                          cancelled:
+                                            type: boolean
+                                          shifts:
+                                            type: array
+                                            items:
+                                              type: object
+                                              properties:
+                                                label:
+                                                  nullable: true
+                                                  type: string
+                                                day:
+                                                  nullable: true
+                                                  type: string
+                                                  format: date
+                                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                                startTime:
+                                                  type: string
+                                                endTime:
+                                                  type: string
+                                                sectors:
+                                                  type: array
+                                                  items:
+                                                    type: object
+                                                    properties:
+                                                      name:
+                                                        type: string
+                                                      paletteIndex:
+                                                        type: integer
+                                                        minimum: -9007199254740991
+                                                        maximum: 9007199254740991
+                                                      people:
+                                                        type: array
+                                                        items:
+                                                          type: object
+                                                          properties:
+                                                            name:
+                                                              nullable: true
+                                                              type: string
+                                                            role:
+                                                              type: string
+                                                          required:
+                                                            - name
+                                                            - role
+                                                          additionalProperties: false
+                                                    required:
+                                                      - name
+                                                      - paletteIndex
+                                                      - people
+                                                    additionalProperties: false
+                                              required:
+                                                - label
+                                                - day
+                                                - startTime
+                                                - endTime
+                                                - sectors
+                                              additionalProperties: false
+                                        required:
+                                          - label
+                                          - cancelled
+                                          - shifts
+                                        additionalProperties: false
+                                  required:
+                                    - startDay
+                                    - endDay
+                                    - title
+                                    - cancelled
+                                    - timeBlocks
+                                  additionalProperties: false
+                            required:
+                              - kind
+                              - name
+                              - events
+                            additionalProperties: false
+                      required:
+                        - kind
+                        - name
+                        - week
+                        - singleSector
+                        - singleRole
+                        - groups
+                      additionalProperties: false
+                required:
+                  - ministry
+                  - cycle
+                  - range
+                  - isDraft
+                  - hasUnsentChanges
+                  - singleSector
+                  - singleRole
+                  - duplicateNames
+                  - parts
+                additionalProperties: false
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/export/ministries/{ministryId}/cycles/{cycleId}/file:
+    get:
+      operationId: getScheduleExportFile
+      summary: Download a Ministry's Schedule for one Cycle
+      tags:
+        - export
+      description: "The Cycle or its `from`/`to` days as an A4 landscape text PDF
+        table (`pdf`, whatever the layout), every `split` part starting on a new
+        page; one part's (the 1-based `part`) whole grid in one PNG never cut by
+        size (`png`); or with `layout=cards` the part's card image `page`: 1080
+        px wide, cut at most 1600 px tall only between cards, a taller card
+        being an image of its own. Fixed text in the locale-cookie language,
+        named \"Escala - <Ministry> - <Cycle>\", plus \" - <part>\" for a PNG of
+        a split and \" - parte N de M\" when the part's cards make several
+        images. `page` is 1-based, default 1; the PDF is one file. 404 past the
+        last part or page, so a client reads every file in order until then.
+        Same access, range, split and errors as the data."
+      parameters:
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: from
+          required: false
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: to
+          required: false
+        - schema:
+            default: none
+            type: string
+            enum:
+              - none
+              - group
+              - week
+              - sector
+              - role
+          in: query
+          name: split
+          required: false
+        - schema:
+            type: string
+            enum:
+              - pdf
+              - png
+          in: query
+          name: format
+          required: true
+        - schema:
+            default: grid
+            type: string
+            enum:
+              - grid
+              - cards
+          in: query
+          name: layout
+          required: false
+        - schema:
+            default: 1
+            type: integer
+            minimum: 1
+            maximum: 9007199254740991
+          in: query
+          name: part
+          required: false
+        - schema:
+            default: 1
+            type: integer
+            minimum: 1
+            maximum: 9007199254740991
+          in: query
+          name: page
+          required: false
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: The PDF or one PNG image
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: The PDF or one PNG image
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/export/ministries/{ministryId}/cycles/{cycleId}/preview:
+    get:
+      operationId: getScheduleExportPreview
+      summary: One SVG page of a Ministry's Schedule export
+      tags:
+        - export
+      description: "Page `page` of the file `format` and `layout` name, for the Cycle
+        or its `from`/`to` days and `split`, rendered as SVG from the same
+        template and payload as the file: an A4 page of the PDF, its pages
+        running through every part, the one page of the table image of `part`,
+        or card image `page` of `part`. Fixed text in the locale-cookie
+        language. 404 past the last page or part; otherwise the same access,
+        range and errors as the data."
+      parameters:
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: from
+          required: false
+        - schema:
+            type: string
+            format: date
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          in: query
+          name: to
+          required: false
+        - schema:
+            default: none
+            type: string
+            enum:
+              - none
+              - group
+              - week
+              - sector
+              - role
+          in: query
+          name: split
+          required: false
+        - schema:
+            type: string
+            enum:
+              - pdf
+              - png
+          in: query
+          name: format
+          required: true
+        - schema:
+            default: grid
+            type: string
+            enum:
+              - grid
+              - cards
+          in: query
+          name: layout
+          required: false
+        - schema:
+            default: 1
+            type: integer
+            minimum: 1
+            maximum: 9007199254740991
+          in: query
+          name: part
+          required: false
+        - schema:
+            default: 1
+            type: integer
+            minimum: 1
+            maximum: 9007199254740991
+          in: query
+          name: page
+          required: false
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: One SVG page
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: One SVG page
+        "400":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/event-groups/:
+    get:
+      operationId: getEventGroups
+      summary: Read a Ministry's Event groups
+      tags:
+        - ministries
+      description: The Ministry's Event groups in order with their EventTemplates, the
+        catch-all's custom name, and every EventTemplate of the Church. No
+        groups means the export is one plain list.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        templates:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                            additionalProperties: false
+                      required:
+                        - name
+                        - templates
+                      additionalProperties: false
+                  catchAllName:
+                    nullable: true
+                    type: string
+                  templates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                required:
+                  - groups
+                  - catchAllName
+                  - templates
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+    put:
+      operationId: saveEventGroups
+      summary: Save a Ministry's Event groups
+      tags:
+        - ministries
+      description: Replace the whole ordered list; an empty list returns to one plain
+        list and the last save wins. Each EventTemplate sits in at most one
+        group (422 otherwise); a template outside the Church is 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                groups:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        minLength: 1
+                        maxLength: 255
+                      templateIds:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                    required:
+                      - name
+                      - templateIds
+                catchAllName:
+                  nullable: true
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - groups
+                - catchAllName
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        templates:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                            additionalProperties: false
+                      required:
+                        - name
+                        - templates
+                      additionalProperties: false
+                  catchAllName:
+                    nullable: true
+                    type: string
+                  templates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                required:
+                  - groups
+                  - catchAllName
+                  - templates
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/caller-capabilities:
     get:
       operationId: getCallerCapabilities

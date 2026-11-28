@@ -26,6 +26,8 @@ export type Managers = Pick<
   | 'scheduleBuilderReader'
   | 'assignmentProposalManager'
   | 'scheduleReadModel'
+  | 'scheduleExportReader'
+  | 'eventGroupManager'
   | 'schedulePublisher'
   | 'availabilityCheckManager'
   | 'activeChurchSelectionManager'

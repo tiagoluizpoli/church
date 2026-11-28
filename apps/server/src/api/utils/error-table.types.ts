@@ -98,7 +98,9 @@ export type MappedDomainCode =
   | 'LOGO_BAD_ASPECT_RATIO'
   | 'LOGO_UNSUPPORTED_TYPE'
   | 'LOGO_KEY_INVALID'
-  | 'VALIDATION_ERROR';
+  | 'VALIDATION_ERROR'
+  | 'EXPORT_RANGE_OUTSIDE_CYCLE'
+  | 'EXPORT_SCHEDULE_NOT_FOUND';
 
 export type ErrorCode = RefusalCode | MappedDomainCode;
 

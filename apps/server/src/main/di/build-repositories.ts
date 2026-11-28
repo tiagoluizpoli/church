@@ -7,6 +7,7 @@ import {
   DrizzleChurchProgrammeRepository,
   DrizzleChurchRepository,
   DrizzleCycleRepository,
+  DrizzleEventGroupRepository,
   DrizzleEventRepository,
   DrizzleEventTemplateRepository,
   DrizzleEventTimeBlockRepository,
@@ -23,6 +24,7 @@ import {
   DrizzlePublicEventRepository,
   DrizzleRedemptionRepository,
   DrizzleRoleRepository,
+  DrizzleScheduleExportRepository,
   DrizzleSectorRepository,
   DrizzleSecurityLogRepository,
   DrizzleSetupProgressRepository,
@@ -120,6 +122,12 @@ export function buildRepositories({
     overrides.roleRepository ?? new DrizzleRoleRepository({ db: database });
   const sectorRepository =
     overrides.sectorRepository ?? new DrizzleSectorRepository({ db: database });
+  const scheduleExportRepository =
+    overrides.scheduleExportRepository ??
+    new DrizzleScheduleExportRepository({ db: database });
+  const eventGroupRepository =
+    overrides.eventGroupRepository ??
+    new DrizzleEventGroupRepository({ db: database });
   const eventTimeBlockRepository =
     overrides.eventTimeBlockRepository ??
     new DrizzleEventTimeBlockRepository({ db: database });
@@ -173,6 +181,8 @@ export function buildRepositories({
     outboxRepository,
     roleRepository,
     sectorRepository,
+    scheduleExportRepository,
+    eventGroupRepository,
     eventTimeBlockRepository,
     notificationRepository,
     invitationListRepository,

@@ -35,6 +35,10 @@ export const ministry = pgTable(
     defaultDirection: defaultDirectionEnum('default_direction')
       .default('all_out')
       .notNull(),
+    /** The export's catch-all Event group as renamed; null keeps the default. */
+    eventGroupCatchAllName: varchar('event_group_catch_all_name', {
+      length: 255,
+    }),
     deletedAt: timestamp('deleted_at', { withTimezone: true, mode: 'date' }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()

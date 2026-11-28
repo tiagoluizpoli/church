@@ -20,6 +20,8 @@ interface BootstrapStep {
 
 const BOOTSTRAP_STEPS: BootstrapStep[] = [
   { name: 'dependencies', command: ['bun', 'install', '--frozen-lockfile'] },
+  // The pinned Typst CLI the server renders Schedule exports with.
+  { name: 'typst', command: ['bun', 'run', 'typst:install'] },
   // Starts or verifies the shared services from the primary checkout's
   // Compose file, never this worktree's copy, and waits until healthy.
   { name: 'postgres', command: ['bun', 'run', 'db:start'] },

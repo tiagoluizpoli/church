@@ -43,6 +43,7 @@ export * from './place-address-not-found';
 export * from './public-info-locked';
 export * from './role-in-use';
 export * from './role-name-in-use';
+export * from './schedule-export';
 export * from './sector-in-use';
 export * from './sector-name-in-use';
 export * from './shift-has-responses';

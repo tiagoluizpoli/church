@@ -20,6 +20,23 @@ a minor release can change template syntax. Upgrade on purpose, in its own
 change, with the fixture regression check green. Read the docs for the pinned
 version; the website shows the latest.
 
+## Install
+
+```sh
+bun run typst:install
+```
+
+Puts the pinned binary at `.tools/bin/typst` (gitignored), where the server
+runs it. It downloads the release asset for Linux x64 or arm64, checks its
+sha256, and needs `tar` and `xz` (`apt-get install xz-utils` where missing).
+Rerunning it keeps an installed binary of the pinned version. The same command
+runs in `bun run worktree:bootstrap`, in the CI setup action
+(`.github/actions/setup-church-ci`, which also installs `poppler-utils` for
+`pdftotext`/`pdffonts`) and in `deployment/server.Dockerfile`. To upgrade,
+change `VERSION` and the hashes in `tooling/typst/install.ts` together with
+`TYPST_VERSION` in `apps/server/src/infrastructure/typst/typst-paths.ts`;
+the render integration test fails when they disagree.
+
 ## Reference
 
 Official docs, fetched on demand. These cover everything the export uses:
@@ -40,17 +57,23 @@ Official docs, fetched on demand. These cover everything the export uses:
 ## Template rules
 
 - **Data comes in as JSON, never as markup.** The server passes the export
-  payload with `--input payload=<json>`; the template reads it with
-  `json(bytes(sys.inputs.payload))`. Never interpolate names or any user text
-  into Typst source: that is code injection.
-- **Fonts ship in the repo.** Atkinson Hyperlegible TTFs, compiled with
+  payload with `--input payload=<json>`, or past 128 KiB as the file
+  `payload.json` in the render root named by `--input payload_file=…`. Every
+  template starts with
+  `#let d = if "payload" in sys.inputs { json(bytes(sys.inputs.payload)) } else { json(sys.inputs.payload_file) }`.
+  Never interpolate names or any user text into Typst source: that is code
+  injection.
+- **Fonts ship in the repo.** Atkinson Hyperlegible TTFs in
+  `apps/server/typst/fonts/` (OFL), compiled with
   `--font-path <dir> --ignore-system-fonts`, so output matches on every
   machine.
 - **No Typst packages** (`#import "@preview/…"`). They download from the
   network at compile time. Write the code, or vendor it inside the repo.
 - **Images are files inside `--root`.** Typst cannot fetch URLs (which also
-  means a template cannot leak anything). Write the church logo into the
-  render's root before compiling.
+  means a template cannot leak anything). Given a `logoKey`, the renderer
+  reads the logo with `ObjectStorage.get` and writes it into the render root
+  as `logo.<ext>`; the template shows `image(sys.inputs.logo)` when
+  `"logo" in sys.inputs` (absent when there is no logo).
 - **Colours are the app's DESIGN.md tokens**, written as `oklch()`, so exports
   stay in the app's identity. Sector colour only repeats the written Sector
   name.
@@ -59,9 +82,16 @@ Official docs, fetched on demand. These cover everything the export uses:
     `auto` lets tall rows break.
   - `table.header(repeat: true, …)`: the date header repeats on each page.
   - A time band is `table.cell(rowspan: n, …)` and moves to the next page whole.
-    A band taller than a page has no rule yet: decide before relying on it.
-  - The group title bar is `block(breakable: false, sticky: true)`, so it stays
-    with its table.
+    Typst lets an unbreakable rowspan taller than a page overflow (and the panel
+    clips it), so the grid template measures each band under its header
+    (`fits`): a taller band gets `breakable: true` and breaks between rows.
+  - Typst does not repeat a rowspan's content on a continuation page. Each row
+    of a broken band carries `continued(…)`: a `metadata` mark, and on the row
+    that opens a page, the band's labels `place`d over their own columns.
+  - Any other rowspan crossing bands (a cancelled Event's column) is
+    `breakable: true`, or it would glue the whole table into one block.
+  - The group bar is a row of the repeating `table.header`; Typst never leaves
+    a header alone at a page bottom.
   - Each split part starts on a new page with `pagebreak()`.
 - **Vertical time labels** use `rotate(-90deg, reflow: true, …)`.
 - **No letter-spacing (`tracking`) on words people search for.** Extraction
@@ -69,9 +99,19 @@ Official docs, fetched on demand. These cover everything the export uses:
 
 ## Rendering on the server
 
-The Fastify server calls the CLI with `Bun.spawn`, one process per render.
-The in-process napi addon is not used: if it crashes, the API goes down. Its
-Typst version is also behind.
+`TypstRenderer` (`domain/contracts/infrastructure/typst-renderer.ts`,
+implemented by `infrastructure/typst/typst-cli-renderer.ts`, built in
+`main/di/build-services.ts`) runs the CLI as one child process per render.
+It uses `node:child_process`, not `Bun.spawn`: the dev server and Vitest run
+on Node. The in-process napi addon is not used: if it crashes, the API goes
+down. Its Typst version is also behind.
+
+A template is a directory `apps/server/typst/templates/<name>/` with a
+`main.typ`; the renderer copies it into a fresh temporary root for each render
+and deletes the root afterwards. A failure or timeout throws
+`TypstRenderError` (`reason: 'failed' | 'timeout'`) and logs only the first
+`error:` line of the short diagnostic. Its test fixture is
+`apps/server/tests/integration/typst/`.
 
 ```sh
 typst compile --root <dir> --font-path <fonts> --ignore-system-fonts \

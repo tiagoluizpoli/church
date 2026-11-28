@@ -1,3 +1,4 @@
+import { availableParallelism } from 'node:os';
 import { env } from '@church/env/server';
 import { BetterAuthRedemptionIdentityGateway } from '../../infrastructure/services/better-auth-redemption-identity-gateway';
 import { CaptureEmailSender } from '../../infrastructure/services/capture-email-sender';
@@ -5,6 +6,12 @@ import { HttpWebShell } from '../../infrastructure/services/http-web-shell';
 import { OtelTracing } from '../../infrastructure/services/otel-tracing';
 import { SentryErrorReporter } from '../../infrastructure/services/sentry-error-reporter';
 import { S3ObjectStorage } from '../../infrastructure/storage/s3-object-storage';
+import { TypstCliRenderer } from '../../infrastructure/typst/typst-cli-renderer';
+import {
+  TYPST_BINARY,
+  TYPST_FONTS_DIR,
+  TYPST_TEMPLATES_DIR,
+} from '../../infrastructure/typst/typst-paths';
 import type { BuildServicesInput, Services } from './build-services.types';
 import { auth, createServerAuth, useResetMailSender } from './server-auth';
 import { serverEmailSender } from './server-email-sender';
@@ -35,6 +42,20 @@ export function buildServices({ overrides }: BuildServicesInput): Services {
       publicUrl: env.STORAGE_PUBLIC_URL,
     });
 
+  const typstRenderer =
+    overrides.typstRenderer ??
+    new TypstCliRenderer({
+      objectStorage,
+      config: {
+        binary: TYPST_BINARY,
+        fontsDir: TYPST_FONTS_DIR,
+        templatesDir: TYPST_TEMPLATES_DIR,
+        timeoutMs: 10_000,
+        cacheBytes: 100 * 1024 * 1024,
+        concurrency: availableParallelism(),
+      },
+    });
+
   const webShell =
     overrides.webShell ??
     new HttpWebShell({
@@ -50,5 +71,6 @@ export function buildServices({ overrides }: BuildServicesInput): Services {
     errorReporter,
     tracing,
     objectStorage,
+    typstRenderer,
   };
 }

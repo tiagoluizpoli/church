@@ -89,12 +89,13 @@ afterEach(() => {
 });
 
 describe('worktree:bootstrap', () => {
-  it('installs, verifies the shared PostgreSQL, generates configuration, then provisions databases', () => {
+  it('installs dependencies and Typst, verifies the shared PostgreSQL, generates configuration, then provisions databases', () => {
     const result = run({});
 
     expect(result.status, result.output).toBe(0);
     expect(recorded()).toEqual([
       'bun install --frozen-lockfile',
+      'bun run typst:install',
       'bun run db:start',
       'bun run env:local',
       'bun run db:bootstrap',
@@ -135,6 +136,7 @@ describe('worktree:bootstrap', () => {
     expect(result.status).not.toBe(0);
     expect(recorded()).toEqual([
       'bun install --frozen-lockfile',
+      'bun run typst:install',
       'bun run db:start',
     ]);
     expect(result.output).toContain('failed at "postgres"');

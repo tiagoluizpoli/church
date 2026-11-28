@@ -5,6 +5,10 @@ FROM oven/bun:1.4.5
 WORKDIR /app
 COPY . .
 RUN bun install --frozen-lockfile
+# Schedule exports render with the pinned Typst CLI (.tools/bin/typst); its
+# installer unpacks a .tar.xz.
+RUN apt-get update && apt-get install -y --no-install-recommends xz-utils \
+    && rm -rf /var/lib/apt/lists/* && bun run typst:install
 ARG APP_REVISION
 RUN test -n "$APP_REVISION"
 ENV APP_REVISION=$APP_REVISION \

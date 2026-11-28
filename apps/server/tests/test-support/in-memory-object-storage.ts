@@ -16,6 +16,10 @@ export class InMemoryObjectStorage implements ObjectStorage {
     this.objects.delete(key);
   }
 
+  async get({ key }: ObjectKeyInput): Promise<Uint8Array | null> {
+    return this.objects.get(key)?.body ?? null;
+  }
+
   async exists({ key }: ObjectKeyInput): Promise<boolean> {
     return this.objects.has(key);
   }

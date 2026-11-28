@@ -1,6 +1,6 @@
 import type { DomainError } from '@church/core';
 import { m } from '@church/i18n/messages';
-import type { Instant } from '@church/time';
+import { formatCalendarDay, type Instant } from '@church/time';
 import type { DomainErrorMessageInput } from './error-messages.types';
 import { errorMessage } from './error-table';
 import type { ErrorMessage } from './error-table.types';
@@ -30,6 +30,7 @@ import {
 } from '@/domain/errors/pending-ministry-invitation-exists';
 import { RemindOnCooldownError } from '@/domain/errors/remind-on-cooldown';
 import { RoleInUseError } from '@/domain/errors/role-in-use';
+import { ExportRangeOutsideCycleError } from '@/domain/errors/schedule-export';
 import { SectorInUseError } from '@/domain/errors/sector-in-use';
 import {
   ShiftHasResponsesError,
@@ -197,6 +198,15 @@ export function domainErrorMessage({
   if (error instanceof SwapRequestNoteTooLongError) {
     return m.error_swap_request_note_too_long(
       { max: error.maxLength },
+      { locale },
+    );
+  }
+  if (error instanceof ExportRangeOutsideCycleError) {
+    return m.error_export_range_outside_cycle(
+      {
+        start: formatCalendarDay({ day: error.startDate }),
+        end: formatCalendarDay({ day: error.endDate }),
+      },
       { locale },
     );
   }

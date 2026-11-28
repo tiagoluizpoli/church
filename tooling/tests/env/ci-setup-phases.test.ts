@@ -63,6 +63,7 @@ const SETUP_LABELS: Record<string, string> = {
   toolchain: 'toolchain',
   'dependency-cache': 'dependency cache',
   dependencies: 'dependency installation',
+  typst: 'typst installation',
   'failure-bundles': 'failure-bundle setup',
 };
 
@@ -205,6 +206,7 @@ describe('CI setup phase bounds and reporting', () => {
       'toolchain',
       'dependency-cache',
       'dependencies',
+      'typst',
       'failure-bundles',
       'migrate',
     ]);

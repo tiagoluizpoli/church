@@ -85,6 +85,20 @@ describe('S3 object storage', () => {
     expect(await storage.exists({ key })).toBe(false);
   });
 
+  it('reads back the bytes of a private object, and null for a missing key', async () => {
+    const key = uniqueKey('private');
+    await storage.put({
+      key,
+      body: bytes,
+      contentType: 'image/png',
+      cacheControl,
+    });
+
+    expect(await storage.get({ key })).toEqual(bytes);
+    await storage.delete({ key });
+    expect(await storage.get({ key })).toBeNull();
+  });
+
   it('builds the public URL from the configured base and the key', () => {
     const configured = new S3ObjectStorage({
       endpoint: 'http://127.0.0.1:9000',

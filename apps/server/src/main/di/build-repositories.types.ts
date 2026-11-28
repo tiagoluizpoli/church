@@ -29,6 +29,8 @@ export type Repositories = Pick<
   | 'outboxRepository'
   | 'roleRepository'
   | 'sectorRepository'
+  | 'scheduleExportRepository'
+  | 'eventGroupRepository'
   | 'eventTimeBlockRepository'
   | 'notificationRepository'
   | 'invitationListRepository'

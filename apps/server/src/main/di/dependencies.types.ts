@@ -10,6 +10,7 @@ import type {
   IChurchAccessManager,
   IChurchSettingsManager,
   ICycleManager,
+  IEventGroupManager,
   IEventManager,
   IEventTemplateManager,
   IInvitationListManager,
@@ -27,6 +28,7 @@ import type {
   IPublicEventManager,
   IRedemptionManager,
   IScheduleBuilderReader,
+  IScheduleExportReader,
   ISchedulePublisher,
   IScheduleReadModel,
   ISectorManager,
@@ -51,6 +53,7 @@ import type {
   CycleRepository,
   EmailSender,
   ErrorReporter,
+  EventGroupRepository,
   EventRepository,
   EventTemplateRepository,
   EventTimeBlockRepository,
@@ -69,6 +72,7 @@ import type {
   RedemptionIdentityGateway,
   RedemptionRepository,
   RoleRepository,
+  ScheduleExportRepository,
   SchedulingScopeRepository,
   SectorRepository,
   SecurityLogRepository,
@@ -77,6 +81,7 @@ import type {
   SwapRequestRepository,
   TemplatePrecedenceRepository,
   Tracing,
+  TypstRenderer,
   UnavailableShiftRepository,
   UnitOfWork,
   UsualSetupRepository,
@@ -117,6 +122,8 @@ export interface CompositionRootDependencies {
   shiftRepository: ShiftRepository;
   roleRepository: RoleRepository;
   sectorRepository: SectorRepository;
+  scheduleExportRepository: ScheduleExportRepository;
+  eventGroupRepository: EventGroupRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
   notificationRepository: NotificationRepository;
   invitationListRepository: InvitationListRepository;
@@ -134,6 +141,8 @@ export interface CompositionRootDependencies {
   tracing: Tracing;
   /** S3 from the env; HTTP tests inject the in-memory fake. */
   objectStorage: ObjectStorage;
+  /** Schedule export files (#1242); reads the church logo from `objectStorage`. */
+  typstRenderer: TypstRenderer;
   /** The deployed web's index.html; HTTP tests inject a fake. */
   webShell: WebShell;
   // Auth
@@ -166,6 +175,8 @@ export interface CompositionRootDependencies {
   scheduleBuilderReader: IScheduleBuilderReader;
   assignmentProposalManager: IAssignmentProposalManager;
   scheduleReadModel: IScheduleReadModel;
+  scheduleExportReader: IScheduleExportReader;
+  eventGroupManager: IEventGroupManager;
   schedulePublisher: ISchedulePublisher;
   activeChurchSelectionManager: IActiveChurchSelectionManager;
   notificationManager: INotificationManager;

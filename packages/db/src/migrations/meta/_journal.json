@@ -547,6 +547,13 @@
       "when": 1795807818178,
       "tag": "0077_solid_adam_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1795846604932,
+      "tag": "0078_event_groups",
+      "breakpoints": true
     }
   ]
 }

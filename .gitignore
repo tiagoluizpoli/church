@@ -69,3 +69,6 @@ test-results
 packages/i18n/src/paraglide
 packages/i18n/src/paraglide-message-modules
 packages/i18n/project.inlang/.meta.json
+
+# Pinned tool binaries (bun run typst:install)
+.tools

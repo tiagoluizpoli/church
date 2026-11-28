@@ -142,7 +142,15 @@ beforeEach(() => {
         : Promise.reject(notFound);
     },
   );
-  state.getScheduleExportFile.mockResolvedValue(new Blob(['PNG']));
+  // One table image per part, read by page until 404; one PDF.
+  state.getScheduleExportFile.mockImplementation(
+    (_ministryId: string, _cycleId: string, params: ExportParams) => {
+      const parts = params.split === 'week' ? 2 : 1;
+      return (params.page ?? 1) <= 1 && (params.part ?? 1) <= parts
+        ? Promise.resolve(new Blob([params.format ?? '']))
+        : Promise.reject(notFound);
+    },
+  );
   Object.defineProperty(window.navigator, 'onLine', {
     configurable: true,
     value: true,
@@ -298,10 +306,15 @@ it('previews and downloads one table image per part, named after it', async () =
     ]),
   );
   expect(
-    state.getScheduleExportFile.mock.calls.map(([, , params]) => params),
+    state.getScheduleExportFile.mock.calls
+      .map(([, , params]) => params)
+      .filter((params) => params.split),
   ).toEqual([
-    { format: 'png', split: 'week', part: 1 },
-    { format: 'png', split: 'week', part: 2 },
+    { format: 'png', split: 'week', part: 1, page: 1 },
+    { format: 'png', split: 'week', part: 1, page: 2 },
+    { format: 'png', split: 'week', part: 2, page: 1 },
+    { format: 'png', split: 'week', part: 2, page: 2 },
+    { format: 'png', split: 'week', part: 3, page: 1 },
   ]);
 });
 
@@ -325,9 +338,9 @@ it('downloads one PDF holding every part', async () => {
       })}.pdf`,
     ]),
   );
-  expect(state.getScheduleExportFile).toHaveBeenCalledExactlyOnceWith(
-    'm',
-    'c',
-    { format: 'pdf', split: 'week' },
-  );
+  expect(
+    state.getScheduleExportFile.mock.calls
+      .map(([, , params]) => params)
+      .filter((params) => params.split),
+  ).toEqual([{ format: 'pdf', split: 'week' }]);
 });

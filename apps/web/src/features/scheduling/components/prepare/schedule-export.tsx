@@ -1,30 +1,31 @@
-import { exportFileName } from '@church/domain-rules/export-file-name';
 import { m } from '@church/i18n/messages';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { isAxiosError } from 'axios';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { DatePickerField } from '@/components/date-picker-field';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Spinner } from '@/components/ui/spinner';
 import { useEventGroups } from '@/features/ministries/ministry-queries';
 import { useMinistryRoles } from '@/features/ministries/role-queries';
 import {
   cycleSpan,
+  daySpan,
   type ExportCycle,
   ScheduleExportCyclePicker,
 } from '@/features/scheduling/components/prepare/schedule-export-cycle-picker';
+import { ScheduleExportFooter } from '@/features/scheduling/components/prepare/schedule-export-footer';
 import { ScheduleExportGroups } from '@/features/scheduling/components/prepare/schedule-export-groups';
 import { exportPartName } from '@/features/scheduling/components/prepare/schedule-export-part-name';
-import { ScheduleExportPreview } from '@/features/scheduling/components/prepare/schedule-export-preview';
+import {
+  ScheduleExportPreview,
+  useSettledExportSettings,
+} from '@/features/scheduling/components/prepare/schedule-export-preview';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
+import { useScheduleExportFiles } from '@/features/scheduling/hooks/use-schedule-export-files';
 import { useOnlineState } from '@/features/volunteers/hooks/use-online-state';
 import type {
-  GetScheduleExportData200PartsItem,
   GetScheduleExportDataSplit,
   GetScheduleExportFileFormat,
 } from '@/infrastructure/api/churchAPI.schemas';
@@ -53,47 +54,6 @@ const SPLITS = [
   { split: 'role', label: m.export_split_role },
 ] as const;
 
-interface DownloadRequest {
-  cycle: ExportCycle;
-  format: GetScheduleExportFileFormat;
-  split: GetScheduleExportDataSplit;
-  parts: GetScheduleExportData200PartsItem[];
-}
-
-/** One file to download, and the part it holds alone, if any. */
-interface DownloadedFile {
-  file: Blob;
-  part?: GetScheduleExportData200PartsItem;
-}
-
-interface SaveFileInput {
-  file: Blob;
-  name: string;
-}
-
-/** Hands a downloaded file to the browser under its own name. */
-function saveFile({ file, name }: SaveFileInput) {
-  const url = URL.createObjectURL(file);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-/** The refusal's translated message; a blob download carries it as a Blob. */
-async function refusalMessage(error: unknown): Promise<string | undefined> {
-  if (!isAxiosError(error) || !(error.response?.data instanceof Blob)) {
-    return undefined;
-  }
-  try {
-    const { message } = JSON.parse(await error.response.data.text());
-    return typeof message === 'string' && message ? message : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 interface ExportRange {
   from: string;
   to: string;
@@ -111,10 +71,12 @@ function splitQuery({ split }: SplitQueryInput) {
 /**
  * Exportar: the Schedule as an A4 PDF table (#1243) or one table image under
  * a live preview of the file (#1244), for any Cycle with a Schedule and
- * optionally only some of its dates (#1246), split into parts by Separar
- * (#1248): a PDF page run per part, a table image per part. The page is only
+ * optionally only some of its dates (#1246). The page is only
  * reachable by the Ministry's leaders and ChurchAdmins. The export data's
  * facts drive the Rascunho, unsent-changes and same-name notices (#1245).
+ * The files are prefetched once the preview settles, for Baixar and, on a
+ * phone, Compartilhar (#1251). Separar (#1248) splits every format into
+ * parts: PDF pages per part, table images per part.
  */
 export function ScheduleExport({
   ministryId,
@@ -146,75 +108,37 @@ export function ScheduleExport({
   const chosenSplit = split ?? (hasGroups ? 'group' : 'none');
   const selectedId = cycle?.id ?? cycleId;
   const query = { ...range, ...splitQuery({ split: chosenSplit }) };
+  // The default split waits for the Ministry's Event groups.
+  const ready = open && !groups.isPending;
   const { data: exported, error: refused } = useQuery({
     queryKey: ['schedule-export-data', ministryId, selectedId, query],
     queryFn: () =>
       Object.keys(query).length > 0
         ? exportApi.getScheduleExportData(ministryId, selectedId, query)
         : exportApi.getScheduleExportData(ministryId, selectedId),
-    // The default split waits for the Ministry's Event groups.
-    enabled: open && !groups.isPending,
+    enabled: ready,
   });
   const isDraft = exported?.isDraft ?? false;
-  const download = useMutation({
-    mutationFn: async (chosen: DownloadRequest): Promise<DownloadedFile[]> => {
-      const params = {
-        format: chosen.format,
-        ...range,
-        ...splitQuery(chosen),
-      };
-      // A PDF holds every part; a split's table image is one PNG per part.
-      const parts =
-        chosen.format === 'png' && chosen.split !== 'none' ? chosen.parts : [];
-      try {
-        if (parts.length === 0) {
-          const file = await exportApi.getScheduleExportFile(
-            ministryId,
-            chosen.cycle.id,
-            params,
-          );
-          return [{ file }];
-        }
-        const files: DownloadedFile[] = [];
-        for (const [index, part] of parts.entries()) {
-          const file = await exportApi.getScheduleExportFile(
-            ministryId,
-            chosen.cycle.id,
-            { ...params, part: index + 1 },
-          );
-          files.push({ file, part });
-        }
-        return files;
-      } catch (error) {
-        throw new Error(
-          (await refusalMessage(error)) ?? m.export_download_failed(),
-        );
-      }
-    },
-    onSuccess: (files, chosen) => {
-      if (!data) return;
-      const name = m.export_file_name({
-        ministry: data.ministry.name,
-        cycle: chosen.cycle.name,
-      });
-      for (const { file, part } of files) {
-        const partName = part ? exportPartName({ part }) : null;
-        const suffixes = [
-          ...(isDraft ? [m.export_draft()] : []),
-          ...(partName ? [partName] : []),
-        ];
-        saveFile({
-          file,
-          name: `${exportFileName({ name, suffixes })}.${chosen.format}`,
-        });
-      }
-      setOpen(false);
-    },
-    onError: (error) => toast.error(error.message),
+  const partNames = (exported?.parts ?? []).map((part) =>
+    exportPartName({ part }),
+  );
+  const settings = {
+    ministryId,
+    cycleId: selectedId,
+    format,
+    range,
+    ...splitQuery({ split: chosenSplit }),
+  };
+  const settled = useSettledExportSettings(settings);
+  const changing = JSON.stringify(settled) !== JSON.stringify(settings);
+  const files = useScheduleExportFiles({
+    settings: settled,
+    enabled: ready && online && !refused,
   });
   if (!data) return null;
   const selected = cycle ?? { ...data.cycle, id: cycleId };
   const span = cycleSpan({ cycle: selected });
+  const formatOption = FORMATS.find((item) => item.format === format);
   return (
     <>
       <Button
@@ -231,34 +155,26 @@ export function ScheduleExport({
       </Button>
       <ResponsiveFormSurface
         open={open}
-        onOpenChange={(value) => {
-          if (!download.isPending) setOpen(value);
-        }}
+        onOpenChange={setOpen}
         title={m.export_dialog_title()}
         description={m.export_dialog_description()}
         footer={
-          <>
-            {isDraft ? (
-              <p className="text-muted-foreground text-xs sm:mr-auto sm:self-center">
-                {m.export_draft_notice()}
-              </p>
-            ) : null}
-            <Button
-              // The file name needs the draft fact, so wait for the data.
-              disabled={download.isPending || !exported || !online}
-              onClick={() =>
-                download.mutate({
-                  cycle: selected,
-                  format,
-                  split: chosenSplit,
-                  parts: exported?.parts ?? [],
-                })
-              }
-            >
-              {download.isPending ? <Spinner /> : null}
-              {m.export_download()}
-            </Button>
-          </>
+          <ScheduleExportFooter
+            format={format}
+            name={m.export_file_name({
+              ministry: data.ministry.name,
+              cycle: selected.name,
+            })}
+            isDraft={isDraft}
+            // The file name needs the draft fact, so wait for the data.
+            files={exported && online && !changing ? files.data : undefined}
+            partNames={partNames}
+            isFetching={files.isFetching}
+            error={files.error}
+            formatLabel={formatOption?.label() ?? ''}
+            span={range ? daySpan(range) : span}
+            onDone={() => setOpen(false)}
+          />
         }
       >
         <div className="space-y-4 text-sm">
@@ -386,17 +302,8 @@ export function ScheduleExport({
             <p className="text-muted-foreground text-sm">
               {m.export_offline()}
             </p>
-          ) : refused || groups.isPending ? null : (
-            <ScheduleExportPreview
-              ministryId={ministryId}
-              cycleId={selected.id}
-              format={format}
-              range={range}
-              {...splitQuery({ split: chosenSplit })}
-              partNames={(exported?.parts ?? []).map((part) =>
-                exportPartName({ part }),
-              )}
-            />
+          ) : refused || !ready ? null : (
+            <ScheduleExportPreview settings={settled} partNames={partNames} />
           )}
         </div>
       </ResponsiveFormSurface>

@@ -406,6 +406,9 @@ describe('Separar in the files', () => {
     );
     expect(Buffer.compare(first.rawPayload, second.rawPayload)).not.toBe(0);
     expect(past.statusCode).toBe(404);
+    // A table image is one page of its part.
+    const pastPage = await get('file', 'format=png&split=sector&part=2&page=2');
+    expect(pastPage.statusCode).toBe(404);
   });
 
   it('names a week PNG after its week and the catch-all after its default name', async () => {

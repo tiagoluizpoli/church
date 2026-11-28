@@ -7397,6 +7397,11 @@ export type GetScheduleExportFileParams = {
    * @maximum 9007199254740991
    */
   part?: number;
+  /**
+   * @minimum 1
+   * @maximum 9007199254740991
+   */
+  page?: number;
 };
 
 export type GetScheduleExportFileSplit = typeof GetScheduleExportFileSplit[keyof typeof GetScheduleExportFileSplit];

@@ -66,6 +66,7 @@ async function clickDownload(dialog: HTMLElement) {
 }
 
 const pdf = new Blob(['%PDF'], { type: 'application/pdf' });
+const png = new Blob(['PNG'], { type: 'image/png' });
 const downloads: string[] = [];
 const svg = new Blob(['<svg/>'], { type: 'image/svg+xml' });
 const notFound = new AxiosError('Not Found', '404', undefined, undefined, {
@@ -84,6 +85,41 @@ function previewPages({ pdfPages = 2 } = {}) {
         ? Promise.resolve(svg)
         : Promise.reject(notFound),
   );
+}
+
+/** The server's files: one PDF, `images` table PNGs read by page until 404. */
+function filePages({ images = 1 } = {}) {
+  state.getScheduleExportFile.mockImplementation(
+    (
+      _ministryId: string,
+      _cycleId: string,
+      params: { format: string; page?: number },
+    ) => {
+      if (params.format === 'pdf') return Promise.resolve(pdf);
+      return (params.page ?? 1) <= images
+        ? Promise.resolve(png)
+        : Promise.reject(notFound);
+    },
+  );
+}
+
+interface ShareSupport {
+  canShare?: (data: ShareData) => boolean;
+  share?: (data: ShareData) => Promise<void>;
+}
+
+/** The device's Web Share support; jsdom has none. */
+function setShare({ canShare, share }: ShareSupport) {
+  for (const [key, value] of Object.entries({ canShare, share })) {
+    Object.defineProperty(window.navigator, key, {
+      configurable: true,
+      value,
+    });
+  }
+}
+
+function fileCalls() {
+  return state.getScheduleExportFile.mock.calls.map(([, , params]) => params);
 }
 
 function previewCalls() {
@@ -107,9 +143,10 @@ beforeEach(() => {
     stage: 'published',
     cycle: { ...SCHEDULE.cycle, name: 'Março: 2027' },
   };
-  state.getScheduleExportFile.mockResolvedValue(pdf);
+  filePages();
   state.getScheduleExportData.mockResolvedValue(EXPORT_DATA);
   previewPages();
+  setShare({});
   setOnline(true);
   URL.createObjectURL = vi.fn(() => 'blob:export');
   URL.revokeObjectURL = vi.fn();
@@ -157,25 +194,20 @@ it('opens on the Schedule Cycle and downloads the whole Cycle as a PDF', async (
   );
 });
 
-it('keeps the dialog open and says so when the download fails', async () => {
+it('says so and keeps Baixar off when the files cannot be fetched', async () => {
   state.getScheduleExportFile.mockRejectedValue(new Error('offline'));
   renderWithProviders(<ScheduleExport ministryId="m" cycleId="c" />);
 
   fireEvent.click(screen.getByRole('button', { name: m.export_open() }));
   await waitForDialogFocus();
-  await clickDownload(
-    screen.getByRole('dialog', { name: m.export_dialog_title() }),
-  );
+  const dialog = screen.getByRole('dialog', { name: m.export_dialog_title() });
 
-  await waitFor(() =>
-    expect(state.toastError).toHaveBeenCalledExactlyOnceWith(
-      m.export_download_failed(),
-    ),
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+    m.export_download_failed(),
   );
-  expect(downloads).toEqual([]);
   expect(
-    screen.getByRole('dialog', { name: m.export_dialog_title() }),
-  ).toBeVisible();
+    within(dialog).getByRole('button', { name: m.export_download() }),
+  ).toBeDisabled();
 });
 
 async function openDialog() {
@@ -330,8 +362,6 @@ it('warns next to the preview that the table image arrives shrunk on WhatsApp', 
 });
 
 it('downloads the table image as one PNG', async () => {
-  const png = new Blob(['PNG'], { type: 'image/png' });
-  state.getScheduleExportFile.mockResolvedValue(png);
   const dialog = await openDialog();
 
   fireEvent.click(
@@ -344,11 +374,12 @@ it('downloads the table image as one PNG', async () => {
       `${m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' })}.png`,
     ]),
   );
-  expect(state.getScheduleExportFile).toHaveBeenCalledExactlyOnceWith(
-    'm',
-    'c',
-    { format: 'png' },
-  );
+  // The PDF was prefetched first, before the format changed.
+  expect(fileCalls()).toEqual([
+    { format: 'pdf' },
+    { format: 'png', page: 1 },
+    { format: 'png', page: 2 },
+  ]);
 });
 
 it('says there is no preview and no export without a connection', async () => {
@@ -399,5 +430,243 @@ it('previews only the chosen dates', async () => {
       from: '2027-01-01',
       to: '2027-01-31',
     }),
+  );
+});
+
+interface Deferred {
+  promise: Promise<Blob>;
+  resolve: (value: Blob) => void;
+}
+
+function deferred(): Deferred {
+  let resolve: (value: Blob) => void = () => {};
+  const promise = new Promise<Blob>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+function footerSummary(dialog: HTMLElement) {
+  return within(dialog).queryByText(/ · /, {
+    selector: '[data-export-summary]',
+  });
+}
+
+it('fetches the files once the preview settles and turns Baixar on when they are ready', async () => {
+  const preview = deferred();
+  const file = deferred();
+  state.getScheduleExportPreview.mockReturnValueOnce(preview.promise);
+  state.getScheduleExportFile.mockReturnValueOnce(file.promise);
+  setShare({ canShare: () => true, share: vi.fn() });
+  const dialog = await openDialog();
+  const download = within(dialog).getByRole('button', {
+    name: m.export_download(),
+  });
+  const share = within(dialog).getByRole('button', { name: m.export_share() });
+
+  await waitFor(() =>
+    expect(state.getScheduleExportPreview).toHaveBeenCalled(),
+  );
+  expect(state.getScheduleExportFile).not.toHaveBeenCalled();
+  preview.resolve(svg);
+  await waitFor(() => expect(fileCalls()).toEqual([{ format: 'pdf' }]));
+  expect(download).toBeDisabled();
+  expect(share).toBeDisabled();
+
+  file.resolve(pdf);
+  await waitFor(() => expect(download).toBeEnabled());
+  expect(share).toBeEnabled();
+});
+
+it('fetches the files again only once the changed preview settles', async () => {
+  const dialog = await openDialog();
+  await waitFor(() =>
+    expect(
+      within(dialog).getByRole('button', { name: m.export_download() }),
+    ).toBeEnabled(),
+  );
+
+  fireEvent.click(
+    within(dialog).getByRole('radio', { name: m.export_format_table_image() }),
+  );
+
+  expect(
+    within(dialog).getByRole('button', { name: m.export_download() }),
+  ).toBeDisabled();
+  await waitFor(() =>
+    expect(fileCalls()).toEqual([
+      { format: 'pdf' },
+      { format: 'png', page: 1 },
+      { format: 'png', page: 2 },
+    ]),
+  );
+  await waitFor(() =>
+    expect(
+      within(dialog).getByRole('button', { name: m.export_download() }),
+    ).toBeEnabled(),
+  );
+});
+
+it('shows Compartilhar only where the device can share the files', async () => {
+  const canShare = vi.fn((data: ShareData) =>
+    (data.files ?? []).every((file) => file.type === 'application/pdf'),
+  );
+  setShare({ canShare, share: vi.fn() });
+  const dialog = await openDialog();
+
+  expect(
+    within(dialog).getByRole('button', { name: m.export_share() }),
+  ).toBeVisible();
+  fireEvent.click(
+    within(dialog).getByRole('radio', { name: m.export_format_table_image() }),
+  );
+  expect(
+    within(dialog).queryByRole('button', { name: m.export_share() }),
+  ).toBeNull();
+});
+
+it('shows no Compartilhar on a device without Web Share', async () => {
+  const dialog = await openDialog();
+  await waitFor(() =>
+    expect(
+      within(dialog).getByRole('button', { name: m.export_download() }),
+    ).toBeEnabled(),
+  );
+
+  expect(
+    within(dialog).queryByRole('button', { name: m.export_share() }),
+  ).toBeNull();
+});
+
+async function shareButton(dialog: HTMLElement) {
+  const button = within(dialog).getByRole('button', { name: m.export_share() });
+  await waitFor(() => expect(button).toBeEnabled());
+  return button;
+}
+
+it('shares every image in one call, each named as a part', async () => {
+  filePages({ images: 2 });
+  const share = vi.fn(() => Promise.resolve());
+  setShare({ canShare: () => true, share });
+  const dialog = await openDialog();
+  fireEvent.click(
+    within(dialog).getByRole('radio', { name: m.export_format_table_image() }),
+  );
+
+  fireEvent.click(await shareButton(dialog));
+
+  expect(share).toHaveBeenCalledTimes(1);
+  const [{ files }] = share.mock.calls[0] as unknown as [{ files: File[] }];
+  const name = m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' });
+  expect(files.map((file) => [file.name, file.type])).toEqual([
+    [
+      `${name} - ${m.export_file_part({ part: '1', count: '2' })}.png`,
+      'image/png',
+    ],
+    [
+      `${name} - ${m.export_file_part({ part: '2', count: '2' })}.png`,
+      'image/png',
+    ],
+  ]);
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: m.export_dialog_title() }),
+    ).not.toBeInTheDocument(),
+  );
+});
+
+it('shares the PDF as application/pdf', async () => {
+  const share = vi.fn(() => Promise.resolve());
+  setShare({ canShare: () => true, share });
+  const dialog = await openDialog();
+
+  fireEvent.click(await shareButton(dialog));
+
+  const [{ files }] = share.mock.calls[0] as unknown as [{ files: File[] }];
+  expect(files.map((file) => [file.name, file.type])).toEqual([
+    [
+      `${m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' })}.pdf`,
+      'application/pdf',
+    ],
+  ]);
+});
+
+it('stays open, quietly, when the leader closes the share sheet', async () => {
+  const share = vi.fn(() =>
+    Promise.reject(new DOMException('cancelled', 'AbortError')),
+  );
+  setShare({ canShare: () => true, share });
+  const dialog = await openDialog();
+
+  fireEvent.click(await shareButton(dialog));
+
+  await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+  await act(() => Promise.resolve());
+  expect(state.toastError).not.toHaveBeenCalled();
+  expect(dialog).toBeVisible();
+});
+
+it('says so when sharing fails', async () => {
+  const share = vi.fn(() => Promise.reject(new Error('denied')));
+  setShare({ canShare: () => true, share });
+  const dialog = await openDialog();
+
+  fireEvent.click(await shareButton(dialog));
+
+  await waitFor(() =>
+    expect(state.toastError).toHaveBeenCalledExactlyOnceWith(
+      m.export_share_failed(),
+    ),
+  );
+  expect(dialog).toBeVisible();
+});
+
+it('downloads every image, each named as a part', async () => {
+  filePages({ images: 2 });
+  const dialog = await openDialog();
+  fireEvent.click(
+    within(dialog).getByRole('radio', { name: m.export_format_table_image() }),
+  );
+
+  await clickDownload(dialog);
+
+  const name = m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' });
+  await waitFor(() =>
+    expect(downloads).toEqual([
+      `${name} - ${m.export_file_part({ part: '1', count: '2' })}.png`,
+      `${name} - ${m.export_file_part({ part: '2', count: '2' })}.png`,
+    ]),
+  );
+});
+
+it('sums up the files in the footer: count, format and span', async () => {
+  filePages({ images: 2 });
+  const dialog = await openDialog();
+
+  await waitFor(() =>
+    expect(footerSummary(dialog)).toHaveTextContent(
+      m.export_summary({
+        files: m.export_files_one(),
+        format: m.export_format_pdf(),
+        span: '01/01/2027 – 31/01/2027',
+      }),
+    ),
+  );
+
+  fireEvent.click(
+    within(dialog).getByRole('radio', { name: m.export_format_table_image() }),
+  );
+  fireEvent.click(
+    within(dialog).getByRole('radio', { name: m.export_pick_dates() }),
+  );
+  expect(footerSummary(dialog)).toBeNull();
+  await waitFor(() =>
+    expect(footerSummary(dialog)).toHaveTextContent(
+      m.export_summary({
+        files: m.export_files_other({ count: '2' }),
+        format: m.export_format_table_image(),
+        span: '01/01/2027 – 31/01/2027',
+      }),
+    ),
   );
 });

@@ -110,6 +110,8 @@ export const scheduleExportFileQuerySchema =
     format: exportFormatSchema,
     /** The image's part; the PDF holds every part. */
     part: partQuerySchema,
+    /** 1-based image of the part; the PDF is one file. Past the last is 404. */
+    page: z.coerce.number().int().min(1).default(1),
   });
 
 export const scheduleExportPreviewQuerySchema =

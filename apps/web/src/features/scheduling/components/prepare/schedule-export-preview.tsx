@@ -1,5 +1,9 @@
 import { m } from '@church/i18n/messages';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  queryOptions,
+  useQuery,
+} from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { Spinner } from '@/components/ui/spinner';
@@ -17,20 +21,31 @@ interface PreviewRange {
   to: string;
 }
 
-export interface ScheduleExportPreviewProps {
+/** What one export is: the preview, the files and their summary follow it. */
+export interface ScheduleExportSettings {
   ministryId: string;
   cycleId: string;
   format: GetScheduleExportFileFormat;
   /** Null: the whole Cycle. */
   range: PreviewRange | null;
-  /** Left out: one part. */
+  /** Separar; left out for one part. */
   split?: GetScheduleExportDataSplit;
 }
 
-export interface ScheduleExportPreviewViewProps
-  extends ScheduleExportPreviewProps {
-  /** Each part's name, in order, to label a table image's pages. */
+interface ScheduleExportPreviewProps {
+  /** Settled settings: see `useSettledExportSettings`. */
+  settings: ScheduleExportSettings;
+  /** Each part's name, in order, to label a split's table images. */
   partNames: (string | null)[];
+}
+
+/** One page or image of the export; `part` is set on a split's images. */
+export interface ExportPage {
+  blob: Blob;
+  /** 1-based. */
+  part?: number;
+  /** 1-based, inside its part. */
+  number: number;
 }
 
 interface PreviewPageProps {
@@ -38,75 +53,75 @@ interface PreviewPageProps {
   label: string;
 }
 
-/** A page of the preview; `part` is set on each table image of a split. */
-interface PreviewPageBlob {
-  page: Blob;
-  part?: number;
-  number: number;
-}
-
-interface ReadPartPagesInput extends ScheduleExportPreviewProps {
-  part?: number;
-}
-
-function isNotFound(error: unknown): boolean {
+export function isNotFound(error: unknown): boolean {
   return isAxiosError(error) && error.response?.status === 404;
 }
 
-/**
- * Every SVG page of the file or of one table image part, in order: the
- * server answers 404 past the last page, so pages are read until then.
- */
-async function readPartPages({
-  ministryId,
-  cycleId,
-  format,
-  range,
-  split,
-  part,
-}: ReadPartPagesInput): Promise<PreviewPageBlob[]> {
-  const pages: PreviewPageBlob[] = [];
-  for (;;) {
-    const number = pages.length + 1;
-    try {
-      const page = await exportApi.getScheduleExportPreview(
-        ministryId,
-        cycleId,
-        {
-          format,
-          page: number,
-          ...range,
-          ...(split ? { split } : {}),
-          ...(part ? { part } : {}),
-        },
-      );
-      pages.push({ page, part, number });
-    } catch (error) {
-      if (number > 1 && isNotFound(error)) return pages;
-      throw error;
-    }
-  }
+/** Which page to read: 1-based, inside the 1-based part of a split's images. */
+export interface ExportPageRequest {
+  page: number;
+  part?: number;
+}
+
+type ReadPage = (request: ExportPageRequest) => Promise<Blob>;
+
+interface ReadExportPagesInput {
+  /** A split's images: read part by part. */
+  byPart: boolean;
+  read: ReadPage;
 }
 
 /**
- * The preview's pages: the PDF's through every part, or each table image
- * part's in turn, parts read until the server answers 404.
+ * Every page in order, or every part's pages in turn: the server answers
+ * 404 past the last page and past the last part, so both are read until then.
  */
-async function readPreviewPages(
-  settings: ScheduleExportPreviewProps,
-): Promise<PreviewPageBlob[]> {
-  if (settings.format === 'pdf' || !settings.split) {
-    return readPartPages(settings);
-  }
-  const pages: PreviewPageBlob[] = [];
+export async function readExportPages({
+  byPart,
+  read,
+}: ReadExportPagesInput): Promise<ExportPage[]> {
+  const readPart = async (part?: number) => {
+    const pages: ExportPage[] = [];
+    for (;;) {
+      const number = pages.length + 1;
+      try {
+        pages.push({ blob: await read({ page: number, part }), part, number });
+      } catch (error) {
+        if (number > 1 && isNotFound(error)) return pages;
+        throw error;
+      }
+    }
+  };
+  if (!byPart) return readPart();
+  const pages: ExportPage[] = [];
   for (let part = 1; ; part += 1) {
     try {
-      pages.push(...(await readPartPages({ ...settings, part })));
+      pages.push(...(await readPart(part)));
     } catch (error) {
       if (part > 1 && isNotFound(error)) return pages;
       throw error;
     }
   }
+}
+
+/** The preview's SVG pages: the PDF's through every part, or each part's image. */
+function readPreviewPages({
+  ministryId,
+  cycleId,
+  format,
+  range,
+  split,
+}: ScheduleExportSettings): Promise<ExportPage[]> {
+  return readExportPages({
+    byPart: format === 'png' && split !== undefined,
+    read: ({ page, part }) =>
+      exportApi.getScheduleExportPreview(ministryId, cycleId, {
+        format,
+        page,
+        ...range,
+        ...(split ? { split } : {}),
+        ...(part ? { part } : {}),
+      }),
+  });
 }
 
 function PreviewPage({ page, label }: PreviewPageProps) {
@@ -138,11 +153,10 @@ function PreviewPage({ page, label }: PreviewPageProps) {
   );
 }
 
-/** The server's own render of the file, so the file never differs from it. */
-export function ScheduleExportPreview({
-  partNames,
-  ...settings
-}: ScheduleExportPreviewViewProps) {
+/** The settings once they stopped changing for the preview's debounce. */
+export function useSettledExportSettings(
+  settings: ScheduleExportSettings,
+): ScheduleExportSettings {
   const [settled, setSettled] = useState(settings);
   const key = JSON.stringify(settings);
   // biome-ignore lint/correctness/useExhaustiveDependencies: settles on a real change of the settings, not on each render's new object
@@ -150,11 +164,24 @@ export function ScheduleExportPreview({
     const timer = setTimeout(() => setSettled(settings), PREVIEW_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [key]);
-  const preview = useQuery({
-    queryKey: ['schedule-export-preview', settled],
-    queryFn: () => readPreviewPages(settled),
+  return settled;
+}
+
+/** The preview pages of settled settings; the dialog waits on it too. */
+export function previewQueryOptions(settings: ScheduleExportSettings) {
+  return queryOptions({
+    queryKey: ['schedule-export-preview', settings],
+    queryFn: () => readPreviewPages(settings),
     placeholderData: keepPreviousData,
   });
+}
+
+/** The server's own render of the file, so the file never differs from it. */
+export function ScheduleExportPreview({
+  settings,
+  partNames,
+}: ScheduleExportPreviewProps) {
+  const preview = useQuery(previewQueryOptions(settings));
   return (
     <section aria-label={m.export_preview_label()} className="space-y-3">
       {preview.isPending ? (
@@ -165,13 +192,13 @@ export function ScheduleExportPreview({
       ) : preview.isError ? (
         <p className="text-destructive text-sm">{m.export_preview_failed()}</p>
       ) : (
-        preview.data.map(({ page, part, number }, index) => {
+        preview.data.map(({ blob, part, number }, index) => {
           const name = part ? partNames[part - 1] : null;
           const label = name
             ? m.export_preview_part_page({ part: name, page: String(number) })
             : m.export_preview_page({ page: String(index + 1) });
           return (
-            <PreviewPage key={page.size + index} page={page} label={label} />
+            <PreviewPage key={blob.size + index} page={blob} label={label} />
           );
         })
       )}

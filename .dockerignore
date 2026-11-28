@@ -27,3 +27,4 @@ apps/fumadocs
 .config
 .vscode
 .mcp.json
+**/.tools

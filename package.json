@@ -65,6 +65,7 @@
     "test:validation": "bun tooling/ci/bun-test.ts tooling",
     "env:check": "bun tooling/env/check.ts",
     "env:local": "bun tooling/diagnostics/run-managed.ts env:local -- bun tooling/worktree/local-env.ts",
+    "typst:install": "bun tooling/typst/install.ts",
     "db:bootstrap": "bun tooling/diagnostics/run-managed.ts db:bootstrap -- bun tooling/worktree/bootstrap-databases.ts",
     "worktree:bootstrap": "bun tooling/worktree/bootstrap-worktree.ts",
     "db:prune": "bun tooling/diagnostics/run-managed.ts db:prune -- bun tooling/worktree/prune-databases.ts",

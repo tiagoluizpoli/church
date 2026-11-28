@@ -36,6 +36,18 @@ runs:
       shell: bash
       run: bun install --frozen-lockfile
 
+    - name: Install Typst and Poppler
+      id: typst
+      # Server renders Schedule exports with the pinned Typst CLI; the render
+      # integration tests read PDFs with pdftotext and pdffonts.
+      shell: bash
+      run: |
+        if ! command -v pdftotext >/dev/null || ! command -v xz >/dev/null; then
+          SUDO=$(command -v sudo || true)
+          $SUDO apt-get update -q && $SUDO apt-get install -y -q --no-install-recommends poppler-utils xz-utils
+        fi
+        bun run typst:install
+
     - name: Keep failure bundles and test output in runner-temporary storage
       id: failure-bundles
       # ADR-0005: CI has no shared Git directory to keep bundles in; the
@@ -62,5 +74,6 @@ runs:
         "${{ steps.toolchain.outcome }}:toolchain"
         "${{ steps.dependency-cache.outcome }}:dependency cache"
         "${{ steps.dependencies.outcome }}:dependency installation"
+        "${{ steps.typst.outcome }}:typst installation"
         "${{ steps.failure-bundles.outcome }}:failure-bundle setup"
         "${{ steps.migrate.outcome }}:database migration"

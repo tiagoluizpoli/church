@@ -1,4 +1,3 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { z } from 'zod';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
@@ -26,10 +25,4 @@ export interface ChurchAdminControllerDependencies {
   ministryManager: IMinistryManager;
   setupProgressManager: ISetupProgressManager;
   authorityGuard: IAuthorityGuard;
-}
-
-export interface NestedObjectOperationInput<T> {
-  request: FastifyRequest;
-  reply: FastifyReply;
-  operation: () => Promise<T>;
 }

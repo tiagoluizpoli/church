@@ -1,5 +1,5 @@
 import type { AppConfig } from '@church/app-config';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyRequest } from 'fastify';
 import type { UserId } from '../../domain/branded-ids';
 import type { IRedemptionManager } from '../../domain/contracts/application/redemption-manager';
 import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
@@ -12,7 +12,6 @@ export interface AuthenticatedRedeemer {
 
 export interface RequireRedeemerInput {
   request: FastifyRequest;
-  reply: FastifyReply;
 }
 
 /** The restricted preview field set the existing-member route exposes (spec §7.1). */

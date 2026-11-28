@@ -76,10 +76,8 @@ export class UsualSetupController implements FastifyController {
           authorityGuard: this.authorityGuard,
           ministryManager: this.ministryManager,
           request,
-          reply,
           ministryId: MinistryId.from(request.params.ministryId),
         });
-        if (!ministryId) return;
         const blocks = await this.usualSetupManager.listUsualSetupBlocks({
           churchId: request.churchId,
           ministryId,
@@ -111,10 +109,8 @@ export class UsualSetupController implements FastifyController {
           authorityGuard: this.authorityGuard,
           ministryManager: this.ministryManager,
           request,
-          reply,
           ministryId: MinistryId.from(request.params.ministryId),
         });
-        if (!ministryId) return;
         const { sourceTemplateTimeBlockId } = request.params;
         const block = await this.usualSetupManager.saveUsualSetupBlock({
           churchId: request.churchId,

@@ -1,5 +1,5 @@
 import type { AppConfig } from '@church/app-config';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply } from 'fastify';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IChurchAccessManager } from '../../domain/contracts/application/church-access-manager';
@@ -14,7 +14,6 @@ export type MembershipOutcome =
 
 export interface SendMembershipOutcomeInput {
   reply: FastifyReply;
-  request: FastifyRequest;
   outcome: MembershipOutcome;
 }
 

@@ -1,4 +1,3 @@
-import { NotFoundError } from '@church/core';
 import { z } from 'zod';
 import { EventId, MinistryId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -8,8 +7,8 @@ import type { EventStatus } from '../../domain/entities/event';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import {
-  denyMinistryFunction,
-  denyMinistryManagement,
+  assertMinistryFunction,
+  assertMinistryManagement,
 } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
@@ -23,7 +22,6 @@ import {
   scheduleBuilderDataResponseSchema,
 } from '../dtos/event.dto';
 import { idSchema } from '../dtos/id.dto';
-import { refuse } from '../utils/refuse';
 import type { EventControllerDependencies } from './event-controller.types';
 
 export class EventController implements FastifyController {
@@ -77,25 +75,16 @@ export class EventController implements FastifyController {
       },
       async (request, reply) => {
         const { authorityGuard } = this;
-        if (await denyMinistryFunction({ authorityGuard, request, reply })) {
-          return;
-        }
+        await assertMinistryFunction({ authorityGuard, request });
 
         const { eventId, ministryId } = request.query;
-        try {
-          const data = await this.eventManager.getScheduleBuilderData({
-            churchId: request.churchId,
-            eventId: EventId.from(eventId),
-            userId: request.userId,
-            ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
-          });
-          return reply.send(eventMapper.scheduleBuilderToResponse(data));
-        } catch (error) {
-          if (error instanceof NotFoundError) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
+        const data = await this.eventManager.getScheduleBuilderData({
+          churchId: request.churchId,
+          eventId: EventId.from(eventId),
+          userId: request.userId,
+          ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
+        });
+        return reply.send(eventMapper.scheduleBuilderToResponse(data));
       },
     );
 
@@ -118,13 +107,11 @@ export class EventController implements FastifyController {
       },
       async (request, reply) => {
         const { ministryId, status } = request.query;
-        const denied = await denyMinistryManagement({
+        await assertMinistryManagement({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
           ministryId: MinistryId.from(ministryId),
         });
-        if (denied) return;
 
         const events = await this.eventManager.listEvents({
           churchId: request.churchId,

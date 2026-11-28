@@ -1,4 +1,3 @@
-import { NotFoundError } from '@church/core';
 import { NotificationId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
@@ -18,7 +17,7 @@ import {
   memberNotificationsQuerystringSchema,
 } from '../dtos/member-notification.dto';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
-import { refuse } from '../utils/refuse';
+import { RefusalError } from '../utils/refusal-error';
 import { requestCaller } from '../utils/request-caller';
 import type { NotificationControllerDependencies } from './notification-controller.types';
 
@@ -58,7 +57,7 @@ export class NotificationController implements FastifyController {
 
     // Every route is the caller's own inbox: the owner is the session User,
     // never a parameter, so member-level access is the only rule to ask.
-    app.addHook('preHandler', async (request, reply) => {
+    app.addHook('preHandler', async (request) => {
       const caller = requestCaller({ request });
       const { churchId } = caller;
       const decision = await this.authorityGuard.decideAuthority({
@@ -67,8 +66,7 @@ export class NotificationController implements FastifyController {
         resource: { type: 'church', churchId },
         scope: 'function',
       });
-      if (!decision.allowed)
-        return refuse({ reply, request, code: 'FORBIDDEN' });
+      if (!decision.allowed) throw new RefusalError({ code: 'FORBIDDEN' });
     });
 
     const refusals = {
@@ -124,18 +122,11 @@ export class NotificationController implements FastifyController {
         },
       },
       async (request, reply) => {
-        try {
-          await this.notificationManager.markRead({
-            userId: request.userId,
-            churchId: request.churchId,
-            notificationId: NotificationId.from(request.params.notificationId),
-          });
-        } catch (error) {
-          if (error instanceof NotFoundError) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
+        await this.notificationManager.markRead({
+          userId: request.userId,
+          churchId: request.churchId,
+          notificationId: NotificationId.from(request.params.notificationId),
+        });
         return reply.status(200).send({ marked: true });
       },
     );

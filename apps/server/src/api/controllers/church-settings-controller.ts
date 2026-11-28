@@ -1,4 +1,3 @@
-import { NotFoundError } from '@church/core';
 import { m } from '@church/i18n/messages';
 import multipart from '@fastify/multipart';
 import { ChurchAddressesRefused } from '../../domain/church-address';
@@ -35,7 +34,6 @@ import {
   authErrorResponses,
   errorResponseSchema,
 } from '../dtos/error-response.dto';
-import { refuse } from '../utils/refuse';
 import type { ChurchSettingsControllerDependencies } from './church-settings-controller.types';
 
 /** The Active Church's Church Settings, ChurchAdmin only. */
@@ -144,18 +142,11 @@ export class ChurchSettingsController implements FastifyController {
         },
       },
       async (request, reply) => {
-        try {
-          const usage = await this.churchSettingsManager.getAddressUsage({
-            churchId: request.churchId,
-            addressId: request.params.addressId,
-          });
-          return reply.send(usage);
-        } catch (error) {
-          if (error instanceof NotFoundError) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
+        const usage = await this.churchSettingsManager.getAddressUsage({
+          churchId: request.churchId,
+          addressId: request.params.addressId,
+        });
+        return reply.send(usage);
       },
     );
 

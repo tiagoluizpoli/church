@@ -168,6 +168,29 @@ describe('RedemptionController', () => {
     expect(redemptionManager.requestVerificationCode).not.toHaveBeenCalled();
   });
 
+  it('rate-limits the public preview itself, before reading the invitation', async () => {
+    const { maxRequests } = appConfig.redemptionRateLimit;
+    for (let requestCount = 0; requestCount < maxRequests; requestCount += 1) {
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/church/${INVITATION_ID}/code`,
+        remoteAddress: '203.0.113.11',
+      });
+    }
+    const previewResponse = await app.inject({
+      method: 'GET',
+      url: `/api/v1/redemption/church/${INVITATION_ID}`,
+      remoteAddress: '203.0.113.11',
+    });
+
+    expect(previewResponse.statusCode).toBe(429);
+    expect(previewResponse.json()).toEqual({
+      error: 'RATE_LIMITED',
+      message: 'Muitas tentativas. Tente novamente em instantes.',
+    });
+    expect(redemptionManager.getPublicPreview).not.toHaveBeenCalled();
+  });
+
   it('does not disclose a verification-code resend cooldown', async () => {
     vi.mocked(redemptionManager.requestVerificationCode).mockRejectedValue(
       new VerificationCodeError({

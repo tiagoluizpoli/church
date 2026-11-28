@@ -5,7 +5,7 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IMinistryRoleManager } from '../../domain/contracts/application/ministry-role-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import { denyMinistryManagement } from '../auth/authority-access';
+import { assertMinistryManagement } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
 import {
@@ -75,16 +75,11 @@ export class MinistryRoleController implements FastifyController {
       },
       async (request, reply) => {
         const ministryId = MinistryId.from(request.params.ministryId);
-        if (
-          await denyMinistryManagement({
-            authorityGuard,
-            request,
-            reply,
-            ministryId,
-          })
-        ) {
-          return;
-        }
+        await assertMinistryManagement({
+          authorityGuard,
+          request,
+          ministryId,
+        });
         const roles = await this.ministryRoleManager.list({
           churchId: request.churchId,
           ministryId,
@@ -114,16 +109,11 @@ export class MinistryRoleController implements FastifyController {
       },
       async (request, reply) => {
         const ministryId = MinistryId.from(request.params.ministryId);
-        if (
-          await denyMinistryManagement({
-            authorityGuard,
-            request,
-            reply,
-            ministryId,
-          })
-        ) {
-          return;
-        }
+        await assertMinistryManagement({
+          authorityGuard,
+          request,
+          ministryId,
+        });
         const { name } = request.body;
         const role = await this.ministryRoleManager.create({
           churchId: request.churchId,
@@ -156,16 +146,11 @@ export class MinistryRoleController implements FastifyController {
       async (request, reply) => {
         const { params } = request;
         const ministryId = MinistryId.from(params.ministryId);
-        if (
-          await denyMinistryManagement({
-            authorityGuard,
-            request,
-            reply,
-            ministryId,
-          })
-        ) {
-          return;
-        }
+        await assertMinistryManagement({
+          authorityGuard,
+          request,
+          ministryId,
+        });
         const { name } = request.body;
         const role = await this.ministryRoleManager.rename({
           churchId: request.churchId,
@@ -198,16 +183,11 @@ export class MinistryRoleController implements FastifyController {
       async (request, reply) => {
         const { params } = request;
         const ministryId = MinistryId.from(params.ministryId);
-        if (
-          await denyMinistryManagement({
-            authorityGuard,
-            request,
-            reply,
-            ministryId,
-          })
-        ) {
-          return;
-        }
+        await assertMinistryManagement({
+          authorityGuard,
+          request,
+          ministryId,
+        });
         await this.ministryRoleManager.archive({
           churchId: request.churchId,
           ministryId,

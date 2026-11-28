@@ -1,4 +1,4 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyRequest } from 'fastify';
 import type {
   ActiveChurchResolution,
   IActiveChurchResolver,
@@ -11,7 +11,6 @@ export interface BuildStatusResponseInput {
 
 export interface RequireSessionInput {
   request: FastifyRequest;
-  reply: FastifyReply;
 }
 
 /**

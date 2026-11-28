@@ -1,4 +1,3 @@
-import { NotFoundError } from '@church/core';
 import { z } from 'zod';
 import { CycleId, MinistryId, SwapRequestId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -7,7 +6,7 @@ import type { ISwapRequestListManager } from '../../domain/contracts/application
 import type { ISwapRequestManager } from '../../domain/contracts/application/swap-request-manager';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import { denyUnmanagedMinistry } from '../auth/authority-access';
+import { assertManagedMinistry } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   authErrorResponses,
@@ -19,7 +18,6 @@ import {
   leaderSwapRequestsQuerySchema,
   leaderSwapRequestsResponseSchema,
 } from '../dtos/swap-request.dto';
-import { refuse } from '../utils/refuse';
 import type { SwapRequestListControllerDependencies } from './swap-request-list-controller.types';
 
 /** The leader-facing Swap request read (Spec 28 consumes it). */
@@ -78,13 +76,11 @@ export class SwapRequestListController implements FastifyController {
         const { cycleId } = request.query;
         const { churchId } = request;
         // Concealed: no 403 first, so a caller cannot tell a foreign Ministry from a missing one.
-        const denied = await denyUnmanagedMinistry({
+        await assertManagedMinistry({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
           ministryId: MinistryId.from(ministryId),
         });
-        if (denied) return;
         return reply.send(
           await this.swapRequestListManager.listForLeader({
             churchId,
@@ -119,28 +115,19 @@ export class SwapRequestListController implements FastifyController {
         const { ministryId, swapRequestId } = request.params;
         const body = request.body;
         const { churchId, userId } = request;
-        const denied = await denyUnmanagedMinistry({
+        await assertManagedMinistry({
           authorityGuard: this.authorityGuard,
           request,
-          reply,
           ministryId: MinistryId.from(ministryId),
         });
-        if (denied) return;
-        try {
-          await this.swapRequestManager.keep({
-            churchId,
-            userId,
-            ministryId: MinistryId.from(ministryId),
-            swapRequestId: SwapRequestId.from(swapRequestId),
-            reply: body.reply,
-          });
-          return reply.status(204).send(null);
-        } catch (error) {
-          if (error instanceof NotFoundError) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
+        await this.swapRequestManager.keep({
+          churchId,
+          userId,
+          ministryId: MinistryId.from(ministryId),
+          swapRequestId: SwapRequestId.from(swapRequestId),
+          reply: body.reply,
+        });
+        return reply.status(204).send(null);
       },
     );
   }

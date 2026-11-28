@@ -11,16 +11,23 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
+import { useEventGroups } from '@/features/ministries/ministry-queries';
+import { useMinistryRoles } from '@/features/ministries/role-queries';
 import {
   cycleSpan,
   type ExportCycle,
   ScheduleExportCyclePicker,
 } from '@/features/scheduling/components/prepare/schedule-export-cycle-picker';
 import { ScheduleExportGroups } from '@/features/scheduling/components/prepare/schedule-export-groups';
+import { exportPartName } from '@/features/scheduling/components/prepare/schedule-export-part-name';
 import { ScheduleExportPreview } from '@/features/scheduling/components/prepare/schedule-export-preview';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { useOnlineState } from '@/features/volunteers/hooks/use-online-state';
-import type { GetScheduleExportFileFormat } from '@/infrastructure/api/churchAPI.schemas';
+import type {
+  GetScheduleExportData200PartsItem,
+  GetScheduleExportDataSplit,
+  GetScheduleExportFileFormat,
+} from '@/infrastructure/api/churchAPI.schemas';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { exportApi } from '@/utils/api-instances';
 
@@ -38,9 +45,25 @@ const FORMATS = [
   { format: 'png', label: m.export_format_table_image },
 ] as const;
 
+const SPLITS = [
+  { split: 'none', label: m.export_split_none },
+  { split: 'group', label: m.export_split_group },
+  { split: 'week', label: m.export_split_week },
+  { split: 'sector', label: m.export_split_sector },
+  { split: 'role', label: m.export_split_role },
+] as const;
+
 interface DownloadRequest {
   cycle: ExportCycle;
   format: GetScheduleExportFileFormat;
+  split: GetScheduleExportDataSplit;
+  parts: GetScheduleExportData200PartsItem[];
+}
+
+/** One file to download, and the part it holds alone, if any. */
+interface DownloadedFile {
+  file: Blob;
+  part?: GetScheduleExportData200PartsItem;
 }
 
 interface SaveFileInput {
@@ -76,10 +99,20 @@ interface ExportRange {
   to: string;
 }
 
+interface SplitQueryInput {
+  split: GetScheduleExportDataSplit;
+}
+
+/** The split as a query: left out when it keeps one part, the server's default. */
+function splitQuery({ split }: SplitQueryInput) {
+  return split === 'none' ? {} : { split };
+}
+
 /**
  * Exportar: the Schedule as an A4 PDF table (#1243) or one table image under
  * a live preview of the file (#1244), for any Cycle with a Schedule and
- * optionally only some of its dates (#1246). The page is only
+ * optionally only some of its dates (#1246), split into parts by Separar
+ * (#1248): a PDF page run per part, a table image per part. The page is only
  * reachable by the Ministry's leaders and ChurchAdmins. The export data's
  * facts drive the Rascunho, unsent-changes and same-name notices (#1245).
  */
@@ -98,46 +131,83 @@ export function ScheduleExport({
   // Null: the whole Cycle.
   const [range, setRange] = useState<ExportRange | null>(null);
   const [format, setFormat] = useState<GetScheduleExportFileFormat>('pdf');
+  // Null: the Ministry's default, never remembered between exports.
+  const [split, setSplit] = useState<GetScheduleExportDataSplit | null>(null);
   const online = useOnlineState();
   const { data } = useSchedule({ ministryId, cycleId });
+  const groups = useEventGroups({ ministryId });
+  const { data: roles } = useMinistryRoles({ ministryId });
+  const hasGroups = (groups.data?.groups.length ?? 0) > 0;
+  const splits = SPLITS.filter(
+    (option) =>
+      (option.split !== 'group' || hasGroups) &&
+      (option.split !== 'role' || (roles?.roles.length ?? 0) > 1),
+  );
+  const chosenSplit = split ?? (hasGroups ? 'group' : 'none');
   const selectedId = cycle?.id ?? cycleId;
+  const query = { ...range, ...splitQuery({ split: chosenSplit }) };
   const { data: exported, error: refused } = useQuery({
-    queryKey: ['schedule-export-data', ministryId, selectedId, range],
+    queryKey: ['schedule-export-data', ministryId, selectedId, query],
     queryFn: () =>
-      range
-        ? exportApi.getScheduleExportData(ministryId, selectedId, range)
+      Object.keys(query).length > 0
+        ? exportApi.getScheduleExportData(ministryId, selectedId, query)
         : exportApi.getScheduleExportData(ministryId, selectedId),
-    enabled: open,
+    // The default split waits for the Ministry's Event groups.
+    enabled: open && !groups.isPending,
   });
   const isDraft = exported?.isDraft ?? false;
   const download = useMutation({
-    mutationFn: async (chosen: DownloadRequest) => {
+    mutationFn: async (chosen: DownloadRequest): Promise<DownloadedFile[]> => {
+      const params = {
+        format: chosen.format,
+        ...range,
+        ...splitQuery(chosen),
+      };
+      // A PDF holds every part; a split's table image is one PNG per part.
+      const parts =
+        chosen.format === 'png' && chosen.split !== 'none' ? chosen.parts : [];
       try {
-        return await exportApi.getScheduleExportFile(
-          ministryId,
-          chosen.cycle.id,
-          {
-            format: chosen.format,
-            ...range,
-          },
-        );
+        if (parts.length === 0) {
+          const file = await exportApi.getScheduleExportFile(
+            ministryId,
+            chosen.cycle.id,
+            params,
+          );
+          return [{ file }];
+        }
+        const files: DownloadedFile[] = [];
+        for (const [index, part] of parts.entries()) {
+          const file = await exportApi.getScheduleExportFile(
+            ministryId,
+            chosen.cycle.id,
+            { ...params, part: index + 1 },
+          );
+          files.push({ file, part });
+        }
+        return files;
       } catch (error) {
         throw new Error(
           (await refusalMessage(error)) ?? m.export_download_failed(),
         );
       }
     },
-    onSuccess: (file, chosen) => {
+    onSuccess: (files, chosen) => {
       if (!data) return;
       const name = m.export_file_name({
         ministry: data.ministry.name,
         cycle: chosen.cycle.name,
       });
-      const suffixes = isDraft ? [m.export_draft()] : [];
-      saveFile({
-        file,
-        name: `${exportFileName({ name, suffixes })}.${chosen.format}`,
-      });
+      for (const { file, part } of files) {
+        const partName = part ? exportPartName({ part }) : null;
+        const suffixes = [
+          ...(isDraft ? [m.export_draft()] : []),
+          ...(partName ? [partName] : []),
+        ];
+        saveFile({
+          file,
+          name: `${exportFileName({ name, suffixes })}.${chosen.format}`,
+        });
+      }
       setOpen(false);
     },
     onError: (error) => toast.error(error.message),
@@ -153,6 +223,7 @@ export function ScheduleExport({
         onClick={() => {
           setCycle(null);
           setRange(null);
+          setSplit(null);
           setOpen(true);
         }}
       >
@@ -175,7 +246,14 @@ export function ScheduleExport({
             <Button
               // The file name needs the draft fact, so wait for the data.
               disabled={download.isPending || !exported || !online}
-              onClick={() => download.mutate({ cycle: selected, format })}
+              onClick={() =>
+                download.mutate({
+                  cycle: selected,
+                  format,
+                  split: chosenSplit,
+                  parts: exported?.parts ?? [],
+                })
+              }
             >
               {download.isPending ? <Spinner /> : null}
               {m.export_download()}
@@ -254,6 +332,24 @@ export function ScheduleExport({
               ))}
             </RadioGroup>
           </div>
+          <div className="space-y-2">
+            <p className="text-muted-foreground">{m.export_split_label()}</p>
+            <RadioGroup
+              aria-label={m.export_split_label()}
+              value={chosenSplit}
+              onValueChange={(value) => {
+                const option = SPLITS.find((item) => item.split === value);
+                if (option) setSplit(option.split);
+              }}
+            >
+              {splits.map((option) => (
+                <Label key={option.split} className="font-normal">
+                  <RadioGroupItem value={option.split} />
+                  {option.label()}
+                </Label>
+              ))}
+            </RadioGroup>
+          </div>
           <ScheduleExportGroups ministryId={ministryId} cycleId={cycleId} />
         </div>
         {refused ? (
@@ -290,12 +386,16 @@ export function ScheduleExport({
             <p className="text-muted-foreground text-sm">
               {m.export_offline()}
             </p>
-          ) : refused ? null : (
+          ) : refused || groups.isPending ? null : (
             <ScheduleExportPreview
               ministryId={ministryId}
               cycleId={selected.id}
               format={format}
               range={range}
+              {...splitQuery({ split: chosenSplit })}
+              partNames={(exported?.parts ?? []).map((part) =>
+                exportPartName({ part }),
+              )}
             />
           )}
         </div>

@@ -3,7 +3,10 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { Spinner } from '@/components/ui/spinner';
-import type { GetScheduleExportFileFormat } from '@/infrastructure/api/churchAPI.schemas';
+import type {
+  GetScheduleExportDataSplit,
+  GetScheduleExportFileFormat,
+} from '@/infrastructure/api/churchAPI.schemas';
 import { exportApi } from '@/utils/api-instances';
 
 /** The preview waits this long after the last settings change. */
@@ -20,44 +23,93 @@ export interface ScheduleExportPreviewProps {
   format: GetScheduleExportFileFormat;
   /** Null: the whole Cycle. */
   range: PreviewRange | null;
+  /** Left out: one part. */
+  split?: GetScheduleExportDataSplit;
+}
+
+export interface ScheduleExportPreviewViewProps
+  extends ScheduleExportPreviewProps {
+  /** Each part's name, in order, to label a table image's pages. */
+  partNames: (string | null)[];
 }
 
 interface PreviewPageProps {
   page: Blob;
+  label: string;
+}
+
+/** A page of the preview; `part` is set on each table image of a split. */
+interface PreviewPageBlob {
+  page: Blob;
+  part?: number;
   number: number;
 }
 
+interface ReadPartPagesInput extends ScheduleExportPreviewProps {
+  part?: number;
+}
+
+function isNotFound(error: unknown): boolean {
+  return isAxiosError(error) && error.response?.status === 404;
+}
+
 /**
- * Every SVG page of the file, in order: the server answers 404 past the
- * last page, so pages are read until then.
+ * Every SVG page of the file or of one table image part, in order: the
+ * server answers 404 past the last page, so pages are read until then.
  */
-async function readPreviewPages({
+async function readPartPages({
   ministryId,
   cycleId,
   format,
   range,
-}: ScheduleExportPreviewProps): Promise<Blob[]> {
-  const pages: Blob[] = [];
+  split,
+  part,
+}: ReadPartPagesInput): Promise<PreviewPageBlob[]> {
+  const pages: PreviewPageBlob[] = [];
   for (;;) {
-    const page = pages.length + 1;
+    const number = pages.length + 1;
     try {
-      pages.push(
-        await exportApi.getScheduleExportPreview(ministryId, cycleId, {
+      const page = await exportApi.getScheduleExportPreview(
+        ministryId,
+        cycleId,
+        {
           format,
-          page,
+          page: number,
           ...range,
-        }),
+          ...(split ? { split } : {}),
+          ...(part ? { part } : {}),
+        },
       );
+      pages.push({ page, part, number });
     } catch (error) {
-      if (page > 1 && isAxiosError(error) && error.response?.status === 404) {
-        return pages;
-      }
+      if (number > 1 && isNotFound(error)) return pages;
       throw error;
     }
   }
 }
 
-function PreviewPage({ page, number }: PreviewPageProps) {
+/**
+ * The preview's pages: the PDF's through every part, or each table image
+ * part's in turn, parts read until the server answers 404.
+ */
+async function readPreviewPages(
+  settings: ScheduleExportPreviewProps,
+): Promise<PreviewPageBlob[]> {
+  if (settings.format === 'pdf' || !settings.split) {
+    return readPartPages(settings);
+  }
+  const pages: PreviewPageBlob[] = [];
+  for (let part = 1; ; part += 1) {
+    try {
+      pages.push(...(await readPartPages({ ...settings, part })));
+    } catch (error) {
+      if (part > 1 && isNotFound(error)) return pages;
+      throw error;
+    }
+  }
+}
+
+function PreviewPage({ page, label }: PreviewPageProps) {
   const [url, setUrl] = useState<string>();
   useEffect(() => {
     const objectUrl = URL.createObjectURL(page);
@@ -69,7 +121,7 @@ function PreviewPage({ page, number }: PreviewPageProps) {
     <figure className="space-y-1">
       <img
         src={url}
-        alt={m.export_preview_page({ page: String(number) })}
+        alt={label}
         className="w-full rounded-md border bg-white"
       />
       <figcaption className="text-end text-sm">
@@ -87,7 +139,10 @@ function PreviewPage({ page, number }: PreviewPageProps) {
 }
 
 /** The server's own render of the file, so the file never differs from it. */
-export function ScheduleExportPreview(settings: ScheduleExportPreviewProps) {
+export function ScheduleExportPreview({
+  partNames,
+  ...settings
+}: ScheduleExportPreviewViewProps) {
   const [settled, setSettled] = useState(settings);
   const key = JSON.stringify(settings);
   // biome-ignore lint/correctness/useExhaustiveDependencies: settles on a real change of the settings, not on each render's new object
@@ -110,9 +165,15 @@ export function ScheduleExportPreview(settings: ScheduleExportPreviewProps) {
       ) : preview.isError ? (
         <p className="text-destructive text-sm">{m.export_preview_failed()}</p>
       ) : (
-        preview.data.map((page, index) => (
-          <PreviewPage key={page.size + index} page={page} number={index + 1} />
-        ))
+        preview.data.map(({ page, part, number }, index) => {
+          const name = part ? partNames[part - 1] : null;
+          const label = name
+            ? m.export_preview_part_page({ part: name, page: String(number) })
+            : m.export_preview_page({ page: String(index + 1) });
+          return (
+            <PreviewPage key={page.size + index} page={page} label={label} />
+          );
+        })
       )}
     </section>
   );

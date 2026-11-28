@@ -34,7 +34,7 @@ const listScheduleExportCycles = (
       );
     }
   /**
- * The Cycle, or its inclusive `from`/`to` days (an Event belongs by its Church-local start day), as one ordered tree of facts (parts → Events → time blocks → Shifts → Sectors → people), Church-local days and HH:mm times, with the draft, unsent-changes, single Sector/Role and duplicate-name facts. Only Events and blocks the Ministry serves; hidden cancelled scopes are left out. Never ready-made text. For the Ministry's leaders and ChurchAdmins; 404 `EXPORT_SCHEDULE_NOT_FOUND` when the Ministry has no Schedule in the Cycle; 400 `INVALID_DATE_RANGE` when `from` is after `to`; 422 `EXPORT_RANGE_OUTSIDE_CYCLE` when either reaches past the Cycle.
+ * The Cycle, or its inclusive `from`/`to` days (an Event belongs by its Church-local start day), as one ordered tree of facts (parts → Events → time blocks → Shifts → Sectors → people), Church-local days and HH:mm times, with the draft, unsent-changes, single Sector/Role and duplicate-name facts. `split` gives the parts in order: Event groups as saved with the catch-all last, Monday-to-Sunday weeks kept inside the range by date, Sectors or Roles alphabetical, each holding only its own spots. Only Events and blocks the Ministry serves; hidden cancelled scopes are left out. Never ready-made text. For the Ministry's leaders and ChurchAdmins; 404 `EXPORT_SCHEDULE_NOT_FOUND` when the Ministry has no Schedule in the Cycle; 400 `INVALID_DATE_RANGE` when `from` is after `to`; 422 `EXPORT_RANGE_OUTSIDE_CYCLE` when either reaches past the Cycle.
  * @summary A Ministry's Schedule for one Cycle as export data
  */
 const getScheduleExportData = (
@@ -49,7 +49,7 @@ const getScheduleExportData = (
       );
     }
   /**
- * The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`) or as the whole grid in one PNG, never cut by size (`png`), fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same access, range and errors as the data.
+ * The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`), every `split` part starting on a new page, or as one part's whole grid in one PNG, never cut by size (`png`, the 1-based `part`, 404 past the last), fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>" plus " - <part>" for a PNG of a split. Same access, range, split and errors as the data.
  * @summary Download a Ministry's Schedule for one Cycle
  */
 const getScheduleExportFile = (
@@ -65,7 +65,7 @@ const getScheduleExportFile = (
       );
     }
   /**
- * Page `page` of the file `format` names, for the Cycle or its `from`/`to` days, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, or the one page of the table image. Fixed text in the locale-cookie language. 404 past the last page; otherwise the same access, range and errors as the data.
+ * Page `page` of the file `format` names, for the Cycle or its `from`/`to` days and `split`, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, its pages running through every part, or the one page of the table image of `part`. Fixed text in the locale-cookie language. 404 past the last page or part; otherwise the same access, range and errors as the data.
  * @summary One SVG page of a Ministry's Schedule export
  */
 const getScheduleExportPreview = (

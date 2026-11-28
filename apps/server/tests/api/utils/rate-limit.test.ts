@@ -14,9 +14,9 @@ function freshKey(): string {
 
 function hit(key: string, now: number): boolean {
   return isRateLimited({
+    bucket: 'redemption',
     key,
-    windowMs: WINDOW_MS,
-    maxRequests: MAX_REQUESTS,
+    limit: { windowMs: WINDOW_MS, maxRequests: MAX_REQUESTS },
     now,
   });
 }

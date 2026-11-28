@@ -43,7 +43,6 @@ import { isRateLimited } from '../utils/rate-limit';
 import { refuse } from '../utils/refuse';
 import type {
   AuthenticatedRedeemer,
-  ControllerRateLimitInput,
   InvitationPreviewFields,
   RedemptionControllerDependencies,
   RequireRedeemerInput,
@@ -65,11 +64,6 @@ export class RedemptionController implements FastifyController {
     this.volunteerTransferManager = volunteerTransferManager;
     const { redemptionRateLimit } = config;
     this.rateLimit = redemptionRateLimit;
-  }
-
-  private isRateLimitedRequest({ key }: ControllerRateLimitInput): boolean {
-    const { windowMs, maxRequests } = this.rateLimit;
-    return isRateLimited({ key: `redemption:${key}`, windowMs, maxRequests });
   }
 
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
@@ -95,7 +89,13 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (this.isRateLimitedRequest({ key: request.ip }))
+        if (
+          isRateLimited({
+            bucket: 'redemption',
+            key: request.ip,
+            limit: this.rateLimit,
+          })
+        )
           return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params;
         const preview = await this.redemptionManager.getPublicPreview({
@@ -125,7 +125,13 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (this.isRateLimitedRequest({ key: request.ip }))
+        if (
+          isRateLimited({
+            bucket: 'redemption',
+            key: request.ip,
+            limit: this.rateLimit,
+          })
+        )
           return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params;
         let sent: boolean;
@@ -163,7 +169,13 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (this.isRateLimitedRequest({ key: request.ip }))
+        if (
+          isRateLimited({
+            bucket: 'redemption',
+            key: request.ip,
+            limit: this.rateLimit,
+          })
+        )
           return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params;
         const body = request.body;
@@ -202,7 +214,13 @@ export class RedemptionController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (this.isRateLimitedRequest({ key: request.ip }))
+        if (
+          isRateLimited({
+            bucket: 'redemption',
+            key: request.ip,
+            limit: this.rateLimit,
+          })
+        )
           return refuse({ reply, request, code: 'RATE_LIMITED' });
         const params = request.params;
         const outcome = await this.redemptionManager.declineChurchInvitation({

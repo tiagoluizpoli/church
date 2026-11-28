@@ -1117,6 +1117,16 @@ describe('repository list ordering', () => {
       ]);
     });
 
+    it('an event time block returns requirements by sector, role, then id', async () => {
+      const { churchId, block } = await seedBlockRequirements();
+      const repo = new DrizzleEventTimeBlockRepository({ db });
+      const read = await repo.getById({
+        churchId,
+        eventTimeBlockId: EventTimeBlockId.from(block.id),
+      });
+      expect(read.requirements.map((r) => r.id)).toEqual(requirementIds);
+    });
+
     it('characterization: each read returns every row it returned before #1231', async () => {
       const blockRequirements = await seedBlockRequirements();
       const eventTimeBlocks = new DrizzleEventTimeBlockRepository({ db });

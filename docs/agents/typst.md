@@ -82,9 +82,16 @@ Official docs, fetched on demand. These cover everything the export uses:
     `auto` lets tall rows break.
   - `table.header(repeat: true, …)`: the date header repeats on each page.
   - A time band is `table.cell(rowspan: n, …)` and moves to the next page whole.
-    A band taller than a page has no rule yet: decide before relying on it.
-  - The group title bar is `block(breakable: false, sticky: true)`, so it stays
-    with its table.
+    Typst lets an unbreakable rowspan taller than a page overflow (and the panel
+    clips it), so the grid template measures each band under its header
+    (`fits`): a taller band gets `breakable: true` and breaks between rows.
+  - Typst does not repeat a rowspan's content on a continuation page. Each row
+    of a broken band carries `continued(…)`: a `metadata` mark, and on the row
+    that opens a page, the band's labels `place`d over their own columns.
+  - Any other rowspan crossing bands (a cancelled Event's column) is
+    `breakable: true`, or it would glue the whole table into one block.
+  - The group bar is a row of the repeating `table.header`; Typst never leaves
+    a header alone at a page bottom.
   - Each split part starts on a new page with `pagebreak()`.
 - **Vertical time labels** use `rotate(-90deg, reflow: true, …)`.
 - **No letter-spacing (`tracking`) on words people search for.** Extraction

@@ -21,6 +21,7 @@ import type {
   ScheduleExportText,
   ScheduleExportTextInput,
 } from './schedule-export-render.types';
+import { stripAccents } from '@/domain/services/schedule-export/text-normalizer';
 
 /**
  * A part's name in the locale: the group, Sector or Role as written, "Semana
@@ -143,9 +144,6 @@ export function scheduleExportFileName({
 export function attachmentDisposition({
   name,
 }: AttachmentDispositionInput): string {
-  const ascii = name
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .replace(/[^\x20-\x7e]/g, '_');
+  const ascii = stripAccents({ value: name }).replace(/[^\x20-\x7e]/g, '_');
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`;
 }

@@ -32,6 +32,7 @@ import {
   scheduleExportFileName,
   scheduleExportRenderPayload,
 } from '../utils/schedule-export-render';
+import type { ScheduleExportMedia } from '../utils/schedule-export-render.types';
 import type {
   ScheduleExportControllerDependencies,
   ScheduleExportFilePart,
@@ -55,6 +56,14 @@ function layoutOf({
   layout,
 }: ScheduleExportLayoutInput): ScheduleExportLayout {
   return format === 'png' ? layout : 'grid';
+}
+
+/** What the template lays out: the cards, or the table as the format prints it. */
+function mediaOf({
+  format,
+  layout,
+}: ScheduleExportLayoutInput): ScheduleExportMedia {
+  return layout === 'cards' ? 'cards' : MEDIA[format];
 }
 const CONTENT_TYPE = { pdf: 'application/pdf', png: 'image/png' } as const;
 
@@ -138,19 +147,8 @@ export class ScheduleExportController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const ministryId = MinistryId.from(
-          (request.params as ScheduleExportRouteParams).ministryId,
-        );
-        if (
-          await denyMinistryManagement({
-            authorityGuard: this.authorityGuard,
-            request,
-            reply,
-            ministryId,
-          })
-        ) {
-          return;
-        }
+        const ministryId = await this.allowedMinistry({ request, reply });
+        if (!ministryId) return;
         const { q } = request.query as ScheduleExportCyclesQuery;
         const cycles = await this.scheduleExportReader.listCycles({
           churchId: ChurchId.from(request.churchId),
@@ -219,7 +217,7 @@ export class ScheduleExportController implements FastifyController {
         const payload = scheduleExportRenderPayload({
           data: chosen.data,
           locale,
-          media: layout === 'cards' ? 'cards' : MEDIA[format],
+          media: mediaOf({ format, layout }),
         });
         const suffixes: string[] = [];
         if (layout === 'cards') {
@@ -289,7 +287,7 @@ export class ScheduleExportController implements FastifyController {
           payload: scheduleExportRenderPayload({
             data,
             locale: request.locale,
-            media: layout === 'cards' ? 'cards' : MEDIA[format],
+            media: mediaOf({ format, layout }),
           }),
         });
         // Typst writes nothing for a page past the last.
@@ -302,6 +300,23 @@ export class ScheduleExportController implements FastifyController {
     );
   }
 
+  /** The route's Ministry when the caller may export it, or null once the refusal was sent. */
+  private async allowedMinistry({
+    request,
+    reply,
+  }: ScheduleExportRequestInput): Promise<MinistryId | null> {
+    const ministryId = MinistryId.from(
+      (request.params as ScheduleExportRouteParams).ministryId,
+    );
+    const denied = await denyMinistryManagement({
+      authorityGuard: this.authorityGuard,
+      request,
+      reply,
+      ministryId,
+    });
+    return denied ? null : ministryId;
+  }
+
   /** The export, or null once the refusal was sent. */
   private async read({
     request,
@@ -309,17 +324,8 @@ export class ScheduleExportController implements FastifyController {
   }: ScheduleExportRequestInput): Promise<ScheduleExport | null> {
     const params = request.params as ScheduleExportRouteParams;
     const { from, to, split } = request.query as ScheduleExportRangeQuery;
-    const ministryId = MinistryId.from(params.ministryId);
-    if (
-      await denyMinistryManagement({
-        authorityGuard: this.authorityGuard,
-        request,
-        reply,
-        ministryId,
-      })
-    ) {
-      return null;
-    }
+    const ministryId = await this.allowedMinistry({ request, reply });
+    if (!ministryId) return null;
     return this.scheduleExportReader.read({
       churchId: ChurchId.from(request.churchId),
       ministryId,

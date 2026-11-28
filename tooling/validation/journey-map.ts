@@ -1235,6 +1235,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'apps/server/src/domain/contracts/infrastructure/typst-renderer.ts',
       'apps/server/src/domain/errors/schedule-export.ts',
       'apps/server/src/domain/errors/typst-render.ts',
+      'apps/server/src/domain/services/schedule-export/',
       'apps/server/src/infrastructure/repositories/drizzle-event-group.repository',
       'apps/server/src/infrastructure/repositories/drizzle-schedule-export.repository',
       'apps/server/src/infrastructure/typst/',

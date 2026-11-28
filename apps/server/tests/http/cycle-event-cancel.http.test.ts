@@ -28,7 +28,6 @@ import {
   vi,
 } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
-import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { ChurchRecipients } from '@/application/church-recipients';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
@@ -72,6 +71,7 @@ import {
   seedVolunteer,
   staff,
 } from '@/tests/test-support/cancellation-fixture';
+import { ChurchAdminControllers } from '@/tests/test-support/church-admin-controllers';
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
@@ -113,7 +113,7 @@ beforeAll(async () => {
     locale: testLocale,
     errorReporter: testErrorReporter,
   });
-  const controller = new ChurchAdminController({
+  const controller = new ChurchAdminControllers({
     cycleManager: {} as never,
     planningEventManager: new DbPlanningEventManager({
       cycleEventGenerator: new CycleEventGenerator(),

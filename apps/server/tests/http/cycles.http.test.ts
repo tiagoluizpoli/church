@@ -31,7 +31,6 @@ import {
   vi,
 } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
-import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { ChurchRecipients } from '@/application/church-recipients';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
@@ -78,6 +77,7 @@ import {
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
 import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
+import { ChurchAdminControllers } from '@/tests/test-support/church-admin-controllers';
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
@@ -122,7 +122,7 @@ beforeAll(async () => {
   });
   // Real managers, repositories and AuthorityService decision; only the
   // session, the Active Church selection and the actor lookup are seams.
-  const controller = new ChurchAdminController({
+  const controller = new ChurchAdminControllers({
     cycleManager: new DbCycleManager({
       cycleRepository,
       eventRepository,

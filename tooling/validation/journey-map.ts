@@ -1006,16 +1006,21 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     sourcePathPrefix,
     specPaths: ADMIN_EDIT_SPEC_PATHS,
   })),
-  // #217 — the church-admin-controller owns every cycle and event
+  // #217 — the `/admin` resource controllers own every cycle and event
   // endpoint these specs drive: list/detail isolation and the lock edge
   // cases (cross-cutting, DL4-X1/X2/X3), the $cycleId isolation route
   // (planning-cross-tenant-isolation), and quick-create's Church-local
   // Instant (single-create-event-ui).
-  {
-    sourcePathPrefix:
-      'apps/server/src/api/controllers/church-admin-controller.ts',
+  ...[
+    'apps/server/src/api/controllers/cycle-admin-controller.ts',
+    'apps/server/src/api/controllers/event-template-admin-controller.ts',
+    'apps/server/src/api/controllers/planning-event-admin-controller.ts',
+    'apps/server/src/api/controllers/event-time-block-admin-controller.ts',
+    'apps/server/src/api/controllers/ministry-admin-controller.ts',
+  ].map((sourcePathPrefix) => ({
+    sourcePathPrefix,
     specPaths: [...CYCLE_EDGE_SPEC_PATHS, ...CYCLE_HANDOFF_SPEC_PATHS],
-  },
+  })),
   {
     // J5 follows the actual Send transaction: graph validation, staffing
     // pre-fill and N2 enqueue all occur in this manager.

@@ -44,6 +44,8 @@ type WorkbookContent = File | Blob | ArrayBuffer;
 /** Characters Excel refuses in a sheet name, and its length limit. */
 const BANNED_SHEET_CHARACTERS = /[[\]:*?/\\]/g;
 const SHEET_NAME_MAX = 31;
+/** Excel refuses a sheet name that starts or ends with an apostrophe. */
+const EDGE_APOSTROPHES = /^[\s']+|[\s']+$/g;
 const DATE_FORMAT = 'dd/mm/yyyy';
 /** Day 0 of Excel's 1900 date system, as its later days count. */
 const EXCEL_EPOCH = parseCalendarDay({ value: '1899-12-30' });
@@ -218,18 +220,21 @@ interface SheetNamesInput {
 }
 
 /**
- * Names Excel accepts: banned characters dropped, at most 31 characters,
- * a clash (Excel ignores case) numbered " (2)", " (3)"…
+ * Names Excel accepts: banned characters and edge apostrophes dropped, at
+ * most 31 characters, a clash (Excel ignores case) numbered " (2)", " (3)"…
  */
 function sheetNames({ names }: SheetNamesInput): string[] {
   const taken = new Set<string>();
   return names.map((raw) => {
     const clean =
-      raw.replace(BANNED_SHEET_CHARACTERS, '').replace(/\s+/g, ' ').trim() ||
-      m.export_schedule_kicker();
+      raw
+        .replace(BANNED_SHEET_CHARACTERS, '')
+        .replace(/\s+/g, ' ')
+        .replace(EDGE_APOSTROPHES, '') || m.export_schedule_kicker();
     for (let count = 1; ; count += 1) {
       const suffix = count === 1 ? '' : ` (${count})`;
-      const name = `${clean.slice(0, SHEET_NAME_MAX - suffix.length).trimEnd()}${suffix}`;
+      const cut = clean.slice(0, SHEET_NAME_MAX - suffix.length);
+      const name = `${cut.replace(EDGE_APOSTROPHES, '')}${suffix}`;
       if (!taken.has(name.toLowerCase())) {
         taken.add(name.toLowerCase());
         return name;

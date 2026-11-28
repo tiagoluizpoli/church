@@ -560,6 +560,34 @@ it('names one sheet per part, weeks as "Semana", without banned characters, at m
   ]);
 });
 
+it('never starts or ends a sheet name with an apostrophe, which Excel refuses', async () => {
+  const groups = list(NO_SERVICE);
+  withData({
+    ...EXPORT_DATA,
+    parts: [
+      part({ kind: 'group', name: "'Louvor'", groups }),
+      part({ kind: 'group', name: "Jovens d'Ouro", groups }),
+      part({ kind: 'group', name: "''", groups }),
+      part({ kind: 'group', name: "Louvor'", groups }),
+      part({ kind: 'group', name: `${'a'.repeat(30)}'bc`, groups }),
+    ],
+  });
+  const dialog = await openExcel();
+
+  const { sheets } = await downloadWorkbook({
+    dialog,
+    split: m.export_split_week(),
+  });
+
+  expect(sheets.map((sheet) => sheet.name)).toEqual([
+    'Louvor',
+    "Jovens d'Ouro",
+    'Escala',
+    'Louvor (2)',
+    'a'.repeat(30),
+  ]);
+});
+
 it('styles the title and column headers, tints each Setor cell and fits names unwrapped', async () => {
   const dialog = await openExcel();
 

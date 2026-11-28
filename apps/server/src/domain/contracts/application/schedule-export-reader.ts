@@ -5,7 +5,10 @@ import type {
   ScheduleExportRepository,
   ScheduleExportRow,
 } from '@/domain/contracts/infrastructure/schedule-export.repository';
-import type { TypstRenderer } from '@/domain/contracts/infrastructure/typst-renderer';
+import type {
+  TypstFormat,
+  TypstRenderer,
+} from '@/domain/contracts/infrastructure/typst-renderer';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
 export interface ReadScheduleExportInput {
@@ -119,12 +122,15 @@ export interface RenderScheduleExportFileInput {
   exported: ScheduleExport;
   /** The data with its fixed text, localized by the caller. */
   payload: unknown;
-  format: 'pdf';
+  /** `svg` is one preview page of what the payload's media lays out. */
+  format: TypstFormat;
+  /** 1-based page of a PNG or SVG; an empty file past the last page. */
+  page?: number;
 }
 
 export interface IScheduleExportReader {
   /** Throws `NotFoundError` when the Ministry has no Schedule in the Cycle. */
   read(input: ReadScheduleExportInput): Promise<ScheduleExport>;
-  /** The Grid template's file; throws `TypstRenderError` when it fails. */
+  /** The Grid template's file or page; throws `TypstRenderError` when it fails. */
   renderFile(input: RenderScheduleExportFileInput): Promise<Uint8Array>;
 }

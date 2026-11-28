@@ -8,6 +8,7 @@ import {
 import type {
   AttachmentDispositionInput,
   ScheduleExportRenderPayload,
+  ScheduleExportRenderPayloadInput,
   ScheduleExportText,
   ScheduleExportTextInput,
 } from './schedule-export-render.types';
@@ -43,9 +44,10 @@ function exportText({
 }
 
 /** The data with its fixed text and its days and times worded in the locale. */
-export function scheduleExportRenderPayload(
-  input: ScheduleExportTextInput,
-): ScheduleExportRenderPayload {
+export function scheduleExportRenderPayload({
+  media,
+  ...input
+}: ScheduleExportRenderPayloadInput): ScheduleExportRenderPayload {
   const { data, locale } = input;
   const dayList: CalendarDay[] = [];
   const times: Record<string, string> = {};
@@ -64,7 +66,7 @@ export function scheduleExportRenderPayload(
   const days = Object.fromEntries(
     dayList.map((day) => [day, formatDayLabel({ day, locale })]),
   );
-  return { data, text: exportText(input), days, times };
+  return { media, data, text: exportText(input), days, times };
 }
 
 /** `Escala - <Ministry> - <Cycle>` without characters file systems refuse. */

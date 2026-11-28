@@ -1,4 +1,6 @@
-// Schedule export, Grid template (#1243): the A4 landscape PDF table.
+// Schedule export, Grid template (#1243): the A4 landscape PDF table, and
+// (#1244) the table image: `media: "image"` lays the grid out on one page of
+// the same width, as tall as the grid, never cut by size.
 // From prototype variant E (prototype/schedule-export-layouts) and the
 // research branch's throwaway grid. Data comes in as JSON only (docs/agents/typst.md):
 // `data` is the export tree, `text` the fixed text, `days`/`times` the
@@ -25,7 +27,8 @@
 )
 
 #set document(title: t.kicker + " · " + data.ministry.name + " · " + data.cycle.name)
-#set page(paper: "a4", flipped: true, margin: (x: 12mm, top: 11mm, bottom: 10mm), fill: oklch(99.2%, 0.002, 220deg))
+#let page-size = if d.media == "image" { (width: 297mm, height: auto) } else { (paper: "a4", flipped: true) }
+#set page(..page-size, margin: (x: 12mm, top: 11mm, bottom: 10mm), fill: oklch(99.2%, 0.002, 220deg))
 #set text(font: "Atkinson Hyperlegible", size: 9pt, fill: fg)
 #set par(leading: 0.45em)
 

@@ -1,3 +1,4 @@
+import { NotFoundError } from '@church/core';
 import { z } from 'zod';
 import { ChurchId, CycleId, MinistryId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -12,9 +13,12 @@ import { denyMinistryManagement } from '../auth/ministry-management-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   type ScheduleExportFileQuery,
+  type ScheduleExportPreviewQuery,
   scheduleExportDataSchema,
   scheduleExportFileQuerySchema,
   scheduleExportFileSchema,
+  scheduleExportPreviewQuerySchema,
+  scheduleExportPreviewSchema,
 } from '../dtos/schedule-export.dto';
 import {
   attachmentDisposition,
@@ -31,6 +35,10 @@ const errorResponseSchema = z.object({
   error: z.string(),
   message: z.string(),
 });
+
+/** The PDF prints A4 pages; the table PNG is one page as tall as the grid. */
+const MEDIA = { pdf: 'print', png: 'image' } as const;
+const CONTENT_TYPE = { pdf: 'application/pdf', png: 'image/png' } as const;
 
 const paramsSchema = z.object({
   ministryId: z.string(),
@@ -104,7 +112,7 @@ export class ScheduleExportController implements FastifyController {
           operationId: 'getScheduleExportFile',
           summary: "Download a Ministry's Schedule for one Cycle",
           description:
-            'The whole Cycle as an A4 landscape text PDF table, fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same access and 404 as the data.',
+            'The whole Cycle as an A4 landscape text PDF table (`pdf`) or as the whole grid in one PNG, never cut by size (`png`). Fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same access and 404 as the data.',
           params: paramsSchema,
           querystring: scheduleExportFileQuerySchema,
           response: { 200: scheduleExportFileSchema, ...errors },
@@ -121,14 +129,52 @@ export class ScheduleExportController implements FastifyController {
           payload: scheduleExportRenderPayload({
             data: exported.data,
             locale,
+            media: MEDIA[format],
           }),
         });
         const name = `${scheduleExportFileName({ data: exported.data, locale })}.${format}`;
         return reply
-          .type('application/pdf')
+          .type(CONTENT_TYPE[format])
           .header('Content-Disposition', attachmentDisposition({ name }))
           .header('Cache-Control', 'private, no-store')
           .send(Buffer.from(file));
+      },
+    );
+
+    app.get(
+      '/ministries/:ministryId/cycles/:cycleId/preview',
+      {
+        schema: {
+          tags: ['export'],
+          operationId: 'getScheduleExportPreview',
+          summary: "One SVG page of a Ministry's Schedule export",
+          description:
+            'Page `page` of the file `format` names, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, or the one page of the table image. Fixed text in the locale-cookie language. 404 past the last page; otherwise the same access and 404 as the data.',
+          params: paramsSchema,
+          querystring: scheduleExportPreviewQuerySchema,
+          response: { 200: scheduleExportPreviewSchema, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const exported = await this.read({ request, reply });
+        if (!exported) return;
+        const { format, page } = request.query as ScheduleExportPreviewQuery;
+        const svg = await this.scheduleExportReader.renderFile({
+          exported,
+          format: 'svg',
+          page,
+          payload: scheduleExportRenderPayload({
+            data: exported.data,
+            locale: request.locale,
+            media: MEDIA[format],
+          }),
+        });
+        // Typst writes nothing for a page past the last.
+        if (svg.byteLength === 0) throw new NotFoundError('Preview page');
+        return reply
+          .type('image/svg+xml')
+          .header('Cache-Control', 'private, no-store')
+          .send(Buffer.from(svg));
       },
     );
   }

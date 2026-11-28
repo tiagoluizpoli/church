@@ -61,12 +61,33 @@ export const scheduleExportDataSchema = z.object({
 export const scheduleExportFileSchema = z
   .string()
   .meta({ format: 'binary' })
-  .describe('The PDF file');
+  .describe('The PDF or PNG file');
+
+/** One SVG page; a Buffer skips serialization. */
+export const scheduleExportPreviewSchema = z
+  .string()
+  .meta({ format: 'binary' })
+  .describe('One SVG page');
+
+const exportFormatSchema = z.enum(['pdf', 'png']);
 
 export const scheduleExportFileQuerySchema = z.object({
-  format: z.enum(['pdf']),
+  format: exportFormatSchema,
 });
+
+export const scheduleExportPreviewQuerySchema = z.object({
+  /** The file this previews: the A4 PDF pages or the one table image. */
+  format: exportFormatSchema,
+  /** 1-based; past the last page is 404. */
+  page: z.coerce.number().int().min(1).default(1),
+});
+
+export type ScheduleExportFormat = z.infer<typeof exportFormatSchema>;
 
 export type ScheduleExportFileQuery = z.infer<
   typeof scheduleExportFileQuerySchema
+>;
+
+export type ScheduleExportPreviewQuery = z.infer<
+  typeof scheduleExportPreviewQuerySchema
 >;

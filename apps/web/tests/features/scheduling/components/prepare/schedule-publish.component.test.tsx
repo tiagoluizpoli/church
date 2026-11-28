@@ -36,7 +36,9 @@ it('confirms summary gaps and unanswered people before publishing the whole Sche
     <SchedulePublish ministryId="m" cycleId="c" unanswered={7} />,
   );
   fireEvent.click(screen.getByRole('button', { name: m.builder_ui_publish() }));
-  expect(screen.getByText(m.prepare_publish_gaps({ count: 2 }))).toBeVisible();
+  expect(
+    screen.getByText(m.prepare_publish_gaps_other({ count: 2 })),
+  ).toBeVisible();
   expect(
     screen.getByText(m.prepare_publish_unanswered({ count: 7 })),
   ).toBeVisible();
@@ -151,7 +153,7 @@ it('asks to confirm with the server gap count when publish is refused', async ()
   openConfirmation();
   confirmPublish();
   expect(
-    await screen.findByText(m.prepare_publish_gaps({ count: 2 })),
+    await screen.findByText(m.prepare_publish_gaps_other({ count: 2 })),
   ).toBeVisible();
   expect(toast.warning).not.toHaveBeenCalled();
   expect(toast.success).not.toHaveBeenCalled();
@@ -173,7 +175,7 @@ it('forgets the refusal when the leader cancels the confirmation', async () => {
   renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />);
   openConfirmation();
   confirmPublish();
-  await screen.findByText(m.prepare_publish_gaps({ count: 2 }));
+  await screen.findByText(m.prepare_publish_gaps_other({ count: 2 }));
   fireEvent.click(
     within(screen.getByRole('dialog')).getByRole('button', {
       name: m.builder_ui_cancel(),
@@ -186,4 +188,19 @@ it('forgets the refusal when the leader cancels the confirmation', async () => {
     within(openConfirmation()).getByText(m.builder_ui_publish_full()),
   ).toBeVisible();
   expect(state.publishCycle).toHaveBeenCalledOnce();
+});
+it('words one open place in the singular', () => {
+  state.data = { ...SCHEDULE, stage: 'assigning', gapCount: 1 };
+  renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />);
+  expect(
+    within(openConfirmation()).getByText(
+      m.prepare_publish_gaps_one({ count: 1 }),
+    ),
+  ).toBeVisible();
+  expect(m.prepare_publish_gaps_one({ count: 1 }, { locale: 'en' })).toBe(
+    '1 place still needs people. Publish anyway?',
+  );
+  expect(m.prepare_publish_gaps_one({ count: 1 }, { locale: 'pt-BR' })).toBe(
+    '1 vaga ainda precisa de pessoas. Publicar mesmo assim?',
+  );
 });

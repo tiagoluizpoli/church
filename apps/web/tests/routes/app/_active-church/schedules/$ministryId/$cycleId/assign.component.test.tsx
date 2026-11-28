@@ -584,7 +584,9 @@ describe('Assign board route: publish', () => {
 
     const confirmation = await screen.findByRole('dialog');
     expect(
-      within(confirmation).getByText(m.prepare_publish_gaps({ count: 2 })),
+      within(confirmation).getByText(
+        m.prepare_publish_gaps_other({ count: 2 }),
+      ),
     ).toBeVisible();
     expect(getCycleBuilderData).toHaveBeenCalledTimes(2);
     expect(toastWarning).not.toHaveBeenCalled();
@@ -612,7 +614,9 @@ describe('Assign board route: publish', () => {
 
     const user = await publishFromBoard();
     const refusal = await screen.findByRole('dialog');
-    await within(refusal).findByText(m.prepare_publish_gaps({ count: 2 }));
+    await within(refusal).findByText(
+      m.prepare_publish_gaps_other({ count: 2 }),
+    );
     await user.click(
       within(refusal).getByRole('button', { name: m.builder_ui_cancel() }),
     );

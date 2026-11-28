@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { builderErrorMessage } from '@/features/scheduling/utils/builder/cycle-builder-error.utils';
+import { publishGapsMessage } from '@/features/scheduling/utils/publish-gaps-message';
 import { adminApi } from '@/utils/api-instances';
 
 interface SchedulePublishProps {
@@ -113,7 +114,7 @@ export function SchedulePublish({
         title={m.builder_ui_publish_title()}
         description={
           openPlaces > 0
-            ? m.prepare_publish_gaps({ count: openPlaces })
+            ? publishGapsMessage({ count: openPlaces })
             : m.builder_ui_publish_full()
         }
         footer={

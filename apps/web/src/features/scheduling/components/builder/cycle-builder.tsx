@@ -25,6 +25,7 @@ import {
   summarizeCycleCounts,
   summarizeCycleStaffing,
 } from '../../utils/builder/cycle-builder-staffing.utils';
+import { publishGapsMessage } from '../../utils/publish-gaps-message';
 import { isCancelledEvent } from '../../utils/scheduling-rules';
 import { UnavailableConfirmDialog } from './assignment/unavailable-confirm-dialog';
 import {
@@ -158,9 +159,9 @@ export function CycleBuilder({
   const emptyPlaces = openStaffing.required - openStaffing.coveredPlaces;
   // A refusal reopens the confirmation: the server saw gaps the board did not.
   const isRefused = refusedGapCount !== undefined;
-  let publishDescription = m.builder_ui_publish_full();
+  let publishDescription: string = m.builder_ui_publish_full();
   if (isRefused) {
-    publishDescription = m.prepare_publish_gaps({ count: refusedGapCount });
+    publishDescription = publishGapsMessage({ count: refusedGapCount });
   } else if (belowFullCount > 0) {
     publishDescription = m.builder_ui_publish_gaps({
       places: emptyPlaces,

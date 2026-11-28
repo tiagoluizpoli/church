@@ -1,6 +1,7 @@
 import type { VolunteerId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
@@ -16,13 +17,16 @@ export class VolunteerScheduleController implements FastifyController {
 
   private readonly volunteerManager: IVolunteerManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
 
   constructor({
     volunteerManager,
     activeChurchResolver,
+    sessionGateway,
   }: VolunteerScheduleControllerDependencies) {
     this.volunteerManager = volunteerManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
   }
 
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
@@ -34,6 +38,7 @@ export class VolunteerScheduleController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
         requireVolunteer: true,
       }),
     );

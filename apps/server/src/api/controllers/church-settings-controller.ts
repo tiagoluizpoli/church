@@ -3,6 +3,7 @@ import { LOGO_MAX_BYTES } from '../../domain/church-logo';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IChurchSettingsManager } from '../../domain/contracts/application/church-settings-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import {
   LogoTooLargeError,
   LogoUnsupportedTypeError,
@@ -38,15 +39,18 @@ export class ChurchSettingsController implements FastifyController {
 
   private readonly churchSettingsManager: IChurchSettingsManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     churchSettingsManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
   }: ChurchSettingsControllerDependencies) {
     this.churchSettingsManager = churchSettingsManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -61,7 +65,10 @@ export class ChurchSettingsController implements FastifyController {
 
     app.addHook(
       'preValidation',
-      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
+      }),
     );
 
     app.addHook(

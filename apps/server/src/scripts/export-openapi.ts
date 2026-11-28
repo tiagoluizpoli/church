@@ -15,7 +15,6 @@ async function exportOpenApi(): Promise<void> {
       defaultLocale: appConfig.defaultLocale,
     },
     errorReporter: root.errorReporter,
-    sessionGateway: root.sessionGateway,
   });
   await app.register(
     async (instance) => {

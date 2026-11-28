@@ -49,7 +49,6 @@ import {
   serializeRequest,
 } from '../../infrastructure/privacy/privacy';
 import { AuthBackendUnavailableError } from '../../infrastructure/services/auth-backend-unavailable-error';
-import { BetterAuthSessionGateway } from '../../infrastructure/services/better-auth-session-gateway';
 import { auth } from '../di/server-auth';
 import { fastifyOtel } from '../instrumentation';
 import { requestId } from './request-id';
@@ -113,7 +112,6 @@ export async function createFastify({
   locale: localeSettings,
   errorReporter,
   logStream,
-  sessionGateway = new BetterAuthSessionGateway({ auth }),
 }: CreateFastifyInput) {
   const isTest = env.NODE_ENV === 'test';
   const isProd = env.NODE_ENV === 'production';
@@ -147,7 +145,6 @@ export async function createFastify({
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  app.decorate('sessionGateway', sessionGateway);
   app.decorateRequest('userId', UserId.from(''));
   app.decorateRequest('volunteerId', VolunteerId.from(''));
   app.decorateRequest('churchId', ChurchId.from(''));

@@ -73,6 +73,7 @@ import {
   type TwoChurchIdentityFixture,
 } from '@/tests/test-support/identity-fixtures';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 type IdentityFault = 'after-account' | 'after-church-admission';
 
@@ -281,6 +282,7 @@ async function createHarness({
     errorReporter: testErrorReporter,
   });
   const controller = new RedemptionController({
+    sessionGateway: testSessionGateway(),
     redemptionManager,
     volunteerTransferManager,
     config: suiteConfig,

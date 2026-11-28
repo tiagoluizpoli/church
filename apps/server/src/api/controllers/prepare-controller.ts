@@ -10,6 +10,7 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IAvailabilityCheckManager } from '../../domain/contracts/application/availability-check-manager';
 import type { IPrepareManager } from '../../domain/contracts/application/prepare-manager';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import {
@@ -68,6 +69,7 @@ export class PrepareController implements FastifyController {
   private readonly scheduleReadModel: IScheduleReadModel;
   private readonly availabilityCheckManager: IAvailabilityCheckManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
   private readonly schedulePageSize: number;
   private readonly scheduleMaxPageSize: number;
@@ -78,6 +80,7 @@ export class PrepareController implements FastifyController {
     scheduleReadModel,
     availabilityCheckManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
     config,
   }: PrepareControllerDependencies) {
@@ -88,6 +91,7 @@ export class PrepareController implements FastifyController {
     this.scheduleReadModel = scheduleReadModel;
     this.availabilityCheckManager = availabilityCheckManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -98,7 +102,10 @@ export class PrepareController implements FastifyController {
   ): void {
     app.addHook(
       'preValidation',
-      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
+      }),
     );
 
     app.get(

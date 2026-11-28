@@ -88,6 +88,7 @@ import {
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -124,6 +125,7 @@ beforeAll(async () => {
   const churchAccessRepository = new DrizzleChurchAccessRepository({ db });
   // Real managers, repositories, AuthorityService and PostgreSQL; only session and Active Church are seams.
   const controller = new PeopleController({
+    sessionGateway: testSessionGateway(),
     peopleListManager: new DbPeopleListManager({
       peopleListRepository: new DrizzlePeopleListRepository({ db }),
       authorityManager,
@@ -153,6 +155,7 @@ beforeAll(async () => {
   const scheduling = createSchedulingManagers();
   // The Assign board's own authority is not under test here; its qualification locking is.
   const assign = new AssignController({
+    sessionGateway: testSessionGateway(),
     ...scheduling.participationModules,
     assignmentManager: scheduling.assignmentManager,
     activeChurchResolver: activeChurchResolver as never,
@@ -165,10 +168,12 @@ beforeAll(async () => {
   });
   // The Volunteer's own check links and the leader's Ask/Remind, behind the same stubbed area gate.
   const volunteer = new VolunteerController({
+    sessionGateway: testSessionGateway(),
     volunteerManager: scheduling.volunteerManager,
     activeChurchResolver: activeChurchResolver as never,
   });
   const prepare = new PrepareController({
+    sessionGateway: testSessionGateway(),
     config: appConfig,
     ...scheduling.participationModules,
     availabilityCheckManager: new DbAvailabilityCheckManager({

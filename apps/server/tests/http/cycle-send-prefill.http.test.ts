@@ -80,6 +80,7 @@ import { ChurchAdminControllers } from '@/tests/test-support/church-admin-contro
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -183,6 +184,7 @@ beforeAll(async () => {
     roleRepo: {} as never,
   });
   const admin = new ChurchAdminControllers({
+    sessionGateway: testSessionGateway(),
     cycleManager: managers.cycleManager,
     eventTemplateManager: managers.eventTemplateManager,
     planningEventManager: managers.planningEventManager,
@@ -195,6 +197,7 @@ beforeAll(async () => {
     '@/tests/application/scheduling-schedule.helpers'
   );
   const usualSetup = new UsualSetupController({
+    sessionGateway: testSessionGateway(),
     ministryManager,
     ...createSchedulingManagers().participationModules,
     activeChurchResolver: activeChurchResolver as never,

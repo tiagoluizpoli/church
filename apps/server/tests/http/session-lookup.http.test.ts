@@ -17,6 +17,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn(), setActiveOrganization: vi.fn() } },
@@ -53,14 +54,17 @@ beforeAll(async () => {
   });
   const controllers = [
     new CallerCapabilitiesController({
+      sessionGateway: testSessionGateway(),
       activeChurchResolver: activeChurchResolver as never,
       authorityGuard: none,
     }),
     new ActiveChurchController({
+      sessionGateway: testSessionGateway(),
       activeChurchResolver: activeChurchResolver as never,
       selectionManager: none,
     }),
     new RedemptionController({
+      sessionGateway: testSessionGateway(),
       redemptionManager: none,
       volunteerTransferManager: none,
       config: appConfig,

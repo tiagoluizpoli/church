@@ -63,6 +63,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -104,12 +105,14 @@ beforeAll(async () => {
   });
   // The competing UsualSetup write path, for the archive race proof.
   const usualSetupController = new UsualSetupController({
+    sessionGateway: testSessionGateway(),
     ministryManager,
     ...createSchedulingManagers().participationModules,
     activeChurchResolver: activeChurchResolver as never,
     authorityGuard,
   });
   const controller = new SectorController({
+    sessionGateway: testSessionGateway(),
     ministryManager,
     sectorManager: new DbSectorManager({
       sectorRepository: new DrizzleSectorRepository({ db }),

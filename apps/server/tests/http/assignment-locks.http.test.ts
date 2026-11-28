@@ -95,6 +95,7 @@ import { ChurchAdminControllers } from '@/tests/test-support/church-admin-contro
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 let app: FastifyTypedInstance;
 let managers: SchedulingManagers;
@@ -150,6 +151,7 @@ beforeAll(async () => {
   });
   // Move confirm races Assignment creation through the real routes.
   const adminController = new ChurchAdminControllers({
+    sessionGateway: testSessionGateway(),
     // Edits a Cycle while Apply races it; Send is never called.
     cycleManager: new DbCycleManager({
       cycleRepository: new DrizzleCycleRepository({ db }),
@@ -185,6 +187,7 @@ beforeAll(async () => {
     authorityGuard,
   });
   const controller = new AssignController({
+    sessionGateway: testSessionGateway(),
     ...managers.participationModules,
     assignmentManager: managers.assignmentManager,
     activeChurchResolver,

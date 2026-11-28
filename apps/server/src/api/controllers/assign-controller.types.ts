@@ -7,6 +7,7 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IScheduleBuilderReader } from '../../domain/contracts/application/schedule-builder-reader';
 import type { ISchedulePublisher } from '../../domain/contracts/application/schedule-publisher';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 
 export interface AssertAssignmentScopeInput {
   request: FastifyRequest;
@@ -20,6 +21,7 @@ export interface AssignControllerDependencies {
   schedulePublisher: ISchedulePublisher;
   assignmentManager: IAssignmentManager;
   activeChurchResolver: IActiveChurchResolver;
+  sessionGateway: SessionGateway;
   authorityGuard: IAuthorityGuard;
   config: AppConfig;
 }

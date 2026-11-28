@@ -17,6 +17,7 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IScheduleBuilderReader } from '../../domain/contracts/application/schedule-builder-reader';
 import type { ISchedulePublisher } from '../../domain/contracts/application/schedule-publisher';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import {
@@ -75,6 +76,7 @@ export class AssignController implements FastifyController {
   private readonly schedulePublisher: ISchedulePublisher;
   private readonly assignmentManager: IAssignmentManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   private readonly parked: AppConfig['parked'];
@@ -86,6 +88,7 @@ export class AssignController implements FastifyController {
     schedulePublisher,
     assignmentManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
     config,
   }: AssignControllerDependencies) {
@@ -95,6 +98,7 @@ export class AssignController implements FastifyController {
     this.schedulePublisher = schedulePublisher;
     this.assignmentManager = assignmentManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
     const { parked } = config;
     this.parked = parked;
@@ -107,7 +111,10 @@ export class AssignController implements FastifyController {
   ): void {
     app.addHook(
       'preValidation',
-      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
+      }),
     );
 
     app.get(

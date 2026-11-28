@@ -4,6 +4,7 @@ import type { IActiveChurchResolver } from '../../domain/contracts/application/a
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { ISwapRequestListManager } from '../../domain/contracts/application/swap-request-list-manager';
 import type { ISwapRequestManager } from '../../domain/contracts/application/swap-request-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import { assertManagedMinistry } from '../auth/authority-access';
@@ -27,17 +28,20 @@ export class SwapRequestListController implements FastifyController {
   private readonly swapRequestListManager: ISwapRequestListManager;
   private readonly swapRequestManager: ISwapRequestManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     swapRequestListManager,
     swapRequestManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
   }: SwapRequestListControllerDependencies) {
     this.swapRequestListManager = swapRequestListManager;
     this.swapRequestManager = swapRequestManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -50,6 +54,7 @@ export class SwapRequestListController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
       }),
     );
 

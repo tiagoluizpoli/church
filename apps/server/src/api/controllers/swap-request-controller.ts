@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { AssignmentId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { ISwapRequestManager } from '../../domain/contracts/application/swap-request-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import { AssignmentAccessDeniedError } from '../../domain/errors/assignment-access-denied';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
@@ -26,13 +27,16 @@ export class SwapRequestController implements FastifyController {
 
   private readonly swapRequestManager: ISwapRequestManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
 
   constructor({
     swapRequestManager,
     activeChurchResolver,
+    sessionGateway,
   }: SwapRequestControllerDependencies) {
     this.swapRequestManager = swapRequestManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
   }
 
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
@@ -44,6 +48,7 @@ export class SwapRequestController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
         requireVolunteer: true,
       }),
     );

@@ -3,6 +3,7 @@ import { EventId, MinistryId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IEventManager } from '../../domain/contracts/application/event-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { EventStatus } from '../../domain/entities/event';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
@@ -29,15 +30,18 @@ export class EventController implements FastifyController {
 
   private readonly eventManager: IEventManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     eventManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
   }: EventControllerDependencies) {
     this.eventManager = eventManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -50,6 +54,7 @@ export class EventController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
       }),
     );
 

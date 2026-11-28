@@ -4,12 +4,14 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IAvailabilityCheckManager } from '../../domain/contracts/application/availability-check-manager';
 import type { IPrepareManager } from '../../domain/contracts/application/prepare-manager';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 
 export interface PrepareControllerDependencies {
   prepareManager: IPrepareManager;
   scheduleReadModel: IScheduleReadModel;
   availabilityCheckManager: IAvailabilityCheckManager;
   activeChurchResolver: IActiveChurchResolver;
+  sessionGateway: SessionGateway;
   authorityGuard: IAuthorityGuard;
   config: AppConfig;
 }

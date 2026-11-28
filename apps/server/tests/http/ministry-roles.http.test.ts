@@ -63,6 +63,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -88,6 +89,7 @@ beforeAll(async () => {
   // Real manager, repositories and AuthorityService; only the session and
   // Active Church selection are seams.
   const controller = new MinistryRoleController({
+    sessionGateway: testSessionGateway(),
     ministryRoleManager: new DbMinistryRoleManager({
       ministryRepository: ministryRepo,
       roleRepository,

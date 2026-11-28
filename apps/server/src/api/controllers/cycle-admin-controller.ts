@@ -4,6 +4,7 @@ import type { IActiveChurchResolver } from '../../domain/contracts/application/a
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { ICycleManager } from '../../domain/contracts/application/cycle-manager';
 import type { ISetupProgressManager } from '../../domain/contracts/application/setup-progress-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import { createChurchAdminHook } from '../auth/authority-access';
@@ -41,17 +42,20 @@ export class CycleAdminController implements FastifyController {
   private readonly cycleManager: ICycleManager;
   private readonly setupProgressManager: ISetupProgressManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     cycleManager,
     setupProgressManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
   }: CycleAdminControllerDependencies) {
     this.cycleManager = cycleManager;
     this.setupProgressManager = setupProgressManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -62,7 +66,10 @@ export class CycleAdminController implements FastifyController {
   ): void {
     app.addHook(
       'preValidation',
-      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
+      }),
     );
 
     app.addHook(

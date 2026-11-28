@@ -1,8 +1,10 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 
 export interface CreateActiveChurchPreValidationInput {
   resolver: IActiveChurchResolver;
+  sessionGateway: SessionGateway;
   /**
    * The route serves the caller's own Volunteer — e.g. their dashboard — so it
    * needs an active serving Membership, not just a leftover profile. A Church

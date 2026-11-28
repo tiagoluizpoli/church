@@ -9,6 +9,7 @@ import {
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import { AssignmentAccessDeniedError } from '../../domain/errors/assignment-access-denied';
 import { CheckAccessDeniedError } from '../../domain/errors/check-access-denied';
 import { IsolationBreachError } from '../../domain/errors/isolation-breach-error';
@@ -62,13 +63,16 @@ export class VolunteerController implements FastifyController {
 
   private readonly volunteerManager: IVolunteerManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
 
   constructor({
     volunteerManager,
     activeChurchResolver,
+    sessionGateway,
   }: VolunteerControllerDependencies) {
     this.volunteerManager = volunteerManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
   }
 
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
@@ -80,6 +84,7 @@ export class VolunteerController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
         requireVolunteer: true,
       }),
     );

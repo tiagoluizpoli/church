@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: {
@@ -14,11 +15,8 @@ const { createActiveChurchPreValidation } = await import(
   '@/api/auth/active-church-pre-validation'
 );
 const { auth } = await import('@/main/di/server-auth');
-const { BetterAuthSessionGateway } = await import(
-  '@/infrastructure/services/better-auth-session-gateway'
-);
 // The real session lookup over the mocked auth instance.
-const sessionGateway = new BetterAuthSessionGateway({ auth: auth as never });
+const sessionGateway = testSessionGateway();
 
 const mockGetSession = vi.mocked(auth.api.getSession);
 const mockSetActiveOrganization = vi.mocked(auth.api.setActiveOrganization);
@@ -28,7 +26,6 @@ const resolver = { resolve: vi.fn() };
 interface MockRequest {
   headers: Record<string, string>;
   log: { warn: ReturnType<typeof vi.fn> };
-  server: { sessionGateway: typeof sessionGateway };
 }
 
 interface RequestFields {
@@ -38,7 +35,7 @@ interface RequestFields {
 }
 
 function createRequest(): MockRequest {
-  return { headers: {}, log: { warn: vi.fn() }, server: { sessionGateway } };
+  return { headers: {}, log: { warn: vi.fn() } };
 }
 
 function requestFields(request: MockRequest): RequestFields {
@@ -61,6 +58,7 @@ describe('createActiveChurchPreValidation', () => {
     mockGetSession.mockResolvedValueOnce(null as never);
     const hook = createActiveChurchPreValidation({
       resolver: resolver as never,
+      sessionGateway,
     });
     const request = createRequest();
     const reply = createReply();
@@ -84,6 +82,7 @@ describe('createActiveChurchPreValidation', () => {
     });
     const hook = createActiveChurchPreValidation({
       resolver: resolver as never,
+      sessionGateway,
     });
     const request = createRequest();
     const reply = createReply();
@@ -113,6 +112,7 @@ describe('createActiveChurchPreValidation', () => {
     });
     const hook = createActiveChurchPreValidation({
       resolver: resolver as never,
+      sessionGateway,
       requireVolunteer: true,
     });
     const request = createRequest();
@@ -140,6 +140,7 @@ describe('createActiveChurchPreValidation', () => {
     });
     const hook = createActiveChurchPreValidation({
       resolver: resolver as never,
+      sessionGateway,
       requireVolunteer: true,
     });
     const request = createRequest();
@@ -168,6 +169,7 @@ describe('createActiveChurchPreValidation', () => {
     });
     const hook = createActiveChurchPreValidation({
       resolver: resolver as never,
+      sessionGateway,
       requireVolunteer: true,
     });
     const request = createRequest();
@@ -187,6 +189,7 @@ describe('createActiveChurchPreValidation', () => {
     resolver.resolve.mockResolvedValueOnce({ status: 'selection_required' });
     const hook = createActiveChurchPreValidation({
       resolver: resolver as never,
+      sessionGateway,
     });
     const request = createRequest();
     const reply = createReply();
@@ -204,6 +207,7 @@ describe('createActiveChurchPreValidation', () => {
     resolver.resolve.mockResolvedValueOnce({ status: 'no_membership' });
     const hook = createActiveChurchPreValidation({
       resolver: resolver as never,
+      sessionGateway,
     });
     const request = createRequest();
     const reply = createReply();
@@ -223,6 +227,7 @@ describe('createActiveChurchPreValidation', () => {
     mockSetActiveOrganization.mockResolvedValueOnce(undefined as never);
     const hook = createActiveChurchPreValidation({
       resolver: resolver as never,
+      sessionGateway,
     });
     const request = createRequest();
     const reply = createReply();
@@ -244,6 +249,7 @@ describe('createActiveChurchPreValidation', () => {
     mockSetActiveOrganization.mockRejectedValueOnce(new Error('boom'));
     const hook = createActiveChurchPreValidation({
       resolver: resolver as never,
+      sessionGateway,
     });
     const request = createRequest();
     const reply = createReply();
@@ -266,6 +272,7 @@ describe('createActiveChurchPreValidation', () => {
     mockSetActiveOrganization.mockResolvedValueOnce(undefined as never);
     const hook = createActiveChurchPreValidation({
       resolver: resolver as never,
+      sessionGateway,
     });
     const request = createRequest();
     const reply = createReply();
@@ -293,6 +300,7 @@ describe('createActiveChurchPreValidation', () => {
     mockSetActiveOrganization.mockRejectedValueOnce(new Error('boom'));
     const hook = createActiveChurchPreValidation({
       resolver: resolver as never,
+      sessionGateway,
     });
     const request = createRequest();
     const reply = createReply();
@@ -309,12 +317,12 @@ describe('createActiveChurchPreValidation', () => {
     } as never);
     resolver.resolve.mockResolvedValueOnce({ status: 'no_membership' });
     const app = Fastify();
-    app.decorate('sessionGateway', sessionGateway);
     app.get(
       '/protected',
       {
         preValidation: createActiveChurchPreValidation({
           resolver: resolver as never,
+          sessionGateway,
         }),
       },
       async () => ({ granted: true }),

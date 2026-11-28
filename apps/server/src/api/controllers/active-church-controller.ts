@@ -2,7 +2,10 @@ import { z } from 'zod';
 import { ChurchId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IActiveChurchSelectionManager } from '../../domain/contracts/application/active-church-selection-manager';
-import type { CallerSession } from '../../domain/contracts/infrastructure';
+import type {
+  CallerSession,
+  SessionGateway,
+} from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { resolveActiveChurchAndPersist } from '../auth/resolve-active-church-and-persist';
 import type { FastifyController } from '../contracts/fastify-controller';
@@ -37,9 +40,10 @@ const internalErrorResponseSchema = errorResponseSchema.extend({
  * that would otherwise open each handler.
  */
 async function requireSession({
+  sessionGateway,
   request,
 }: RequireSessionInput): Promise<CallerSession> {
-  const session = await request.server.sessionGateway.lookup({
+  const session = await sessionGateway.lookup({
     headers: headersFromRequest(request),
   });
   if (!session) throw new RefusalError({ code: 'UNAUTHORIZED' });
@@ -50,13 +54,16 @@ export class ActiveChurchController implements FastifyController {
   readonly prefix = '/active-church';
 
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly selectionManager: IActiveChurchSelectionManager;
 
   constructor({
     activeChurchResolver,
+    sessionGateway,
     selectionManager,
   }: ActiveChurchControllerDependencies) {
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.selectionManager = selectionManager;
   }
 
@@ -81,10 +88,14 @@ export class ActiveChurchController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const session = await requireSession({ request });
+        const session = await requireSession({
+          sessionGateway: this.sessionGateway,
+          request,
+        });
 
         const resolution = await resolveActiveChurchAndPersist({
           resolver: this.activeChurchResolver,
+          sessionGateway: this.sessionGateway,
           request,
           userId: session.userId,
           activeOrganizationId: session.activeOrganizationId,
@@ -109,7 +120,10 @@ export class ActiveChurchController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const session = await requireSession({ request });
+        const session = await requireSession({
+          sessionGateway: this.sessionGateway,
+          request,
+        });
 
         const options = await this.selectionManager.listSelectableChurches({
           userId: session.userId,
@@ -136,7 +150,10 @@ export class ActiveChurchController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const session = await requireSession({ request });
+        const session = await requireSession({
+          sessionGateway: this.sessionGateway,
+          request,
+        });
 
         const body = request.body;
         const resolution = await this.selectionManager.selectActiveChurch({
@@ -149,7 +166,7 @@ export class ActiveChurchController implements FastifyController {
         }
 
         // A failed save must reach the standard 500: answering "resolved" would show a Church the session does not scope.
-        await request.server.sessionGateway.setActiveChurch({
+        await this.sessionGateway.setActiveChurch({
           headers: headersFromRequest(request),
           churchId: resolution.churchId,
         });

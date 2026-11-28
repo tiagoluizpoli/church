@@ -12,9 +12,9 @@ import type { ResolveActiveChurchAndPersistInput } from './resolve-active-church
 export async function resolveActiveChurchAndPersist(
   input: ResolveActiveChurchAndPersistInput,
 ): Promise<ActiveChurchResolution> {
-  const { resolver, request, userId, activeOrganizationId } = input;
+  const { resolver, sessionGateway, request, userId, activeOrganizationId } =
+    input;
   const resolution = await resolver.resolve({ userId, activeOrganizationId });
-  const { sessionGateway } = request.server;
 
   if (resolution.status === 'resolved' && resolution.autoSelected) {
     // Best-effort persistence: the request still proceeds against the

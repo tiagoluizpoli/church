@@ -4,12 +4,14 @@ import type {
   IActiveChurchResolver,
 } from '../../domain/contracts/application/active-church-resolver';
 import type { IActiveChurchSelectionManager } from '../../domain/contracts/application/active-church-selection-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 
 export interface BuildStatusResponseInput {
   resolution: ActiveChurchResolution;
 }
 
 export interface RequireSessionInput {
+  sessionGateway: SessionGateway;
   request: FastifyRequest;
 }
 
@@ -21,5 +23,6 @@ export interface RequireSessionInput {
  */
 export interface ActiveChurchControllerDependencies {
   activeChurchResolver: IActiveChurchResolver;
+  sessionGateway: SessionGateway;
   selectionManager: IActiveChurchSelectionManager;
 }

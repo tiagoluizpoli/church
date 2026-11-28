@@ -38,7 +38,6 @@ export function createCompositionRoot(
     outboxDrainer: managers.outboxDrainer,
     errorReportTunnel: config.errorReportTunnel,
     errorReporter: services.errorReporter,
-    sessionGateway: services.sessionGateway,
     locale: {
       localeCookieName: config.localeCookieName,
       defaultLocale: config.defaultLocale,

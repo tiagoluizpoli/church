@@ -79,7 +79,11 @@ interface DownloadInput {
 }
 
 /** Baixar turns on once the export data has loaded. */
+/** Downloads the PDF: these cases are about the Cycle and dates, not the format. */
 async function download({ user, dialog }: DownloadInput) {
+  await user.click(
+    within(dialog).getByRole('radio', { name: m.export_format_pdf() }),
+  );
   const button = within(dialog).getByRole('button', {
     name: m.export_download(),
   });

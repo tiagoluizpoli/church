@@ -3,7 +3,7 @@
 # from the Dokploy environment as single-quoted literals (bcrypt hashes contain $).
 services:
   ntfy:
-    image: binwiederhier/ntfy:v2.38.1
+    image: binwiederhier/ntfy:v2.38.3
     command: serve
     restart: unless-stopped
     environment:

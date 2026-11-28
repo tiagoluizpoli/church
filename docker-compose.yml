@@ -28,7 +28,7 @@ services:
   # SMTP on 1025, web inbox on 8025 of every host interface (reach it at the
   # machine's IP). Messages persist in the volume; nothing is relayed.
   mailpit:
-    image: axllent/mailpit:v1.21
+    image: axllent/mailpit:v1.34
     container_name: church-mailpit
     restart: unless-stopped
     environment:
@@ -44,7 +44,7 @@ services:
   # (tooling/worktree/storage-buckets.ts). S3 API on 9000; the default root
   # credentials are local-only and match env:local's generated S3_* values.
   storage:
-    image: rustfs/rustfs:1.0.6
+    image: rustfs/rustfs:1.0.7
     container_name: church-storage
     restart: unless-stopped
     environment:

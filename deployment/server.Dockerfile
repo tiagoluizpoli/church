@@ -1,7 +1,7 @@
 # API image: also runs the one-shot migration (packages/db db:migrate:deployment).
 # Configuration and secrets arrive at runtime through the process environment;
 # only the source revision is baked in.
-FROM oven/bun:1.4.3
+FROM oven/bun:1.4.5
 WORKDIR /app
 COPY . .
 RUN bun install --frozen-lockfile

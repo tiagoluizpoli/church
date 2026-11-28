@@ -2,7 +2,7 @@
 # Frontend image: static build served by Caddy, which proxies /api (API and
 # auth) to the server service. Built for the same-origin API (`/`), so one
 # image serves any environment's hostname.
-FROM oven/bun:1.4.3 AS build
+FROM oven/bun:1.4.5 AS build
 WORKDIR /app
 COPY . .
 RUN bun install --frozen-lockfile

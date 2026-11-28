@@ -22,6 +22,8 @@ const CONSTITUTION = join(
   'tooling/validation/constitution-version-guard.ts',
 );
 const CONSTITUTION_PATH = '.specify/memory/constitution.md';
+/** The fix every missing-base failure names (#1233). */
+const FIX = 'fetch full history: `fetch-depth: 0`';
 const UNKNOWN_SHA = '0123456789abcdef0123456789abcdef01234567';
 
 let repo: string;
@@ -101,36 +103,46 @@ afterEach(() => {
 });
 
 describe('constitution-version-guard.ts with a missing base', () => {
-  it('fails when no base ref resolves', () => {
+  it('fails, naming the fix, when no base ref resolves', () => {
     git('branch', '-m', 'develop', 'main');
 
     const result = run({ args: [CONSTITUTION] });
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('No base ref found');
+    expect(result.stderr).toContain(FIX);
   });
 
-  it('fails when --base names a ref that does not exist', () => {
+  it('fails, naming the fix, when --base names a ref that does not exist', () => {
     const result = run({ args: [CONSTITUTION, '--base', 'spec/9-gone'] });
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('base ref "spec/9-gone" does not exist');
+    expect(result.stderr).toContain(
+      'Base "spec/9-gone" is not a commit in this clone',
+    );
+    expect(result.stderr).toContain(FIX);
   });
 
-  it('passes when --base names a commit missing from the clone', () => {
+  it('fails when --base names a commit missing from the clone', () => {
     const result = run({ args: [CONSTITUTION, '--base', UNKNOWN_SHA] });
 
-    expect(result.exitCode).toBe(0);
-    expect(result.stderr).toBe('');
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      `Base "${UNKNOWN_SHA}" is not a commit in this clone`,
+    );
+    expect(result.stderr).toContain(FIX);
   });
 
-  it('falls back to develop when the configured validate base is missing', () => {
+  it('fails instead of falling back to develop when the configured validate base is missing', () => {
     git('config', 'branch.feature/x.validateBase', 'spec/9-gone');
 
     const result = run({ args: [CONSTITUTION] });
 
-    expect(result.exitCode).toBe(0);
-    expect(result.stderr).toBe('');
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      'Base "spec/9-gone" is not a commit in this clone',
+    );
+    expect(result.stderr).toContain(FIX);
   });
 });
 

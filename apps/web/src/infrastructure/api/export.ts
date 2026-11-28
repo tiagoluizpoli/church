@@ -6,8 +6,11 @@
  */
 import type {
   GetScheduleExportData200,
+  GetScheduleExportDataParams,
   GetScheduleExportFileParams,
-  GetScheduleExportPreviewParams
+  GetScheduleExportPreviewParams,
+  ListScheduleExportCycles200,
+  ListScheduleExportCyclesParams
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -17,20 +20,36 @@ import { apiClient } from '../../utils/api-client';
 
   export const getExport = () => {
 /**
- * The whole Cycle as one ordered tree of facts (parts → Events → time blocks → Shifts → Sectors → people), Church-local days and HH:mm times, with the draft, unsent-changes, single Sector/Role and duplicate-name facts. Only Events and blocks the Ministry serves; hidden cancelled scopes are left out. Never ready-made text. For the Ministry's leaders and ChurchAdmins; 404 when the Ministry has no Schedule in the Cycle.
+ * Newest first, for the export's Cycle picker; `isCurrent` marks the one running on the Church's today. `q` keeps the Cycles where every word is found in the name, a date (DD/MM/YYYY or YYYY-MM-DD) or a month covered with its year, in the locale-cookie language, ignoring case and accents. For the Ministry's leaders and ChurchAdmins.
+ * @summary The Cycles a Ministry has a Schedule in
+ */
+const listScheduleExportCycles = (
+    ministryId: string,
+    params?: ListScheduleExportCyclesParams,
+ ) => {
+      return apiClient<ListScheduleExportCycles200>(
+      {url: `/api/v1/export/ministries/${ministryId}/cycles`, method: 'GET',
+        params
+    },
+      );
+    }
+  /**
+ * The Cycle, or its inclusive `from`/`to` days (an Event belongs by its Church-local start day), as one ordered tree of facts (parts → Events → time blocks → Shifts → Sectors → people), Church-local days and HH:mm times, with the draft, unsent-changes, single Sector/Role and duplicate-name facts. Only Events and blocks the Ministry serves; hidden cancelled scopes are left out. Never ready-made text. For the Ministry's leaders and ChurchAdmins; 404 `EXPORT_SCHEDULE_NOT_FOUND` when the Ministry has no Schedule in the Cycle; 400 `INVALID_DATE_RANGE` when `from` is after `to`; 422 `EXPORT_RANGE_OUTSIDE_CYCLE` when either reaches past the Cycle.
  * @summary A Ministry's Schedule for one Cycle as export data
  */
 const getScheduleExportData = (
     ministryId: string,
     cycleId: string,
+    params?: GetScheduleExportDataParams,
  ) => {
       return apiClient<GetScheduleExportData200>(
-      {url: `/api/v1/export/ministries/${ministryId}/cycles/${cycleId}/data`, method: 'GET'
+      {url: `/api/v1/export/ministries/${ministryId}/cycles/${cycleId}/data`, method: 'GET',
+        params
     },
       );
     }
   /**
- * The whole Cycle as an A4 landscape text PDF table (`pdf`) or as the whole grid in one PNG, never cut by size (`png`). Fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same access and 404 as the data.
+ * The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`) or as the whole grid in one PNG, never cut by size (`png`), fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same access, range and errors as the data.
  * @summary Download a Ministry's Schedule for one Cycle
  */
 const getScheduleExportFile = (
@@ -46,7 +65,7 @@ const getScheduleExportFile = (
       );
     }
   /**
- * Page `page` of the file `format` names, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, or the one page of the table image. Fixed text in the locale-cookie language. 404 past the last page; otherwise the same access and 404 as the data.
+ * Page `page` of the file `format` names, for the Cycle or its `from`/`to` days, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, or the one page of the table image. Fixed text in the locale-cookie language. 404 past the last page; otherwise the same access, range and errors as the data.
  * @summary One SVG page of a Ministry's Schedule export
  */
 const getScheduleExportPreview = (
@@ -61,7 +80,8 @@ const getScheduleExportPreview = (
     },
       );
     }
-  return {getScheduleExportData,getScheduleExportFile,getScheduleExportPreview}};
+  return {listScheduleExportCycles,getScheduleExportData,getScheduleExportFile,getScheduleExportPreview}};
+export type ListScheduleExportCyclesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getExport>['listScheduleExportCycles']>>>
 export type GetScheduleExportDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getExport>['getScheduleExportData']>>>
 export type GetScheduleExportFileResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getExport>['getScheduleExportFile']>>>
 export type GetScheduleExportPreviewResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getExport>['getScheduleExportPreview']>>>

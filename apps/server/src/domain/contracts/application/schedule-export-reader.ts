@@ -1,4 +1,4 @@
-import type { CalendarDay } from '@church/time';
+import type { CalendarDay, Locale } from '@church/time';
 import type { ChurchId, CycleId, MinistryId } from '../../branded-ids';
 import type { IScheduleChangeReader } from './schedule-change-reader';
 import type {
@@ -15,6 +15,27 @@ export interface ReadScheduleExportInput {
   churchId: ChurchId;
   ministryId: MinistryId;
   cycleId: CycleId;
+  /** Inclusive Church-local days inside the Cycle; an open side is the Cycle's own. */
+  from?: CalendarDay;
+  to?: CalendarDay;
+}
+
+export interface ListScheduleExportCyclesInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  /** Words each found in the name, a date or a month covered, ignoring case and accents. */
+  q?: string;
+  locale: Locale;
+}
+
+/** A Cycle the Ministry has a Schedule in, for the export's Cycle picker. */
+export interface ScheduleExportCycleOption {
+  id: string;
+  name: string;
+  startDate: CalendarDay;
+  endDate: CalendarDay;
+  /** The Church's today falls inside it. */
+  isCurrent: boolean;
 }
 
 /** A person serving, or an empty spot (`name: null`, drafts only). */
@@ -72,6 +93,12 @@ export interface ScheduleExportCycle {
   endDate: CalendarDay;
 }
 
+/** The inclusive days exported: the Cycle's span unless narrowed. */
+export interface ScheduleExportRange {
+  from: CalendarDay;
+  to: CalendarDay;
+}
+
 /**
  * The export's ordered tree of facts (parts → Events → time blocks → Shifts
  * → Sectors → people). Never ready-made text: every output localizes it.
@@ -79,6 +106,7 @@ export interface ScheduleExportCycle {
 export interface ScheduleExportData {
   ministry: ScheduleExportMinistry;
   cycle: ScheduleExportCycle;
+  range: ScheduleExportRange;
   /** No Event of the Schedule was ever published. */
   isDraft: boolean;
   hasUnsentChanges: boolean;
@@ -107,6 +135,14 @@ export interface SingleValueInput {
   values: string[];
 }
 
+export interface NormalizeSearchInput {
+  value: string;
+}
+
+export interface MonthNamesInput {
+  locale: Locale;
+}
+
 export interface DuplicateNamesInput {
   rows: ScheduleExportRow[];
 }
@@ -129,7 +165,15 @@ export interface RenderScheduleExportFileInput {
 }
 
 export interface IScheduleExportReader {
-  /** Throws `NotFoundError` when the Ministry has no Schedule in the Cycle. */
+  /** The Cycles the Ministry has a Schedule in, newest first. */
+  listCycles(
+    input: ListScheduleExportCyclesInput,
+  ): Promise<ScheduleExportCycleOption[]>;
+  /**
+   * Throws `ExportScheduleNotFoundError` when the Ministry has no Schedule in
+   * the Cycle, `InvalidDateRangeError` when `from` is after `to` and
+   * `ExportRangeOutsideCycleError` when either reaches past the Cycle.
+   */
   read(input: ReadScheduleExportInput): Promise<ScheduleExport>;
   /** The Grid template's file or page; throws `TypstRenderError` when it fails. */
   renderFile(input: RenderScheduleExportFileInput): Promise<Uint8Array>;

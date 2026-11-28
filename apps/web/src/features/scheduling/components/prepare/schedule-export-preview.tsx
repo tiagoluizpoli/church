@@ -9,10 +9,17 @@ import { exportApi } from '@/utils/api-instances';
 /** The preview waits this long after the last settings change. */
 const PREVIEW_DEBOUNCE_MS = 300;
 
+interface PreviewRange {
+  from: string;
+  to: string;
+}
+
 export interface ScheduleExportPreviewProps {
   ministryId: string;
   cycleId: string;
   format: GetScheduleExportFileFormat;
+  /** Null: the whole Cycle. */
+  range: PreviewRange | null;
 }
 
 interface PreviewPageProps {
@@ -28,6 +35,7 @@ async function readPreviewPages({
   ministryId,
   cycleId,
   format,
+  range,
 }: ScheduleExportPreviewProps): Promise<Blob[]> {
   const pages: Blob[] = [];
   for (;;) {
@@ -37,6 +45,7 @@ async function readPreviewPages({
         await exportApi.getScheduleExportPreview(ministryId, cycleId, {
           format,
           page,
+          ...range,
         }),
       );
     } catch (error) {
@@ -78,23 +87,17 @@ function PreviewPage({ page, number }: PreviewPageProps) {
 }
 
 /** The server's own render of the file, so the file never differs from it. */
-export function ScheduleExportPreview({
-  ministryId,
-  cycleId,
-  format,
-}: ScheduleExportPreviewProps) {
-  const [settledFormat, setSettledFormat] = useState(format);
+export function ScheduleExportPreview(settings: ScheduleExportPreviewProps) {
+  const [settled, setSettled] = useState(settings);
+  const key = JSON.stringify(settings);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: settles on a real change of the settings, not on each render's new object
   useEffect(() => {
-    const timer = setTimeout(
-      () => setSettledFormat(format),
-      PREVIEW_DEBOUNCE_MS,
-    );
+    const timer = setTimeout(() => setSettled(settings), PREVIEW_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [format]);
+  }, [key]);
   const preview = useQuery({
-    queryKey: ['schedule-export-preview', ministryId, cycleId, settledFormat],
-    queryFn: () =>
-      readPreviewPages({ ministryId, cycleId, format: settledFormat }),
+    queryKey: ['schedule-export-preview', settled],
+    queryFn: () => readPreviewPages(settled),
     placeholderData: keepPreviousData,
   });
   return (

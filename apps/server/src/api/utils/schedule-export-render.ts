@@ -20,7 +20,7 @@ function exportText({
   const { singleRole: role, singleSector: sector } = data;
   return {
     kicker: m.export_schedule_kicker({}, { locale }),
-    range: `${formatCalendarDay({ day: data.cycle.startDate })} – ${formatCalendarDay({ day: data.cycle.endDate })}`,
+    range: `${formatCalendarDay({ day: data.range.from })} – ${formatCalendarDay({ day: data.range.to })}`,
     single:
       role && sector
         ? m.export_single_role_and_sector({ role, sector }, { locale })
@@ -69,17 +69,20 @@ export function scheduleExportRenderPayload({
   return { media, data, text: exportText(input), days, times };
 }
 
-/** `Escala - <Ministry> - <Cycle>` without characters file systems refuse. */
+/**
+ * `Escala - <Ministry> - <Cycle>`, plus ` - Rascunho` on a draft, without
+ * characters file systems refuse.
+ */
 export function scheduleExportFileName({
   data,
   locale,
 }: ScheduleExportTextInput): string {
-  return exportFileName({
-    name: m.export_file_name(
-      { ministry: data.ministry.name, cycle: data.cycle.name },
-      { locale },
-    ),
-  });
+  const name = m.export_file_name(
+    { ministry: data.ministry.name, cycle: data.cycle.name },
+    { locale },
+  );
+  const suffixes = data.isDraft ? [m.export_draft({}, { locale })] : [];
+  return exportFileName({ name, suffixes });
 }
 
 /** An attachment header: an ASCII `filename` fallback and the UTF-8 `filename*`. */

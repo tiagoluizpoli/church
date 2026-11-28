@@ -9,7 +9,10 @@ import {
 import { AxiosError } from 'axios';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ScheduleExport } from '@/features/scheduling/components/prepare/schedule-export';
-import type { GetSchedule200 } from '@/infrastructure/api/churchAPI.schemas';
+import type {
+  GetSchedule200,
+  GetScheduleExportData200,
+} from '@/infrastructure/api/churchAPI.schemas';
 import { SCHEDULE } from '@/tests/features/scheduling/components/prepare/preparation-block.fixtures';
 import { waitForDialogFocus } from '@/tests/setup/dialog';
 import { renderWithProviders } from '@/tests/setup/render';
@@ -17,6 +20,7 @@ import { renderWithProviders } from '@/tests/setup/render';
 const state = vi.hoisted(() => ({
   data: undefined as GetSchedule200 | undefined,
   getScheduleExportFile: vi.fn(),
+  getScheduleExportData: vi.fn(),
   getScheduleExportPreview: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -27,16 +31,38 @@ vi.mock('@/features/scheduling/hooks/use-schedule', () => ({
 vi.mock('@/utils/api-instances', () => ({
   exportApi: {
     getScheduleExportFile: state.getScheduleExportFile,
+    getScheduleExportData: state.getScheduleExportData,
     getScheduleExportPreview: state.getScheduleExportPreview,
   },
 }));
 
+const EXPORT_DATA: GetScheduleExportData200 = {
+  ministry: { name: 'Worship' },
+  cycle: { name: 'Março 2027', startDate: '2027-01-01', endDate: '2027-01-31' },
+  range: { from: '2027-01-01', to: '2027-01-31' },
+  isDraft: false,
+  hasUnsentChanges: false,
+  singleSector: null,
+  singleRole: null,
+  duplicateNames: [],
+  parts: [],
+};
+
+/** Baixar turns on once the export data has loaded. */
+async function clickDownload(dialog: HTMLElement) {
+  const button = within(dialog).getByRole('button', {
+    name: m.export_download(),
+  });
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.click(button);
+}
+
 const pdf = new Blob(['%PDF'], { type: 'application/pdf' });
+const downloads: string[] = [];
 const svg = new Blob(['<svg/>'], { type: 'image/svg+xml' });
 const notFound = new AxiosError('Not Found', '404', undefined, undefined, {
   status: 404,
 } as never);
-const downloads: string[] = [];
 
 /** The server's preview: two A4 pages for the PDF, one page for the image. */
 function previewPages({ pdfPages = 2 } = {}) {
@@ -65,13 +91,6 @@ function setOnline(online: boolean) {
   });
 }
 
-async function openDialog() {
-  renderWithProviders(<ScheduleExport ministryId="m" cycleId="c" />);
-  fireEvent.click(screen.getByRole('button', { name: m.export_open() }));
-  await waitForDialogFocus();
-  return screen.getByRole('dialog', { name: m.export_dialog_title() });
-}
-
 beforeEach(() => {
   vi.resetAllMocks();
   downloads.length = 0;
@@ -81,6 +100,7 @@ beforeEach(() => {
     cycle: { ...SCHEDULE.cycle, name: 'Março: 2027' },
   };
   state.getScheduleExportFile.mockResolvedValue(pdf);
+  state.getScheduleExportData.mockResolvedValue(EXPORT_DATA);
   previewPages();
   setOnline(true);
   URL.createObjectURL = vi.fn(() => 'blob:export');
@@ -107,13 +127,9 @@ it('opens on the Schedule Cycle and downloads the whole Cycle as a PDF', async (
       m.export_whole_cycle({ span: '01/01/2027 – 31/01/2027' }),
     ),
   ).toBeVisible();
-  expect(
-    within(dialog).getByRole('radio', { name: m.export_format_pdf() }),
-  ).toBeChecked();
+  expect(within(dialog).getByText(m.export_format_pdf())).toBeVisible();
 
-  fireEvent.click(
-    within(dialog).getByRole('button', { name: m.export_download() }),
-  );
+  await clickDownload(dialog);
 
   await waitFor(() =>
     expect(downloads).toEqual([
@@ -139,7 +155,9 @@ it('keeps the dialog open and says so when the download fails', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: m.export_open() }));
   await waitForDialogFocus();
-  fireEvent.click(screen.getByRole('button', { name: m.export_download() }));
+  await clickDownload(
+    screen.getByRole('dialog', { name: m.export_dialog_title() }),
+  );
 
   await waitFor(() =>
     expect(state.toastError).toHaveBeenCalledExactlyOnceWith(
@@ -150,6 +168,91 @@ it('keeps the dialog open and says so when the download fails', async () => {
   expect(
     screen.getByRole('dialog', { name: m.export_dialog_title() }),
   ).toBeVisible();
+});
+
+async function openDialog() {
+  renderWithProviders(<ScheduleExport ministryId="m" cycleId="c" />);
+  fireEvent.click(screen.getByRole('button', { name: m.export_open() }));
+  await waitForDialogFocus();
+  return screen.getByRole('dialog', { name: m.export_dialog_title() });
+}
+
+it('waits for the export data before Baixar turns on', async () => {
+  state.getScheduleExportData.mockReturnValue(new Promise(() => {}));
+  const dialog = await openDialog();
+
+  expect(
+    within(dialog).getByRole('button', { name: m.export_download() }),
+  ).toBeDisabled();
+});
+
+it('shows no notice for a published Schedule with nothing unsent', async () => {
+  const dialog = await openDialog();
+
+  await waitFor(() =>
+    expect(state.getScheduleExportData).toHaveBeenCalledExactlyOnceWith(
+      'm',
+      'c',
+    ),
+  );
+  expect(within(dialog).queryByText(m.export_draft_notice())).toBeNull();
+  expect(within(dialog).queryByText(m.export_unsent_changes())).toBeNull();
+  expect(
+    within(dialog).queryByText(m.export_duplicate_names_title()),
+  ).toBeNull();
+});
+
+it('says a never-published Schedule downloads as a Rascunho', async () => {
+  state.getScheduleExportData.mockResolvedValue({
+    ...EXPORT_DATA,
+    isDraft: true,
+  });
+  const dialog = await openDialog();
+
+  expect(
+    await within(dialog).findByText(m.export_draft_notice()),
+  ).toBeVisible();
+  expect(within(dialog).queryByText(m.export_unsent_changes())).toBeNull();
+  await clickDownload(dialog);
+
+  await waitFor(() =>
+    expect(downloads).toEqual([
+      `${m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' })} - ${m.export_draft()}.pdf`,
+    ]),
+  );
+});
+
+it('hints at changes not yet sent to the volunteers', async () => {
+  state.getScheduleExportData.mockResolvedValue({
+    ...EXPORT_DATA,
+    hasUnsentChanges: true,
+  });
+  const dialog = await openDialog();
+
+  expect(
+    await within(dialog).findByText(m.export_unsent_changes()),
+  ).toBeVisible();
+  expect(within(dialog).queryByText(m.export_draft_notice())).toBeNull();
+});
+
+it('flags volunteers with the same name, names as registered', async () => {
+  state.getScheduleExportData.mockResolvedValue({
+    ...EXPORT_DATA,
+    duplicateNames: [
+      ['Ana Souza', 'Ána  Souza'],
+      ['Bruno Lima', 'bruno lima'],
+    ],
+  });
+  const dialog = await openDialog();
+
+  const notice = (
+    await within(dialog).findByText(m.export_duplicate_names_title())
+  ).closest('[role="status"]') as HTMLElement;
+  expect(notice).toBeVisible();
+  const items = within(notice)
+    .getAllByRole('listitem')
+    .map((item) => item.textContent);
+  expect(items).toEqual(['Ana Souza · Ána  Souza', 'Bruno Lima · bruno lima']);
 });
 
 it('previews every page of the file with a link to each at full size', async () => {
@@ -226,9 +329,7 @@ it('downloads the table image as one PNG', async () => {
   fireEvent.click(
     within(dialog).getByRole('radio', { name: m.export_format_table_image() }),
   );
-  fireEvent.click(
-    within(dialog).getByRole('button', { name: m.export_download() }),
-  );
+  await clickDownload(dialog);
 
   await waitFor(() =>
     expect(downloads).toEqual([
@@ -259,9 +360,11 @@ it('says there is no preview and no export without a connection', async () => {
   });
 
   expect(await within(dialog).findAllByRole('img')).toHaveLength(2);
-  expect(
-    within(dialog).getByRole('button', { name: m.export_download() }),
-  ).toBeEnabled();
+  await waitFor(() =>
+    expect(
+      within(dialog).getByRole('button', { name: m.export_download() }),
+    ).toBeEnabled(),
+  );
 });
 
 it('says so when the preview cannot be rendered', async () => {
@@ -271,4 +374,22 @@ it('says so when the preview cannot be rendered', async () => {
   expect(
     await within(dialog).findByText(m.export_preview_failed()),
   ).toBeVisible();
+});
+
+it('previews only the chosen dates', async () => {
+  const dialog = await openDialog();
+  await within(dialog).findAllByRole('img');
+
+  fireEvent.click(
+    within(dialog).getByRole('radio', { name: m.export_pick_dates() }),
+  );
+
+  await waitFor(() =>
+    expect(previewCalls()).toContainEqual({
+      format: 'pdf',
+      page: 1,
+      from: '2027-01-01',
+      to: '2027-01-31',
+    }),
+  );
 });

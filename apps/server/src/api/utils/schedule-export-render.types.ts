@@ -6,6 +6,14 @@ export interface ScheduleExportTextInput {
   locale: Locale;
 }
 
+/** `print`: A4 landscape pages (the PDF); `image`: one page as tall as the grid (the PNG). */
+export type ScheduleExportMedia = 'print' | 'image';
+
+export interface ScheduleExportRenderPayloadInput
+  extends ScheduleExportTextInput {
+  media: ScheduleExportMedia;
+}
+
 export interface ScheduleExportColumnsText {
   date: string;
   event: string;
@@ -34,6 +42,7 @@ export interface ScheduleExportText {
  * data's days and `HH:mm` times as they read in the locale.
  */
 export interface ScheduleExportRenderPayload {
+  media: ScheduleExportMedia;
   data: ScheduleExportData;
   text: ScheduleExportText;
   days: Record<string, string>;

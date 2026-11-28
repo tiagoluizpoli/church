@@ -126,7 +126,7 @@ function listCycles(q?: string, ministryId = fixture.kidsId) {
 }
 
 interface RangeRequest {
-  kind?: 'data' | 'file';
+  kind?: 'data' | 'file' | 'preview';
   from?: string;
   to?: string;
   locale?: 'en' | 'pt-BR';
@@ -139,7 +139,7 @@ function readRange({
   locale = 'pt-BR',
 }: RangeRequest) {
   const query = new URLSearchParams({
-    ...(kind === 'file' && { format: 'pdf' }),
+    ...(kind !== 'data' && { format: 'pdf' }),
     ...(from && { from }),
     ...(to && { to }),
   });
@@ -253,6 +253,7 @@ describe('from/to on the export data and file', () => {
   it.each([
     'data',
     'file',
+    'preview',
   ] as const)('refuses a %s range outside the Cycle, showing its span', async (kind) => {
     for (const range of [{ from: '2026-09-30' }, { to: '2026-11-01' }]) {
       const response = await readRange({ kind, ...range });
@@ -272,6 +273,7 @@ describe('from/to on the export data and file', () => {
   it.each([
     'data',
     'file',
+    'preview',
   ] as const)('refuses a %s range whose start is after its end', async (kind) => {
     const response = await readRange({
       kind,

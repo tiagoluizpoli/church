@@ -167,7 +167,10 @@ interface ExportRequest {
   locale?: 'en' | 'pt-BR';
 }
 
-function exportUrl(kind: 'data' | 'file', request: ExportRequest = {}) {
+function exportUrl(
+  kind: 'data' | 'file' | 'preview',
+  request: ExportRequest = {},
+) {
   const ministryId = request.ministryId ?? fixture.kidsId;
   const cycleId = request.cycleId ?? fixture.octoberId;
   return `/api/v1/export/ministries/${ministryId}/cycles/${cycleId}/${kind}`;
@@ -183,6 +186,41 @@ function readPdf(request: ExportRequest = {}) {
     url: `${exportUrl('file', request)}?format=pdf`,
     cookies: { [appConfig.localeCookieName]: request.locale ?? 'pt-BR' },
   });
+}
+
+interface PreviewRequest extends ExportRequest {
+  format?: 'pdf' | 'png';
+  page?: number;
+}
+
+function readPng(request: ExportRequest = {}) {
+  return app.inject({
+    method: 'GET',
+    url: `${exportUrl('file', request)}?format=png`,
+  });
+}
+
+function readPreview({
+  format = 'pdf',
+  page = 1,
+  ...request
+}: PreviewRequest = {}) {
+  return app.inject({
+    method: 'GET',
+    url: `${exportUrl('preview', request)}?format=${format}&page=${page}`,
+  });
+}
+
+/** An SVG page's size in points, from its root element. */
+function svgSize(svg: string) {
+  const [, width, height] =
+    /^<svg viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(svg) ?? [];
+  return { width: Number(width), height: Number(height) };
+}
+
+/** A PNG's size in pixels, from its IHDR chunk. */
+function pngSize(png: Buffer) {
+  return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
 }
 
 function poppler(tool: 'pdftotext' | 'pdffonts' | 'pdfinfo', pdf: Buffer) {
@@ -325,6 +363,8 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/data', () => {
     signIn(persona);
     expect((await readData()).statusCode).toBe(status);
     expect((await readPdf()).statusCode).toBe(status);
+    expect((await readPng()).statusCode).toBe(status);
+    expect((await readPreview()).statusCode).toBe(status);
   });
 
   it('refuses a Ministry or Cycle of another Church, and a Cycle with no Schedule, as 404', async () => {
@@ -336,6 +376,7 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/data', () => {
     ]) {
       expect((await readData(request)).statusCode).toBe(404);
       expect((await readPdf(request)).statusCode).toBe(404);
+      expect((await readPreview(request)).statusCode).toBe(404);
     }
   });
 
@@ -461,7 +502,7 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/data', () => {
   });
 });
 
-describe('GET /export/ministries/:ministryId/cycles/:cycleId/file?format=pdf', () => {
+describe('GET /export/ministries/:ministryId/cycles/:cycleId/file', () => {
   it('downloads an A4 landscape text PDF of the whole Cycle', async () => {
     const response = await readPdf();
 
@@ -591,6 +632,24 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/file?format=pdf', (
     );
   });
 
+  it('downloads the whole grid as one PNG, never cut by size', async () => {
+    const response = await readPng();
+    const preview = svgSize((await readPreview({ format: 'png' })).body);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toBe('image/png');
+    expect(response.headers['content-disposition']).toBe(
+      `attachment; filename="Escala - Kids - Outubro 2026.png"; filename*=UTF-8''Escala%20-%20Kids%20-%20Outubro%202026.png`,
+    );
+    // A4 landscape width at 200 ppi; the height is the whole grid's.
+    const png = pngSize(response.rawPayload);
+    expect(png.width).toBe(2339);
+    expect(png.height).toBe(Math.ceil((preview.height * 200) / 72));
+    expect((await readPreview({ format: 'png', page: 2 })).statusCode).toBe(
+      404,
+    );
+  });
+
   it('refuses a format it cannot render', async () => {
     const response = await app.inject({
       method: 'GET',
@@ -598,5 +657,45 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/file?format=pdf', (
     });
 
     expect(response.statusCode).toBe(422);
+  });
+});
+
+describe('GET /export/ministries/:ministryId/cycles/:cycleId/preview', () => {
+  it('previews each PDF page as an SVG page of the same template', async () => {
+    const pages = Number(
+      /Pages:\s+(\d+)/.exec(
+        poppler('pdfinfo', (await readPdf()).rawPayload),
+      )?.[1],
+    );
+
+    for (let page = 1; page <= pages; page += 1) {
+      const response = await readPreview({ page });
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['content-type']).toBe('image/svg+xml');
+      expect(response.headers['cache-control']).toBe('private, no-store');
+      expect(svgSize(response.body)).toEqual({
+        width: 841.88976378,
+        height: 595.275590551,
+      });
+    }
+    expect((await readPreview({ page: pages + 1 })).statusCode).toBe(404);
+  });
+
+  it('previews the table image as one page of the whole grid', async () => {
+    const pdf = svgSize((await readPreview()).body);
+    const image = svgSize((await readPreview({ format: 'png' })).body);
+
+    expect(image.width).toBe(pdf.width);
+    expect(image.height).not.toBe(pdf.height);
+  });
+
+  it('refuses a page or format it cannot preview', async () => {
+    for (const query of ['format=pdf&page=0', 'format=docx&page=1']) {
+      const response = await app.inject({
+        method: 'GET',
+        url: `${exportUrl('preview')}?${query}`,
+      });
+      expect(response.statusCode).toBe(422);
+    }
   });
 });

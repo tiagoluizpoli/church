@@ -71,7 +71,15 @@ export const scheduleExportDataSchema = z.object({
 export const scheduleExportFileSchema = z
   .string()
   .meta({ format: 'binary' })
-  .describe('The PDF file');
+  .describe('The PDF or PNG file');
+
+/** One SVG page; a Buffer skips serialization. */
+export const scheduleExportPreviewSchema = z
+  .string()
+  .meta({ format: 'binary' })
+  .describe('One SVG page');
+
+const exportFormatSchema = z.enum(['pdf', 'png']);
 
 /** Inclusive Church-local days inside the Cycle; an Event belongs by its start day. */
 export const scheduleExportRangeQuerySchema = z.object({
@@ -81,7 +89,15 @@ export const scheduleExportRangeQuerySchema = z.object({
 
 export const scheduleExportFileQuerySchema =
   scheduleExportRangeQuerySchema.extend({
-    format: z.enum(['pdf']),
+    format: exportFormatSchema,
+  });
+
+export const scheduleExportPreviewQuerySchema =
+  scheduleExportRangeQuerySchema.extend({
+    /** The file this previews: the A4 PDF pages or the one table image. */
+    format: exportFormatSchema,
+    /** 1-based; past the last page is 404. */
+    page: z.coerce.number().int().min(1).default(1),
   });
 
 export const scheduleExportCyclesQuerySchema = z.object({
@@ -112,4 +128,8 @@ export type ScheduleExportCyclesQuery = z.infer<
 
 export type ScheduleExportFileQuery = z.infer<
   typeof scheduleExportFileQuerySchema
+>;
+
+export type ScheduleExportPreviewQuery = z.infer<
+  typeof scheduleExportPreviewQuerySchema
 >;

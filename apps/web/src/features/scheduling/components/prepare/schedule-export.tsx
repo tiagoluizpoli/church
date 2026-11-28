@@ -17,7 +17,10 @@ import {
   ScheduleExportCyclePicker,
 } from '@/features/scheduling/components/prepare/schedule-export-cycle-picker';
 import { ScheduleExportGroups } from '@/features/scheduling/components/prepare/schedule-export-groups';
+import { ScheduleExportPreview } from '@/features/scheduling/components/prepare/schedule-export-preview';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
+import { useOnlineState } from '@/features/volunteers/hooks/use-online-state';
+import type { GetScheduleExportFileFormat } from '@/infrastructure/api/churchAPI.schemas';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { exportApi } from '@/utils/api-instances';
 
@@ -28,6 +31,16 @@ interface ScheduleExportProps {
   initialOpen?: boolean;
   /** Called once when it opened at once. */
   onOpened?: () => void;
+}
+
+const FORMATS = [
+  { format: 'pdf', label: m.export_format_pdf },
+  { format: 'png', label: m.export_format_table_image },
+] as const;
+
+interface DownloadRequest {
+  cycle: ExportCycle;
+  format: GetScheduleExportFileFormat;
 }
 
 interface SaveFileInput {
@@ -64,8 +77,9 @@ interface ExportRange {
 }
 
 /**
- * Exportar: the Schedule as an A4 PDF table (#1243), for any Cycle with a
- * Schedule and optionally only some of its dates (#1246). The page is only
+ * Exportar: the Schedule as an A4 PDF table (#1243) or one table image under
+ * a live preview of the file (#1244), for any Cycle with a Schedule and
+ * optionally only some of its dates (#1246). The page is only
  * reachable by the Ministry's leaders and ChurchAdmins. The export data's
  * facts drive the Rascunho, unsent-changes and same-name notices (#1245).
  */
@@ -83,6 +97,8 @@ export function ScheduleExport({
   const [cycle, setCycle] = useState<ExportCycle | null>(null);
   // Null: the whole Cycle.
   const [range, setRange] = useState<ExportRange | null>(null);
+  const [format, setFormat] = useState<GetScheduleExportFileFormat>('pdf');
+  const online = useOnlineState();
   const { data } = useSchedule({ ministryId, cycleId });
   const selectedId = cycle?.id ?? cycleId;
   const { data: exported, error: refused } = useQuery({
@@ -95,12 +111,16 @@ export function ScheduleExport({
   });
   const isDraft = exported?.isDraft ?? false;
   const download = useMutation({
-    mutationFn: async (chosen: ExportCycle) => {
+    mutationFn: async (chosen: DownloadRequest) => {
       try {
-        return await exportApi.getScheduleExportFile(ministryId, chosen.id, {
-          format: 'pdf',
-          ...range,
-        });
+        return await exportApi.getScheduleExportFile(
+          ministryId,
+          chosen.cycle.id,
+          {
+            format: chosen.format,
+            ...range,
+          },
+        );
       } catch (error) {
         throw new Error(
           (await refusalMessage(error)) ?? m.export_download_failed(),
@@ -111,10 +131,13 @@ export function ScheduleExport({
       if (!data) return;
       const name = m.export_file_name({
         ministry: data.ministry.name,
-        cycle: chosen.name,
+        cycle: chosen.cycle.name,
       });
       const suffixes = isDraft ? [m.export_draft()] : [];
-      saveFile({ file, name: `${exportFileName({ name, suffixes })}.pdf` });
+      saveFile({
+        file,
+        name: `${exportFileName({ name, suffixes })}.${chosen.format}`,
+      });
       setOpen(false);
     },
     onError: (error) => toast.error(error.message),
@@ -151,8 +174,8 @@ export function ScheduleExport({
             ) : null}
             <Button
               // The file name needs the draft fact, so wait for the data.
-              disabled={download.isPending || !exported}
-              onClick={() => download.mutate(selected)}
+              disabled={download.isPending || !exported || !online}
+              onClick={() => download.mutate({ cycle: selected, format })}
             >
               {download.isPending ? <Spinner /> : null}
               {m.export_download()}
@@ -213,9 +236,23 @@ export function ScheduleExport({
               </div>
             ) : null}
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <p className="text-muted-foreground">{m.export_format_label()}</p>
-            <p className="font-medium">{m.export_format_pdf()}</p>
+            <RadioGroup
+              aria-label={m.export_format_label()}
+              value={format}
+              onValueChange={(value) => {
+                const option = FORMATS.find((item) => item.format === value);
+                if (option) setFormat(option.format);
+              }}
+            >
+              {FORMATS.map((option) => (
+                <Label key={option.format} className="font-normal">
+                  <RadioGroupItem value={option.format} />
+                  {option.label()}
+                </Label>
+              ))}
+            </RadioGroup>
           </div>
           <ScheduleExportGroups ministryId={ministryId} cycleId={cycleId} />
         </div>
@@ -243,6 +280,25 @@ export function ScheduleExport({
             </AlertDescription>
           </Alert>
         ) : null}
+        {format === 'png' ? (
+          <Alert role="status" className="mt-4">
+            <AlertDescription>{m.export_table_image_notice()}</AlertDescription>
+          </Alert>
+        ) : null}
+        <div className="mt-4">
+          {!online ? (
+            <p className="text-muted-foreground text-sm">
+              {m.export_offline()}
+            </p>
+          ) : refused ? null : (
+            <ScheduleExportPreview
+              ministryId={ministryId}
+              cycleId={selected.id}
+              format={format}
+              range={range}
+            />
+          )}
+        </div>
       </ResponsiveFormSurface>
     </>
   );

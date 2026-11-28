@@ -280,10 +280,12 @@ export class DbScheduleExportReader implements IScheduleExportReader {
     exported,
     payload,
     format,
+    page,
   }: RenderScheduleExportFileInput): Promise<Uint8Array> {
     return this.typstRenderer.render({
       template: GRID_TEMPLATE,
       format,
+      page,
       payload,
       creationTimestamp: exported.changedAt,
       logoKey: exported.logoKey ?? undefined,

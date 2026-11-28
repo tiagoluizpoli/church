@@ -228,7 +228,7 @@ describe('affected.ts with a missing base', () => {
 });
 
 describe('seed acknowledgements with a missing PR base', () => {
-  it('accepts a trailer when the open PR base shares no history with HEAD', () => {
+  it('fails, naming the fix, when the open PR base shares no history with HEAD', () => {
     createUnrelatedBranch({ name: 'feature/lower' });
     commitFile({
       message: 'feat: a\n\nSeed-Impact: none - test',
@@ -240,7 +240,10 @@ describe('seed acknowledgements with a missing PR base', () => {
 
     const result = run({ args: [AFFECTED, '--dry-run'] });
 
-    expect(result.exitCode).toBe(0);
-    expect(JSON.parse(result.stdout).seedImpact.decision).toBe('acknowledged');
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain(
+      'Base "feature/lower" shares no history with HEAD',
+    );
+    expect(result.stderr).toContain(FIX);
   });
 });

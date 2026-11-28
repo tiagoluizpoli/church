@@ -13,7 +13,7 @@ const SELECT_METHODS = new Set([
 const ORDER_FIX =
   'end it in a total ORDER BY, or add // list-order: <reason> above it';
 
-const OPT_OUT_PATTERN = /^\s*\/\/\s*list-order\b:?(.*)$/;
+const OPT_OUT_PATTERN = /\/\/\s*list-order\b:?(.*)$/;
 
 const isChecked = ({ path }: SourceFile) => CHECKED_PATH_PATTERN.test(path);
 
@@ -206,21 +206,39 @@ export function getListOrderFailures({
     const lineOf = (node: ts.Node) =>
       sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1;
     const failures: string[] = [];
-    // A one-line opt-out covers the line below it.
-    const optedOutLines = new Set<number>();
     sourceFile.text.split('\n').forEach((text, index) => {
       const optOut = text.match(OPT_OUT_PATTERN);
-      if (!optOut) return;
-      optedOutLines.add(index + 2);
-      if (!optOut[1]?.trim()) {
+      if (optOut && !optOut[1]?.trim()) {
         failures.push(
           `${path}:${index + 1}: list-order opt-out needs a reason: // list-order: <why the order does not matter>`,
         );
       }
     });
-    const isOptedOut = (chain: ts.CallExpression) =>
-      optedOutLines.has(lineOf(chain)) ||
-      optedOutLines.has(lineOf(statementOf(chain)));
+    // The opt-out is a comment leading the chain or anything up to its
+    // statement, wherever the formatter puts it (`? // list-order: …`).
+    const isOptedOut = (chain: ts.CallExpression) => {
+      const statement = statementOf(chain);
+      for (let node: ts.Node = chain; ; node = node.parent) {
+        const comments = [
+          ...(ts.getTrailingCommentRanges(
+            sourceFile.text,
+            node.getFullStart(),
+          ) ?? []),
+          ...(ts.getLeadingCommentRanges(
+            sourceFile.text,
+            node.getFullStart(),
+          ) ?? []),
+        ];
+        if (
+          comments.some(({ pos, end }) =>
+            OPT_OUT_PATTERN.test(sourceFile.text.slice(pos, end)),
+          )
+        ) {
+          return true;
+        }
+        if (node === statement) return false;
+      }
+    };
     const visit = (node: ts.Node) => {
       if (isSelectCall(node)) {
         const chain = chainOf(node);

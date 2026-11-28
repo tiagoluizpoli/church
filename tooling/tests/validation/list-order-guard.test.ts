@@ -101,6 +101,25 @@ describe('list order guard', () => {
     ).toEqual([missingOrder(11)]);
   });
 
+  it('accepts an opt-out the formatter moved after a ternary or into parentheses', () => {
+    expect(
+      failuresFor(`export class Example {
+  async find() {
+    const [row] = isValid
+      ? // list-order: lookup by primary key
+        await this.db.select().from(roles).where(eq(roles.id, id))
+      : [];
+    const first = (
+      // list-order: one row per source message (unique)
+      await this.db.select().from(roles).where(eq(roles.code, code))
+    )[0];
+    return { row, first };
+  }
+}
+`),
+    ).toEqual([]);
+  });
+
   it('rejects an opt-out without a reason', () => {
     expect(
       failuresFor(`export class Example {

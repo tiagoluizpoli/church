@@ -544,6 +544,17 @@ git config branch.<ticket-branch>.validateBase spec/<n>-<slug>
 `--base` still wins, a setting naming a missing ref fails the gate, and the
 dry run's `Base ref:` line shows the choice.
 
+The guards that compare HEAD with a base commit fail closed when the clone
+lacks it (#1233): `validate:affected`, the seed and journey trailer lookup
+(`tooling/validation/seed-acknowledgements.ts`) and
+`validate:constitution-version`, which resolves its base the same way (else
+`origin/$GITHUB_BASE_REF` in CI). No base found or a base that is not a
+commit here exits 1, as does, for the two diffs, a base sharing no history
+with HEAD (a shallow checkout); each message names the fix: fetch full history (`fetch-depth: 0` on `actions/checkout`, or
+`git fetch --unshallow origin`). None has a flag to skip a missing base; every
+CI job that runs them checks out with `fetch-depth: 0`
+(`tooling/validation/base-commit.ts`).
+
 ## Validate slot
 
 `validate`, `validate:affected` and `validate:no-docker` share one slot per

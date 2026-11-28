@@ -2,6 +2,7 @@ import {
   type ExecFileSyncOptionsWithStringEncoding,
   execFileSync,
 } from 'node:child_process';
+import { isCommit, MISSING_BASE_FIX, requireBaseCommit } from './base-commit';
 
 const CONSTITUTION_PATH = '.specify/memory/constitution.md';
 const VERSION_PATTERN = /^\*\*Version\*\*:\s*(\d+\.\d+\.\d+)/m;
@@ -114,79 +115,65 @@ export function checkConstitutionVersionBump({
   };
 }
 
-function isRef({ ref }: { ref: string }): boolean {
+/**
+ * The base to compare with: `--base`, else the branch's configured validate
+ * base (never silently replaced), else `origin/$GITHUB_BASE_REF` in CI, else
+ * develop. Each must be a commit this clone has: a missing base fails closed.
+ */
+function readValidateBase(): string | undefined {
+  const branch = execFileSync(
+    'git',
+    ['branch', '--show-current'],
+    QUIET,
+  ).trim();
+  if (branch) {
+    const configured = readGitConfig({
+      key: `branch.${branch}.validateBase`,
+    });
+    if (configured) return configured;
+  }
+
+  const githubBaseRef = process.env.GITHUB_BASE_REF;
+  if (githubBaseRef) return `origin/${githubBaseRef}`;
+
+  return ['origin/develop', 'develop'].find((ref) => isCommit({ ref }));
+}
+
+function readGitConfig({ key }: { key: string }): string | undefined {
   try {
-    execFileSync('git', ['rev-parse', '--verify', '--quiet', ref], QUIET);
-    return true;
+    return execFileSync('git', ['config', '--get', key], QUIET).trim();
   } catch {
-    return false;
+    return undefined;
   }
 }
 
-function readValidateBase(): string | undefined {
-  // 1. Try branch.*.validateBase config
-  try {
-    const branch = execFileSync('git', ['branch', '--show-current'], {
-      encoding: 'utf8',
-    }).trim();
-    if (branch) {
-      const validateBase = execFileSync(
-        'git',
-        ['config', `branch.${branch}.validateBase`],
-        QUIET,
-      ).trim();
-      if (validateBase && isRef({ ref: validateBase })) {
-        return validateBase;
-      }
-    }
-  } catch {
-    // Fall through
+function readBaseRef(): string {
+  const baseRefIndex = process.argv.indexOf('--base');
+  if (baseRefIndex !== -1) {
+    const baseRefArg = process.argv[baseRefIndex + 1];
+    if (!baseRefArg) throw new Error('--base needs a ref');
+    return baseRefArg;
   }
-
-  // 2. In CI, try origin/$GITHUB_BASE_REF
-  const githubBaseRef = process.env.GITHUB_BASE_REF;
-  if (githubBaseRef) {
-    const ciBase = `origin/${githubBaseRef}`;
-    if (isRef({ ref: ciBase })) {
-      return ciBase;
-    }
+  const baseRef = readValidateBase();
+  if (!baseRef) {
+    throw new Error(
+      `No base ref found: set branch.*.validateBase or pass --base, or ${MISSING_BASE_FIX}.`,
+    );
   }
-
-  // 3. Try origin/develop, then develop
-  return ['origin/develop', 'develop'].find((ref) => isRef({ ref }));
+  return baseRef;
 }
 
 if (import.meta.main) {
-  const baseRefIndex = process.argv.indexOf('--base');
-  let baseRef: string | undefined;
-
-  if (baseRefIndex !== -1) {
-    const baseRefArg = process.argv[baseRefIndex + 1];
-    if (!baseRefArg) {
-      console.error('--base needs a ref');
-      process.exit(1);
+  try {
+    const baseRef = readBaseRef();
+    requireBaseCommit({ ref: baseRef });
+    const result = checkConstitutionVersionBump({ baseRef });
+    if (!result.valid && result.failure) {
+      console.error(result.failure);
+      process.exitCode = 1;
     }
-    baseRef = baseRefArg;
-  } else {
-    baseRef = readValidateBase();
-  }
-
-  if (!baseRef) {
-    console.error(
-      'No base ref found: set branch.*.validateBase, or ensure origin/develop or develop exists',
-    );
-    process.exit(1);
-  }
-
-  if (!isRef({ ref: baseRef })) {
-    console.error(`base ref "${baseRef}" does not exist`);
-    process.exit(1);
-  }
-
-  const result = checkConstitutionVersionBump({ baseRef });
-
-  if (!result.valid && result.failure) {
-    console.error(result.failure);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   }
 }

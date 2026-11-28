@@ -7,6 +7,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useEventGroups } from '@/features/ministries/ministry-queries';
+import { useMinistryRoles } from '@/features/ministries/role-queries';
 import {
   cycleSpan,
   daySpan,
@@ -15,6 +17,7 @@ import {
 } from '@/features/scheduling/components/prepare/schedule-export-cycle-picker';
 import { ScheduleExportFooter } from '@/features/scheduling/components/prepare/schedule-export-footer';
 import { ScheduleExportGroups } from '@/features/scheduling/components/prepare/schedule-export-groups';
+import { exportPartName } from '@/features/scheduling/components/prepare/schedule-export-part-name';
 import {
   type ExportFormat,
   FILE_PARAMS,
@@ -24,6 +27,7 @@ import {
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { useScheduleExportFiles } from '@/features/scheduling/hooks/use-schedule-export-files';
 import { useOnlineState } from '@/features/volunteers/hooks/use-online-state';
+import type { GetScheduleExportDataSplit } from '@/infrastructure/api/churchAPI.schemas';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { exportApi } from '@/utils/api-instances';
 
@@ -42,9 +46,26 @@ const FORMATS = [
   { format: 'png', label: m.export_format_table_image },
 ] as const;
 
+const SPLITS = [
+  { split: 'none', label: m.export_split_none },
+  { split: 'group', label: m.export_split_group },
+  { split: 'week', label: m.export_split_week },
+  { split: 'sector', label: m.export_split_sector },
+  { split: 'role', label: m.export_split_role },
+] as const;
+
 interface ExportRange {
   from: string;
   to: string;
+}
+
+interface SplitQueryInput {
+  split: GetScheduleExportDataSplit;
+}
+
+/** The split as a query: left out when it keeps one part, the server's default. */
+function splitQuery({ split }: SplitQueryInput) {
+  return split === 'none' ? {} : { split };
 }
 
 /**
@@ -55,7 +76,8 @@ interface ExportRange {
  * reachable by the Ministry's leaders and ChurchAdmins. The export data's
  * facts drive the Rascunho, unsent-changes and same-name notices (#1245).
  * The files are prefetched once the preview settles, for Baixar and, on a
- * phone, Compartilhar (#1251).
+ * phone, Compartilhar (#1251). Separar (#1248) splits every format into
+ * parts: PDF pages per part, table images per part.
  */
 export function ScheduleExport({
   ministryId,
@@ -72,24 +94,47 @@ export function ScheduleExport({
   // Null: the whole Cycle.
   const [range, setRange] = useState<ExportRange | null>(null);
   const [format, setFormat] = useState<ExportFormat>('cards');
+  // Null: the Ministry's default, never remembered between exports.
+  const [split, setSplit] = useState<GetScheduleExportDataSplit | null>(null);
   const online = useOnlineState();
   const { data } = useSchedule({ ministryId, cycleId });
+  const groups = useEventGroups({ ministryId });
+  const { data: roles } = useMinistryRoles({ ministryId });
+  const hasGroups = (groups.data?.groups.length ?? 0) > 0;
+  const splits = SPLITS.filter(
+    (option) =>
+      (option.split !== 'group' || hasGroups) &&
+      (option.split !== 'role' || (roles?.roles.length ?? 0) > 1),
+  );
+  const chosenSplit = split ?? (hasGroups ? 'group' : 'none');
   const selectedId = cycle?.id ?? cycleId;
+  const query = { ...range, ...splitQuery({ split: chosenSplit }) };
+  // The default split waits for the Ministry's Event groups.
+  const ready = open && !groups.isPending;
   const { data: exported, error: refused } = useQuery({
-    queryKey: ['schedule-export-data', ministryId, selectedId, range],
+    queryKey: ['schedule-export-data', ministryId, selectedId, query],
     queryFn: () =>
-      range
-        ? exportApi.getScheduleExportData(ministryId, selectedId, range)
+      Object.keys(query).length > 0
+        ? exportApi.getScheduleExportData(ministryId, selectedId, query)
         : exportApi.getScheduleExportData(ministryId, selectedId),
-    enabled: open,
+    enabled: ready,
   });
   const isDraft = exported?.isDraft ?? false;
-  const settings = { ministryId, cycleId: selectedId, format, range };
+  const partNames = (exported?.parts ?? []).map((part) =>
+    exportPartName({ part }),
+  );
+  const settings = {
+    ministryId,
+    cycleId: selectedId,
+    format,
+    range,
+    ...splitQuery({ split: chosenSplit }),
+  };
   const settled = useSettledExportSettings(settings);
   const changing = JSON.stringify(settled) !== JSON.stringify(settings);
   const files = useScheduleExportFiles({
     settings: settled,
-    enabled: open && online && !refused,
+    enabled: ready && online && !refused,
   });
   if (!data) return null;
   const selected = cycle ?? { ...data.cycle, id: cycleId };
@@ -103,6 +148,7 @@ export function ScheduleExport({
         onClick={() => {
           setCycle(null);
           setRange(null);
+          setSplit(null);
           setOpen(true);
         }}
       >
@@ -123,6 +169,7 @@ export function ScheduleExport({
             isDraft={isDraft}
             // The file name needs the draft fact, so wait for the data.
             files={exported && online && !changing ? files.data : undefined}
+            partNames={partNames}
             isFetching={files.isFetching}
             error={files.error}
             formatLabel={formatOption?.label() ?? ''}
@@ -202,6 +249,24 @@ export function ScheduleExport({
               ))}
             </RadioGroup>
           </div>
+          <div className="space-y-2">
+            <p className="text-muted-foreground">{m.export_split_label()}</p>
+            <RadioGroup
+              aria-label={m.export_split_label()}
+              value={chosenSplit}
+              onValueChange={(value) => {
+                const option = SPLITS.find((item) => item.split === value);
+                if (option) setSplit(option.split);
+              }}
+            >
+              {splits.map((option) => (
+                <Label key={option.split} className="font-normal">
+                  <RadioGroupItem value={option.split} />
+                  {option.label()}
+                </Label>
+              ))}
+            </RadioGroup>
+          </div>
           <ScheduleExportGroups ministryId={ministryId} cycleId={cycleId} />
         </div>
         {refused ? (
@@ -238,8 +303,8 @@ export function ScheduleExport({
             <p className="text-muted-foreground text-sm">
               {m.export_offline()}
             </p>
-          ) : refused ? null : (
-            <ScheduleExportPreview settings={settled} />
+          ) : refused || !ready ? null : (
+            <ScheduleExportPreview settings={settled} partNames={partNames} />
           )}
         </div>
       </ResponsiveFormSurface>

@@ -34,7 +34,9 @@ import {
 } from '../utils/schedule-export-render';
 import type {
   ScheduleExportControllerDependencies,
+  ScheduleExportFilePart,
   ScheduleExportLayoutInput,
+  ScheduleExportPartInput,
   ScheduleExportRequestInput,
   ScheduleExportRouteParams,
 } from './schedule-export-controller.types';
@@ -62,6 +64,21 @@ const paramsSchema = z.object({
 });
 
 const ministryParamsSchema = z.object({ ministryId: z.string() });
+
+/**
+ * What one file holds: the PDF every part, each starting on a new page; a
+ * PNG only its 1-based part. Throws `NotFoundError` past the last part.
+ */
+function filePart({
+  data,
+  format,
+  part,
+}: ScheduleExportPartInput): ScheduleExportFilePart {
+  if (format === 'pdf') return { data };
+  const chosen = data.parts[part - 1];
+  if (!chosen) throw new NotFoundError('Export part');
+  return { data: { ...data, parts: [chosen] }, part: chosen };
+}
 
 /**
  * A Ministry's Schedule for one Cycle as export data and files (#1243), for
@@ -153,7 +170,7 @@ export class ScheduleExportController implements FastifyController {
           operationId: 'getScheduleExportData',
           summary: "A Ministry's Schedule for one Cycle as export data",
           description:
-            "The Cycle, or its inclusive `from`/`to` days (an Event belongs by its Church-local start day), as one ordered tree of facts (parts → Events → time blocks → Shifts → Sectors → people), Church-local days and HH:mm times, with the draft, unsent-changes, single Sector/Role and duplicate-name facts. Only Events and blocks the Ministry serves; hidden cancelled scopes are left out. Never ready-made text. For the Ministry's leaders and ChurchAdmins; 404 `EXPORT_SCHEDULE_NOT_FOUND` when the Ministry has no Schedule in the Cycle; 400 `INVALID_DATE_RANGE` when `from` is after `to`; 422 `EXPORT_RANGE_OUTSIDE_CYCLE` when either reaches past the Cycle.",
+            "The Cycle, or its inclusive `from`/`to` days (an Event belongs by its Church-local start day), as one ordered tree of facts (parts → Events → time blocks → Shifts → Sectors → people), Church-local days and HH:mm times, with the draft, unsent-changes, single Sector/Role and duplicate-name facts. `split` gives the parts in order: Event groups as saved with the catch-all last, Monday-to-Sunday weeks kept inside the range by date, Sectors or Roles alphabetical, each holding only its own spots. Only Events and blocks the Ministry serves; hidden cancelled scopes are left out. Never ready-made text. For the Ministry's leaders and ChurchAdmins; 404 `EXPORT_SCHEDULE_NOT_FOUND` when the Ministry has no Schedule in the Cycle; 400 `INVALID_DATE_RANGE` when `from` is after `to`; 422 `EXPORT_RANGE_OUTSIDE_CYCLE` when either reaches past the Cycle.",
           params: paramsSchema,
           querystring: scheduleExportRangeQuerySchema,
           response: {
@@ -178,7 +195,7 @@ export class ScheduleExportController implements FastifyController {
           operationId: 'getScheduleExportFile',
           summary: "Download a Ministry's Schedule for one Cycle",
           description:
-            'The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`, whatever the layout, one file), the whole grid in one PNG never cut by size (`png`), or with `layout=cards` card image `page`: 1080 px wide, cut at most 1600 px tall only between cards, a taller card being an image of its own. Fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>", plus " - parte N de M" when the cards make several images. `page` is 1-based, default 1; 404 past the last, so a client reads every file in order until then. Same access, range and errors as the data.',
+            'The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`, whatever the layout), every `split` part starting on a new page; one part\'s (the 1-based `part`) whole grid in one PNG never cut by size (`png`); or with `layout=cards` the part\'s card image `page`: 1080 px wide, cut at most 1600 px tall only between cards, a taller card being an image of its own. Fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>", plus " - <part>" for a PNG of a split and " - parte N de M" when the part\'s cards make several images. `page` is 1-based, default 1; the PDF is one file. 404 past the last part or page, so a client reads every file in order until then. Same access, range, split and errors as the data.',
           params: paramsSchema,
           querystring: scheduleExportFileQuerySchema,
           response: {
@@ -192,29 +209,30 @@ export class ScheduleExportController implements FastifyController {
         const exported = await this.read({ request, reply });
         if (!exported) return;
         const query = request.query as ScheduleExportFileQuery;
-        const { format, page } = query;
+        const { format, part, page } = query;
         // The PDF holds every page in its one file.
         if (format === 'pdf' && page > 1)
           throw new NotFoundError('Export file');
         const { locale } = request;
+        const chosen = filePart({ data: exported.data, format, part });
         const layout = layoutOf(query);
         const payload = scheduleExportRenderPayload({
-          data: exported.data,
+          data: chosen.data,
           locale,
           media: layout === 'cards' ? 'cards' : MEDIA[format],
         });
         const suffixes: string[] = [];
         if (layout === 'cards') {
-          const parts = await this.scheduleExportReader.countPages({
+          const count = await this.scheduleExportReader.countPages({
             exported,
             payload,
             layout,
           });
-          if (page > parts) throw new NotFoundError('Export file');
-          if (parts > 1) {
+          if (page > count) throw new NotFoundError('Export file');
+          if (count > 1) {
             suffixes.push(
               m.export_file_part(
-                { part: String(page), count: String(parts) },
+                { part: String(page), count: String(count) },
                 { locale },
               ),
             );
@@ -229,7 +247,7 @@ export class ScheduleExportController implements FastifyController {
         });
         // Typst writes nothing for a page past the last.
         if (file.byteLength === 0) throw new NotFoundError('Export file');
-        const name = `${scheduleExportFileName({ data: exported.data, locale, suffixes })}.${format}`;
+        const name = `${scheduleExportFileName({ ...chosen, locale, suffixes })}.${format}`;
         return reply
           .type(CONTENT_TYPE[format])
           .header('Content-Disposition', attachmentDisposition({ name }))
@@ -246,7 +264,7 @@ export class ScheduleExportController implements FastifyController {
           operationId: 'getScheduleExportPreview',
           summary: "One SVG page of a Ministry's Schedule export",
           description:
-            'Page `page` of the file `format` and `layout` name, for the Cycle or its `from`/`to` days, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, the one page of the table image, or card image `page`. Fixed text in the locale-cookie language. 404 past the last page; otherwise the same access, range and errors as the data.',
+            'Page `page` of the file `format` and `layout` name, for the Cycle or its `from`/`to` days and `split`, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, its pages running through every part, the one page of the table image of `part`, or card image `page` of `part`. Fixed text in the locale-cookie language. 404 past the last page or part; otherwise the same access, range and errors as the data.',
           params: paramsSchema,
           querystring: scheduleExportPreviewQuerySchema,
           response: {
@@ -260,7 +278,8 @@ export class ScheduleExportController implements FastifyController {
         const exported = await this.read({ request, reply });
         if (!exported) return;
         const query = request.query as ScheduleExportPreviewQuery;
-        const { format, page } = query;
+        const { format, part, page } = query;
+        const { data } = filePart({ data: exported.data, format, part });
         const layout = layoutOf(query);
         const svg = await this.scheduleExportReader.renderFile({
           exported,
@@ -268,7 +287,7 @@ export class ScheduleExportController implements FastifyController {
           page,
           layout,
           payload: scheduleExportRenderPayload({
-            data: exported.data,
+            data,
             locale: request.locale,
             media: layout === 'cards' ? 'cards' : MEDIA[format],
           }),
@@ -289,7 +308,7 @@ export class ScheduleExportController implements FastifyController {
     reply,
   }: ScheduleExportRequestInput): Promise<ScheduleExport | null> {
     const params = request.params as ScheduleExportRouteParams;
-    const { from, to } = request.query as ScheduleExportRangeQuery;
+    const { from, to, split } = request.query as ScheduleExportRangeQuery;
     const ministryId = MinistryId.from(params.ministryId);
     if (
       await denyMinistryManagement({
@@ -307,6 +326,7 @@ export class ScheduleExportController implements FastifyController {
       cycleId: CycleId.from(params.cycleId),
       from,
       to,
+      split,
     });
   }
 }

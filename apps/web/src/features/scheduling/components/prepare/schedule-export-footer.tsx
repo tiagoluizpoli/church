@@ -3,27 +3,43 @@ import { m } from '@church/i18n/messages';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import type { ExportPage } from '@/features/scheduling/components/prepare/schedule-export-preview';
 import { EXPORT_FILE_TYPE } from '@/features/scheduling/hooks/use-schedule-export-files';
 import type { GetScheduleExportFileFormat } from '@/infrastructure/api/churchAPI.schemas';
 
 interface ExportFilesInput {
-  blobs: Blob[];
+  files: ExportPage[];
   format: GetScheduleExportFileFormat;
   /** The localized "Escala - <Ministry> - <Cycle>". */
   name: string;
   isDraft: boolean;
+  /** Each split part's name, in order. */
+  partNames: (string | null)[];
 }
 
-/** The files as the leader keeps or sends them: named, typed, each part numbered. */
-function exportFiles({ blobs, format, name, isDraft }: ExportFilesInput) {
+/**
+ * The files as the leader keeps or sends them: named, typed, a split's
+ * after its part, and numbered inside their part when it has several.
+ */
+function exportFiles({
+  files,
+  format,
+  name,
+  isDraft,
+  partNames,
+}: ExportFilesInput) {
   const draft = isDraft ? [m.export_draft()] : [];
-  const count = String(blobs.length);
-  return blobs.map((blob, index) => {
-    const part =
-      blobs.length > 1
-        ? [m.export_file_part({ part: String(index + 1), count })]
-        : [];
-    const fileName = exportFileName({ name, suffixes: [...draft, ...part] });
+  return files.map(({ blob, part, number }) => {
+    const partName = part ? partNames[part - 1] : null;
+    const count = files.filter((file) => file.part === part).length;
+    const suffixes = [
+      ...draft,
+      ...(partName ? [partName] : []),
+      ...(count > 1
+        ? [m.export_file_part({ part: String(number), count: String(count) })]
+        : []),
+    ];
+    const fileName = exportFileName({ name, suffixes });
     return new File([blob], `${fileName}.${format}`, {
       type: EXPORT_FILE_TYPE[format],
     });
@@ -55,7 +71,9 @@ interface ScheduleExportFooterProps {
   name: string;
   isDraft: boolean;
   /** The prefetched files; undefined until ready. */
-  files: Blob[] | undefined;
+  files: ExportPage[] | undefined;
+  /** Each split part's name, in order. */
+  partNames: (string | null)[];
   isFetching: boolean;
   /** Why the files could not be fetched. */
   error: Error | null;
@@ -76,6 +94,7 @@ export function ScheduleExportFooter({
   name,
   isDraft,
   files,
+  partNames,
   isFetching,
   error,
   formatLabel,
@@ -83,7 +102,7 @@ export function ScheduleExportFooter({
   onDone,
 }: ScheduleExportFooterProps) {
   const named = files
-    ? exportFiles({ blobs: files, format, name, isDraft })
+    ? exportFiles({ files, format, name, isDraft, partNames })
     : undefined;
   const share = () => {
     if (!named) return;

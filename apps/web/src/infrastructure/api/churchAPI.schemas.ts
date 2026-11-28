@@ -7216,7 +7216,19 @@ export type GetScheduleExportDataParams = {
   from?: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   to?: string;
+  split?: GetScheduleExportDataSplit;
 };
+
+export type GetScheduleExportDataSplit = typeof GetScheduleExportDataSplit[keyof typeof GetScheduleExportDataSplit];
+
+
+export const GetScheduleExportDataSplit = {
+  none: 'none',
+  group: 'group',
+  week: 'week',
+  sector: 'sector',
+  role: 'role',
+} as const;
 
 export type GetScheduleExportData200Ministry = {
   name: string;
@@ -7236,6 +7248,28 @@ export type GetScheduleExportData200Range = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   to: string;
 };
+
+export type GetScheduleExportData200PartsItemKind = typeof GetScheduleExportData200PartsItemKind[keyof typeof GetScheduleExportData200PartsItemKind];
+
+
+export const GetScheduleExportData200PartsItemKind = {
+  all: 'all',
+  group: 'group',
+  catchAll: 'catchAll',
+  week: 'week',
+  sector: 'sector',
+  role: 'role',
+} as const;
+
+/**
+ * @nullable
+ */
+export type GetScheduleExportData200PartsItemWeek = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  from: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  to: string;
+} | null;
 
 export type GetScheduleExportData200PartsItemGroupsItemKind = typeof GetScheduleExportData200PartsItemGroupsItemKind[keyof typeof GetScheduleExportData200PartsItemGroupsItemKind];
 
@@ -7300,8 +7334,11 @@ export type GetScheduleExportData200PartsItemGroupsItem = {
 };
 
 export type GetScheduleExportData200PartsItem = {
+  kind: GetScheduleExportData200PartsItemKind;
   /** @nullable */
   name: string | null;
+  /** @nullable */
+  week: GetScheduleExportData200PartsItemWeek;
   /** @nullable */
   singleSector: string | null;
   /** @nullable */
@@ -7353,14 +7390,31 @@ export type GetScheduleExportFileParams = {
   from?: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   to?: string;
+  split?: GetScheduleExportFileSplit;
   format: GetScheduleExportFileFormat;
   layout?: GetScheduleExportFileLayout;
   /**
    * @minimum 1
    * @maximum 9007199254740991
    */
+  part?: number;
+  /**
+   * @minimum 1
+   * @maximum 9007199254740991
+   */
   page?: number;
 };
+
+export type GetScheduleExportFileSplit = typeof GetScheduleExportFileSplit[keyof typeof GetScheduleExportFileSplit];
+
+
+export const GetScheduleExportFileSplit = {
+  none: 'none',
+  group: 'group',
+  week: 'week',
+  sector: 'sector',
+  role: 'role',
+} as const;
 
 export type GetScheduleExportFileFormat = typeof GetScheduleExportFileFormat[keyof typeof GetScheduleExportFileFormat];
 
@@ -7408,14 +7462,31 @@ export type GetScheduleExportPreviewParams = {
   from?: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   to?: string;
+  split?: GetScheduleExportPreviewSplit;
   format: GetScheduleExportPreviewFormat;
   layout?: GetScheduleExportPreviewLayout;
   /**
    * @minimum 1
    * @maximum 9007199254740991
    */
+  part?: number;
+  /**
+   * @minimum 1
+   * @maximum 9007199254740991
+   */
   page?: number;
 };
+
+export type GetScheduleExportPreviewSplit = typeof GetScheduleExportPreviewSplit[keyof typeof GetScheduleExportPreviewSplit];
+
+
+export const GetScheduleExportPreviewSplit = {
+  none: 'none',
+  group: 'group',
+  week: 'week',
+  sector: 'sector',
+  role: 'role',
+} as const;
 
 export type GetScheduleExportPreviewFormat = typeof GetScheduleExportPreviewFormat[keyof typeof GetScheduleExportPreviewFormat];
 

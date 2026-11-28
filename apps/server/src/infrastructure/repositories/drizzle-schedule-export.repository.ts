@@ -170,6 +170,7 @@ export class DrizzleScheduleExportRepository
         requirementId: shiftRequirement.id,
         sectorId: sector.id,
         sectorName: sector.name,
+        roleId: role.id,
         roleName: role.name,
         peopleNeeded: shiftRequirement.peopleNeeded,
         volunteerId: volunteer.id,
@@ -251,6 +252,21 @@ export class DrizzleScheduleExportRepository
         ),
       )
       .orderBy(asc(sql`lower(${sector.name})`), asc(sector.id));
+    return rows.map((row) => row.id);
+  }
+
+  async listRoleIds(input: ScheduleExportScopeInput): Promise<string[]> {
+    const db = getClient({ db: this.db, tx: input.tx });
+    const rows = await db
+      .select({ id: role.id })
+      .from(role)
+      .where(
+        and(
+          withChurchIsolation({ table: role, churchId: input.churchId }),
+          eq(role.ministryId, input.ministryId),
+        ),
+      )
+      .orderBy(asc(sql`lower(${role.name})`), asc(role.id));
     return rows.map((row) => row.id);
   }
 }

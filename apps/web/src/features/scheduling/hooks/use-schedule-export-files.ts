@@ -2,8 +2,10 @@ import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
+  type ExportPage,
   FILE_PARAMS,
   previewQueryOptions,
+  readExportPages,
   type ScheduleExportSettings,
 } from '@/features/scheduling/components/prepare/schedule-export-preview';
 import type { GetScheduleExportFileFormat } from '@/infrastructure/api/churchAPI.schemas';
@@ -29,40 +31,37 @@ async function refusalMessage(error: unknown): Promise<string | undefined> {
 }
 
 /**
- * Every file of the export, in order: the PDF is one file; images (the table,
- * or one per card cut) are read by page until the server answers 404 past the last.
+ * Every file of the export, in order: the PDF is one file holding every
+ * part; images are read by page, and a split's part by part, until the
+ * server answers 404 past the last.
  */
 async function readExportFiles({
   ministryId,
   cycleId,
   format,
   range,
-}: ScheduleExportSettings): Promise<Blob[]> {
+  split,
+}: ScheduleExportSettings): Promise<ExportPage[]> {
+  const splitQuery = split ? { split } : {};
   if (format === 'pdf') {
     const file = await exportApi.getScheduleExportFile(ministryId, cycleId, {
       ...FILE_PARAMS[format],
       ...range,
+      ...splitQuery,
     });
-    return [file];
+    return [{ blob: file, number: 1 }];
   }
-  const images: Blob[] = [];
-  for (;;) {
-    const page = images.length + 1;
-    try {
-      images.push(
-        await exportApi.getScheduleExportFile(ministryId, cycleId, {
-          ...FILE_PARAMS[format],
-          page,
-          ...range,
-        }),
-      );
-    } catch (error) {
-      if (page > 1 && isAxiosError(error) && error.response?.status === 404) {
-        return images;
-      }
-      throw error;
-    }
-  }
+  return readExportPages({
+    byPart: split !== undefined,
+    read: ({ page, part }) =>
+      exportApi.getScheduleExportFile(ministryId, cycleId, {
+        ...FILE_PARAMS[format],
+        page,
+        ...range,
+        ...splitQuery,
+        ...(part ? { part } : {}),
+      }),
+  });
 }
 
 interface UseScheduleExportFilesInput {

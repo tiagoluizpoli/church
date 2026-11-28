@@ -1,5 +1,8 @@
 import type { Locale } from '@church/i18n/runtime';
-import type { ScheduleExportData } from '@/domain/contracts/application/schedule-export-reader';
+import type {
+  ScheduleExportData,
+  ScheduleExportPart,
+} from '@/domain/contracts/application/schedule-export-reader';
 
 export interface ScheduleExportTextInput {
   data: ScheduleExportData;
@@ -17,6 +20,19 @@ export interface ScheduleExportRenderPayloadInput
   media: ScheduleExportMedia;
 }
 
+export interface ScheduleExportPartNameInput {
+  part: ScheduleExportPart;
+  locale: Locale;
+}
+
+/** A part's own header lines. */
+export interface ScheduleExportPartText {
+  /** Null for the one part of an unsplit export. */
+  name: string | null;
+  /** The part's single Role and/or Sector line, when there is one. */
+  single: string | null;
+}
+
 export interface ScheduleExportColumnsText {
   date: string;
   event: string;
@@ -29,8 +45,8 @@ export interface ScheduleExportColumnsText {
 export interface ScheduleExportText {
   kicker: string;
   range: string;
-  /** The whole-export single Role and/or Sector line, when there is one. */
-  single: string | null;
+  /** Each part's header lines, in the parts' order. */
+  parts: ScheduleExportPartText[];
   draft: string;
   noService: string;
   cancelled: string;
@@ -53,7 +69,9 @@ export interface ScheduleExportRenderPayload {
 }
 
 export interface ScheduleExportFileNameInput extends ScheduleExportTextInput {
-  /** After ` - Rascunho`, such as ` - parte 2 de 3`. */
+  /** The image's one part, named after it unless it is the whole export. */
+  part?: ScheduleExportPart;
+  /** After the part's name, such as ` - parte 2 de 3`. */
   suffixes?: string[];
 }
 

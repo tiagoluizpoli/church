@@ -45,8 +45,9 @@
 #let adds(label, title) = label != none and lower(label) != lower(title)
 #let colour(index) = palette.at(calc.rem(index, palette.len()))
 
-// Header: logo, "Escala", Ministry, single Sector/Role line, draft tag; Cycle and its span.
-#let header = {
+// Header: logo, "Escala", Ministry, the part's name and single Sector/Role
+// line, draft tag; Cycle and its span.
+#let header(pt) = {
   grid(
     columns: (auto, 1fr, auto),
     column-gutter: 14pt,
@@ -56,9 +57,13 @@
       text(size: 11pt, weight: "bold", fill: mfg, t.kicker)
       linebreak()
       text(size: 21pt, weight: "bold", data.ministry.name)
-      if t.single != none {
+      if pt.name != none {
         linebreak()
-        text(size: 11pt, weight: "bold", fill: pri, t.single)
+        text(size: 15pt, weight: "bold", fill: pri, pt.name)
+      }
+      if pt.single != none {
+        linebreak()
+        text(size: 11pt, weight: "bold", fill: pri, pt.single)
       }
       if data.isDraft {
         linebreak()
@@ -75,8 +80,8 @@
   line(length: 100%, stroke: 1pt + bd)
 }
 
-// A bar over cards: a split part's name, or an Event group's name and its
-// Events' title when they share one (the cards then leave it out).
+// A bar over cards: an Event group's name and its Events' title when they
+// share one (the cards then leave it out).
 #let bar(name, shared) = block(width: 100%, fill: pri, radius: 10pt, inset: (x: 12pt, y: 8pt), {
   text(size: 16pt, weight: "bold", fill: white, name)
   if shared != none {
@@ -178,12 +183,13 @@
 }
 
 // Pack whole units into pages no taller than max-content-height. Each part
-// starts a page with the header; its bars travel with the card below them.
+// starts a page with the header naming it; a group bar travels with the card
+// below it.
 #context {
   let pages = ()
-  for part in data.parts {
-    let units = (header,)
-    let bars = if part.name != none { (bar(part.name, none),) } else { () }
+  for (pi, part) in data.parts.enumerate() {
+    let units = (header(t.parts.at(pi)),)
+    let bars = ()
     for group in part.groups {
       let shared = if group.kind == "list" { none } else { shared-title(group.events) }
       if group.kind != "list" {

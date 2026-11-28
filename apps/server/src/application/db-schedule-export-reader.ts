@@ -1,4 +1,5 @@
 import {
+  addCalendarDays,
   addMilliseconds,
   compareCalendarDays,
   formatMonthShort,
@@ -9,14 +10,17 @@ import {
   toDate,
   today,
   toTimeOfDay,
+  weekdayIndex,
 } from '@church/time';
 import type { IScheduleChangeReader } from '../domain/contracts/application/schedule-change-reader';
 import type {
   BuildScheduleExportEventsInput,
+  BuildScheduleExportPartInput,
   CountScheduleExportPagesInput,
   DbScheduleExportReaderDependencies,
   DuplicateNamesInput,
   EventTemplateIdsInput,
+  ExportSinglesInput,
   GroupScheduleExportEventsInput,
   IScheduleExportReader,
   ListScheduleExportCyclesInput,
@@ -24,17 +28,26 @@ import type {
   NormalizeSearchInput,
   ReadScheduleExportInput,
   RenderScheduleExportFileInput,
+  RowsByInput,
   ScheduleExport,
   ScheduleExportCycleOption,
   ScheduleExportEvent,
   ScheduleExportGroup,
+  ScheduleExportPart,
+  ScheduleExportRange,
   ScheduleExportSector,
   ScheduleExportShift,
+  ScheduleExportSingles,
   ScheduleExportTimeBlock,
   SingleValueInput,
+  SplitScheduleExportInput,
+  WeekOfInput,
 } from '../domain/contracts/application/schedule-export-reader';
 import type { EventGroupRepository } from '../domain/contracts/infrastructure/event-group.repository';
-import type { ScheduleExportRepository } from '../domain/contracts/infrastructure/schedule-export.repository';
+import type {
+  ScheduleExportRepository,
+  ScheduleExportRow,
+} from '../domain/contracts/infrastructure/schedule-export.repository';
 import type { TypstRenderer } from '../domain/contracts/infrastructure/typst-renderer';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
 import {
@@ -47,6 +60,10 @@ import {
 const TEMPLATES = { grid: 'schedule-grid', cards: 'schedule-cards' } as const;
 /** The cards page is 540pt wide: 1080 px at 144 ppi. */
 const CARDS_PPI = 144;
+
+const DAYS_PER_WEEK = 7;
+/** Weeks start on Monday; `weekdayIndex` counts Sunday as 0. */
+const MONDAY = 1;
 
 /**
  * Folds the ordered rows into Events → time blocks → Shifts → Sectors →
@@ -217,6 +234,131 @@ function singleValue({ values }: SingleValueInput): string | null {
   return distinct.size === 1 ? ([...distinct][0] as string) : null;
 }
 
+/** The single Sector and the single Role everyone in the Events serves, if any. */
+function exportSingles({ events }: ExportSinglesInput): ScheduleExportSingles {
+  const sectors = events.flatMap((exported) =>
+    exported.timeBlocks.flatMap((block) =>
+      block.shifts.flatMap((eventShift) => eventShift.sectors),
+    ),
+  );
+  return {
+    singleSector: singleValue({ values: sectors.map((sector) => sector.name) }),
+    singleRole: singleValue({
+      values: sectors.flatMap((sector) =>
+        sector.people.map((person) => person.role),
+      ),
+    }),
+  };
+}
+
+/** One part from its rows: its Events, sorted into the Event groups. */
+function buildPart({
+  rows,
+  context,
+  kind,
+  name = null,
+  week = null,
+}: BuildScheduleExportPartInput): ScheduleExportPart {
+  const { setup, ...eventsContext } = context;
+  const events = buildEvents({ rows, ...eventsContext });
+  return {
+    kind,
+    name,
+    week,
+    ...exportSingles({ events }),
+    groups: groupEvents({
+      events,
+      templateIds: eventTemplateIds({ rows }),
+      setup,
+    }),
+  };
+}
+
+/** The Monday-to-Sunday week holding the day, kept inside the range. */
+function weekOf({ day, range }: WeekOfInput): ScheduleExportRange {
+  const sinceMonday =
+    (weekdayIndex({ day }) - MONDAY + DAYS_PER_WEEK) % DAYS_PER_WEEK;
+  const monday = addCalendarDays({ day, days: -sinceMonday });
+  const sunday = addCalendarDays({ day: monday, days: DAYS_PER_WEEK - 1 });
+  const before = compareCalendarDays({ left: monday, right: range.from }) < 0;
+  const after = compareCalendarDays({ left: sunday, right: range.to }) > 0;
+  return { from: before ? range.from : monday, to: after ? range.to : sunday };
+}
+
+/** The rows under each key, keys in first-seen order; a null key is left out. */
+function rowsBy({ rows, key }: RowsByInput): Map<string, ScheduleExportRow[]> {
+  const byKey = new Map<string, ScheduleExportRow[]>();
+  for (const row of rows) {
+    const value = key(row);
+    if (value === null) continue;
+    const keyed = byKey.get(value);
+    if (keyed) keyed.push(row);
+    else byKey.set(value, [row]);
+  }
+  return byKey;
+}
+
+/**
+ * Separar: the parts in order. Groups as saved with the catch-all last,
+ * weeks by date, Sectors and Roles alphabetical. A Sector or Role part keeps
+ * only its own spots, and a cancelled Event or block where it had one.
+ */
+function splitParts({
+  split,
+  whole,
+  rows,
+  context,
+  range,
+  sectorIds,
+  roleIds,
+}: SplitScheduleExportInput): ScheduleExportPart[] {
+  if (split === 'none') return [whole];
+  if (split === 'group') {
+    if (context.setup.groups.length === 0) return [whole];
+    return whole.groups.map((group) => ({
+      kind: group.kind === 'catchAll' ? 'catchAll' : 'group',
+      name: group.name,
+      week: null,
+      ...exportSingles({ events: group.events }),
+      groups: [group],
+    }));
+  }
+  if (split === 'week') {
+    const { timeZone } = context;
+    const weekOfRow = (row: ScheduleExportRow) =>
+      weekOf({
+        day: today({ instant: fromDate({ date: row.eventStart }), timeZone }),
+        range,
+      });
+    const byWeek = rowsBy({ rows, key: (row) => weekOfRow(row).from });
+    return [...byWeek.values()].map((weekRows) =>
+      buildPart({
+        rows: weekRows,
+        context,
+        kind: 'week',
+        week: weekOfRow(weekRows[0] as ScheduleExportRow),
+      }),
+    );
+  }
+  const bySector = split === 'sector';
+  const byId = rowsBy({
+    rows,
+    key: (row) => (bySector ? row.sectorId : row.roleId),
+  });
+  return (bySector ? sectorIds : roleIds).flatMap((id) => {
+    const partRows = byId.get(id);
+    const [first] = partRows ?? [];
+    if (!partRows || !first) return [];
+    const name = bySector ? first.sectorName : first.roleName;
+    const part = buildPart({ rows: partRows, context, kind: split, name });
+    return [
+      bySector
+        ? { ...part, singleSector: name }
+        : { ...part, singleRole: name },
+    ];
+  });
+}
+
 /** Lowercase without accents, so search ignores both. */
 function normalizeSearch({ value }: NormalizeSearchInput): string {
   return value
@@ -352,30 +494,29 @@ export class DbScheduleExportReader implements IScheduleExportReader {
       });
       const sectorIds =
         await this.scheduleExportRepository.listSectorIds(scope);
+      const roleIds = await this.scheduleExportRepository.listRoleIds(scope);
       const changeCount =
         await this.scheduleChangeReader.countScheduleChanges(scope);
       const setup = await this.eventGroupRepository.findSetup(scope);
-      const events = buildEvents({
-        rows,
+      const context = {
         paletteIndexBySectorId: new Map(
           sectorIds.map((id, index) => [id, index]),
         ),
         withEmptySpots: !facts.published,
         timeZone: facts.timeZone,
+        setup,
+      };
+      const whole = buildPart({ rows, context, kind: 'all' });
+      const parts = splitParts({
+        split: input.split ?? 'none',
+        whole,
+        rows,
+        context,
+        range,
+        sectorIds,
+        roleIds,
       });
-      const people = events.flatMap((event) =>
-        event.timeBlocks.flatMap((block) =>
-          block.shifts.flatMap((eventShift) => eventShift.sectors),
-        ),
-      );
-      const singleSector = singleValue({
-        values: people.map((sector) => sector.name),
-      });
-      const singleRole = singleValue({
-        values: people.flatMap((sector) =>
-          sector.people.map((person) => person.role),
-        ),
-      });
+      const { singleSector, singleRole } = whole;
       return {
         data: {
           ministry: { name: facts.ministryName },
@@ -390,18 +531,7 @@ export class DbScheduleExportReader implements IScheduleExportReader {
           singleSector,
           singleRole,
           duplicateNames: duplicateNames({ rows }),
-          parts: [
-            {
-              name: null,
-              singleSector,
-              singleRole,
-              groups: groupEvents({
-                events,
-                templateIds: eventTemplateIds({ rows }),
-                setup,
-              }),
-            },
-          ],
+          parts,
         },
         logoKey: facts.logoKey,
         changedAt: facts.changedAt,

@@ -447,7 +447,9 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/data', () => {
       duplicateNames: [['Ana Souza', 'Ána  Souza']],
       parts: [
         {
+          kind: 'all',
           name: null,
+          week: null,
           singleSector: null,
           singleRole: null,
           groups: [{ kind: 'list', name: null, events: OCTOBER_EVENTS }],
@@ -737,6 +739,56 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/file', () => {
     }
     const cards = images.map(({ svg }) => count(svg, CARD_HEADER));
     expect(cards.reduce((sum, each) => sum + each)).toBe(7);
+  });
+
+  it('cuts the cards within each Separar part, naming the part and the cut', async () => {
+    const cycleId = fixture.decemberId;
+    await seedCardServices({
+      fixture,
+      cycleId,
+      days: ['2026-12-08', '2026-12-09', '2026-12-10', '2026-12-11'],
+      shifts: 4,
+    });
+    await seedCardServices({
+      fixture,
+      cycleId,
+      days: ['2026-12-16'],
+      shifts: 4,
+    });
+
+    const names = [];
+    for (const [part, page] of [
+      [1, 1],
+      [1, 2],
+      [1, 3],
+      [2, 1],
+      [2, 2],
+      [3, 1],
+    ]) {
+      const response = await app.inject({
+        method: 'GET',
+        url: `${exportUrl('file', { cycleId })}?format=png&layout=cards&split=week&part=${part}&page=${page}`,
+        cookies: { [appConfig.localeCookieName]: 'pt-BR' },
+      });
+      names.push(
+        response.statusCode === 200
+          ? decodeURIComponent(
+              /filename\*=UTF-8''(.*)$/.exec(
+                response.headers['content-disposition'] as string,
+              )?.[1] ?? '',
+            )
+          : response.statusCode,
+      );
+    }
+
+    expect(names).toEqual([
+      'Escala - Kids - Dezembro 2026 - Semana 07–13 dez - parte 1 de 2.png',
+      'Escala - Kids - Dezembro 2026 - Semana 07–13 dez - parte 2 de 2.png',
+      404,
+      'Escala - Kids - Dezembro 2026 - Semana 14–20 dez.png',
+      404,
+      404,
+    ]);
   });
 
   it('makes a card taller than 1600 px an image of its own', async () => {

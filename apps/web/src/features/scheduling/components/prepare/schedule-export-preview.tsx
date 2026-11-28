@@ -7,6 +7,7 @@ import {
 import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { Spinner } from '@/components/ui/spinner';
+import type { GetScheduleExportDataSplit } from '@/infrastructure/api/churchAPI.schemas';
 import { exportApi } from '@/utils/api-instances';
 
 /** The preview waits this long after the last settings change. */
@@ -34,49 +35,103 @@ export interface ScheduleExportSettings {
   format: ExportFormat;
   /** Null: the whole Cycle. */
   range: PreviewRange | null;
+  /** Separar; left out for one part. */
+  split?: GetScheduleExportDataSplit;
 }
 
 interface ScheduleExportPreviewProps {
   /** Settled settings: see `useSettledExportSettings`. */
   settings: ScheduleExportSettings;
+  /** Each part's name, in order, to label a split's table images. */
+  partNames: (string | null)[];
+}
+
+/** One page or image of the export; `part` is set on a split's images. */
+export interface ExportPage {
+  blob: Blob;
+  /** 1-based. */
+  part?: number;
+  /** 1-based, inside its part. */
+  number: number;
 }
 
 interface PreviewPageProps {
   page: Blob;
-  number: number;
+  label: string;
+}
+
+export function isNotFound(error: unknown): boolean {
+  return isAxiosError(error) && error.response?.status === 404;
+}
+
+/** Which page to read: 1-based, inside the 1-based part of a split's images. */
+export interface ExportPageRequest {
+  page: number;
+  part?: number;
+}
+
+type ReadPage = (request: ExportPageRequest) => Promise<Blob>;
+
+interface ReadExportPagesInput {
+  /** A split's images: read part by part. */
+  byPart: boolean;
+  read: ReadPage;
 }
 
 /**
- * Every SVG page of the file, in order: the server answers 404 past the
- * last page, so pages are read until then.
+ * Every page in order, or every part's pages in turn: the server answers
+ * 404 past the last page and past the last part, so both are read until then.
  */
-async function readPreviewPages({
-  ministryId,
-  cycleId,
-  format,
-  range,
-}: ScheduleExportSettings): Promise<Blob[]> {
-  const pages: Blob[] = [];
-  for (;;) {
-    const page = pages.length + 1;
-    try {
-      pages.push(
-        await exportApi.getScheduleExportPreview(ministryId, cycleId, {
-          ...FILE_PARAMS[format],
-          page,
-          ...range,
-        }),
-      );
-    } catch (error) {
-      if (page > 1 && isAxiosError(error) && error.response?.status === 404) {
-        return pages;
+export async function readExportPages({
+  byPart,
+  read,
+}: ReadExportPagesInput): Promise<ExportPage[]> {
+  const readPart = async (part?: number) => {
+    const pages: ExportPage[] = [];
+    for (;;) {
+      const number = pages.length + 1;
+      try {
+        pages.push({ blob: await read({ page: number, part }), part, number });
+      } catch (error) {
+        if (number > 1 && isNotFound(error)) return pages;
+        throw error;
       }
+    }
+  };
+  if (!byPart) return readPart();
+  const pages: ExportPage[] = [];
+  for (let part = 1; ; part += 1) {
+    try {
+      pages.push(...(await readPart(part)));
+    } catch (error) {
+      if (part > 1 && isNotFound(error)) return pages;
       throw error;
     }
   }
 }
 
-function PreviewPage({ page, number }: PreviewPageProps) {
+/** The preview's SVG pages: the PDF's through every part, or each part's image. */
+function readPreviewPages({
+  ministryId,
+  cycleId,
+  format,
+  range,
+  split,
+}: ScheduleExportSettings): Promise<ExportPage[]> {
+  return readExportPages({
+    byPart: format !== 'pdf' && split !== undefined,
+    read: ({ page, part }) =>
+      exportApi.getScheduleExportPreview(ministryId, cycleId, {
+        ...FILE_PARAMS[format],
+        page,
+        ...range,
+        ...(split ? { split } : {}),
+        ...(part ? { part } : {}),
+      }),
+  });
+}
+
+function PreviewPage({ page, label }: PreviewPageProps) {
   const [url, setUrl] = useState<string>();
   useEffect(() => {
     const objectUrl = URL.createObjectURL(page);
@@ -88,7 +143,7 @@ function PreviewPage({ page, number }: PreviewPageProps) {
     <figure className="space-y-1">
       <img
         src={url}
-        alt={m.export_preview_page({ page: String(number) })}
+        alt={label}
         className="w-full rounded-md border bg-white"
       />
       <figcaption className="text-end text-sm">
@@ -131,6 +186,7 @@ export function previewQueryOptions(settings: ScheduleExportSettings) {
 /** The server's own render of the file, so the file never differs from it. */
 export function ScheduleExportPreview({
   settings,
+  partNames,
 }: ScheduleExportPreviewProps) {
   const preview = useQuery(previewQueryOptions(settings));
   return (
@@ -143,9 +199,15 @@ export function ScheduleExportPreview({
       ) : preview.isError ? (
         <p className="text-destructive text-sm">{m.export_preview_failed()}</p>
       ) : (
-        preview.data.map((page, index) => (
-          <PreviewPage key={page.size + index} page={page} number={index + 1} />
-        ))
+        preview.data.map(({ blob, part, number }, index) => {
+          const name = part ? partNames[part - 1] : null;
+          const label = name
+            ? m.export_preview_part_page({ part: name, page: String(number) })
+            : m.export_preview_page({ page: String(index + 1) });
+          return (
+            <PreviewPage key={blob.size + index} page={blob} label={label} />
+          );
+        })
       )}
     </section>
   );

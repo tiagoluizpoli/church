@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AssignController } from '@/api/controllers/assign-controller';
-import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { ChurchAdminControllers } from '@/tests/test-support/church-admin-controllers';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: {
@@ -58,7 +59,8 @@ beforeAll(async () => {
     locale: testLocale,
     errorReporter: testErrorReporter,
   });
-  const admin = new ChurchAdminController({
+  const admin = new ChurchAdminControllers({
+    sessionGateway: testSessionGateway(),
     cycleManager: {} as never,
     eventTemplateManager: {} as never,
     planningEventManager: {} as never,
@@ -68,6 +70,7 @@ beforeAll(async () => {
     authorityGuard: authorityGuard as never,
   });
   const assign = new AssignController({
+    sessionGateway: testSessionGateway(),
     scheduleBuilderReader: {} as never,
     assignmentProposalManager: {} as never,
     schedulePublisher: {} as never,

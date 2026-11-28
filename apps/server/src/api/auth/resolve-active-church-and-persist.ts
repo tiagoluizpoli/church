@@ -1,5 +1,4 @@
 import type { ActiveChurchResolution } from '../../domain/contracts/application/active-church-resolver';
-import { auth } from '../../main/di/server-auth';
 import { headersFromRequest } from '../utils/headers';
 import type { ResolveActiveChurchAndPersistInput } from './resolve-active-church-and-persist.types';
 
@@ -13,17 +12,18 @@ import type { ResolveActiveChurchAndPersistInput } from './resolve-active-church
 export async function resolveActiveChurchAndPersist(
   input: ResolveActiveChurchAndPersistInput,
 ): Promise<ActiveChurchResolution> {
-  const { resolver, request, userId, activeOrganizationId } = input;
+  const { resolver, sessionGateway, request, userId, activeOrganizationId } =
+    input;
   const resolution = await resolver.resolve({ userId, activeOrganizationId });
 
   if (resolution.status === 'resolved' && resolution.autoSelected) {
     // Best-effort persistence: the request still proceeds against the
     // Church just resolved even if the session write fails, and the next
     // request simply resolves the same way again.
-    await auth.api
-      .setActiveOrganization({
+    await sessionGateway
+      .setActiveChurch({
         headers: headersFromRequest(request),
-        body: { organizationId: resolution.churchId },
+        churchId: resolution.churchId,
       })
       .catch((error) => {
         request.log.warn(
@@ -38,11 +38,8 @@ export async function resolveActiveChurchAndPersist(
     // both the pre-validation hook and the entry-gate status endpoint route
     // through, lets the next request self-heal instead of repeating this
     // same outcome against a stale id.
-    await auth.api
-      .setActiveOrganization({
-        headers: headersFromRequest(request),
-        body: { organizationId: null },
-      })
+    await sessionGateway
+      .setActiveChurch({ headers: headersFromRequest(request), churchId: null })
       .catch((error) => {
         request.log.warn(
           { err: error },

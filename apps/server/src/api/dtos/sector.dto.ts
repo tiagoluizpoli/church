@@ -1,12 +1,11 @@
 import { z } from 'zod';
 import type { Sector } from '../../domain/entities/sector';
+import { idSchema, ministryParamsSchema } from './id.dto';
 
 /** The single trim point for Sector names; uniqueness is the database's. */
 export const sectorNameBodySchema = z.object({
   name: z.string().trim().min(1).max(255),
 });
-
-export type SectorNameBody = z.infer<typeof sectorNameBodySchema>;
 
 export const sectorResponseSchema = z.object({
   id: z.string(),
@@ -30,3 +29,7 @@ export const sectorMapper = {
     return { sectors: sectors.map((s) => sectorMapper.toResponse(s)) };
   },
 };
+
+export const sectorParamsSchema = ministryParamsSchema.extend({
+  sectorId: idSchema,
+});

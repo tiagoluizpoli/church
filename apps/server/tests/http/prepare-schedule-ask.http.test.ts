@@ -88,6 +88,7 @@ import {
   releasePausedCalls,
   waitForLockWaiter,
 } from '@/tests/test-support/paused-calls';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn(), setActiveOrganization: vi.fn() } },
@@ -119,6 +120,7 @@ beforeAll(async () => {
   // Better Auth session is a seam.
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new PrepareController({
+    sessionGateway: testSessionGateway(),
     config: appConfig,
     ...participationModules,
     availabilityCheckManager: new DbAvailabilityCheckManager({

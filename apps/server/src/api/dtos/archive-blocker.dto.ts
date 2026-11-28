@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { errorResponseSchema } from './error-response.dto';
 
 const blockerMinistry = {
   ministryId: z.string(),
@@ -28,8 +29,6 @@ export const archiveBlockerSchema = z.discriminatedUnion('kind', [
 ]);
 
 /** A 409 archive refusal: the localized envelope plus where the item is used. */
-export const archiveBlockedResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+export const archiveBlockedResponseSchema = errorResponseSchema.extend({
   blockers: z.array(archiveBlockerSchema),
 });

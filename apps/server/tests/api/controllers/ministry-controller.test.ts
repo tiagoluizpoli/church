@@ -16,6 +16,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: {
@@ -33,6 +34,7 @@ const ministryManager = {
   listByChurch: vi.fn(),
   listByLeader: vi.fn(),
   summarize: vi.fn(async () => new Map()),
+  archive: vi.fn(),
 };
 
 const ministryInvitationManager = {
@@ -48,6 +50,7 @@ const activeChurchResolver = {
 const authorityGuard = {
   resolveCallerCapabilities: vi.fn(),
   decideManageAnyMinistry: vi.fn(),
+  canManageChurch: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -67,6 +70,7 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   const controller = new MinistryController({
+    sessionGateway: testSessionGateway(),
     config: appConfig,
     ministryManager: ministryManager as never,
     ministryInvitationManager: ministryInvitationManager as never,
@@ -232,7 +236,7 @@ describe('Ministry Invitation minting routes', () => {
 
   it('POST .../invitations/:invitationId/resend refreshes and maps the response', async () => {
     ministryInvitationManager.resend.mockResolvedValue({
-      id: 'ministry-invitation-1',
+      id: '44444444-4444-4444-8444-444444444444',
       kind: 'ministry-only',
       status: 'pending',
       expiresAt: parseInstant({ value: '2030-02-01T00:00:00Z' }),
@@ -241,26 +245,27 @@ describe('Ministry Invitation minting routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: `/api/v1/ministries/${ministryId}/invitations/ministry-invitation-1/resend`,
+      url: `/api/v1/ministries/${ministryId}/invitations/44444444-4444-4444-8444-444444444444/resend`,
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
-      id: 'ministry-invitation-1',
+      id: '44444444-4444-4444-8444-444444444444',
       kind: 'ministry-only',
       status: 'pending',
       expiresAt: '2030-02-01T00:00:00.000Z',
-      redemptionPath: '/app/invitations/ministry/ministry-invitation-1',
+      redemptionPath:
+        '/app/invitations/ministry/44444444-4444-4444-8444-444444444444',
       deliveryStatus: 'pending',
     });
     expect(ministryInvitationManager.getDeliveryStatus).toHaveBeenCalledWith({
       churchId: '11111111-1111-1111-1111-111111111111',
-      ministryInvitationId: 'ministry-invitation-1',
+      ministryInvitationId: '44444444-4444-4444-8444-444444444444',
     });
     expect(ministryInvitationManager.resend).toHaveBeenCalledWith({
       churchId: '11111111-1111-1111-1111-111111111111',
       ministryId,
-      ministryInvitationId: 'ministry-invitation-1',
+      ministryInvitationId: '44444444-4444-4444-8444-444444444444',
       callerId: 'admin-leader-user',
     });
   });
@@ -279,7 +284,7 @@ describe('Ministry Invitation minting routes', () => {
     {
       route: 'resend',
       method: 'POST' as const,
-      url: `/api/v1/ministries/${ministryId}/invitations/ministry-invitation-1/resend`,
+      url: `/api/v1/ministries/${ministryId}/invitations/44444444-4444-4444-8444-444444444444/resend`,
       payload: undefined,
     },
   ])('$route returns 403 before any lookup for a caller who manages no Ministry', async ({
@@ -333,5 +338,22 @@ describe('Ministry Invitation minting routes', () => {
       message: m.error_ministry_not_found(),
     });
     expect(ministryInvitationManager.getDeliveryStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('Ministry archive reply (#1222)', () => {
+  it('POST /ministries/:ministryId/archive answers 204 with an empty body', async () => {
+    authorityGuard.canManageChurch.mockResolvedValue(true);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/ministries/33333333-3333-3333-3333-333333333333/archive',
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.body).toBe('');
+    expect(response.headers['content-type']).toBeUndefined();
+    expect(response.headers['content-length']).toBeUndefined();
+    expect(ministryManager.archive).toHaveBeenCalledOnce();
   });
 });

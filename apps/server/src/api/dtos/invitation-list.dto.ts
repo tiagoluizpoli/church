@@ -10,6 +10,7 @@ import {
 } from '../../domain/entities/invitation-list-item';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
 import { decodeInvitationListCursor } from '../../domain/invitation-list-cursor';
+import { idSchema } from './id.dto';
 
 export const invitationListItemResponseSchema = z.object({
   /** With `id`, the stable tagged row identity: a Ministry offer and a Church grant never collide. */
@@ -75,7 +76,7 @@ export const invitationListResponseSchema = z.object({
 
 export const invitationListQuerystringSchema = z.object({
   status: z.enum([...INVITATION_LIST_STATUS_OPTIONS, 'any']).default('pending'),
-  ministryId: z.string().uuid().optional(),
+  ministryId: idSchema.optional(),
   invitedAs: z.enum(INVITATION_INVITED_AS_OPTIONS).optional(),
   email: z.string().trim().min(1).max(254).optional(),
   cursor: z

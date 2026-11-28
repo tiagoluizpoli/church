@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: {
@@ -12,6 +13,8 @@ const { resolveActiveChurchAndPersist } = await import(
   '@/api/auth/resolve-active-church-and-persist'
 );
 const { auth } = await import('@/main/di/server-auth');
+// The real session lookup over the mocked auth instance.
+const sessionGateway = testSessionGateway();
 
 const mockSetActiveOrganization = vi.mocked(auth.api.setActiveOrganization);
 
@@ -42,6 +45,7 @@ describe('resolveActiveChurchAndPersist', () => {
 
     const resolution = await resolveActiveChurchAndPersist({
       resolver: resolver as never,
+      sessionGateway,
       request: createRequest() as never,
       userId: 'usr_1' as never,
       activeOrganizationId: null,
@@ -68,6 +72,7 @@ describe('resolveActiveChurchAndPersist', () => {
 
     await resolveActiveChurchAndPersist({
       resolver: resolver as never,
+      sessionGateway,
       request: createRequest() as never,
       userId: 'usr_1' as never,
       activeOrganizationId: 'chu_1' as never,
@@ -85,6 +90,7 @@ describe('resolveActiveChurchAndPersist', () => {
 
     await resolveActiveChurchAndPersist({
       resolver: resolver as never,
+      sessionGateway,
       request: createRequest() as never,
       userId: 'usr_1' as never,
       activeOrganizationId: 'chu_removed' as never,
@@ -104,6 +110,7 @@ describe('resolveActiveChurchAndPersist', () => {
 
     await resolveActiveChurchAndPersist({
       resolver: resolver as never,
+      sessionGateway,
       request: createRequest() as never,
       userId: 'usr_1' as never,
       activeOrganizationId: 'chu_removed' as never,
@@ -119,6 +126,7 @@ describe('resolveActiveChurchAndPersist', () => {
 
     await resolveActiveChurchAndPersist({
       resolver: resolver as never,
+      sessionGateway,
       request: createRequest() as never,
       userId: 'usr_1' as never,
       activeOrganizationId: null,
@@ -133,6 +141,7 @@ describe('resolveActiveChurchAndPersist', () => {
 
     const resolution = await resolveActiveChurchAndPersist({
       resolver: resolver as never,
+      sessionGateway,
       request: createRequest() as never,
       userId: 'usr_1' as never,
       activeOrganizationId: 'chu_removed' as never,

@@ -39,6 +39,7 @@ import {
   type TwoChurchIdentityFixture,
 } from '@/tests/test-support/identity-fixtures';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 interface PairedInvitation {
   ministryInvitationId: string;
@@ -105,6 +106,7 @@ beforeEach(async () => {
     failureLog: new ConsoleRedemptionFailureLog(),
   });
   const controller = new RedemptionController({
+    sessionGateway: testSessionGateway(),
     redemptionManager,
     volunteerTransferManager: new DbVolunteerTransferManager({
       churchRepository,

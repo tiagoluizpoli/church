@@ -139,7 +139,7 @@ const updateCycle = (
 const deleteCycle = (
     cycleId: string,
  ) => {
-      return apiClient<void>(
+      return apiClient<null>(
       {url: `/api/v1/admin/cycles/${cycleId}`, method: 'DELETE'
     },
       );
@@ -228,7 +228,7 @@ const updateEventTemplate = (
 const deleteEventTemplate = (
     templateId: string,
  ) => {
-      return apiClient<void>(
+      return apiClient<null>(
       {url: `/api/v1/admin/event-templates/${templateId}`, method: 'DELETE'
     },
       );

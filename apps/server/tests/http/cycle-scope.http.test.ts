@@ -34,6 +34,7 @@ import {
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -72,6 +73,7 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   const assign = new AssignController({
+    sessionGateway: testSessionGateway(),
     ...managers.participationModules,
     assignmentManager: managers.assignmentManager,
     activeChurchResolver: activeChurchResolver as never,
@@ -79,6 +81,7 @@ beforeAll(async () => {
     config: withAllParkedOn(appConfig),
   });
   const prepare = new PrepareController({
+    sessionGateway: testSessionGateway(),
     config: appConfig,
     ...managers.participationModules,
     availabilityCheckManager,

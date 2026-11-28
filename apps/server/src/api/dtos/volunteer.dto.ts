@@ -6,6 +6,7 @@ import type {
   MinistrySchedule,
   MinistryScheduleEvent,
   VolunteerAvailabilityCheckDetail,
+  VolunteerAvailabilityCheckStateCounts,
   VolunteerAvailabilityCheckSummary,
   VolunteerDashboard,
 } from '../../domain/contracts/application/volunteer-manager';
@@ -15,6 +16,7 @@ import {
   assignmentMapper,
   assignmentResponseSchema,
 } from './assignment.dto';
+import { idSchema } from './id.dto';
 import {
   memberNotificationMapper,
   memberNotificationResponseSchema,
@@ -98,12 +100,14 @@ export type AvailabilityCheckDetailResponse = z.infer<
 >;
 
 export const answerAvailabilityCheckBodySchema = z.object({
-  shiftIds: z.array(z.uuid()),
+  shiftIds: z.array(idSchema),
   wholeDayDates: z.array(calendarDaySchema).optional(),
 });
 
 export const answerConflictResponseSchema = z.object({
   error: z.enum([
+    // The Active Church hook's refusal, sent before the handler runs.
+    'ACTIVE_CHURCH_SELECTION_REQUIRED',
     'SHIFT_PUBLISHED',
     'ILLEGAL_STATE_TRANSITION',
     'CROSS_MINISTRY_SCOPE',
@@ -173,7 +177,7 @@ export const volunteerScheduleQuerystringSchema = z.object({
     .string()
     .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
     .optional(),
-  ministryId: z.string().uuid().optional(),
+  ministryId: idSchema.optional(),
 });
 
 const volunteerScheduleAssignmentSchema = z.object({
@@ -425,6 +429,11 @@ function ministryScheduleToResponse(
   };
 }
 
+interface AvailabilityCheckPageResponseInput {
+  summaries: VolunteerAvailabilityCheckSummary[];
+  counts: VolunteerAvailabilityCheckStateCounts;
+}
+
 export const volunteerMapper = {
   dashboardToResponse,
   ministryScheduleToResponse,
@@ -434,6 +443,18 @@ export const volunteerMapper = {
   ) {
     return { checks: summaries.map(availabilityCheckSummaryToResponse) };
   },
+  /** The listed checks with the counts of every state. */
+  availabilityCheckPageToResponse({
+    summaries,
+    counts,
+  }: AvailabilityCheckPageResponseInput) {
+    return {
+      ...volunteerMapper.availabilityCheckListToResponse(summaries),
+      counts,
+    };
+  },
   availabilityCheckDetailToResponse,
   assignmentToResponse,
 };
+
+export const availabilityCheckParamsSchema = z.object({ checkId: idSchema });

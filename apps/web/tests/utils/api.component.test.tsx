@@ -204,4 +204,28 @@ describe('request error toast', () => {
 
     expect(onSessionExpired).toHaveBeenCalledTimes(2);
   });
+
+  it('keeps the session on an auth-backend 503: no redirect and no toast', async () => {
+    let calls = 0;
+    mswServer.use(
+      http.get(URL, () => {
+        calls += 1;
+        return HttpResponse.json(
+          { error: 'SERVICE_UNAVAILABLE', message: 'Indisponível.' },
+          { status: 503, headers: { ...HEADERS, 'retry-after': '5' } },
+        );
+      }),
+    );
+    const onSessionExpired = vi.fn();
+    const client = createQueryClient({ onSessionExpired });
+
+    renderThing(client);
+    await waitFor(() =>
+      expect(client.getQueryState(['thing'])?.status).toBe('error'),
+    );
+
+    expect(calls).toBe(1);
+    expect(onSessionExpired).not.toHaveBeenCalled();
+    expect(screen.queryByText('Indisponível.')).toBeNull();
+  });
 });

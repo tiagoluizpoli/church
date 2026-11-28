@@ -48,6 +48,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn(), setActiveOrganization: vi.fn() } },
@@ -73,8 +74,13 @@ beforeAll(async () => {
     membershipRepository: new DrizzleChurchMembershipRepository({ db }),
   });
   const controllers = [
-    new VolunteerScheduleController({ volunteerManager, activeChurchResolver }),
+    new VolunteerScheduleController({
+      sessionGateway: testSessionGateway(),
+      volunteerManager,
+      activeChurchResolver,
+    }),
     new VolunteerController({
+      sessionGateway: testSessionGateway(),
       volunteerManager,
       activeChurchResolver,
     }),

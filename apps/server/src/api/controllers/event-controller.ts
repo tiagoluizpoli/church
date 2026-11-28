@@ -1,53 +1,47 @@
-import { NotFoundError } from '@church/core';
 import { z } from 'zod';
-import {
-  ChurchId,
-  EventId,
-  MinistryId,
-  UserId,
-} from '../../domain/branded-ids';
+import { EventId, MinistryId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IEventManager } from '../../domain/contracts/application/event-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { EventStatus } from '../../domain/entities/event';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import {
+  assertMinistryFunction,
+  assertMinistryManagement,
+} from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import {
   eventListResponseSchema,
   eventMapper,
   listEventsQuerySchema,
   scheduleBuilderDataResponseSchema,
 } from '../dtos/event.dto';
-import { refuse } from '../utils/refuse';
-import { requestCaller } from '../utils/request-caller';
-import type {
-  DenyMinistryObjectInput,
-  DenySchedulingFunctionInput,
-  EventControllerDependencies,
-  ListEventsQuery,
-  ScheduleBuilderQuery,
-} from './event-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
+import { idSchema } from '../dtos/id.dto';
+import type { EventControllerDependencies } from './event-controller.types';
 
 export class EventController implements FastifyController {
   readonly prefix = '/events';
 
   private readonly eventManager: IEventManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     eventManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
   }: EventControllerDependencies) {
     this.eventManager = eventManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -60,6 +54,7 @@ export class EventController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
       }),
     );
 
@@ -72,40 +67,29 @@ export class EventController implements FastifyController {
           summary: 'Get schedule builder data for an Event',
           description:
             'Get the EventTimeBlocks, Shifts, and eligible Volunteers needed to build a schedule for an Event.',
-          query: z.object({
-            eventId: z.string(),
-            ministryId: z.string().optional(),
+          querystring: z.object({
+            eventId: idSchema,
+            ministryId: idSchema.optional(),
           }),
           response: {
             200: scheduleBuilderDataResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const deniedFunction = await this.denyMissingSchedulingFunction({
-          request,
-          reply,
-        });
-        if (deniedFunction) return;
+        const { authorityGuard } = this;
+        await assertMinistryFunction({ authorityGuard, request });
 
-        const { eventId, ministryId } = request.query as ScheduleBuilderQuery;
-        try {
-          const data = await this.eventManager.getScheduleBuilderData({
-            churchId: ChurchId.from(request.churchId),
-            eventId: EventId.from(eventId),
-            userId: UserId.from(request.userId),
-            ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
-          });
-          return reply.send(eventMapper.scheduleBuilderToResponse(data));
-        } catch (error) {
-          if (error instanceof NotFoundError) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
+        const { eventId, ministryId } = request.query;
+        const data = await this.eventManager.getScheduleBuilderData({
+          churchId: request.churchId,
+          eventId: EventId.from(eventId),
+          userId: request.userId,
+          ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
+        });
+        return reply.send(eventMapper.scheduleBuilderToResponse(data));
       },
     );
 
@@ -118,73 +102,29 @@ export class EventController implements FastifyController {
           summary: "List a Ministry's Events",
           description:
             'List Events for a Ministry, optionally filtered by status.',
-          query: listEventsQuerySchema,
+          querystring: listEventsQuerySchema,
           response: {
             200: eventListResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { ministryId, status } = request.query as ListEventsQuery;
-        const deniedFunction = await this.denyMissingSchedulingFunction({
+        const { ministryId, status } = request.query;
+        await assertMinistryManagement({
+          authorityGuard: this.authorityGuard,
           request,
-          reply,
+          ministryId: MinistryId.from(ministryId),
         });
-        if (deniedFunction) return;
-
-        const deniedObject = await this.denyInaccessibleMinistry({
-          request,
-          reply,
-          ministryId,
-        });
-        if (deniedObject) return;
 
         const events = await this.eventManager.listEvents({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId: MinistryId.from(ministryId),
           status: status as EventStatus | undefined,
         });
         return reply.send(eventMapper.listToResponse(events));
       },
     );
-  }
-
-  /**
-   * Returns whether access was denied. `FastifyReply` is a thenable (it
-   * resolves once the response is flushed) — `return reply.send(...)` from
-   * an `async` method would have its own returned promise silently adopt
-   * that reply's resolution instead of the reply object itself, so callers
-   * must never `await` a reply and branch on the awaited value. Each guard
-   * here sends the refusal as a side effect and returns a plain boolean.
-   */
-  private async denyMissingSchedulingFunction({
-    request,
-    reply,
-  }: DenySchedulingFunctionInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageAnyMinistry(
-      requestCaller({ request }),
-    );
-    if (decision.allowed) return false;
-
-    refuse({ reply, request, code: 'FORBIDDEN' });
-    return true;
-  }
-
-  private async denyInaccessibleMinistry({
-    request,
-    reply,
-    ministryId,
-  }: DenyMinistryObjectInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageMinistry({
-      ...requestCaller({ request }),
-      ministryId: MinistryId.from(ministryId),
-    });
-    if (decision.allowed) return false;
-
-    refuse({ reply, request, code: 'NOT_FOUND' });
-    return true;
   }
 }

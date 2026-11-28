@@ -1,31 +1,25 @@
-import { NotFoundError } from '@church/core';
 import { z } from 'zod';
 import { CycleId, MinistryId, SwapRequestId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { ISwapRequestListManager } from '../../domain/contracts/application/swap-request-list-manager';
 import type { ISwapRequestManager } from '../../domain/contracts/application/swap-request-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import { assertManagedMinistry } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
+import { idSchema } from '../dtos/id.dto';
 import {
   keepSwapRequestBodySchema,
   leaderSwapRequestsQuerySchema,
   leaderSwapRequestsResponseSchema,
 } from '../dtos/swap-request.dto';
-import { refuse } from '../utils/refuse';
-import { requestCaller } from '../utils/request-caller';
-import type {
-  KeepRouteParams,
-  LeaderSwapRequestsQuery,
-  MinistryRouteParams,
-  SwapRequestListControllerDependencies,
-} from './swap-request-list-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
+import type { SwapRequestListControllerDependencies } from './swap-request-list-controller.types';
 
 /** The leader-facing Swap request read (Spec 28 consumes it). */
 export class SwapRequestListController implements FastifyController {
@@ -34,17 +28,20 @@ export class SwapRequestListController implements FastifyController {
   private readonly swapRequestListManager: ISwapRequestListManager;
   private readonly swapRequestManager: ISwapRequestManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     swapRequestListManager,
     swapRequestManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
   }: SwapRequestListControllerDependencies) {
     this.swapRequestListManager = swapRequestListManager;
     this.swapRequestManager = swapRequestManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -57,6 +54,7 @@ export class SwapRequestListController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
       }),
     );
 
@@ -69,27 +67,25 @@ export class SwapRequestListController implements FastifyController {
           summary: 'List a Ministry’s open Swap requests per Schedule',
           description:
             'Open requests, and expired ones until their Shift ends, grouped by Schedule (Cycle) with the open count per Schedule. Includes the Volunteer’s note, so only the Ministry’s leaders and ChurchAdmins may read it; anyone else gets 404.',
-          params: z.object({ ministryId: z.uuid() }),
+          params: z.object({ ministryId: idSchema }),
           querystring: leaderSwapRequestsQuerySchema,
           response: {
             200: leaderSwapRequestsResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { ministryId } = request.params as MinistryRouteParams;
-        const { cycleId } = request.query as LeaderSwapRequestsQuery;
-        const caller = requestCaller({ request });
-        const { churchId } = caller;
-        const decision = await this.authorityGuard.decideManageMinistry({
-          ...caller,
+        const { ministryId } = request.params;
+        const { cycleId } = request.query;
+        const { churchId } = request;
+        // Concealed: no 403 first, so a caller cannot tell a foreign Ministry from a missing one.
+        await assertManagedMinistry({
+          authorityGuard: this.authorityGuard,
+          request,
           ministryId: MinistryId.from(ministryId),
         });
-        // Concealed: the caller cannot tell a foreign Ministry from a missing one.
-        if (!decision.allowed) {
-          return refuse({ reply, request, code: 'NOT_FOUND' });
-        }
         return reply.send(
           await this.swapRequestListManager.listForLeader({
             churchId,
@@ -110,42 +106,33 @@ export class SwapRequestListController implements FastifyController {
             'Keep the Volunteer on the Assignment and answer the request',
           description:
             'Close an open, not-started Swap request as kept, with an optional reply, and tell the Volunteer once. The Assignment is not changed. Only the Ministry’s leaders and ChurchAdmins may; anyone else, or an unknown request, gets 404. 409 when the request is already closed or its Shift has started.',
-          params: z.object({ ministryId: z.uuid(), swapRequestId: z.uuid() }),
+          params: z.object({ ministryId: idSchema, swapRequestId: idSchema }),
           body: keepSwapRequestBodySchema,
           response: {
             204: z.null(),
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { ministryId, swapRequestId } = request.params as KeepRouteParams;
-        const body = request.body as z.infer<typeof keepSwapRequestBodySchema>;
-        const caller = requestCaller({ request });
-        const { churchId, userId } = caller;
-        const decision = await this.authorityGuard.decideManageMinistry({
-          ...caller,
+        const { ministryId, swapRequestId } = request.params;
+        const body = request.body;
+        const { churchId, userId } = request;
+        await assertManagedMinistry({
+          authorityGuard: this.authorityGuard,
+          request,
           ministryId: MinistryId.from(ministryId),
         });
-        if (!decision.allowed) {
-          return refuse({ reply, request, code: 'NOT_FOUND' });
-        }
-        try {
-          await this.swapRequestManager.keep({
-            churchId,
-            userId,
-            ministryId: MinistryId.from(ministryId),
-            swapRequestId: SwapRequestId.from(swapRequestId),
-            reply: body.reply,
-          });
-          return reply.status(204).send(null);
-        } catch (error) {
-          if (error instanceof NotFoundError) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
+        await this.swapRequestManager.keep({
+          churchId,
+          userId,
+          ministryId: MinistryId.from(ministryId),
+          swapRequestId: SwapRequestId.from(swapRequestId),
+          reply: body.reply,
+        });
+        return reply.status(204).send(null);
       },
     );
   }

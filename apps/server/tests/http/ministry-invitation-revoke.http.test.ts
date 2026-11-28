@@ -54,6 +54,7 @@ import {
   seedInvitationManagementGraph,
 } from '@/tests/test-support/invitation-management-graph';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -103,6 +104,7 @@ async function buildApp({ wrapRepo }: BuildAppInput = {}) {
     errorReporter: testErrorReporter,
   });
   const controller = new MinistryController({
+    sessionGateway: testSessionGateway(),
     config: appConfig,
     ministryManager: {} as never,
     ministryInvitationManager: manager,
@@ -416,14 +418,17 @@ describe('POST /ministries/:ministryId/invitations/:invitationId/revoke — auth
       await revoke(fx.foreignMinistryId, foreignOffer),
       await revoke(fx.worshipId, foreignOffer),
       await revoke(fx.worshipId, randomUUID()),
-      await revoke(fx.worshipId, 'not-a-uuid'),
     ];
+    const malformed = await revoke(fx.worshipId, 'not-a-uuid');
 
     expect(responses.map((res) => res.statusCode)).toEqual(
       Array(responses.length).fill(404),
     );
     expect(new Set(responses.map((res) => res.body)).size).toBe(1);
     expect(unmanaged.json().error).toBe('MINISTRY_NOT_FOUND');
+    // A malformed id fails validation (#1221).
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json().error).toBe('VALIDATION_ERROR');
     expect(await snapshot()).toEqual(before);
   });
 

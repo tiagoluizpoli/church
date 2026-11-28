@@ -24,6 +24,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -68,6 +69,7 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   const controller = new RedemptionController({
+    sessionGateway: testSessionGateway(),
     redemptionManager,
     volunteerTransferManager,
     config: appConfig,
@@ -166,6 +168,29 @@ describe('RedemptionController', () => {
       message: 'Muitas tentativas. Tente novamente em instantes.',
     });
     expect(redemptionManager.requestVerificationCode).not.toHaveBeenCalled();
+  });
+
+  it('rate-limits the public preview itself, before reading the invitation', async () => {
+    const { maxRequests } = appConfig.redemptionRateLimit;
+    for (let requestCount = 0; requestCount < maxRequests; requestCount += 1) {
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/redemption/church/${INVITATION_ID}/code`,
+        remoteAddress: '203.0.113.11',
+      });
+    }
+    const previewResponse = await app.inject({
+      method: 'GET',
+      url: `/api/v1/redemption/church/${INVITATION_ID}`,
+      remoteAddress: '203.0.113.11',
+    });
+
+    expect(previewResponse.statusCode).toBe(429);
+    expect(previewResponse.json()).toEqual({
+      error: 'RATE_LIMITED',
+      message: 'Muitas tentativas. Tente novamente em instantes.',
+    });
+    expect(redemptionManager.getPublicPreview).not.toHaveBeenCalled();
   });
 
   it('does not disclose a verification-code resend cooldown', async () => {

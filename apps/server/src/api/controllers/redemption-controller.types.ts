@@ -1,23 +1,9 @@
 import type { AppConfig } from '@church/app-config';
-import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { z } from 'zod';
+import type { FastifyRequest } from 'fastify';
 import type { UserId } from '../../domain/branded-ids';
 import type { IRedemptionManager } from '../../domain/contracts/application/redemption-manager';
 import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
-import type {
-  acceptExistingMemberBodySchema,
-  confirmTransferBodySchema,
-  redeemNewUserBodySchema,
-  redemptionParamsSchema,
-} from '../dtos/redemption.dto';
-
-export type RedemptionParams = z.infer<typeof redemptionParamsSchema>;
-
-export type RedeemNewUserBody = z.infer<typeof redeemNewUserBodySchema>;
-
-export type AcceptExistingMemberBody = z.infer<
-  typeof acceptExistingMemberBodySchema
->;
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 
 export interface AuthenticatedRedeemer {
   userId: ReturnType<typeof UserId.from>;
@@ -27,27 +13,11 @@ export interface AuthenticatedRedeemer {
 
 export interface RequireRedeemerInput {
   request: FastifyRequest;
-  reply: FastifyReply;
-}
-
-/** The restricted preview field set the existing-member route exposes (spec §7.1). */
-export interface InvitationPreviewFields {
-  email: string;
-  churchName: string;
-  ministryName: string;
-  ministryAccessLevel: 'volunteer' | 'leader';
-  roleNames: string[];
-  expiresAt: Date;
 }
 
 export interface RedemptionControllerDependencies {
   redemptionManager: IRedemptionManager;
   volunteerTransferManager: IVolunteerTransferManager;
+  sessionGateway: SessionGateway;
   config: AppConfig;
-}
-
-export type ConfirmTransferBody = z.infer<typeof confirmTransferBodySchema>;
-
-export interface ControllerRateLimitInput {
-  key: string;
 }

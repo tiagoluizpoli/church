@@ -1,5 +1,5 @@
 import { NotFoundError } from '@church/core';
-import { parseCalendarDay, parseInstant } from '@church/time';
+import { parseInstant } from '@church/time';
 import {
   afterAll,
   beforeAll,
@@ -9,16 +9,14 @@ import {
   it,
   vi,
 } from 'vitest';
-import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
-import { Event } from '@/domain/entities/event';
-import { Ministry } from '@/domain/entities/ministry';
+import { EventTimeBlockAdminController } from '@/api/controllers/event-time-block-admin-controller';
 import { IllegalStateTransitionError } from '@/domain/errors/illegal-state-transition';
 import { LastRemainingEventTimeBlockError } from '@/domain/errors/last-remaining-event-time-block-error';
-import { OverlappingCycleError } from '@/domain/errors/overlapping-cycle';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: {
@@ -32,20 +30,6 @@ const mockGetSession = vi.mocked(
   (await import('@/main/di/server-auth')).auth.api.getSession,
 );
 
-const cycleManager = {
-  createCycle: vi.fn(),
-  listCycles: vi.fn(),
-  getCycle: vi.fn(),
-  sendCycle: vi.fn(),
-};
-
-const templateManager = {
-  createTemplate: vi.fn(),
-  updateTemplate: vi.fn(),
-  deleteTemplate: vi.fn(),
-  listTemplates: vi.fn(),
-};
-
 const planningEventManager = {
   generateFromTemplates: vi.fn(),
   createEvent: vi.fn(),
@@ -56,10 +40,7 @@ const planningEventManager = {
   createEventTimeBlock: vi.fn(),
   updateEventTimeBlock: vi.fn(),
   deleteEventTimeBlock: vi.fn(),
-};
-
-const ministryManager = {
-  setDefaultDirection: vi.fn(),
+  setHidden: vi.fn(),
 };
 
 const activeChurchResolver = {
@@ -81,31 +62,15 @@ function createActiveChurchResolution() {
   };
 }
 
-function createMinistry(defaultDirection: 'all_in' | 'all_out'): Ministry {
-  return new Ministry({
-    props: {
-      churchId: '11111111-1111-1111-1111-111111111111',
-      name: 'Projection',
-      defaultDirection,
-    },
-    id: '33333333-3333-3333-3333-333333333333',
-    createdAt: new Date('2026-07-01T00:00:00.000Z'),
-    updatedAt: new Date('2026-07-01T00:00:00.000Z'),
-  });
-}
-
 beforeAll(async () => {
   app = await createFastify({
     locale: testLocale,
     errorReporter: testErrorReporter,
   });
-  const controller = new ChurchAdminController({
-    cycleManager: cycleManager as never,
-    eventTemplateManager: templateManager as never,
+  const controller = new EventTimeBlockAdminController({
+    sessionGateway: testSessionGateway(),
     planningEventManager: planningEventManager as never,
     activeChurchResolver: activeChurchResolver as never,
-    ministryManager: ministryManager as never,
-    setupProgressManager: {} as never,
     authorityGuard: authorityGuard as never,
   });
   await app.register(
@@ -136,199 +101,6 @@ beforeEach(() => {
 });
 
 describe('Church admin planning routes', () => {
-  it('returns 401 for any route when there is no session', async () => {
-    mockGetSession.mockResolvedValueOnce(null as never);
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/admin/cycles',
-    });
-
-    expect(response.statusCode).toBe(401);
-    expect(cycleManager.listCycles).not.toHaveBeenCalled();
-  });
-
-  it('POST /api/v1/admin/cycles returns 201 and 409 for overlap conflicts', async () => {
-    cycleManager.createCycle.mockResolvedValue({
-      id: '22222222-2222-2222-2222-222222222222',
-      churchId: '11111111-1111-1111-1111-111111111111',
-      name: 'August 2026',
-      startDate: parseCalendarDay({ value: '2026-08-01' }),
-      endDate: parseCalendarDay({ value: '2026-09-01' }),
-      state: 'draft',
-      createdAt: new Date('2026-07-01T00:00:00.000Z'),
-      updatedAt: new Date('2026-07-01T00:00:00.000Z'),
-    });
-
-    const success = await app.inject({
-      method: 'POST',
-      url: '/api/v1/admin/cycles',
-      payload: {
-        name: 'August 2026',
-        startDate: '2026-08-01',
-        endDate: '2026-09-01',
-      },
-    });
-
-    expect(success.statusCode).toBe(201);
-
-    cycleManager.createCycle.mockRejectedValueOnce(
-      new OverlappingCycleError({ conflictingCycles: [] }),
-    );
-    const conflict = await app.inject({
-      method: 'POST',
-      url: '/api/v1/admin/cycles',
-      payload: {
-        name: 'Overlap',
-        startDate: '2026-08-15',
-        endDate: '2026-09-15',
-      },
-    });
-
-    expect(conflict.statusCode).toBe(409);
-  });
-
-  it('POST /api/v1/admin/cycles/:id/send returns 204 and 403 for non-admin users', async () => {
-    const ok = await app.inject({
-      method: 'POST',
-      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/send',
-    });
-
-    expect(ok.statusCode).toBe(204);
-
-    authorityGuard.canManageChurch.mockResolvedValueOnce(false);
-
-    const forbidden = await app.inject({
-      method: 'POST',
-      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/send',
-    });
-
-    expect(forbidden.statusCode).toBe(403);
-
-    cycleManager.sendCycle.mockRejectedValueOnce(
-      new IllegalStateTransitionError({ from: 'sent', to: 'sent' }),
-    );
-    const conflict = await app.inject({
-      method: 'POST',
-      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/send',
-    });
-
-    expect(conflict.statusCode).toBe(409);
-  });
-
-  it('POST /api/v1/admin/cycles/:id/apply-templates returns 201 and 422 for invalid bodies', async () => {
-    planningEventManager.generateFromTemplates.mockResolvedValue({
-      generatedEventCount: 5,
-      generatedEventTimeBlockCount: 9,
-      leftoverEventTimeBlocks: [],
-    });
-
-    const success = await app.inject({
-      method: 'POST',
-      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/apply-templates',
-      payload: {
-        templateIds: ['33333333-3333-3333-3333-333333333333'],
-      },
-    });
-
-    expect(success.statusCode).toBe(201);
-    expect(success.json()).toEqual({
-      generatedEventCount: 5,
-      generatedEventTimeBlockCount: 9,
-      leftoverEventTimeBlocks: [],
-    });
-
-    const invalid = await app.inject({
-      method: 'POST',
-      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/apply-templates',
-      payload: {
-        templateIds: [],
-      },
-    });
-
-    expect(invalid.statusCode).toBe(422);
-  });
-
-  it('POST /api/v1/admin/cycles/:id/events stores the client-computed church-local Instants as given (#149)', async () => {
-    // The Event editor sends already church-local bounds; the controller no
-    // longer reinterprets them (no datesRepresentChurchCalendarDays flag).
-    // The church-timezone day-placement proof itself (a real church, a real
-    // DB) lives at the manager layer in
-    // tests/application/planning-phase3.managers.test.ts — this test's job
-    // is only to confirm the HTTP layer doesn't reintroduce reinterpretation
-    // between the wire and the manager call.
-    planningEventManager.createEvent.mockResolvedValue({
-      eventTimeBlocks: [],
-      event: new Event({
-        props: {
-          churchId: '11111111-1111-1111-1111-111111111111',
-          cycleId: '22222222-2222-2222-2222-222222222222',
-          title: 'Domingo',
-          start: parseInstant({ value: '2026-06-28T03:00:00.000Z' }),
-          end: parseInstant({ value: '2026-06-29T02:59:59.999Z' }),
-        },
-        id: '33333333-3333-3333-3333-333333333333',
-        createdAt: new Date('2026-06-01T00:00:00.000Z'),
-        updatedAt: new Date('2026-06-01T00:00:00.000Z'),
-      }),
-    });
-
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222/events',
-      payload: {
-        title: 'Domingo',
-        start: '2026-06-28T03:00:00.000Z',
-        end: '2026-06-29T02:59:59.999Z',
-        eventTimeBlocks: [
-          {
-            label: 'Domingo',
-            startTime: '2026-06-28T03:00:00.000Z',
-            endTime: '2026-06-29T02:59:59.999Z',
-          },
-        ],
-      },
-    });
-
-    expect(response.statusCode).toBe(201);
-    expect(planningEventManager.createEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        start: new Date('2026-06-28T03:00:00.000Z'),
-        end: new Date('2026-06-29T02:59:59.999Z'),
-        eventTimeBlocks: [
-          {
-            label: 'Domingo',
-            startTime: new Date('2026-06-28T03:00:00.000Z'),
-            endTime: new Date('2026-06-29T02:59:59.999Z'),
-          },
-        ],
-      }),
-    );
-    expect(planningEventManager.createEvent).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        datesRepresentChurchCalendarDays: expect.anything(),
-      }),
-    );
-  });
-
-  it('returns the updated default direction', async () => {
-    ministryManager.setDefaultDirection.mockResolvedValue(
-      createMinistry('all_in'),
-    );
-
-    const patchResponse = await app.inject({
-      method: 'PATCH',
-      url: '/api/v1/admin/ministries/33333333-3333-3333-3333-333333333333/default-direction',
-      payload: { defaultDirection: 'all_in' },
-    });
-
-    expect(patchResponse.statusCode).toBe(200);
-    expect(patchResponse.json()).toMatchObject({
-      id: '33333333-3333-3333-3333-333333333333',
-      defaultDirection: 'all_in',
-    });
-  });
-
   it('POST .../event-time-blocks: creates an event time block and returns 201, and returns 409 for a sent cycle', async () => {
     const cycleId = '22222222-2222-2222-2222-222222222222';
     const eventId = '66666666-6666-6666-6666-666666666666';
@@ -472,5 +244,22 @@ describe('Church admin planning routes', () => {
         eventTimeBlockId: hiddenTimeBlockId,
       }),
     );
+  });
+});
+
+describe('Church admin request input and empty replies (#1222)', () => {
+  const cycleUrl = '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222';
+  const eventUrl = `${cycleUrl}/events/66666666-6666-6666-6666-666666666666`;
+  const blockUrl = `${eventUrl}/event-time-blocks/99999999-9999-9999-9999-999999999999`;
+
+  it.each([
+    ['delete an EventTimeBlock', 'DELETE', blockUrl, undefined],
+  ] as const)('%s answers 204 with an empty body', async (_case, method, url, payload) => {
+    const response = await app.inject({ method, url, payload });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.body).toBe('');
+    expect(response.headers['content-type']).toBeUndefined();
+    expect(response.headers['content-length']).toBeUndefined();
   });
 });

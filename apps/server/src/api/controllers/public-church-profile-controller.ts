@@ -1,5 +1,4 @@
 import type { AppConfig } from '@church/app-config';
-import type { z } from 'zod';
 import type { IPublicChurchProfileManager } from '../../domain/contracts/application/public-church-profile-manager';
 import type { IPublicEventManager } from '../../domain/contracts/application/public-event-manager';
 import type { WebShell } from '../../domain/contracts/infrastructure';
@@ -17,14 +16,12 @@ import {
   publicEventsToResponse,
 } from '../dtos/public-event.dto';
 import { renderChurchPageHead } from '../utils/church-page-head';
-import { isRateLimited } from '../utils/rate-limit';
-import { refuse } from '../utils/refuse';
+import { assertNotRateLimited, isRateLimited } from '../utils/rate-limit';
+import { RefusalError } from '../utils/refusal-error';
 import type {
   ChurchPageAnswer,
   ChurchPageInput,
-  LimitedInput,
   PublicChurchProfileControllerDependencies,
-  PublicChurchProfileParams,
 } from './public-church-profile-controller.types';
 
 /** Sign-in-free reads of the Public Church Profile, rate limited per client IP. */
@@ -74,13 +71,16 @@ export class PublicChurchProfileController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (this.limited({ bucket: 'public-church-profile', ip: request.ip }))
-          return refuse({ reply, request, code: 'RATE_LIMITED' });
-        const { slug } = request.params as PublicChurchProfileParams;
+        assertNotRateLimited({
+          bucket: 'public-church-profile',
+          key: request.ip,
+          limit: this.rateLimit,
+        });
+        const { slug } = request.params;
         const profile = await this.publicChurchProfileManager.getProfile({
           slug,
         });
-        if (!profile) return refuse({ reply, request, code: 'NOT_FOUND' });
+        if (!profile) throw new RefusalError({ code: 'NOT_FOUND' });
         return reply.send(profile);
       },
     );
@@ -93,7 +93,7 @@ export class PublicChurchProfileController implements FastifyController {
       async (request, reply) => {
         const page = await this.churchPage({
           ip: request.ip,
-          ...(request.params as PublicChurchProfileParams),
+          ...request.params,
         });
         if ('redirectTo' in page) {
           // Old printed or shared links keep their tracking parameters.
@@ -127,26 +127,21 @@ export class PublicChurchProfileController implements FastifyController {
         },
       },
       async (request, reply) => {
-        if (this.limited({ bucket: 'public-church-events', ip: request.ip }))
-          return refuse({ reply, request, code: 'RATE_LIMITED' });
-        const { slug } = request.params as PublicChurchProfileParams;
-        const { cursor } = request.query as z.infer<
-          typeof publicEventsQuerystringSchema
-        >;
+        assertNotRateLimited({
+          bucket: 'public-church-events',
+          key: request.ip,
+          limit: this.rateLimit,
+        });
+        const { slug } = request.params;
+        const { cursor } = request.query;
         const result = await this.publicEventManager.listPublicEventsBySlug({
           slug,
           after: cursor ? decodePublicEventCursor({ cursor }) : undefined,
         });
-        if (!result) return refuse({ reply, request, code: 'NOT_FOUND' });
+        if (!result) throw new RefusalError({ code: 'NOT_FOUND' });
         return reply.send(publicEventsToResponse(result));
       },
     );
-  }
-
-  /** Counts this request against the client's window for `bucket`. */
-  private limited({ bucket, ip }: LimitedInput): boolean {
-    const { windowMs, maxRequests } = this.rateLimit;
-    return isRateLimited({ key: `${bucket}:${ip}`, windowMs, maxRequests });
   }
 
   /** The `/{slug}` answer: a 301 for an old slug, else a status and the filled head (`html` absent = the unfilled shell). */
@@ -154,7 +149,13 @@ export class PublicChurchProfileController implements FastifyController {
     ip,
     slug,
   }: ChurchPageInput): Promise<ChurchPageAnswer> {
-    if (this.limited({ bucket: 'public-church-page', ip })) {
+    if (
+      isRateLimited({
+        bucket: 'public-church-page',
+        key: ip,
+        limit: this.rateLimit,
+      })
+    ) {
       return { status: 429 };
     }
     const profile = await this.publicChurchProfileManager.getProfile({ slug });

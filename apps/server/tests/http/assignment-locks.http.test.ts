@@ -27,7 +27,6 @@ import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
 import { AssignController } from '@/api/controllers/assign-controller';
-import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { ChurchRecipients } from '@/application/church-recipients';
 import { DbActiveChurchResolver } from '@/application/db-active-church-resolver';
@@ -92,9 +91,11 @@ import {
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
 import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
+import { ChurchAdminControllers } from '@/tests/test-support/church-admin-controllers';
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 let app: FastifyTypedInstance;
 let managers: SchedulingManagers;
@@ -149,7 +150,8 @@ beforeAll(async () => {
     unitOfWork,
   });
   // Move confirm races Assignment creation through the real routes.
-  const adminController = new ChurchAdminController({
+  const adminController = new ChurchAdminControllers({
+    sessionGateway: testSessionGateway(),
     // Edits a Cycle while Apply races it; Send is never called.
     cycleManager: new DbCycleManager({
       cycleRepository: new DrizzleCycleRepository({ db }),
@@ -185,6 +187,7 @@ beforeAll(async () => {
     authorityGuard,
   });
   const controller = new AssignController({
+    sessionGateway: testSessionGateway(),
     ...managers.participationModules,
     assignmentManager: managers.assignmentManager,
     activeChurchResolver,

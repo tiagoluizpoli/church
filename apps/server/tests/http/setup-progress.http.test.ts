@@ -16,7 +16,6 @@ import {
   vi,
 } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
-import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbSetupProgressManager } from '@/application/db-setup-progress-manager';
 import { ChurchId, UserId } from '@/domain/branded-ids';
@@ -40,8 +39,10 @@ import {
   testDb as db,
   truncateAll,
 } from '@/tests/integration/repositories/setup';
+import { ChurchAdminControllers } from '@/tests/test-support/church-admin-controllers';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -76,7 +77,8 @@ beforeAll(async () => {
     locale: testLocale,
     errorReporter: testErrorReporter,
   });
-  const controller = new ChurchAdminController({
+  const controller = new ChurchAdminControllers({
+    sessionGateway: testSessionGateway(),
     cycleManager: {} as never,
     eventTemplateManager: {} as never,
     planningEventManager: {} as never,

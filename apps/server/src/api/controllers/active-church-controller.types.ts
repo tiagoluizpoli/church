@@ -1,22 +1,12 @@
-import type { FastifyReply, FastifyRequest } from 'fastify';
 import type {
   ActiveChurchResolution,
   IActiveChurchResolver,
 } from '../../domain/contracts/application/active-church-resolver';
 import type { IActiveChurchSelectionManager } from '../../domain/contracts/application/active-church-selection-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 
 export interface BuildStatusResponseInput {
   resolution: ActiveChurchResolution;
-}
-
-export interface RequireSessionInput {
-  request: FastifyRequest;
-  reply: FastifyReply;
-}
-
-export interface AuthenticatedSession {
-  userId: string;
-  activeOrganizationId: string | null;
 }
 
 /**
@@ -27,5 +17,6 @@ export interface AuthenticatedSession {
  */
 export interface ActiveChurchControllerDependencies {
   activeChurchResolver: IActiveChurchResolver;
+  sessionGateway: SessionGateway;
   selectionManager: IActiveChurchSelectionManager;
 }

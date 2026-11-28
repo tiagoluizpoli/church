@@ -13,6 +13,7 @@ import {
   jsonSchemaTransform,
   serializerCompiler,
   validatorCompiler,
+  type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 import pino from 'pino';
 import PinoPretty from 'pino-pretty';
@@ -37,14 +38,17 @@ import {
   validationReason,
 } from '../../api/utils/error-messages';
 import { errorStatus } from '../../api/utils/error-table';
+import { RefusalError } from '../../api/utils/refusal-error';
 import { refuse } from '../../api/utils/refuse';
 import { requestLocale } from '../../api/utils/request-locale';
+import { ChurchId, UserId, VolunteerId } from '../../domain/branded-ids';
 import { HardConstraintError } from '../../domain/conflict/errors/hard-constraint-error';
 import {
   redactUrl,
   serializeError,
   serializeRequest,
 } from '../../infrastructure/privacy/privacy';
+import { AuthBackendUnavailableError } from '../../infrastructure/services/auth-backend-unavailable-error';
 import { auth } from '../di/server-auth';
 import { fastifyOtel } from '../instrumentation';
 import { requestId } from './request-id';
@@ -53,6 +57,7 @@ import type {
   FastifyFactory,
   LoggingOptionsInput,
   ReportUnexpectedInput,
+  SendServiceUnavailableInput,
 } from './setup.types';
 
 // moduleResolution:bundler cannot expose call signatures for CJS export= packages.
@@ -78,6 +83,17 @@ function reportUnexpected({
     userId,
     churchId,
     request: { method, url, headers },
+  });
+}
+
+/** A transient outage (auth backend or database): retry shortly, nothing to report. */
+function sendServiceUnavailable({
+  reply,
+  message,
+}: SendServiceUnavailableInput) {
+  return reply.status(503).header('Retry-After', '5').send({
+    error: 'SERVICE_UNAVAILABLE',
+    message,
   });
 }
 
@@ -117,7 +133,7 @@ export async function createFastify({
     genReqId: requestId,
     trustProxy: env.TRUST_PROXY_HOPS,
     ...logging,
-  });
+  }).withTypeProvider<ZodTypeProvider>();
 
   // First, so its onRequest hook runs right after genReqId (see request-id.ts).
   await app.register(fastifyOtel.plugin());
@@ -141,9 +157,9 @@ export async function createFastify({
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  app.decorateRequest('userId', '');
-  app.decorateRequest('volunteerId', '');
-  app.decorateRequest('churchId', '');
+  app.decorateRequest('userId', UserId.from(''));
+  app.decorateRequest('volunteerId', VolunteerId.from(''));
+  app.decorateRequest('churchId', ChurchId.from(''));
   app.decorateRequest('locale', localeSettings.defaultLocale);
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', request.id);
@@ -157,12 +173,12 @@ export async function createFastify({
   // on every non-GET; an allowed one may be cross-site (CORS), any other
   // Origin, or a cross-site request without one, is refused. After the
   // locale hook, so the refusal reads in the request locale.
-  app.addHook('onRequest', async (request, reply) => {
+  app.addHook('onRequest', async (request) => {
     if (SAFE_METHODS.has(request.method)) return;
     const { origin, 'sec-fetch-site': fetchSite } = request.headers;
     const allowed = origin !== undefined && allowedOrigins.includes(origin);
     if (allowed || (origin === undefined && fetchSite !== 'cross-site')) return;
-    return refuse({ reply, request, code: 'FORBIDDEN' });
+    throw new RefusalError({ code: 'FORBIDDEN' });
   });
 
   await app.register(swagger, {
@@ -234,6 +250,9 @@ export async function createFastify({
     const { locale } = request;
     const url = redactUrl({ url: request.url });
     const genericError = m.common_generic_error({}, { locale });
+    if (error instanceof RefusalError) {
+      return refuse({ reply, request, code: error.code });
+    }
     if (error instanceof DomainError) {
       const status = errorStatus({ code: error.code }) ?? 500;
       request.log.warn(
@@ -304,6 +323,14 @@ export async function createFastify({
       });
     }
 
+    if (error instanceof AuthBackendUnavailableError) {
+      // A transient auth outage is a 503, never a 401 the client reads as a sign-out.
+      // The cause's code only, as for the database: its message may carry the connection string.
+      const code = connectionErrorCode({ error }) ?? null;
+      request.log.error({ code, url }, 'Auth backend failure');
+      return sendServiceUnavailable({ reply, message: genericError });
+    }
+
     const connectionCode = connectionErrorCode({ error });
     if (connectionCode) {
       // Log the code only: the error message may carry the connection string.
@@ -311,10 +338,7 @@ export async function createFastify({
         { code: connectionCode, url },
         'Database connection failure',
       );
-      return reply.status(503).header('Retry-After', '5').send({
-        error: 'SERVICE_UNAVAILABLE',
-        message: genericError,
-      });
+      return sendServiceUnavailable({ reply, message: genericError });
     }
 
     request.log.error({ err: error, url }, 'Unhandled error');

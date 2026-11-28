@@ -11,6 +11,7 @@ import type {
   UsualSetupEntryInput,
   UsualSetupShiftSplit,
 } from '../../domain/entities/usual-setup';
+import { idSchema, ministryParamsSchema } from './id.dto';
 
 const usualSetupHeadcountSchema = z.object({
   shiftIndex: z.number().int().min(0),
@@ -69,9 +70,6 @@ type UsualSetupBlockListResponse = z.infer<
 export const setDefaultDirectionBodySchema = z.object({
   defaultDirection: z.enum(['all_in', 'all_out']),
 });
-export type SetDefaultDirectionBody = z.infer<
-  typeof setDefaultDirectionBodySchema
->;
 
 function toShiftSplit(
   shiftSplit: UsualSetupShiftSplitBody,
@@ -144,3 +142,7 @@ export const usualSetupMapper = {
     return { blocks: views.map(usualSetupMapper.toBlockResponse) };
   },
 };
+
+export const usualSetupBlockParamsSchema = ministryParamsSchema.extend({
+  sourceTemplateTimeBlockId: idSchema,
+});

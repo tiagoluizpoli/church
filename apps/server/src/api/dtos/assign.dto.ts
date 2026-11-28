@@ -1,5 +1,6 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
+import { ShiftRequirementId, VolunteerId } from '../../domain/branded-ids';
 import type {
   AssignmentProposalOutcomeView,
   AssignmentProposalView,
@@ -12,6 +13,7 @@ import {
   VOLUNTEER_DECIDING_RULE_OPTIONS,
 } from '../../domain/services/scheduling/assignment-proposal';
 import { assignmentMapper, assignmentResponseSchema } from './assignment.dto';
+import { idSchema } from './id.dto';
 
 interface AssignmentWarningResponseInput {
   type: 'UNAVAILABLE' | 'DOUBLE_BOOKED';
@@ -122,13 +124,27 @@ const reviewedPairSchema = z
 export const applyAssignmentProposalBodySchema = z
   .object({
     /** One per reviewed preview; resend it on every retry of that preview. */
-    applicationKey: z.uuid(),
+    applicationKey: idSchema,
     reviewToken: z.string().min(1),
     additions: z.array(reviewedPairSchema).min(1),
     /** Reviewed pairs to leave out; never added or edited pairs. */
     excludedAdditions: z.array(reviewedPairSchema).default([]),
   })
   .strict();
+type ApplyAssignmentProposalBody = z.infer<
+  typeof applyAssignmentProposalBodySchema
+>;
+type ReviewedPairBody = z.infer<typeof reviewedPairSchema>;
+
+function toReviewedAddition({
+  shiftRequirementId,
+  volunteerId,
+}: ReviewedPairBody) {
+  return {
+    shiftRequirementId: ShiftRequirementId.from({ raw: shiftRequirementId }),
+    volunteerId: VolunteerId.from(volunteerId),
+  };
+}
 
 export const assignmentProposalOutcomeResponseSchema = z.object({
   applicationKey: z.string(),
@@ -145,6 +161,17 @@ export const assignmentProposalOutcomeResponseSchema = z.object({
 });
 
 export const assignMapper = {
+  /** The reviewed pairs as the manager reads them, with branded ids. */
+  reviewedAdditionsFromBody({
+    additions,
+    excludedAdditions,
+  }: ApplyAssignmentProposalBody) {
+    return {
+      additions: additions.map(toReviewedAddition),
+      excludedAdditions: excludedAdditions.map(toReviewedAddition),
+    };
+  },
+
   proposalToResponse(proposal: AssignmentProposalView) {
     return {
       additions: proposal.additions.map((addition) => ({

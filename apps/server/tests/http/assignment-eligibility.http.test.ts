@@ -52,6 +52,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 /**
  * Characterization of every Assignment eligibility refusal and its precedence
@@ -122,6 +123,7 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   const controller = new AssignController({
+    sessionGateway: testSessionGateway(),
     ...managers.participationModules,
     assignmentManager: managers.assignmentManager,
     activeChurchResolver: activeChurchResolver as never,

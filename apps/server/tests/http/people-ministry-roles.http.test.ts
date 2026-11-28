@@ -88,6 +88,7 @@ import {
 import { createChurchNotificationsSpy } from '@/tests/test-support/church-notifications-spy';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -124,6 +125,7 @@ beforeAll(async () => {
   const churchAccessRepository = new DrizzleChurchAccessRepository({ db });
   // Real managers, repositories, AuthorityService and PostgreSQL; only session and Active Church are seams.
   const controller = new PeopleController({
+    sessionGateway: testSessionGateway(),
     peopleListManager: new DbPeopleListManager({
       peopleListRepository: new DrizzlePeopleListRepository({ db }),
       authorityManager,
@@ -153,6 +155,7 @@ beforeAll(async () => {
   const scheduling = createSchedulingManagers();
   // The Assign board's own authority is not under test here; its qualification locking is.
   const assign = new AssignController({
+    sessionGateway: testSessionGateway(),
     ...scheduling.participationModules,
     assignmentManager: scheduling.assignmentManager,
     activeChurchResolver: activeChurchResolver as never,
@@ -165,10 +168,12 @@ beforeAll(async () => {
   });
   // The Volunteer's own check links and the leader's Ask/Remind, behind the same stubbed area gate.
   const volunteer = new VolunteerController({
+    sessionGateway: testSessionGateway(),
     volunteerManager: scheduling.volunteerManager,
     activeChurchResolver: activeChurchResolver as never,
   });
   const prepare = new PrepareController({
+    sessionGateway: testSessionGateway(),
     config: appConfig,
     ...scheduling.participationModules,
     availabilityCheckManager: new DbAvailabilityCheckManager({
@@ -773,7 +778,6 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
 
       const targets = [
         { member: 'val', membership: '00000000-0000-4000-8000-000000000000' },
-        { member: 'val', membership: 'not-a-uuid' },
         { member: 'val', membership: ws('pia') },
         { member: 'val', membership: valB },
         { member: 'nobody', membership: ws('val') },
@@ -788,6 +792,15 @@ describe('PUT /people/:memberId/ministry-memberships/:membershipId/roles', () =>
         expect(res.statusCode, JSON.stringify(target)).toBe(404);
         expect(res.json().error).toBe('NOT_FOUND');
       }
+      // A malformed id fails validation (#1221).
+      const malformed = await editRoles({
+        as: 'ada',
+        member: 'val',
+        membership: 'not-a-uuid',
+        roleIds: [f.vocals, f.guitar],
+      });
+      expect(malformed.statusCode).toBe(422);
+      expect(malformed.json().error).toBe('VALIDATION_ERROR');
       expect(await heldRoles(valB)).toEqual([f.foreignRole]);
       expect(await audits()).toEqual([]);
     });
@@ -1615,11 +1628,10 @@ describe('PATCH /people/:memberId/ministry-memberships/:membershipId/access', ()
         })
       ).statusCode,
     ).toBe(401);
-    // A membership of another person, a missing one and a non-uuid all read as 404 to an admin.
+    // A membership of another person and a missing one read as 404 to an admin.
     for (const membership of [
       ws('pia'),
       '00000000-0000-4000-8000-000000000000',
-      'nope',
     ]) {
       const res = await changeAccess({
         as: 'ada',
@@ -1629,6 +1641,15 @@ describe('PATCH /people/:memberId/ministry-memberships/:membershipId/access', ()
       });
       expect(res.statusCode, membership).toBe(404);
     }
+    // A malformed id fails validation (#1221).
+    const malformed = await changeAccess({
+      as: 'ada',
+      member: 'val',
+      membership: 'nope',
+      accessLevel: 'leader',
+    });
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json().error).toBe('VALIDATION_ERROR');
     expect(await levelOf(ws('val'))).toBe('volunteer');
     expect(await audits()).toEqual([]);
   });
@@ -1973,12 +1994,19 @@ describe('DELETE /people/:memberId/ministry-memberships/:membershipId', () => {
       expect(anonymous.statusCode).toBe(401);
       for (const membership of [
         '00000000-0000-4000-8000-000000000000',
-        'not-a-uuid',
         ws('pia'),
       ]) {
         const res = await removeFrom({ as: 'ada', member: 'val', membership });
         expect(res.statusCode, membership).toBe(404);
       }
+      // A malformed id fails validation (#1221).
+      const malformed = await removeFrom({
+        as: 'ada',
+        member: 'val',
+        membership: 'not-a-uuid',
+      });
+      expect(malformed.statusCode).toBe(422);
+      expect(malformed.json().error).toBe('VALIDATION_ERROR');
       expect(await membershipRow(ws('val'))).toMatchObject({
         status: 'active',
       });

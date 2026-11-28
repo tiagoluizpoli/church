@@ -1,30 +1,27 @@
 import { z } from 'zod';
-import { ChurchId, MinistryId, RoleId } from '../../domain/branded-ids';
+import { MinistryId, RoleId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryRoleManager } from '../../domain/contracts/application/ministry-role-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
-import { denyMinistryManagement } from '../auth/ministry-management-access';
+import { assertMinistryManagement } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
 import {
-  type RoleNameBody,
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
+import { ministryParamsSchema } from '../dtos/id.dto';
+import {
+  ministryRoleParamsSchema,
   roleListResponseSchema,
   roleMapper,
   roleNameBodySchema,
   roleResponseSchema,
 } from '../dtos/ministry-role.dto';
-import type {
-  MinistryRoleControllerDependencies,
-  MinistryRoleRouteParams,
-  MinistryRolesRouteParams,
-} from './ministry-role-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
+import type { MinistryRoleControllerDependencies } from './ministry-role-controller.types';
 
 /**
  * The Role registry of a Ministry, for ChurchAdmins and the Ministry's own
@@ -35,15 +32,18 @@ export class MinistryRoleController implements FastifyController {
 
   private readonly ministryRoleManager: IMinistryRoleManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     ministryRoleManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
   }: MinistryRoleControllerDependencies) {
     this.ministryRoleManager = ministryRoleManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -56,6 +56,7 @@ export class MinistryRoleController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
       }),
     );
     const authorityGuard = this.authorityGuard;
@@ -66,33 +67,26 @@ export class MinistryRoleController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'listMinistryRoles',
+          params: ministryParamsSchema,
           summary: "List a Ministry's active Roles",
           description:
             'Active Roles of a managed Ministry, alphabetical ignoring case. The active-choice read for new invitations, memberships and headcounts.',
           response: {
             200: roleListResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const ministryId = MinistryId.from(
-          (request.params as MinistryRolesRouteParams).ministryId,
-        );
-        if (
-          await denyMinistryManagement({
-            authorityGuard,
-            request,
-            reply,
-            ministryId,
-          })
-        ) {
-          return;
-        }
+        const ministryId = MinistryId.from(request.params.ministryId);
+        await assertMinistryManagement({
+          authorityGuard,
+          request,
+          ministryId,
+        });
         const roles = await this.ministryRoleManager.list({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
         });
         return reply.send(roleMapper.toResponseList(roles));
@@ -105,36 +99,29 @@ export class MinistryRoleController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'createMinistryRole',
+          params: ministryParamsSchema,
           summary: 'Add a Role to a Ministry',
           description:
             'Add an active Role by name. Active Role names are unique per Ministry ignoring case.',
           body: roleNameBodySchema,
           response: {
             201: roleResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const ministryId = MinistryId.from(
-          (request.params as MinistryRolesRouteParams).ministryId,
-        );
-        if (
-          await denyMinistryManagement({
-            authorityGuard,
-            request,
-            reply,
-            ministryId,
-          })
-        ) {
-          return;
-        }
-        const { name } = request.body as RoleNameBody;
+        const ministryId = MinistryId.from(request.params.ministryId);
+        await assertMinistryManagement({
+          authorityGuard,
+          request,
+          ministryId,
+        });
+        const { name } = request.body;
         const role = await this.ministryRoleManager.create({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
           name,
         });
@@ -148,35 +135,30 @@ export class MinistryRoleController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'renameMinistryRole',
+          params: ministryRoleParamsSchema,
           summary: 'Rename a Role',
           description:
             'Rename an active Role, keeping its identity, qualifications and history.',
           body: roleNameBodySchema,
           response: {
             200: roleResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const params = request.params as MinistryRoleRouteParams;
+        const { params } = request;
         const ministryId = MinistryId.from(params.ministryId);
-        if (
-          await denyMinistryManagement({
-            authorityGuard,
-            request,
-            reply,
-            ministryId,
-          })
-        ) {
-          return;
-        }
-        const { name } = request.body as RoleNameBody;
+        await assertMinistryManagement({
+          authorityGuard,
+          request,
+          ministryId,
+        });
+        const { name } = request.body;
         const role = await this.ministryRoleManager.rename({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
           roleId: RoleId.from(params.roleId),
           name,
@@ -191,33 +173,28 @@ export class MinistryRoleController implements FastifyController {
         schema: {
           tags: ['ministries'],
           operationId: 'archiveMinistryRole',
+          params: ministryRoleParamsSchema,
           summary: 'Archive a Role',
           description:
             'Hide a Role from new use, keeping qualifications, Memberships and Assignments. Refused with blockers while an upcoming ShiftRequirement or a UsualSetup headcount uses it.',
           response: {
             204: z.null(),
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: archiveBlockedResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const params = request.params as MinistryRoleRouteParams;
+        const { params } = request;
         const ministryId = MinistryId.from(params.ministryId);
-        if (
-          await denyMinistryManagement({
-            authorityGuard,
-            request,
-            reply,
-            ministryId,
-          })
-        ) {
-          return;
-        }
+        await assertMinistryManagement({
+          authorityGuard,
+          request,
+          ministryId,
+        });
         await this.ministryRoleManager.archive({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
           roleId: RoleId.from(params.roleId),
         });

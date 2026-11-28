@@ -1,51 +1,37 @@
-import { NotFoundError } from '@church/core';
-import { m } from '@church/i18n/messages';
 import multipart from '@fastify/multipart';
-import { z } from 'zod';
-import { ChurchId } from '../../domain/branded-ids';
-import { ChurchAddressesRefused } from '../../domain/church-address';
 import { LOGO_MAX_BYTES } from '../../domain/church-logo';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IChurchSettingsManager } from '../../domain/contracts/application/church-settings-manager';
-import { ChurchLegalDocumentTakenError } from '../../domain/errors/church-legal-document-taken';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import {
   LogoTooLargeError,
   LogoUnsupportedTypeError,
 } from '../../domain/errors/church-logo';
-import { ChurchSlugTakenError } from '../../domain/errors/church-slug-taken';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import { createChurchAdminHook } from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   type ChurchSettingsValidationIssue,
-  churchAddressRefusalsToFieldErrors,
   churchAddressUsageParamsSchema,
   churchAddressUsageResponseSchema,
-  churchSettingsFieldError,
   churchSettingsResponseSchema,
+  churchSettingsValidationError,
   churchSettingsValidationErrorResponseSchema,
-  type RestoreChurchLogoBody,
   restoreChurchLogoBodySchema,
+  saveRefusalFieldErrors,
   slugAvailabilityQuerySchema,
   slugAvailabilityResponseSchema,
   toChurchSettingsFieldErrors,
-  type UpdateChurchSettingsBody,
   updateChurchSettingsBodySchema,
   uploadChurchLogoBodySchema,
 } from '../dtos/church-settings.dto';
-import { refuse } from '../utils/refuse';
-import { requestCaller } from '../utils/request-caller';
-import type {
-  AddressUsageParams,
-  ChurchSettingsControllerDependencies,
-  SlugAvailabilityQuery,
-} from './church-settings-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
+import type { ChurchSettingsControllerDependencies } from './church-settings-controller.types';
 
 /** The Active Church's Church Settings, ChurchAdmin only. */
 export class ChurchSettingsController implements FastifyController {
@@ -53,15 +39,18 @@ export class ChurchSettingsController implements FastifyController {
 
   private readonly churchSettingsManager: IChurchSettingsManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   constructor({
     churchSettingsManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
   }: ChurchSettingsControllerDependencies) {
     this.churchSettingsManager = churchSettingsManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
   }
 
@@ -76,17 +65,16 @@ export class ChurchSettingsController implements FastifyController {
 
     app.addHook(
       'preValidation',
-      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
+      }),
     );
 
-    app.addHook('preValidation', async (request, reply) => {
-      const authorized = await this.authorityGuard.canManageChurch(
-        requestCaller({ request }),
-      );
-      if (!authorized) {
-        return refuse({ reply, request, code: 'FORBIDDEN' });
-      }
-    });
+    app.addHook(
+      'preValidation',
+      createChurchAdminHook({ authorityGuard: this.authorityGuard }),
+    );
 
     app.get(
       '',
@@ -99,15 +87,14 @@ export class ChurchSettingsController implements FastifyController {
             'The Church Settings of the Active Church (name, slug, website, accent colour, addresses) and the public origin the `…/slug` address is shown under. Empty optional fields are null. ChurchAdmin only.',
           response: {
             200: churchSettingsResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             409: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
         const settings = await this.churchSettingsManager.getChurchSettings({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
         });
         return reply.send(settings);
       },
@@ -125,16 +112,15 @@ export class ChurchSettingsController implements FastifyController {
           querystring: slugAvailabilityQuerySchema,
           response: {
             200: slugAvailabilityResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             409: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
         const status = await this.churchSettingsManager.getSlugAvailability({
-          churchId: ChurchId.from(request.churchId),
-          slug: (request.query as SlugAvailabilityQuery).slug,
+          churchId: request.churchId,
+          slug: request.query.slug,
         });
         return reply.send({ status });
       },
@@ -152,26 +138,18 @@ export class ChurchSettingsController implements FastifyController {
           params: churchAddressUsageParamsSchema,
           response: {
             200: churchAddressUsageResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        try {
-          const usage = await this.churchSettingsManager.getAddressUsage({
-            churchId: ChurchId.from(request.churchId),
-            addressId: (request.params as AddressUsageParams).addressId,
-          });
-          return reply.send(usage);
-        } catch (error) {
-          if (error instanceof NotFoundError) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
+        const usage = await this.churchSettingsManager.getAddressUsage({
+          churchId: request.churchId,
+          addressId: request.params.addressId,
+        });
+        return reply.send(usage);
       },
     );
 
@@ -188,77 +166,43 @@ export class ChurchSettingsController implements FastifyController {
           body: updateChurchSettingsBodySchema,
           response: {
             200: churchSettingsResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             409: errorResponseSchema,
             422: churchSettingsValidationErrorResponseSchema,
           },
         },
       },
       async (request, reply) => {
+        const { locale } = request;
         if (request.validationError) {
-          const { locale } = request;
-          return reply.code(422).send({
-            error: 'VALIDATION_ERROR',
-            message: m.common_validation_error({}, { locale }),
-            fieldErrors: toChurchSettingsFieldErrors({
-              issues: request.validationError
-                .validation as ChurchSettingsValidationIssue[],
-              locale,
-            }),
+          const fieldErrors = toChurchSettingsFieldErrors({
+            issues: request.validationError
+              .validation as ChurchSettingsValidationIssue[],
+            locale,
           });
+          return reply
+            .code(422)
+            .send(churchSettingsValidationError({ fieldErrors, locale }));
         }
         try {
           const settings =
             await this.churchSettingsManager.updateChurchSettings({
-              churchId: ChurchId.from(request.churchId),
-              changes: request.body as UpdateChurchSettingsBody,
+              churchId: request.churchId,
+              changes: request.body,
             });
           return reply.send(settings);
         } catch (error) {
-          const { locale } = request;
-          if (error instanceof ChurchAddressesRefused) {
-            return reply.code(422).send({
-              error: 'VALIDATION_ERROR',
-              message: m.common_validation_error({}, { locale }),
-              fieldErrors: churchAddressRefusalsToFieldErrors({
-                refusals: error.refusals,
-                locale,
-              }),
-            });
-          }
-          if (error instanceof ChurchLegalDocumentTakenError) {
-            return reply.code(422).send({
-              error: 'VALIDATION_ERROR',
-              message: m.common_validation_error({}, { locale }),
-              fieldErrors: [
-                churchSettingsFieldError({
-                  field: 'legalProfile.cnpj',
-                  code: 'CNPJ_TAKEN',
-                  locale,
-                }),
-              ],
-            });
-          }
-          if (!(error instanceof ChurchSlugTakenError)) throw error;
-          return reply.code(422).send({
-            error: 'VALIDATION_ERROR',
-            message: m.common_validation_error({}, { locale }),
-            fieldErrors: [
-              churchSettingsFieldError({
-                field: 'slug',
-                code: 'CHURCH_SLUG_TAKEN',
-                locale,
-              }),
-            ],
-          });
+          const fieldErrors = saveRefusalFieldErrors({ error, locale });
+          if (!fieldErrors) throw error;
+          return reply
+            .code(422)
+            .send(churchSettingsValidationError({ fieldErrors, locale }));
         }
       },
     );
     const logoResponses = {
       200: churchSettingsResponseSchema,
-      401: errorResponseSchema,
-      403: errorResponseSchema,
+      ...authErrorResponses,
       409: errorResponseSchema,
     };
 
@@ -293,7 +237,7 @@ export class ChurchSettingsController implements FastifyController {
           throw error;
         });
         const settings = await this.churchSettingsManager.uploadLogo({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           bytes,
         });
         return reply.send(settings);
@@ -314,7 +258,7 @@ export class ChurchSettingsController implements FastifyController {
       },
       async (request, reply) => {
         const settings = await this.churchSettingsManager.removeLogo({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
         });
         return reply.send(settings);
       },
@@ -334,9 +278,9 @@ export class ChurchSettingsController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { key } = request.body as RestoreChurchLogoBody;
+        const { key } = request.body;
         const settings = await this.churchSettingsManager.restoreLogo({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           key,
         });
         return reply.send(settings);

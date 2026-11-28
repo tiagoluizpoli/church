@@ -25,7 +25,6 @@ import {
   vi,
 } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
-import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { ChurchNotifications } from '@/application/church-notifications';
 import { ChurchRecipients } from '@/application/church-recipients';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
@@ -70,9 +69,11 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { buildDrizzleAssignmentLifecycle } from '@/tests/test-support/assignment-lifecycle';
 import { insertChurchAddress } from '@/tests/test-support/church-address';
+import { ChurchAdminControllers } from '@/tests/test-support/church-admin-controllers';
 import { nullChurchIdentity } from '@/tests/test-support/church-identity-snapshotter';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -109,7 +110,8 @@ beforeAll(async () => {
   });
   // Real managers, repositories, PostgreSQL and AuthorityService decision;
   // only the session, the Active Church selection and the actor are seams.
-  const controller = new ChurchAdminController({
+  const controller = new ChurchAdminControllers({
+    sessionGateway: testSessionGateway(),
     cycleManager: new DbCycleManager({
       cycleRepository,
       eventRepository,
@@ -1491,5 +1493,75 @@ describe('Edit Sent Event details', () => {
     });
 
     expect(response.statusCode).toBe(404);
+  });
+});
+
+describe('Edited Event location trim', () => {
+  const blocks = (fixture: Fixture) => [
+    {
+      id: fixture.welcome.id,
+      label: 'Welcome',
+      startTime: at('09:00'),
+      endTime: at('10:00'),
+    },
+  ];
+
+  it('trims a padded location and drops a blank one on a Draft edit', async () => {
+    const { cycleId, fixture } = await setUp();
+    const edit = (location: string) =>
+      patchEvent({
+        cycleId,
+        eventId: fixture.eventId,
+        payload: {
+          title: 'Sunday',
+          location,
+          start: at('09:00'),
+          end: at('10:00'),
+          eventTimeBlocks: blocks(fixture),
+        },
+      });
+
+    const padded = await edit('  Annex  ');
+    expect(padded.statusCode).toBe(200);
+    expect(padded.json().event.location).toBe('Annex');
+
+    const blank = await edit('   ');
+    expect(blank.statusCode).toBe(200);
+    expect(blank.json().event.location).toBeUndefined();
+    const [stored] = await db
+      .select()
+      .from(event)
+      .where(eq(event.id, fixture.eventId));
+    expect(stored?.location).toBeNull();
+  });
+
+  it('trims a padded location and drops a blank one on a Sent details edit', async () => {
+    const seed = await signIn();
+    const { id: cycleId } = await seedCycle({
+      churchId: seed.churchAId,
+      state: 'sent',
+    });
+    const fixture = await seedGeneratedEvent({
+      churchId: seed.churchAId,
+      cycleId,
+    });
+    await db
+      .update(event)
+      .set({ status: 'scheduled' })
+      .where(eq(event.id, fixture.eventId));
+    const details = (location: string) =>
+      app.inject({
+        method: 'PATCH',
+        url: `/api/v1/admin/cycles/${cycleId}/events/${fixture.eventId}/details`,
+        payload: { title: 'Sunday', location },
+      });
+
+    const padded = await details('  Annex  ');
+    expect(padded.statusCode).toBe(200);
+    expect(padded.json().event.location).toBe('Annex');
+
+    const blank = await details('   ');
+    expect(blank.statusCode).toBe(200);
+    expect(blank.json().event.location).toBeUndefined();
   });
 });

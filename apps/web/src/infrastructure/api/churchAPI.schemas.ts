@@ -19,6 +19,18 @@ export type GetActiveChurchStatus401 = {
   message: string;
 };
 
+export type GetActiveChurchStatus503Error = typeof GetActiveChurchStatus503Error[keyof typeof GetActiveChurchStatus503Error];
+
+
+export const GetActiveChurchStatus503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetActiveChurchStatus503 = {
+  error: GetActiveChurchStatus503Error;
+  message: string;
+};
+
 export type ListActiveChurchOptions200ChurchesItemAccessLevel = typeof ListActiveChurchOptions200ChurchesItemAccessLevel[keyof typeof ListActiveChurchOptions200ChurchesItemAccessLevel];
 
 
@@ -63,6 +75,18 @@ export type ListActiveChurchOptions401 = {
   message: string;
 };
 
+export type ListActiveChurchOptions503Error = typeof ListActiveChurchOptions503Error[keyof typeof ListActiveChurchOptions503Error];
+
+
+export const ListActiveChurchOptions503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListActiveChurchOptions503 = {
+  error: ListActiveChurchOptions503Error;
+  message: string;
+};
+
 export type SelectActiveChurchBody = {
   churchId: string;
 };
@@ -93,8 +117,20 @@ export type SelectActiveChurch500 = {
   requestId: string;
 };
 
+export type SelectActiveChurch503Error = typeof SelectActiveChurch503Error[keyof typeof SelectActiveChurch503Error];
+
+
+export const SelectActiveChurch503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type SelectActiveChurch503 = {
+  error: SelectActiveChurch503Error;
+  message: string;
+};
+
 export type GetSetupProgress200 = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   churchId: string;
   hasMinistry: boolean;
   hasMinistryWithSectorsAndRoles: boolean;
@@ -115,6 +151,18 @@ export type GetSetupProgress403 = {
 
 export type GetSetupProgress409 = {
   error: string;
+  message: string;
+};
+
+export type GetSetupProgress503Error = typeof GetSetupProgress503Error[keyof typeof GetSetupProgress503Error];
+
+
+export const GetSetupProgress503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetSetupProgress503 = {
+  error: GetSetupProgress503Error;
   message: string;
 };
 
@@ -154,6 +202,16 @@ export type CreateCycle201 = {
   updatedAt: string;
 };
 
+export type CreateCycle401 = {
+  error: string;
+  message: string;
+};
+
+export type CreateCycle403 = {
+  error: string;
+  message: string;
+};
+
 export type CreateCycle409ConflictingCyclesItem = {
   id: string;
   name: string;
@@ -167,6 +225,18 @@ export type CreateCycle409 = {
   error: string;
   message: string;
   conflictingCycles: CreateCycle409ConflictingCyclesItem[];
+};
+
+export type CreateCycle503Error = typeof CreateCycle503Error[keyof typeof CreateCycle503Error];
+
+
+export const CreateCycle503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type CreateCycle503 = {
+  error: CreateCycle503Error;
+  message: string;
 };
 
 export type ListCyclesParams = {
@@ -268,6 +338,28 @@ export type ListCycles200 = {
   counts: ListCycles200Counts;
 };
 
+export type ListCycles401 = {
+  error: string;
+  message: string;
+};
+
+export type ListCycles403 = {
+  error: string;
+  message: string;
+};
+
+export type ListCycles503Error = typeof ListCycles503Error[keyof typeof ListCycles503Error];
+
+
+export const ListCycles503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListCycles503 = {
+  error: ListCycles503Error;
+  message: string;
+};
+
 export type GetCycleAnchors200CurrentState = typeof GetCycleAnchors200CurrentState[keyof typeof GetCycleAnchors200CurrentState];
 
 
@@ -327,6 +419,28 @@ export type GetCycleAnchors200 = {
   current: GetCycleAnchors200Current;
   /** @nullable */
   next: GetCycleAnchors200Next;
+};
+
+export type GetCycleAnchors401 = {
+  error: string;
+  message: string;
+};
+
+export type GetCycleAnchors403 = {
+  error: string;
+  message: string;
+};
+
+export type GetCycleAnchors503Error = typeof GetCycleAnchors503Error[keyof typeof GetCycleAnchors503Error];
+
+
+export const GetCycleAnchors503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetCycleAnchors503 = {
+  error: GetCycleAnchors503Error;
+  message: string;
 };
 
 export type GetCycle200CycleState = typeof GetCycle200CycleState[keyof typeof GetCycle200CycleState];
@@ -443,6 +557,28 @@ export type GetCycle200 = {
   counts: GetCycle200Counts;
 };
 
+export type GetCycle401 = {
+  error: string;
+  message: string;
+};
+
+export type GetCycle403 = {
+  error: string;
+  message: string;
+};
+
+export type GetCycle503Error = typeof GetCycle503Error[keyof typeof GetCycle503Error];
+
+
+export const GetCycle503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetCycle503 = {
+  error: GetCycle503Error;
+  message: string;
+};
+
 export type UpdateCycleBody = {
   /**
      * @minLength 1
@@ -479,6 +615,16 @@ export type UpdateCycle200 = {
   updatedAt: string;
 };
 
+export type UpdateCycle401 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateCycle403 = {
+  error: string;
+  message: string;
+};
+
 export type UpdateCycle409ConflictingCyclesItem = {
   id: string;
   name: string;
@@ -504,6 +650,40 @@ export type UpdateCycle409 = {
   outsideEvents?: UpdateCycle409OutsideEventsItem[];
 };
 
+export type UpdateCycle503Error = typeof UpdateCycle503Error[keyof typeof UpdateCycle503Error];
+
+
+export const UpdateCycle503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type UpdateCycle503 = {
+  error: UpdateCycle503Error;
+  message: string;
+};
+
+export type DeleteCycle401 = {
+  error: string;
+  message: string;
+};
+
+export type DeleteCycle403 = {
+  error: string;
+  message: string;
+};
+
+export type DeleteCycle503Error = typeof DeleteCycle503Error[keyof typeof DeleteCycle503Error];
+
+
+export const DeleteCycle503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type DeleteCycle503 = {
+  error: DeleteCycle503Error;
+  message: string;
+};
+
 export type GetCycleSendSummary200 = {
   /**
      * @minimum 0
@@ -515,6 +695,16 @@ export type GetCycleSendSummary200 = {
      * @maximum 9007199254740991
      */
   prefilledMinistryCount: number;
+};
+
+export type GetCycleSendSummary401 = {
+  error: string;
+  message: string;
+};
+
+export type GetCycleSendSummary403 = {
+  error: string;
+  message: string;
 };
 
 export type GetCycleSendSummary409InvalidEventsItem = {
@@ -532,6 +722,28 @@ export type GetCycleSendSummary409 = {
   invalidEvents?: GetCycleSendSummary409InvalidEventsItem[];
 };
 
+export type GetCycleSendSummary503Error = typeof GetCycleSendSummary503Error[keyof typeof GetCycleSendSummary503Error];
+
+
+export const GetCycleSendSummary503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetCycleSendSummary503 = {
+  error: GetCycleSendSummary503Error;
+  message: string;
+};
+
+export type SendCycle401 = {
+  error: string;
+  message: string;
+};
+
+export type SendCycle403 = {
+  error: string;
+  message: string;
+};
+
 export type SendCycle409InvalidEventsItem = {
   id: string;
   title: string;
@@ -545,6 +757,18 @@ export type SendCycle409 = {
   error: string;
   message: string;
   invalidEvents?: SendCycle409InvalidEventsItem[];
+};
+
+export type SendCycle503Error = typeof SendCycle503Error[keyof typeof SendCycle503Error];
+
+
+export const SendCycle503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type SendCycle503 = {
+  error: SendCycle503Error;
+  message: string;
 };
 
 export type CreateEventTemplateBodyRecurrence = {
@@ -585,7 +809,7 @@ export type CreateEventTemplateBodyBlocksItem = {
   place?: string;
   /**
      * @nullable
-     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
      */
   placeAddressId?: string | null;
 };
@@ -600,7 +824,7 @@ export const CreateEventTemplateBodyPrecedencesItemAnswer = {
 } as const;
 
 export type CreateEventTemplateBodyPrecedencesItem = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   otherTemplateId: string;
   answer: CreateEventTemplateBodyPrecedencesItemAnswer;
 };
@@ -670,6 +894,16 @@ export type CreateEventTemplate201 = {
   updatedAt: string;
 };
 
+export type CreateEventTemplate401 = {
+  error: string;
+  message: string;
+};
+
+export type CreateEventTemplate403 = {
+  error: string;
+  message: string;
+};
+
 export type CreateEventTemplate409CollisionsItem = {
   templateId: string;
   name: string;
@@ -716,6 +950,18 @@ export type CreateEventTemplate422 = {
   reason?: CreateEventTemplate422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type CreateEventTemplate503Error = typeof CreateEventTemplate503Error[keyof typeof CreateEventTemplate503Error];
+
+
+export const CreateEventTemplate503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type CreateEventTemplate503 = {
+  error: CreateEventTemplate503Error;
+  message: string;
 };
 
 export type ListEventTemplates200TemplatesItemRecurrence = {
@@ -775,6 +1021,28 @@ export type ListEventTemplates200 = {
   templates: ListEventTemplates200TemplatesItem[];
 };
 
+export type ListEventTemplates401 = {
+  error: string;
+  message: string;
+};
+
+export type ListEventTemplates403 = {
+  error: string;
+  message: string;
+};
+
+export type ListEventTemplates503Error = typeof ListEventTemplates503Error[keyof typeof ListEventTemplates503Error];
+
+
+export const ListEventTemplates503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListEventTemplates503 = {
+  error: ListEventTemplates503Error;
+  message: string;
+};
+
 export type GetEventTemplate200Recurrence = {
   kind: 'weekly';
   /** @minItems 1 */
@@ -828,6 +1096,28 @@ export type GetEventTemplate200 = {
   updatedAt: string;
 };
 
+export type GetEventTemplate401 = {
+  error: string;
+  message: string;
+};
+
+export type GetEventTemplate403 = {
+  error: string;
+  message: string;
+};
+
+export type GetEventTemplate503Error = typeof GetEventTemplate503Error[keyof typeof GetEventTemplate503Error];
+
+
+export const GetEventTemplate503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetEventTemplate503 = {
+  error: GetEventTemplate503Error;
+  message: string;
+};
+
 export type UpdateEventTemplateBodyRecurrence = {
   kind: 'weekly';
   /** @minItems 1 */
@@ -866,10 +1156,10 @@ export type UpdateEventTemplateBodyBlocksItem = {
   place?: string;
   /**
      * @nullable
-     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
      */
   placeAddressId?: string | null;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id?: string;
 };
 
@@ -883,7 +1173,7 @@ export const UpdateEventTemplateBodyPrecedencesItemAnswer = {
 } as const;
 
 export type UpdateEventTemplateBodyPrecedencesItem = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   otherTemplateId: string;
   answer: UpdateEventTemplateBodyPrecedencesItemAnswer;
 };
@@ -953,6 +1243,16 @@ export type UpdateEventTemplate200 = {
   updatedAt: string;
 };
 
+export type UpdateEventTemplate401 = {
+  error: string;
+  message: string;
+};
+
+export type UpdateEventTemplate403 = {
+  error: string;
+  message: string;
+};
+
 export type UpdateEventTemplate409CollisionsItem = {
   templateId: string;
   name: string;
@@ -1001,6 +1301,40 @@ export type UpdateEventTemplate422 = {
   issues?: unknown[];
 };
 
+export type UpdateEventTemplate503Error = typeof UpdateEventTemplate503Error[keyof typeof UpdateEventTemplate503Error];
+
+
+export const UpdateEventTemplate503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type UpdateEventTemplate503 = {
+  error: UpdateEventTemplate503Error;
+  message: string;
+};
+
+export type DeleteEventTemplate401 = {
+  error: string;
+  message: string;
+};
+
+export type DeleteEventTemplate403 = {
+  error: string;
+  message: string;
+};
+
+export type DeleteEventTemplate503Error = typeof DeleteEventTemplate503Error[keyof typeof DeleteEventTemplate503Error];
+
+
+export const DeleteEventTemplate503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type DeleteEventTemplate503 = {
+  error: DeleteEventTemplate503Error;
+  message: string;
+};
+
 export type GetEventTemplateUsage200BlocksItem = {
   blockId: string;
   ministryCount: number;
@@ -1010,6 +1344,28 @@ export type GetEventTemplateUsage200 = {
   templateId: string;
   ministryCount: number;
   blocks: GetEventTemplateUsage200BlocksItem[];
+};
+
+export type GetEventTemplateUsage401 = {
+  error: string;
+  message: string;
+};
+
+export type GetEventTemplateUsage403 = {
+  error: string;
+  message: string;
+};
+
+export type GetEventTemplateUsage503Error = typeof GetEventTemplateUsage503Error[keyof typeof GetEventTemplateUsage503Error];
+
+
+export const GetEventTemplateUsage503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetEventTemplateUsage503 = {
+  error: GetEventTemplateUsage503Error;
+  message: string;
 };
 
 export type ListTemplatePrecedences200PrecedencesItemAnswer = typeof ListTemplatePrecedences200PrecedencesItemAnswer[keyof typeof ListTemplatePrecedences200PrecedencesItemAnswer];
@@ -1029,6 +1385,28 @@ export type ListTemplatePrecedences200PrecedencesItem = {
 
 export type ListTemplatePrecedences200 = {
   precedences: ListTemplatePrecedences200PrecedencesItem[];
+};
+
+export type ListTemplatePrecedences401 = {
+  error: string;
+  message: string;
+};
+
+export type ListTemplatePrecedences403 = {
+  error: string;
+  message: string;
+};
+
+export type ListTemplatePrecedences503Error = typeof ListTemplatePrecedences503Error[keyof typeof ListTemplatePrecedences503Error];
+
+
+export const ListTemplatePrecedences503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListTemplatePrecedences503 = {
+  error: ListTemplatePrecedences503Error;
+  message: string;
 };
 
 export type ChangeTemplatePrecedenceBodyAnswer = typeof ChangeTemplatePrecedenceBodyAnswer[keyof typeof ChangeTemplatePrecedenceBodyAnswer];
@@ -1057,6 +1435,16 @@ export type ChangeTemplatePrecedence200 = {
   otherTemplateId: string;
   otherTemplateName: string;
   answer: ChangeTemplatePrecedence200Answer;
+};
+
+export type ChangeTemplatePrecedence401 = {
+  error: string;
+  message: string;
+};
+
+export type ChangeTemplatePrecedence403 = {
+  error: string;
+  message: string;
 };
 
 export type ChangeTemplatePrecedence422Error = typeof ChangeTemplatePrecedence422Error[keyof typeof ChangeTemplatePrecedence422Error];
@@ -1096,6 +1484,18 @@ export type ChangeTemplatePrecedence422 = {
   issues?: unknown[];
 };
 
+export type ChangeTemplatePrecedence503Error = typeof ChangeTemplatePrecedence503Error[keyof typeof ChangeTemplatePrecedence503Error];
+
+
+export const ChangeTemplatePrecedence503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ChangeTemplatePrecedence503 = {
+  error: ChangeTemplatePrecedence503Error;
+  message: string;
+};
+
 export type ApplyPlanningTemplatesBody = {
   /** @minItems 1 */
   templateIds: string[];
@@ -1121,6 +1521,28 @@ export type ApplyPlanningTemplates201 = {
   leftoverEventTimeBlocks: ApplyPlanningTemplates201LeftoverEventTimeBlocksItem[];
 };
 
+export type ApplyPlanningTemplates401 = {
+  error: string;
+  message: string;
+};
+
+export type ApplyPlanningTemplates403 = {
+  error: string;
+  message: string;
+};
+
+export type ApplyPlanningTemplates503Error = typeof ApplyPlanningTemplates503Error[keyof typeof ApplyPlanningTemplates503Error];
+
+
+export const ApplyPlanningTemplates503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ApplyPlanningTemplates503 = {
+  error: ApplyPlanningTemplates503Error;
+  message: string;
+};
+
 export type CreatePlanningEventBodyEventTimeBlocksItem = {
   /** @minLength 1 */
   label: string;
@@ -1133,7 +1555,7 @@ export type CreatePlanningEventBodyEventTimeBlocksItem = {
   place?: string;
   /**
      * @nullable
-     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
      */
   placeAddressId?: string | null;
 };
@@ -1218,6 +1640,16 @@ export type CreatePlanningEvent201 = {
   eventTimeBlocks: CreatePlanningEvent201EventTimeBlocksItem[];
 };
 
+export type CreatePlanningEvent401 = {
+  error: string;
+  message: string;
+};
+
+export type CreatePlanningEvent403 = {
+  error: string;
+  message: string;
+};
+
 export type CreatePlanningEvent422Error = typeof CreatePlanningEvent422Error[keyof typeof CreatePlanningEvent422Error];
 
 
@@ -1255,6 +1687,18 @@ export type CreatePlanningEvent422 = {
   issues?: unknown[];
 };
 
+export type CreatePlanningEvent503Error = typeof CreatePlanningEvent503Error[keyof typeof CreatePlanningEvent503Error];
+
+
+export const CreatePlanningEvent503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type CreatePlanningEvent503 = {
+  error: CreatePlanningEvent503Error;
+  message: string;
+};
+
 export type UpdatePlanningEventBodyEventTimeBlocksItem = {
   /** @minLength 1 */
   label: string;
@@ -1267,7 +1711,7 @@ export type UpdatePlanningEventBodyEventTimeBlocksItem = {
   place?: string;
   /**
      * @nullable
-     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
      */
   placeAddressId?: string | null;
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
@@ -1354,6 +1798,16 @@ export type UpdatePlanningEvent200 = {
   eventTimeBlocks: UpdatePlanningEvent200EventTimeBlocksItem[];
 };
 
+export type UpdatePlanningEvent401 = {
+  error: string;
+  message: string;
+};
+
+export type UpdatePlanningEvent403 = {
+  error: string;
+  message: string;
+};
+
 export type UpdatePlanningEvent422Error = typeof UpdatePlanningEvent422Error[keyof typeof UpdatePlanningEvent422Error];
 
 
@@ -1391,6 +1845,40 @@ export type UpdatePlanningEvent422 = {
   issues?: unknown[];
 };
 
+export type UpdatePlanningEvent503Error = typeof UpdatePlanningEvent503Error[keyof typeof UpdatePlanningEvent503Error];
+
+
+export const UpdatePlanningEvent503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type UpdatePlanningEvent503 = {
+  error: UpdatePlanningEvent503Error;
+  message: string;
+};
+
+export type DeletePlanningEvent401 = {
+  error: string;
+  message: string;
+};
+
+export type DeletePlanningEvent403 = {
+  error: string;
+  message: string;
+};
+
+export type DeletePlanningEvent503Error = typeof DeletePlanningEvent503Error[keyof typeof DeletePlanningEvent503Error];
+
+
+export const DeletePlanningEvent503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type DeletePlanningEvent503 = {
+  error: DeletePlanningEvent503Error;
+  message: string;
+};
+
 export type UpdatePlanningEventDetailsBodyEventTimeBlocksItem = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
@@ -1399,7 +1887,7 @@ export type UpdatePlanningEventDetailsBodyEventTimeBlocksItem = {
   place?: string;
   /**
      * @nullable
-     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
      */
   placeAddressId?: string | null;
 };
@@ -1480,6 +1968,16 @@ export type UpdatePlanningEventDetails200 = {
   eventTimeBlocks: UpdatePlanningEventDetails200EventTimeBlocksItem[];
 };
 
+export type UpdatePlanningEventDetails401 = {
+  error: string;
+  message: string;
+};
+
+export type UpdatePlanningEventDetails403 = {
+  error: string;
+  message: string;
+};
+
 export type UpdatePlanningEventDetails422Error = typeof UpdatePlanningEventDetails422Error[keyof typeof UpdatePlanningEventDetails422Error];
 
 
@@ -1515,6 +2013,18 @@ export type UpdatePlanningEventDetails422 = {
   reason?: UpdatePlanningEventDetails422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type UpdatePlanningEventDetails503Error = typeof UpdatePlanningEventDetails503Error[keyof typeof UpdatePlanningEventDetails503Error];
+
+
+export const UpdatePlanningEventDetails503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type UpdatePlanningEventDetails503 = {
+  error: UpdatePlanningEventDetails503Error;
+  message: string;
 };
 
 export type PreviewPlanningEventCancellation200Scope = {
@@ -1560,6 +2070,16 @@ export type PreviewPlanningEventCancellation200 = {
   openSwapRequestCount: number;
 };
 
+export type PreviewPlanningEventCancellation401 = {
+  error: string;
+  message: string;
+};
+
+export type PreviewPlanningEventCancellation403 = {
+  error: string;
+  message: string;
+};
+
 export type PreviewPlanningEventCancellation422Error = typeof PreviewPlanningEventCancellation422Error[keyof typeof PreviewPlanningEventCancellation422Error];
 
 
@@ -1595,6 +2115,18 @@ export type PreviewPlanningEventCancellation422 = {
   reason?: PreviewPlanningEventCancellation422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type PreviewPlanningEventCancellation503Error = typeof PreviewPlanningEventCancellation503Error[keyof typeof PreviewPlanningEventCancellation503Error];
+
+
+export const PreviewPlanningEventCancellation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type PreviewPlanningEventCancellation503 = {
+  error: PreviewPlanningEventCancellation503Error;
+  message: string;
 };
 
 export type CancelPlanningEventBody = {
@@ -1645,6 +2177,16 @@ export type CancelPlanningEvent200 = {
   openSwapRequestCount: number;
 };
 
+export type CancelPlanningEvent401 = {
+  error: string;
+  message: string;
+};
+
+export type CancelPlanningEvent403 = {
+  error: string;
+  message: string;
+};
+
 export type CancelPlanningEvent422Error = typeof CancelPlanningEvent422Error[keyof typeof CancelPlanningEvent422Error];
 
 
@@ -1682,8 +2224,30 @@ export type CancelPlanningEvent422 = {
   issues?: unknown[];
 };
 
+export type CancelPlanningEvent503Error = typeof CancelPlanningEvent503Error[keyof typeof CancelPlanningEvent503Error];
+
+
+export const CancelPlanningEvent503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type CancelPlanningEvent503 = {
+  error: CancelPlanningEvent503Error;
+  message: string;
+};
+
 export type SetPlanningEventHiddenBody = {
   hidden: boolean;
+};
+
+export type SetPlanningEventHidden401 = {
+  error: string;
+  message: string;
+};
+
+export type SetPlanningEventHidden403 = {
+  error: string;
+  message: string;
 };
 
 export type SetPlanningEventHidden404 = {
@@ -1728,8 +2292,30 @@ export type SetPlanningEventHidden422 = {
   issues?: unknown[];
 };
 
+export type SetPlanningEventHidden503Error = typeof SetPlanningEventHidden503Error[keyof typeof SetPlanningEventHidden503Error];
+
+
+export const SetPlanningEventHidden503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type SetPlanningEventHidden503 = {
+  error: SetPlanningEventHidden503Error;
+  message: string;
+};
+
 export type SetPlanningEventTimeBlockHiddenBody = {
   hidden: boolean;
+};
+
+export type SetPlanningEventTimeBlockHidden401 = {
+  error: string;
+  message: string;
+};
+
+export type SetPlanningEventTimeBlockHidden403 = {
+  error: string;
+  message: string;
 };
 
 export type SetPlanningEventTimeBlockHidden404 = {
@@ -1772,6 +2358,18 @@ export type SetPlanningEventTimeBlockHidden422 = {
   reason?: SetPlanningEventTimeBlockHidden422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type SetPlanningEventTimeBlockHidden503Error = typeof SetPlanningEventTimeBlockHidden503Error[keyof typeof SetPlanningEventTimeBlockHidden503Error];
+
+
+export const SetPlanningEventTimeBlockHidden503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type SetPlanningEventTimeBlockHidden503 = {
+  error: SetPlanningEventTimeBlockHidden503Error;
+  message: string;
 };
 
 export type PreviewPlanningEventMoveBody = {
@@ -1848,6 +2446,16 @@ export type PreviewPlanningEventMove200 = {
   clashes: PreviewPlanningEventMove200ClashesItem[];
 };
 
+export type PreviewPlanningEventMove401 = {
+  error: string;
+  message: string;
+};
+
+export type PreviewPlanningEventMove403 = {
+  error: string;
+  message: string;
+};
+
 export type PreviewPlanningEventMove422Error = typeof PreviewPlanningEventMove422Error[keyof typeof PreviewPlanningEventMove422Error];
 
 
@@ -1883,6 +2491,18 @@ export type PreviewPlanningEventMove422 = {
   reason?: PreviewPlanningEventMove422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type PreviewPlanningEventMove503Error = typeof PreviewPlanningEventMove503Error[keyof typeof PreviewPlanningEventMove503Error];
+
+
+export const PreviewPlanningEventMove503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type PreviewPlanningEventMove503 = {
+  error: PreviewPlanningEventMove503Error;
+  message: string;
 };
 
 export type MovePlanningEventBody = {
@@ -1982,6 +2602,16 @@ export type MovePlanningEvent200 = {
   withdrawn: MovePlanningEvent200WithdrawnItem[];
 };
 
+export type MovePlanningEvent401 = {
+  error: string;
+  message: string;
+};
+
+export type MovePlanningEvent403 = {
+  error: string;
+  message: string;
+};
+
 export type MovePlanningEvent422Error = typeof MovePlanningEvent422Error[keyof typeof MovePlanningEvent422Error];
 
 
@@ -2017,6 +2647,18 @@ export type MovePlanningEvent422 = {
   reason?: MovePlanningEvent422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type MovePlanningEvent503Error = typeof MovePlanningEvent503Error[keyof typeof MovePlanningEvent503Error];
+
+
+export const MovePlanningEvent503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type MovePlanningEvent503 = {
+  error: MovePlanningEvent503Error;
+  message: string;
 };
 
 export type PreviewPlanningEventEditBodyEventTimeBlocksItem = {
@@ -2125,6 +2767,16 @@ export type PreviewPlanningEventEdit200 = {
   clashes: PreviewPlanningEventEdit200ClashesItem[];
 };
 
+export type PreviewPlanningEventEdit401 = {
+  error: string;
+  message: string;
+};
+
+export type PreviewPlanningEventEdit403 = {
+  error: string;
+  message: string;
+};
+
 export type PreviewPlanningEventEdit404 = {
   error: string;
   message: string;
@@ -2165,6 +2817,18 @@ export type PreviewPlanningEventEdit422 = {
   reason?: PreviewPlanningEventEdit422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type PreviewPlanningEventEdit503Error = typeof PreviewPlanningEventEdit503Error[keyof typeof PreviewPlanningEventEdit503Error];
+
+
+export const PreviewPlanningEventEdit503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type PreviewPlanningEventEdit503 = {
+  error: PreviewPlanningEventEdit503Error;
+  message: string;
 };
 
 export type EditPlanningEventBodyEventTimeBlocksItem = {
@@ -2278,6 +2942,16 @@ export type EditPlanningEvent200 = {
   withdrawn: EditPlanningEvent200WithdrawnItem[];
 };
 
+export type EditPlanningEvent401 = {
+  error: string;
+  message: string;
+};
+
+export type EditPlanningEvent403 = {
+  error: string;
+  message: string;
+};
+
 export type EditPlanningEvent404 = {
   error: string;
   message: string;
@@ -2318,6 +2992,18 @@ export type EditPlanningEvent422 = {
   reason?: EditPlanningEvent422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type EditPlanningEvent503Error = typeof EditPlanningEvent503Error[keyof typeof EditPlanningEvent503Error];
+
+
+export const EditPlanningEvent503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type EditPlanningEvent503 = {
+  error: EditPlanningEvent503Error;
+  message: string;
 };
 
 export type CreatePlanningEventTimeBlockBody = {
@@ -2363,6 +3049,16 @@ export type CreatePlanningEventTimeBlock201 = {
   requirements: CreatePlanningEventTimeBlock201RequirementsItem[];
 };
 
+export type CreatePlanningEventTimeBlock401 = {
+  error: string;
+  message: string;
+};
+
+export type CreatePlanningEventTimeBlock403 = {
+  error: string;
+  message: string;
+};
+
 export type CreatePlanningEventTimeBlock404 = {
   error: string;
   message: string;
@@ -2403,6 +3099,18 @@ export type CreatePlanningEventTimeBlock422 = {
   reason?: CreatePlanningEventTimeBlock422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type CreatePlanningEventTimeBlock503Error = typeof CreatePlanningEventTimeBlock503Error[keyof typeof CreatePlanningEventTimeBlock503Error];
+
+
+export const CreatePlanningEventTimeBlock503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type CreatePlanningEventTimeBlock503 = {
+  error: CreatePlanningEventTimeBlock503Error;
+  message: string;
 };
 
 export type PreviewPlanningEventTimeBlockMoveBody = {
@@ -2479,6 +3187,16 @@ export type PreviewPlanningEventTimeBlockMove200 = {
   clashes: PreviewPlanningEventTimeBlockMove200ClashesItem[];
 };
 
+export type PreviewPlanningEventTimeBlockMove401 = {
+  error: string;
+  message: string;
+};
+
+export type PreviewPlanningEventTimeBlockMove403 = {
+  error: string;
+  message: string;
+};
+
 export type PreviewPlanningEventTimeBlockMove404 = {
   error: string;
   message: string;
@@ -2519,6 +3237,18 @@ export type PreviewPlanningEventTimeBlockMove422 = {
   reason?: PreviewPlanningEventTimeBlockMove422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type PreviewPlanningEventTimeBlockMove503Error = typeof PreviewPlanningEventTimeBlockMove503Error[keyof typeof PreviewPlanningEventTimeBlockMove503Error];
+
+
+export const PreviewPlanningEventTimeBlockMove503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type PreviewPlanningEventTimeBlockMove503 = {
+  error: PreviewPlanningEventTimeBlockMove503Error;
+  message: string;
 };
 
 export type MovePlanningEventTimeBlockBody = {
@@ -2618,6 +3348,16 @@ export type MovePlanningEventTimeBlock200 = {
   withdrawn: MovePlanningEventTimeBlock200WithdrawnItem[];
 };
 
+export type MovePlanningEventTimeBlock401 = {
+  error: string;
+  message: string;
+};
+
+export type MovePlanningEventTimeBlock403 = {
+  error: string;
+  message: string;
+};
+
 export type MovePlanningEventTimeBlock404 = {
   error: string;
   message: string;
@@ -2658,6 +3398,18 @@ export type MovePlanningEventTimeBlock422 = {
   reason?: MovePlanningEventTimeBlock422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type MovePlanningEventTimeBlock503Error = typeof MovePlanningEventTimeBlock503Error[keyof typeof MovePlanningEventTimeBlock503Error];
+
+
+export const MovePlanningEventTimeBlock503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type MovePlanningEventTimeBlock503 = {
+  error: MovePlanningEventTimeBlock503Error;
+  message: string;
 };
 
 export type PreviewPlanningEventTimeBlockCancellation200Scope = {
@@ -2703,6 +3455,16 @@ export type PreviewPlanningEventTimeBlockCancellation200 = {
   openSwapRequestCount: number;
 };
 
+export type PreviewPlanningEventTimeBlockCancellation401 = {
+  error: string;
+  message: string;
+};
+
+export type PreviewPlanningEventTimeBlockCancellation403 = {
+  error: string;
+  message: string;
+};
+
 export type PreviewPlanningEventTimeBlockCancellation404 = {
   error: string;
   message: string;
@@ -2743,6 +3505,18 @@ export type PreviewPlanningEventTimeBlockCancellation422 = {
   reason?: PreviewPlanningEventTimeBlockCancellation422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type PreviewPlanningEventTimeBlockCancellation503Error = typeof PreviewPlanningEventTimeBlockCancellation503Error[keyof typeof PreviewPlanningEventTimeBlockCancellation503Error];
+
+
+export const PreviewPlanningEventTimeBlockCancellation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type PreviewPlanningEventTimeBlockCancellation503 = {
+  error: PreviewPlanningEventTimeBlockCancellation503Error;
+  message: string;
 };
 
 export type CancelPlanningEventTimeBlockBody = {
@@ -2793,6 +3567,16 @@ export type CancelPlanningEventTimeBlock200 = {
   openSwapRequestCount: number;
 };
 
+export type CancelPlanningEventTimeBlock401 = {
+  error: string;
+  message: string;
+};
+
+export type CancelPlanningEventTimeBlock403 = {
+  error: string;
+  message: string;
+};
+
 export type CancelPlanningEventTimeBlock404 = {
   error: string;
   message: string;
@@ -2833,6 +3617,18 @@ export type CancelPlanningEventTimeBlock422 = {
   reason?: CancelPlanningEventTimeBlock422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type CancelPlanningEventTimeBlock503Error = typeof CancelPlanningEventTimeBlock503Error[keyof typeof CancelPlanningEventTimeBlock503Error];
+
+
+export const CancelPlanningEventTimeBlock503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type CancelPlanningEventTimeBlock503 = {
+  error: CancelPlanningEventTimeBlock503Error;
+  message: string;
 };
 
 export type UpdatePlanningEventTimeBlockBody = {
@@ -2878,6 +3674,16 @@ export type UpdatePlanningEventTimeBlock200 = {
   requirements: UpdatePlanningEventTimeBlock200RequirementsItem[];
 };
 
+export type UpdatePlanningEventTimeBlock401 = {
+  error: string;
+  message: string;
+};
+
+export type UpdatePlanningEventTimeBlock403 = {
+  error: string;
+  message: string;
+};
+
 export type UpdatePlanningEventTimeBlock404 = {
   error: string;
   message: string;
@@ -2920,8 +3726,42 @@ export type UpdatePlanningEventTimeBlock422 = {
   issues?: unknown[];
 };
 
+export type UpdatePlanningEventTimeBlock503Error = typeof UpdatePlanningEventTimeBlock503Error[keyof typeof UpdatePlanningEventTimeBlock503Error];
+
+
+export const UpdatePlanningEventTimeBlock503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type UpdatePlanningEventTimeBlock503 = {
+  error: UpdatePlanningEventTimeBlock503Error;
+  message: string;
+};
+
+export type DeletePlanningEventTimeBlock401 = {
+  error: string;
+  message: string;
+};
+
+export type DeletePlanningEventTimeBlock403 = {
+  error: string;
+  message: string;
+};
+
 export type DeletePlanningEventTimeBlock404 = {
   error: string;
+  message: string;
+};
+
+export type DeletePlanningEventTimeBlock503Error = typeof DeletePlanningEventTimeBlock503Error[keyof typeof DeletePlanningEventTimeBlock503Error];
+
+
+export const DeletePlanningEventTimeBlock503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type DeletePlanningEventTimeBlock503 = {
+  error: DeletePlanningEventTimeBlock503Error;
   message: string;
 };
 
@@ -2955,6 +3795,28 @@ export type SetMinistryDefaultDirection200 = {
   createdAt: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   updatedAt: string;
+};
+
+export type SetMinistryDefaultDirection401 = {
+  error: string;
+  message: string;
+};
+
+export type SetMinistryDefaultDirection403 = {
+  error: string;
+  message: string;
+};
+
+export type SetMinistryDefaultDirection503Error = typeof SetMinistryDefaultDirection503Error[keyof typeof SetMinistryDefaultDirection503Error];
+
+
+export const SetMinistryDefaultDirection503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type SetMinistryDefaultDirection503 = {
+  error: SetMinistryDefaultDirection503Error;
+  message: string;
 };
 
 export type GetChurchSettings200AddressesItemUf = typeof GetChurchSettings200AddressesItemUf[keyof typeof GetChurchSettings200AddressesItemUf];
@@ -3137,6 +3999,18 @@ export type GetChurchSettings403 = {
 
 export type GetChurchSettings409 = {
   error: string;
+  message: string;
+};
+
+export type GetChurchSettings503Error = typeof GetChurchSettings503Error[keyof typeof GetChurchSettings503Error];
+
+
+export const GetChurchSettings503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetChurchSettings503 = {
+  error: GetChurchSettings503Error;
   message: string;
 };
 
@@ -3576,6 +4450,18 @@ export type UpdateChurchSettings422 = {
   fieldErrors: UpdateChurchSettings422FieldErrorsItem[];
 };
 
+export type UpdateChurchSettings503Error = typeof UpdateChurchSettings503Error[keyof typeof UpdateChurchSettings503Error];
+
+
+export const UpdateChurchSettings503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type UpdateChurchSettings503 = {
+  error: UpdateChurchSettings503Error;
+  message: string;
+};
+
 export type GetChurchSlugAvailabilityParams = {
   /** @maxLength 200 */
   slug: string;
@@ -3615,6 +4501,18 @@ export type GetChurchSlugAvailability409 = {
   message: string;
 };
 
+export type GetChurchSlugAvailability503Error = typeof GetChurchSlugAvailability503Error[keyof typeof GetChurchSlugAvailability503Error];
+
+
+export const GetChurchSlugAvailability503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetChurchSlugAvailability503 = {
+  error: GetChurchSlugAvailability503Error;
+  message: string;
+};
+
 export type GetChurchAddressUsage200TemplatesItem = {
   id: string;
   name: string;
@@ -3651,6 +4549,18 @@ export type GetChurchAddressUsage404 = {
 
 export type GetChurchAddressUsage409 = {
   error: string;
+  message: string;
+};
+
+export type GetChurchAddressUsage503Error = typeof GetChurchAddressUsage503Error[keyof typeof GetChurchAddressUsage503Error];
+
+
+export const GetChurchAddressUsage503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetChurchAddressUsage503 = {
+  error: GetChurchAddressUsage503Error;
   message: string;
 };
 
@@ -3856,6 +4766,18 @@ export type UploadChurchLogo422 = {
   message: string;
 };
 
+export type UploadChurchLogo503Error = typeof UploadChurchLogo503Error[keyof typeof UploadChurchLogo503Error];
+
+
+export const UploadChurchLogo503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type UploadChurchLogo503 = {
+  error: UploadChurchLogo503Error;
+  message: string;
+};
+
 export type RemoveChurchLogo200AddressesItemUf = typeof RemoveChurchLogo200AddressesItemUf[keyof typeof RemoveChurchLogo200AddressesItemUf];
 
 
@@ -4036,6 +4958,18 @@ export type RemoveChurchLogo403 = {
 
 export type RemoveChurchLogo409 = {
   error: string;
+  message: string;
+};
+
+export type RemoveChurchLogo503Error = typeof RemoveChurchLogo503Error[keyof typeof RemoveChurchLogo503Error];
+
+
+export const RemoveChurchLogo503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type RemoveChurchLogo503 = {
+  error: RemoveChurchLogo503Error;
   message: string;
 };
 
@@ -4232,8 +5166,22 @@ export type RestoreChurchLogo422 = {
   message: string;
 };
 
+export type RestoreChurchLogo503Error = typeof RestoreChurchLogo503Error[keyof typeof RestoreChurchLogo503Error];
+
+
+export const RestoreChurchLogo503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type RestoreChurchLogo503 = {
+  error: RestoreChurchLogo503Error;
+  message: string;
+};
+
 export type GetScheduleBuilderDataParams = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   eventId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryId?: string;
 };
 
@@ -4393,7 +5341,20 @@ export type GetScheduleBuilderData404 = {
   message: string;
 };
 
+export type GetScheduleBuilderData503Error = typeof GetScheduleBuilderData503Error[keyof typeof GetScheduleBuilderData503Error];
+
+
+export const GetScheduleBuilderData503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetScheduleBuilderData503 = {
+  error: GetScheduleBuilderData503Error;
+  message: string;
+};
+
 export type ListEventsParams = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryId: string;
   status?: ListEventsStatus;
 };
@@ -4456,6 +5417,18 @@ export type ListEvents404 = {
   message: string;
 };
 
+export type ListEvents503Error = typeof ListEvents503Error[keyof typeof ListEvents503Error];
+
+
+export const ListEvents503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListEvents503 = {
+  error: ListEvents503Error;
+  message: string;
+};
+
 export type ListMinistries200MinistriesItemDefaultDirection = typeof ListMinistries200MinistriesItemDefaultDirection[keyof typeof ListMinistries200MinistriesItemDefaultDirection];
 
 
@@ -4501,6 +5474,18 @@ export type ListMinistries403 = {
   message: string;
 };
 
+export type ListMinistries503Error = typeof ListMinistries503Error[keyof typeof ListMinistries503Error];
+
+
+export const ListMinistries503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListMinistries503 = {
+  error: ListMinistries503Error;
+  message: string;
+};
+
 export type CreateMinistryBody = {
   /**
      * @minLength 1
@@ -4541,6 +5526,18 @@ export type CreateMinistry403 = {
 
 export type CreateMinistry409 = {
   error: string;
+  message: string;
+};
+
+export type CreateMinistry503Error = typeof CreateMinistry503Error[keyof typeof CreateMinistry503Error];
+
+
+export const CreateMinistry503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type CreateMinistry503 = {
+  error: CreateMinistry503Error;
   message: string;
 };
 
@@ -4633,6 +5630,18 @@ export type ListMinistryDirectory403 = {
   message: string;
 };
 
+export type ListMinistryDirectory503Error = typeof ListMinistryDirectory503Error[keyof typeof ListMinistryDirectory503Error];
+
+
+export const ListMinistryDirectory503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListMinistryDirectory503 = {
+  error: ListMinistryDirectory503Error;
+  message: string;
+};
+
 export type GetMinistry200DefaultDirection = typeof GetMinistry200DefaultDirection[keyof typeof GetMinistry200DefaultDirection];
 
 
@@ -4665,6 +5674,18 @@ export type GetMinistry403 = {
 
 export type GetMinistry404 = {
   error: string;
+  message: string;
+};
+
+export type GetMinistry503Error = typeof GetMinistry503Error[keyof typeof GetMinistry503Error];
+
+
+export const GetMinistry503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetMinistry503 = {
+  error: GetMinistry503Error;
   message: string;
 };
 
@@ -4716,6 +5737,18 @@ export type RenameMinistry409 = {
   message: string;
 };
 
+export type RenameMinistry503Error = typeof RenameMinistry503Error[keyof typeof RenameMinistry503Error];
+
+
+export const RenameMinistry503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type RenameMinistry503 = {
+  error: RenameMinistry503Error;
+  message: string;
+};
+
 export type ArchiveMinistry401 = {
   error: string;
   message: string;
@@ -4756,6 +5789,18 @@ export type ArchiveMinistry409 = {
   error: string;
   message: string;
   blockers: ArchiveMinistry409BlockersItem[];
+};
+
+export type ArchiveMinistry503Error = typeof ArchiveMinistry503Error[keyof typeof ArchiveMinistry503Error];
+
+
+export const ArchiveMinistry503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ArchiveMinistry503 = {
+  error: ArchiveMinistry503Error;
+  message: string;
 };
 
 export type MintMinistryInvitationBodyMinistryAccessLevel = typeof MintMinistryInvitationBodyMinistryAccessLevel[keyof typeof MintMinistryInvitationBodyMinistryAccessLevel];
@@ -4829,6 +5874,7 @@ export type MintMinistryInvitation409Error = typeof MintMinistryInvitation409Err
 
 
 export const MintMinistryInvitation409Error = {
+  ACTIVE_CHURCH_SELECTION_REQUIRED: 'ACTIVE_CHURCH_SELECTION_REQUIRED',
   PENDING_MINISTRY_INVITATION_EXISTS: 'PENDING_MINISTRY_INVITATION_EXISTS',
   INVITEE_ALREADY_MINISTRY_MEMBER: 'INVITEE_ALREADY_MINISTRY_MEMBER',
 } as const;
@@ -4881,6 +5927,18 @@ export type MintMinistryInvitation422 = {
   reason?: MintMinistryInvitation422Reason;
   field?: string;
   issues?: unknown[];
+};
+
+export type MintMinistryInvitation503Error = typeof MintMinistryInvitation503Error[keyof typeof MintMinistryInvitation503Error];
+
+
+export const MintMinistryInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type MintMinistryInvitation503 = {
+  error: MintMinistryInvitation503Error;
+  message: string;
 };
 
 export type ResendMinistryInvitation200Kind = typeof ResendMinistryInvitation200Kind[keyof typeof ResendMinistryInvitation200Kind];
@@ -4945,6 +6003,18 @@ export type ResendMinistryInvitation429 = {
   message: string;
 };
 
+export type ResendMinistryInvitation503Error = typeof ResendMinistryInvitation503Error[keyof typeof ResendMinistryInvitation503Error];
+
+
+export const ResendMinistryInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ResendMinistryInvitation503 = {
+  error: ResendMinistryInvitation503Error;
+  message: string;
+};
+
 export type RevokeMinistryInvitation401 = {
   error: string;
   message: string;
@@ -4962,6 +6032,18 @@ export type RevokeMinistryInvitation404 = {
 
 export type RevokeMinistryInvitation409 = {
   error: string;
+  message: string;
+};
+
+export type RevokeMinistryInvitation503Error = typeof RevokeMinistryInvitation503Error[keyof typeof RevokeMinistryInvitation503Error];
+
+
+export const RevokeMinistryInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type RevokeMinistryInvitation503 = {
+  error: RevokeMinistryInvitation503Error;
   message: string;
 };
 
@@ -4986,6 +6068,18 @@ export type ListMinistryRoles403 = {
 
 export type ListMinistryRoles404 = {
   error: string;
+  message: string;
+};
+
+export type ListMinistryRoles503Error = typeof ListMinistryRoles503Error[keyof typeof ListMinistryRoles503Error];
+
+
+export const ListMinistryRoles503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListMinistryRoles503 = {
+  error: ListMinistryRoles503Error;
   message: string;
 };
 
@@ -5022,6 +6116,18 @@ export type CreateMinistryRole409 = {
   message: string;
 };
 
+export type CreateMinistryRole503Error = typeof CreateMinistryRole503Error[keyof typeof CreateMinistryRole503Error];
+
+
+export const CreateMinistryRole503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type CreateMinistryRole503 = {
+  error: CreateMinistryRole503Error;
+  message: string;
+};
+
 export type RenameMinistryRoleBody = {
   /**
      * @minLength 1
@@ -5052,6 +6158,18 @@ export type RenameMinistryRole404 = {
 
 export type RenameMinistryRole409 = {
   error: string;
+  message: string;
+};
+
+export type RenameMinistryRole503Error = typeof RenameMinistryRole503Error[keyof typeof RenameMinistryRole503Error];
+
+
+export const RenameMinistryRole503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type RenameMinistryRole503 = {
+  error: RenameMinistryRole503Error;
   message: string;
 };
 
@@ -5097,6 +6215,18 @@ export type ArchiveMinistryRole409 = {
   blockers: ArchiveMinistryRole409BlockersItem[];
 };
 
+export type ArchiveMinistryRole503Error = typeof ArchiveMinistryRole503Error[keyof typeof ArchiveMinistryRole503Error];
+
+
+export const ArchiveMinistryRole503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ArchiveMinistryRole503 = {
+  error: ArchiveMinistryRole503Error;
+  message: string;
+};
+
 export type ListSectors200SectorsItem = {
   id: string;
   name: string;
@@ -5118,6 +6248,18 @@ export type ListSectors403 = {
 
 export type ListSectors404 = {
   error: string;
+  message: string;
+};
+
+export type ListSectors503Error = typeof ListSectors503Error[keyof typeof ListSectors503Error];
+
+
+export const ListSectors503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListSectors503 = {
+  error: ListSectors503Error;
   message: string;
 };
 
@@ -5154,6 +6296,18 @@ export type CreateSector409 = {
   message: string;
 };
 
+export type CreateSector503Error = typeof CreateSector503Error[keyof typeof CreateSector503Error];
+
+
+export const CreateSector503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type CreateSector503 = {
+  error: CreateSector503Error;
+  message: string;
+};
+
 export type RenameSectorBody = {
   /**
      * @minLength 1
@@ -5184,6 +6338,18 @@ export type RenameSector404 = {
 
 export type RenameSector409 = {
   error: string;
+  message: string;
+};
+
+export type RenameSector503Error = typeof RenameSector503Error[keyof typeof RenameSector503Error];
+
+
+export const RenameSector503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type RenameSector503 = {
+  error: RenameSector503Error;
   message: string;
 };
 
@@ -5227,6 +6393,18 @@ export type ArchiveSector409 = {
   error: string;
   message: string;
   blockers: ArchiveSector409BlockersItem[];
+};
+
+export type ArchiveSector503Error = typeof ArchiveSector503Error[keyof typeof ArchiveSector503Error];
+
+
+export const ArchiveSector503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ArchiveSector503 = {
+  error: ArchiveSector503Error;
+  message: string;
 };
 
 export type ListUsualSetup200BlocksItemEntryShiftSplit = {
@@ -5306,6 +6484,18 @@ export type ListUsualSetup403 = {
 
 export type ListUsualSetup404 = {
   error: string;
+  message: string;
+};
+
+export type ListUsualSetup503Error = typeof ListUsualSetup503Error[keyof typeof ListUsualSetup503Error];
+
+
+export const ListUsualSetup503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListUsualSetup503 = {
+  error: ListUsualSetup503Error;
   message: string;
 };
 
@@ -5424,9 +6614,21 @@ export type SaveUsualSetupBlock404 = {
   message: string;
 };
 
+export type SaveUsualSetupBlock503Error = typeof SaveUsualSetupBlock503Error[keyof typeof SaveUsualSetupBlock503Error];
+
+
+export const SaveUsualSetupBlock503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type SaveUsualSetupBlock503 = {
+  error: SaveUsualSetupBlock503Error;
+  message: string;
+};
+
 export type ListSchedulesParams = {
   period?: ListSchedulesPeriod;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryId?: string;
   stage?: ListSchedulesStage;
   /**
@@ -5568,6 +6770,18 @@ export type ListSchedules403 = {
   message: string;
 };
 
+export type ListSchedules503Error = typeof ListSchedules503Error[keyof typeof ListSchedules503Error];
+
+
+export const ListSchedules503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListSchedules503 = {
+  error: ListSchedules503Error;
+  message: string;
+};
+
 export type GetScheduleInsights200CyclesItem = {
   cycleId: string;
   name: string;
@@ -5637,6 +6851,18 @@ export type GetScheduleInsights403 = {
   message: string;
 };
 
+export type GetScheduleInsights503Error = typeof GetScheduleInsights503Error[keyof typeof GetScheduleInsights503Error];
+
+
+export const GetScheduleInsights503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetScheduleInsights503 = {
+  error: GetScheduleInsights503Error;
+  message: string;
+};
+
 export type GetSchedule200Ministry = {
   id: string;
   name: string;
@@ -5703,7 +6929,20 @@ export type GetSchedule404 = {
   message: string;
 };
 
+export type GetSchedule503Error = typeof GetSchedule503Error[keyof typeof GetSchedule503Error];
+
+
+export const GetSchedule503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetSchedule503 = {
+  error: GetSchedule503Error;
+  message: string;
+};
+
 export type GetCycleParticipationParams = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryId: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   day?: string;
@@ -5901,6 +7140,11 @@ export type GetCycleParticipation200 = {
   totals: GetCycleParticipation200Totals;
 };
 
+export type GetCycleParticipation401 = {
+  error: string;
+  message: string;
+};
+
 export type GetCycleParticipation403 = {
   error: string;
   message: string;
@@ -5911,7 +7155,20 @@ export type GetCycleParticipation404 = {
   message: string;
 };
 
+export type GetCycleParticipation503Error = typeof GetCycleParticipation503Error[keyof typeof GetCycleParticipation503Error];
+
+
+export const GetCycleParticipation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetCycleParticipation503 = {
+  error: GetCycleParticipation503Error;
+  message: string;
+};
+
 export type GetAskPreviewParams = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryId: string;
 };
 
@@ -5950,6 +7207,18 @@ export type GetAskPreview404 = {
   message: string;
 };
 
+export type GetAskPreview503Error = typeof GetAskPreview503Error[keyof typeof GetAskPreview503Error];
+
+
+export const GetAskPreview503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetAskPreview503 = {
+  error: GetAskPreview503Error;
+  message: string;
+};
+
 export type ListScheduleSummaries200CyclesItemStatus = typeof ListScheduleSummaries200CyclesItemStatus[keyof typeof ListScheduleSummaries200CyclesItemStatus];
 
 
@@ -5978,6 +7247,11 @@ export type ListScheduleSummaries200 = {
   cycles: ListScheduleSummaries200CyclesItem[];
 };
 
+export type ListScheduleSummaries401 = {
+  error: string;
+  message: string;
+};
+
 export type ListScheduleSummaries403 = {
   error: string;
   message: string;
@@ -5985,6 +7259,18 @@ export type ListScheduleSummaries403 = {
 
 export type ListScheduleSummaries404 = {
   error: string;
+  message: string;
+};
+
+export type ListScheduleSummaries503Error = typeof ListScheduleSummaries503Error[keyof typeof ListScheduleSummaries503Error];
+
+
+export const ListScheduleSummaries503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListScheduleSummaries503 = {
+  error: ListScheduleSummaries503Error;
   message: string;
 };
 
@@ -6208,6 +7494,18 @@ export type SaveEventTimeBlockPreparation422 = {
   issues?: unknown[];
 };
 
+export type SaveEventTimeBlockPreparation503Error = typeof SaveEventTimeBlockPreparation503Error[keyof typeof SaveEventTimeBlockPreparation503Error];
+
+
+export const SaveEventTimeBlockPreparation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type SaveEventTimeBlockPreparation503 = {
+  error: SaveEventTimeBlockPreparation503Error;
+  message: string;
+};
+
 export type AskScheduleAvailabilityBody = {
   ministryId: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
@@ -6283,6 +7581,18 @@ export type AskScheduleAvailability422 = {
   issues?: unknown[];
 };
 
+export type AskScheduleAvailability503Error = typeof AskScheduleAvailability503Error[keyof typeof AskScheduleAvailability503Error];
+
+
+export const AskScheduleAvailability503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type AskScheduleAvailability503 = {
+  error: AskScheduleAvailability503Error;
+  message: string;
+};
+
 export type SetAvailabilityDeadlineBody = {
   ministryId: string;
   /**
@@ -6349,6 +7659,18 @@ export type SetAvailabilityDeadline422 = {
   issues?: unknown[];
 };
 
+export type SetAvailabilityDeadline503Error = typeof SetAvailabilityDeadline503Error[keyof typeof SetAvailabilityDeadline503Error];
+
+
+export const SetAvailabilityDeadline503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type SetAvailabilityDeadline503 = {
+  error: SetAvailabilityDeadline503Error;
+  message: string;
+};
+
 export type RemindScheduleBody = {
   ministryId: string;
 };
@@ -6393,7 +7715,20 @@ export type RemindSchedule409 = {
   message: string;
 };
 
+export type RemindSchedule503Error = typeof RemindSchedule503Error[keyof typeof RemindSchedule503Error];
+
+
+export const RemindSchedule503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type RemindSchedule503 = {
+  error: RemindSchedule503Error;
+  message: string;
+};
+
 export type GetCycleAvailabilityStatusParams = {
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryId: string;
   status?: GetCycleAvailabilityStatusStatus;
   /**
@@ -6473,6 +7808,11 @@ export type GetCycleAvailabilityStatus200 = {
   statuses: GetCycleAvailabilityStatus200StatusesItem[];
 };
 
+export type GetCycleAvailabilityStatus401 = {
+  error: string;
+  message: string;
+};
+
 export type GetCycleAvailabilityStatus403 = {
   error: string;
   message: string;
@@ -6480,6 +7820,18 @@ export type GetCycleAvailabilityStatus403 = {
 
 export type GetCycleAvailabilityStatus404 = {
   error: string;
+  message: string;
+};
+
+export type GetCycleAvailabilityStatus503Error = typeof GetCycleAvailabilityStatus503Error[keyof typeof GetCycleAvailabilityStatus503Error];
+
+
+export const GetCycleAvailabilityStatus503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetCycleAvailabilityStatus503 = {
+  error: GetCycleAvailabilityStatus503Error;
   message: string;
 };
 
@@ -6702,6 +8054,11 @@ export type GetCycleBuilderData200 = {
   roles: GetCycleBuilderData200RolesItem[];
 };
 
+export type GetCycleBuilderData401 = {
+  error: string;
+  message: string;
+};
+
 export type GetCycleBuilderData403 = {
   error: string;
   message: string;
@@ -6709,6 +8066,18 @@ export type GetCycleBuilderData403 = {
 
 export type GetCycleBuilderData404 = {
   error: string;
+  message: string;
+};
+
+export type GetCycleBuilderData503Error = typeof GetCycleBuilderData503Error[keyof typeof GetCycleBuilderData503Error];
+
+
+export const GetCycleBuilderData503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetCycleBuilderData503 = {
+  error: GetCycleBuilderData503Error;
   message: string;
 };
 
@@ -6743,6 +8112,11 @@ export type GetCycleAuditLog200 = {
   items: GetCycleAuditLog200ItemsItem[];
 };
 
+export type GetCycleAuditLog401 = {
+  error: string;
+  message: string;
+};
+
 export type GetCycleAuditLog403 = {
   error: string;
   message: string;
@@ -6750,6 +8124,18 @@ export type GetCycleAuditLog403 = {
 
 export type GetCycleAuditLog404 = {
   error: string;
+  message: string;
+};
+
+export type GetCycleAuditLog503Error = typeof GetCycleAuditLog503Error[keyof typeof GetCycleAuditLog503Error];
+
+
+export const GetCycleAuditLog503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetCycleAuditLog503 = {
+  error: GetCycleAuditLog503Error;
   message: string;
 };
 
@@ -6809,6 +8195,11 @@ export type GetAssignmentProposal200 = {
   reviewToken: string;
 };
 
+export type GetAssignmentProposal401 = {
+  error: string;
+  message: string;
+};
+
 export type GetAssignmentProposal403 = {
   error: string;
   message: string;
@@ -6821,6 +8212,18 @@ export type GetAssignmentProposal404 = {
 
 export type GetAssignmentProposal409 = {
   error: string;
+  message: string;
+};
+
+export type GetAssignmentProposal503Error = typeof GetAssignmentProposal503Error[keyof typeof GetAssignmentProposal503Error];
+
+
+export const GetAssignmentProposal503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetAssignmentProposal503 = {
+  error: GetAssignmentProposal503Error;
   message: string;
 };
 
@@ -6840,7 +8243,7 @@ export type ApplyAssignmentProposalBodyExcludedAdditionsItem = {
 };
 
 export type ApplyAssignmentProposalBody = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   applicationKey: string;
   /** @minLength 1 */
   reviewToken: string;
@@ -6863,6 +8266,11 @@ export type ApplyAssignmentProposal200 = {
   additions: ApplyAssignmentProposal200AdditionsItem[];
 };
 
+export type ApplyAssignmentProposal401 = {
+  error: string;
+  message: string;
+};
+
 export type ApplyAssignmentProposal403 = {
   error: string;
   message: string;
@@ -6880,6 +8288,18 @@ export type ApplyAssignmentProposal409 = {
 
 export type ApplyAssignmentProposal422 = {
   error: string;
+  message: string;
+};
+
+export type ApplyAssignmentProposal503Error = typeof ApplyAssignmentProposal503Error[keyof typeof ApplyAssignmentProposal503Error];
+
+
+export const ApplyAssignmentProposal503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ApplyAssignmentProposal503 = {
+  error: ApplyAssignmentProposal503Error;
   message: string;
 };
 
@@ -6917,6 +8337,11 @@ export type PublishCycle200 = {
   gapCount?: number;
 };
 
+export type PublishCycle401 = {
+  error: string;
+  message: string;
+};
+
 export type PublishCycle403 = {
   error: string;
   message: string;
@@ -6932,6 +8357,18 @@ export type PublishCycle409 = {
   message: string;
 };
 
+export type PublishCycle503Error = typeof PublishCycle503Error[keyof typeof PublishCycle503Error];
+
+
+export const PublishCycle503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type PublishCycle503 = {
+  error: PublishCycle503Error;
+  message: string;
+};
+
 export type SendScheduleUpdatesParams = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryId: string;
@@ -6939,6 +8376,11 @@ export type SendScheduleUpdatesParams = {
 
 export type SendScheduleUpdates200 = {
   notifiedCount: number;
+};
+
+export type SendScheduleUpdates401 = {
+  error: string;
+  message: string;
 };
 
 export type SendScheduleUpdates403 = {
@@ -6953,6 +8395,18 @@ export type SendScheduleUpdates404 = {
 
 export type SendScheduleUpdates409 = {
   error: string;
+  message: string;
+};
+
+export type SendScheduleUpdates503Error = typeof SendScheduleUpdates503Error[keyof typeof SendScheduleUpdates503Error];
+
+
+export const SendScheduleUpdates503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type SendScheduleUpdates503 = {
+  error: SendScheduleUpdates503Error;
   message: string;
 };
 
@@ -7003,6 +8457,11 @@ export type ListEligibleVolunteers200 = {
   volunteers: ListEligibleVolunteers200VolunteersItem[];
 };
 
+export type ListEligibleVolunteers401 = {
+  error: string;
+  message: string;
+};
+
 export type ListEligibleVolunteers403 = {
   error: string;
   message: string;
@@ -7010,6 +8469,18 @@ export type ListEligibleVolunteers403 = {
 
 export type ListEligibleVolunteers404 = {
   error: string;
+  message: string;
+};
+
+export type ListEligibleVolunteers503Error = typeof ListEligibleVolunteers503Error[keyof typeof ListEligibleVolunteers503Error];
+
+
+export const ListEligibleVolunteers503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListEligibleVolunteers503 = {
+  error: ListEligibleVolunteers503Error;
   message: string;
 };
 
@@ -7062,12 +8533,34 @@ export type CreateParticipationAssignment201 = {
   warnings: CreateParticipationAssignment201WarningsItem[];
 };
 
+export type CreateParticipationAssignment401 = {
+  error: string;
+  message: string;
+};
+
 export type CreateParticipationAssignment403 = {
   error: string;
   message: string;
 };
 
 export type CreateParticipationAssignment404 = {
+  error: string;
+  message: string;
+};
+
+export type CreateParticipationAssignment503Error = typeof CreateParticipationAssignment503Error[keyof typeof CreateParticipationAssignment503Error];
+
+
+export const CreateParticipationAssignment503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type CreateParticipationAssignment503 = {
+  error: CreateParticipationAssignment503Error;
+  message: string;
+};
+
+export type DeleteParticipationAssignment401 = {
   error: string;
   message: string;
 };
@@ -7079,6 +8572,18 @@ export type DeleteParticipationAssignment403 = {
 
 export type DeleteParticipationAssignment404 = {
   error: string;
+  message: string;
+};
+
+export type DeleteParticipationAssignment503Error = typeof DeleteParticipationAssignment503Error[keyof typeof DeleteParticipationAssignment503Error];
+
+
+export const DeleteParticipationAssignment503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type DeleteParticipationAssignment503 = {
+  error: DeleteParticipationAssignment503Error;
   message: string;
 };
 
@@ -7111,6 +8616,11 @@ export type MoveParticipationAssignment200 = {
   assignedBy?: string;
 };
 
+export type MoveParticipationAssignment401 = {
+  error: string;
+  message: string;
+};
+
 export type MoveParticipationAssignment403 = {
   error: string;
   message: string;
@@ -7118,6 +8628,18 @@ export type MoveParticipationAssignment403 = {
 
 export type MoveParticipationAssignment404 = {
   error: string;
+  message: string;
+};
+
+export type MoveParticipationAssignment503Error = typeof MoveParticipationAssignment503Error[keyof typeof MoveParticipationAssignment503Error];
+
+
+export const MoveParticipationAssignment503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type MoveParticipationAssignment503 = {
+  error: MoveParticipationAssignment503Error;
   message: string;
 };
 
@@ -7150,6 +8672,11 @@ export type ReassignParticipationAssignment200 = {
   assignedBy?: string;
 };
 
+export type ReassignParticipationAssignment401 = {
+  error: string;
+  message: string;
+};
+
 export type ReassignParticipationAssignment403 = {
   error: string;
   message: string;
@@ -7160,11 +8687,28 @@ export type ReassignParticipationAssignment404 = {
   message: string;
 };
 
+export type ReassignParticipationAssignment503Error = typeof ReassignParticipationAssignment503Error[keyof typeof ReassignParticipationAssignment503Error];
+
+
+export const ReassignParticipationAssignment503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ReassignParticipationAssignment503 = {
+  error: ReassignParticipationAssignment503Error;
+  message: string;
+};
+
 export type GetParticipationCompletion200 = {
   participationId: string;
   peopleNeeded: number;
   assignedCount: number;
   completionPercent: number;
+};
+
+export type GetParticipationCompletion401 = {
+  error: string;
+  message: string;
 };
 
 export type GetParticipationCompletion403 = {
@@ -7177,14 +8721,26 @@ export type GetParticipationCompletion404 = {
   message: string;
 };
 
+export type GetParticipationCompletion503Error = typeof GetParticipationCompletion503Error[keyof typeof GetParticipationCompletion503Error];
+
+
+export const GetParticipationCompletion503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetParticipationCompletion503 = {
+  error: GetParticipationCompletion503Error;
+  message: string;
+};
+
 export type GetCallerCapabilities200LedMinistriesItem = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryId: string;
   name: string;
 };
 
 export type GetCallerCapabilities200 = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   churchId: string;
   isChurchAdmin: boolean;
   ledMinistries: GetCallerCapabilities200LedMinistriesItem[];
@@ -7201,6 +8757,18 @@ export type GetCallerCapabilities403 = {
   message: string;
 };
 
+export type GetCallerCapabilities503Error = typeof GetCallerCapabilities503Error[keyof typeof GetCallerCapabilities503Error];
+
+
+export const GetCallerCapabilities503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetCallerCapabilities503 = {
+  error: GetCallerCapabilities503Error;
+  message: string;
+};
+
 export type GetNotificationsParams = {
   cursor?: string;
   /**
@@ -7211,7 +8779,7 @@ export type GetNotificationsParams = {
 };
 
 export type GetNotifications200ItemsItem = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'ministry_invitation';
   data: {
@@ -7238,7 +8806,7 @@ export type GetNotifications200ItemsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'availability_opened';
   data: {
@@ -7268,7 +8836,7 @@ export type GetNotifications200ItemsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'availability_reminder';
   data: {
@@ -7298,7 +8866,7 @@ export type GetNotifications200ItemsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'schedule_published';
   data: {
@@ -7325,7 +8893,7 @@ export type GetNotifications200ItemsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'schedule_updated';
   data: {
@@ -7388,7 +8956,7 @@ export type GetNotifications200ItemsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'cycle_ready_to_prepare';
   data: {
@@ -7416,7 +8984,7 @@ export type GetNotifications200ItemsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'event_changed';
   data: {
@@ -7494,7 +9062,7 @@ export type GetNotifications200ItemsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'event_cancelled';
   data: {
@@ -7526,7 +9094,7 @@ export type GetNotifications200ItemsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'swap_request';
   data: {
@@ -7555,7 +9123,7 @@ export type GetNotifications200ItemsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'swap_request_answered';
   data: {
@@ -7613,6 +9181,18 @@ export type GetNotifications422 = {
   message: string;
 };
 
+export type GetNotifications503Error = typeof GetNotifications503Error[keyof typeof GetNotifications503Error];
+
+
+export const GetNotifications503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetNotifications503 = {
+  error: GetNotifications503Error;
+  message: string;
+};
+
 export type MarkNotificationRead200 = {
   marked: true;
 };
@@ -7642,6 +9222,18 @@ export type MarkNotificationRead422 = {
   message: string;
 };
 
+export type MarkNotificationRead503Error = typeof MarkNotificationRead503Error[keyof typeof MarkNotificationRead503Error];
+
+
+export const MarkNotificationRead503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type MarkNotificationRead503 = {
+  error: MarkNotificationRead503Error;
+  message: string;
+};
+
 export type MarkAllNotificationsRead201 = {
   marked: true;
 };
@@ -7666,9 +9258,21 @@ export type MarkAllNotificationsRead422 = {
   message: string;
 };
 
+export type MarkAllNotificationsRead503Error = typeof MarkAllNotificationsRead503Error[keyof typeof MarkAllNotificationsRead503Error];
+
+
+export const MarkAllNotificationsRead503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type MarkAllNotificationsRead503 = {
+  error: MarkAllNotificationsRead503Error;
+  message: string;
+};
+
 export type ListInvitationsParams = {
   status?: ListInvitationsStatus;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryId?: string;
   invitedAs?: ListInvitationsInvitedAs;
   /**
@@ -7884,6 +9488,18 @@ export type ListInvitations404 = {
   message: string;
 };
 
+export type ListInvitations503Error = typeof ListInvitations503Error[keyof typeof ListInvitations503Error];
+
+
+export const ListInvitations503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListInvitations503 = {
+  error: ListInvitations503Error;
+  message: string;
+};
+
 export type MintAdminInvitationBody = {
   /** @pattern ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$ */
   email: string;
@@ -7983,12 +9599,25 @@ export type MintAdminInvitation409Error = typeof MintAdminInvitation409Error[key
 
 
 export const MintAdminInvitation409Error = {
+  ACTIVE_CHURCH_SELECTION_REQUIRED: 'ACTIVE_CHURCH_SELECTION_REQUIRED',
   INVITEE_ALREADY_CHURCH_MEMBER: 'INVITEE_ALREADY_CHURCH_MEMBER',
   PENDING_CHURCH_INVITATION_EXISTS: 'PENDING_CHURCH_INVITATION_EXISTS',
 } as const;
 
 export type MintAdminInvitation409 = {
   error: MintAdminInvitation409Error;
+  message: string;
+};
+
+export type MintAdminInvitation503Error = typeof MintAdminInvitation503Error[keyof typeof MintAdminInvitation503Error];
+
+
+export const MintAdminInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type MintAdminInvitation503 = {
+  error: MintAdminInvitation503Error;
   message: string;
 };
 
@@ -8039,6 +9668,18 @@ export type ResendChurchInvitation429 = {
   message: string;
 };
 
+export type ResendChurchInvitation503Error = typeof ResendChurchInvitation503Error[keyof typeof ResendChurchInvitation503Error];
+
+
+export const ResendChurchInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ResendChurchInvitation503 = {
+  error: ResendChurchInvitation503Error;
+  message: string;
+};
+
 export type RevokeChurchInvitation401 = {
   error: string;
   message: string;
@@ -8056,6 +9697,18 @@ export type RevokeChurchInvitation404 = {
 
 export type RevokeChurchInvitation409 = {
   error: string;
+  message: string;
+};
+
+export type RevokeChurchInvitation503Error = typeof RevokeChurchInvitation503Error[keyof typeof RevokeChurchInvitation503Error];
+
+
+export const RevokeChurchInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type RevokeChurchInvitation503 = {
+  error: RevokeChurchInvitation503Error;
   message: string;
 };
 
@@ -8105,10 +9758,22 @@ export type ChangeChurchAccess409 = {
   message: string;
 };
 
+export type ChangeChurchAccess503Error = typeof ChangeChurchAccess503Error[keyof typeof ChangeChurchAccess503Error];
+
+
+export const ChangeChurchAccess503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ChangeChurchAccess503 = {
+  error: ChangeChurchAccess503Error;
+  message: string;
+};
+
 export type SetMinistryRolesBody = {
   /**
      * @maxItems 200
-     * @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     * @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
      */
   roleIds: string[];
 };
@@ -8180,6 +9845,18 @@ export type SetMinistryRoles422 = {
   message: string;
 };
 
+export type SetMinistryRoles503Error = typeof SetMinistryRoles503Error[keyof typeof SetMinistryRoles503Error];
+
+
+export const SetMinistryRoles503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type SetMinistryRoles503 = {
+  error: SetMinistryRoles503Error;
+  message: string;
+};
+
 export type ChangeMinistryAccessBodyAccessLevel = typeof ChangeMinistryAccessBodyAccessLevel[keyof typeof ChangeMinistryAccessBodyAccessLevel];
 
 
@@ -8192,7 +9869,7 @@ export type ChangeMinistryAccessBody = {
   accessLevel: ChangeMinistryAccessBodyAccessLevel;
   /**
      * @maxItems 200
-     * @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+     * @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
      */
   roleIds?: string[];
 };
@@ -8264,6 +9941,18 @@ export type ChangeMinistryAccess422 = {
   message: string;
 };
 
+export type ChangeMinistryAccess503Error = typeof ChangeMinistryAccess503Error[keyof typeof ChangeMinistryAccess503Error];
+
+
+export const ChangeMinistryAccess503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ChangeMinistryAccess503 = {
+  error: ChangeMinistryAccess503Error;
+  message: string;
+};
+
 export type EndMinistryMembership200Status = typeof EndMinistryMembership200Status[keyof typeof EndMinistryMembership200Status];
 
 
@@ -8317,6 +10006,18 @@ export type EndMinistryMembership409 = {
 })[];
 } | {
   error: string;
+  message: string;
+};
+
+export type EndMinistryMembership503Error = typeof EndMinistryMembership503Error[keyof typeof EndMinistryMembership503Error];
+
+
+export const EndMinistryMembership503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type EndMinistryMembership503 = {
+  error: EndMinistryMembership503Error;
   message: string;
 };
 
@@ -8384,13 +10085,25 @@ export type GetPerson404 = {
   message: string;
 };
 
+export type GetPerson503Error = typeof GetPerson503Error[keyof typeof GetPerson503Error];
+
+
+export const GetPerson503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetPerson503 = {
+  error: GetPerson503Error;
+  message: string;
+};
+
 export type ListPeopleParams = {
   /**
    * @minLength 1
    * @maxLength 254
    */
   search?: string;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryId?: string;
   access?: ListPeopleAccess;
   withoutMinistry?: string;
@@ -8487,8 +10200,15 @@ export type ListPeople403 = {
   message: string;
 };
 
-export type ListPeople404 = {
-  error: string;
+export type ListPeople503Error = typeof ListPeople503Error[keyof typeof ListPeople503Error];
+
+
+export const ListPeople503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListPeople503 = {
+  error: ListPeople503Error;
   message: string;
 };
 
@@ -8509,7 +10229,7 @@ export const PreviewChurchInvitation200MinistryMinistryAccessLevel = {
 } as const;
 
 export type PreviewChurchInvitation200Ministry = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   invitationId: string;
   name: string;
   ministryAccessLevel: PreviewChurchInvitation200MinistryMinistryAccessLevel;
@@ -8525,7 +10245,7 @@ export const PreviewChurchInvitation200MinistriesItemMinistryAccessLevel = {
 } as const;
 
 export type PreviewChurchInvitation200MinistriesItem = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   invitationId: string;
   name: string;
   ministryAccessLevel: PreviewChurchInvitation200MinistriesItemMinistryAccessLevel;
@@ -8612,7 +10332,7 @@ export type RedeemChurchInvitationBody = {
   password: string;
   /** @pattern ^\d{6}$ */
   code: string;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   idempotencyKey: string;
 };
 
@@ -8625,7 +10345,7 @@ export type RedeemChurchInvitation200 = {
   sourceChurchName: string;
   destinationChurchId: string;
   destinationChurchName: string;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryInvitationId: string;
   ministryName: string;
 } | {
@@ -8694,7 +10414,7 @@ export type GetChurchInvitationReviewStatus200 = {
   reviewToken: string;
 } | {
   kind: 'paired';
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryInvitationId: string;
 } | {
   kind: 'already-accepted';
@@ -8718,8 +10438,20 @@ export type GetChurchInvitationReviewStatus401 = {
   message: string;
 };
 
+export type GetChurchInvitationReviewStatus503Error = typeof GetChurchInvitationReviewStatus503Error[keyof typeof GetChurchInvitationReviewStatus503Error];
+
+
+export const GetChurchInvitationReviewStatus503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetChurchInvitationReviewStatus503 = {
+  error: GetChurchInvitationReviewStatus503Error;
+  message: string;
+};
+
 export type AcceptChurchInvitationBody = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   idempotencyKey: string;
   /** @minLength 1 */
   reviewToken: string;
@@ -8753,6 +10485,18 @@ export const AcceptChurchInvitation401Error = {
 
 export type AcceptChurchInvitation401 = {
   error: AcceptChurchInvitation401Error;
+  message: string;
+};
+
+export type AcceptChurchInvitation503Error = typeof AcceptChurchInvitation503Error[keyof typeof AcceptChurchInvitation503Error];
+
+
+export const AcceptChurchInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type AcceptChurchInvitation503 = {
+  error: AcceptChurchInvitation503Error;
   message: string;
 };
 
@@ -8801,8 +10545,20 @@ export type GetMinistryInvitationStatus401 = {
   message: string;
 };
 
+export type GetMinistryInvitationStatus503Error = typeof GetMinistryInvitationStatus503Error[keyof typeof GetMinistryInvitationStatus503Error];
+
+
+export const GetMinistryInvitationStatus503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetMinistryInvitationStatus503 = {
+  error: GetMinistryInvitationStatus503Error;
+  message: string;
+};
+
 export type AcceptMinistryInvitationBody = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   idempotencyKey: string;
   /** @minLength 1 */
   reviewToken: string;
@@ -8818,7 +10574,7 @@ export type AcceptMinistryInvitation200 = {
   sourceChurchName: string;
   destinationChurchId: string;
   destinationChurchName: string;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryInvitationId: string;
   ministryName: string;
 } | {
@@ -8846,6 +10602,18 @@ export type AcceptMinistryInvitation401 = {
   message: string;
 };
 
+export type AcceptMinistryInvitation503Error = typeof AcceptMinistryInvitation503Error[keyof typeof AcceptMinistryInvitation503Error];
+
+
+export const AcceptMinistryInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type AcceptMinistryInvitation503 = {
+  error: AcceptMinistryInvitation503Error;
+  message: string;
+};
+
 export type DeclineMinistryInvitation200 = {
   kind: 'declined';
 } | {
@@ -8864,6 +10632,18 @@ export const DeclineMinistryInvitation401Error = {
 
 export type DeclineMinistryInvitation401 = {
   error: DeclineMinistryInvitation401Error;
+  message: string;
+};
+
+export type DeclineMinistryInvitation503Error = typeof DeclineMinistryInvitation503Error[keyof typeof DeclineMinistryInvitation503Error];
+
+
+export const DeclineMinistryInvitation503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type DeclineMinistryInvitation503 = {
+  error: DeclineMinistryInvitation503Error;
   message: string;
 };
 
@@ -8900,12 +10680,24 @@ export type GetVolunteerTransferPreview401 = {
   message: string;
 };
 
+export type GetVolunteerTransferPreview503Error = typeof GetVolunteerTransferPreview503Error[keyof typeof GetVolunteerTransferPreview503Error];
+
+
+export const GetVolunteerTransferPreview503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetVolunteerTransferPreview503 = {
+  error: GetVolunteerTransferPreview503Error;
+  message: string;
+};
+
 export type ConfirmVolunteerTransferBody = {
   /** @minLength 1 */
   destinationChurchName: string;
   /** @minLength 8 */
   password: string;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   idempotencyKey: string;
 };
 
@@ -8935,6 +10727,18 @@ export const ConfirmVolunteerTransfer401Error = {
 
 export type ConfirmVolunteerTransfer401 = {
   error: ConfirmVolunteerTransfer401Error;
+  message: string;
+};
+
+export type ConfirmVolunteerTransfer503Error = typeof ConfirmVolunteerTransfer503Error[keyof typeof ConfirmVolunteerTransfer503Error];
+
+
+export const ConfirmVolunteerTransfer503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ConfirmVolunteerTransfer503 = {
+  error: ConfirmVolunteerTransfer503Error;
   message: string;
 };
 
@@ -9245,7 +11049,7 @@ export type GetVolunteerDashboard200NextAssignment = {
 } | null;
 
 export type GetVolunteerDashboard200NotificationPreviewItem = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'ministry_invitation';
   data: {
@@ -9272,7 +11076,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'availability_opened';
   data: {
@@ -9302,7 +11106,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'availability_reminder';
   data: {
@@ -9332,7 +11136,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'schedule_published';
   data: {
@@ -9359,7 +11163,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'schedule_updated';
   data: {
@@ -9422,7 +11226,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'cycle_ready_to_prepare';
   data: {
@@ -9450,7 +11254,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'event_changed';
   data: {
@@ -9528,7 +11332,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'event_cancelled';
   data: {
@@ -9560,7 +11364,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'swap_request';
   data: {
@@ -9589,7 +11393,7 @@ export type GetVolunteerDashboard200NotificationPreviewItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z))$ */
   readAt?: string;
 } | {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
   kind: 'swap_request_answered';
   data: {
@@ -9637,6 +11441,28 @@ export type GetVolunteerDashboard200 = {
   defaultMinistryId?: string;
   ministryOptions: GetVolunteerDashboard200MinistryOptionsItem[];
   servingHistory: GetVolunteerDashboard200ServingHistoryItem[];
+};
+
+export type GetVolunteerDashboard401 = {
+  error: string;
+  message: string;
+};
+
+export type GetVolunteerDashboard403 = {
+  error: string;
+  message: string;
+};
+
+export type GetVolunteerDashboard503Error = typeof GetVolunteerDashboard503Error[keyof typeof GetVolunteerDashboard503Error];
+
+
+export const GetVolunteerDashboard503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetVolunteerDashboard503 = {
+  error: GetVolunteerDashboard503Error;
+  message: string;
 };
 
 export type GetAssignmentDetail200RosterItemPeopleItem = {
@@ -9696,13 +11522,35 @@ export type GetAssignmentDetail200 = {
   swapRequest: GetAssignmentDetail200SwapRequest;
 };
 
+export type GetAssignmentDetail401 = {
+  error: string;
+  message: string;
+};
+
+export type GetAssignmentDetail403 = {
+  error: string;
+  message: string;
+};
+
 export type GetAssignmentDetail404 = {
   error: string;
   message: string;
 };
 
+export type GetAssignmentDetail503Error = typeof GetAssignmentDetail503Error[keyof typeof GetAssignmentDetail503Error];
+
+
+export const GetAssignmentDetail503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetAssignmentDetail503 = {
+  error: GetAssignmentDetail503Error;
+  message: string;
+};
+
 export type GetMinistryScheduleParams = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   cycleId: string;
 };
 
@@ -9740,8 +11588,30 @@ export type GetMinistrySchedule200 = {
   events: GetMinistrySchedule200EventsItem[];
 };
 
+export type GetMinistrySchedule401 = {
+  error: string;
+  message: string;
+};
+
+export type GetMinistrySchedule403 = {
+  error: string;
+  message: string;
+};
+
 export type GetMinistrySchedule404 = {
   error: string;
+  message: string;
+};
+
+export type GetMinistrySchedule503Error = typeof GetMinistrySchedule503Error[keyof typeof GetMinistrySchedule503Error];
+
+
+export const GetMinistrySchedule503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetMinistrySchedule503 = {
+  error: GetMinistrySchedule503Error;
   message: string;
 };
 
@@ -9804,6 +11674,28 @@ export type ListAvailabilityChecks200Counts = {
 export type ListAvailabilityChecks200 = {
   checks: ListAvailabilityChecks200ChecksItem[];
   counts: ListAvailabilityChecks200Counts;
+};
+
+export type ListAvailabilityChecks401 = {
+  error: string;
+  message: string;
+};
+
+export type ListAvailabilityChecks403 = {
+  error: string;
+  message: string;
+};
+
+export type ListAvailabilityChecks503Error = typeof ListAvailabilityChecks503Error[keyof typeof ListAvailabilityChecks503Error];
+
+
+export const ListAvailabilityChecks503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListAvailabilityChecks503 = {
+  error: ListAvailabilityChecks503Error;
+  message: string;
 };
 
 export type GetAvailabilityCheck200State = typeof GetAvailabilityCheck200State[keyof typeof GetAvailabilityCheck200State];
@@ -9871,13 +11763,35 @@ export type GetAvailabilityCheck200 = {
   counts: GetAvailabilityCheck200Counts;
 };
 
+export type GetAvailabilityCheck401 = {
+  error: string;
+  message: string;
+};
+
+export type GetAvailabilityCheck403 = {
+  error: string;
+  message: string;
+};
+
 export type GetAvailabilityCheck404 = {
   error: string;
   message: string;
 };
 
+export type GetAvailabilityCheck503Error = typeof GetAvailabilityCheck503Error[keyof typeof GetAvailabilityCheck503Error];
+
+
+export const GetAvailabilityCheck503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetAvailabilityCheck503 = {
+  error: GetAvailabilityCheck503Error;
+  message: string;
+};
+
 export type AnswerAvailabilityCheckBody = {
-  /** @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   shiftIds: string[];
   /** @items.pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   wholeDayDates?: string[];
@@ -9948,6 +11862,16 @@ export type AnswerAvailabilityCheck200 = {
   counts: AnswerAvailabilityCheck200Counts;
 };
 
+export type AnswerAvailabilityCheck401 = {
+  error: string;
+  message: string;
+};
+
+export type AnswerAvailabilityCheck403 = {
+  error: string;
+  message: string;
+};
+
 export type AnswerAvailabilityCheck404 = {
   error: string;
   message: string;
@@ -9957,6 +11881,7 @@ export type AnswerAvailabilityCheck409Error = typeof AnswerAvailabilityCheck409E
 
 
 export const AnswerAvailabilityCheck409Error = {
+  ACTIVE_CHURCH_SELECTION_REQUIRED: 'ACTIVE_CHURCH_SELECTION_REQUIRED',
   SHIFT_PUBLISHED: 'SHIFT_PUBLISHED',
   ILLEGAL_STATE_TRANSITION: 'ILLEGAL_STATE_TRANSITION',
   CROSS_MINISTRY_SCOPE: 'CROSS_MINISTRY_SCOPE',
@@ -9968,6 +11893,18 @@ export type AnswerAvailabilityCheck409 = {
   shiftIds?: string[];
 };
 
+export type AnswerAvailabilityCheck503Error = typeof AnswerAvailabilityCheck503Error[keyof typeof AnswerAvailabilityCheck503Error];
+
+
+export const AnswerAvailabilityCheck503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type AnswerAvailabilityCheck503 = {
+  error: AnswerAvailabilityCheck503Error;
+  message: string;
+};
+
 export type GetPublishedVolunteerScheduleParams = {
   /**
    * @minLength 1
@@ -9976,7 +11913,7 @@ export type GetPublishedVolunteerScheduleParams = {
   search?: string;
   /** @pattern ^\d{4}-(0[1-9]|1[0-2])$ */
   month?: string;
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   ministryId?: string;
 };
 
@@ -10079,6 +12016,28 @@ export type GetPublishedVolunteerSchedule200 = {
   options: GetPublishedVolunteerSchedule200Options;
 };
 
+export type GetPublishedVolunteerSchedule401 = {
+  error: string;
+  message: string;
+};
+
+export type GetPublishedVolunteerSchedule403 = {
+  error: string;
+  message: string;
+};
+
+export type GetPublishedVolunteerSchedule503Error = typeof GetPublishedVolunteerSchedule503Error[keyof typeof GetPublishedVolunteerSchedule503Error];
+
+
+export const GetPublishedVolunteerSchedule503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type GetPublishedVolunteerSchedule503 = {
+  error: GetPublishedVolunteerSchedule503Error;
+  message: string;
+};
+
 export type RaiseSwapRequestBody = {
   note?: string;
 };
@@ -10108,12 +12067,44 @@ export type RaiseSwapRequest400 = {
   message: string;
 };
 
+export type RaiseSwapRequest401 = {
+  error: string;
+  message: string;
+};
+
+export type RaiseSwapRequest403 = {
+  error: string;
+  message: string;
+};
+
 export type RaiseSwapRequest404 = {
   error: string;
   message: string;
 };
 
 export type RaiseSwapRequest409 = {
+  error: string;
+  message: string;
+};
+
+export type RaiseSwapRequest503Error = typeof RaiseSwapRequest503Error[keyof typeof RaiseSwapRequest503Error];
+
+
+export const RaiseSwapRequest503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type RaiseSwapRequest503 = {
+  error: RaiseSwapRequest503Error;
+  message: string;
+};
+
+export type WithdrawSwapRequest401 = {
+  error: string;
+  message: string;
+};
+
+export type WithdrawSwapRequest403 = {
   error: string;
   message: string;
 };
@@ -10128,8 +12119,20 @@ export type WithdrawSwapRequest409 = {
   message: string;
 };
 
+export type WithdrawSwapRequest503Error = typeof WithdrawSwapRequest503Error[keyof typeof WithdrawSwapRequest503Error];
+
+
+export const WithdrawSwapRequest503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type WithdrawSwapRequest503 = {
+  error: WithdrawSwapRequest503Error;
+  message: string;
+};
+
 export type ListMinistrySwapRequestsParams = {
-  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   cycleId?: string;
 };
 
@@ -10172,13 +12175,45 @@ export type ListMinistrySwapRequests200 = {
   schedules: ListMinistrySwapRequests200SchedulesItem[];
 };
 
+export type ListMinistrySwapRequests401 = {
+  error: string;
+  message: string;
+};
+
+export type ListMinistrySwapRequests403 = {
+  error: string;
+  message: string;
+};
+
 export type ListMinistrySwapRequests404 = {
   error: string;
   message: string;
 };
 
+export type ListMinistrySwapRequests503Error = typeof ListMinistrySwapRequests503Error[keyof typeof ListMinistrySwapRequests503Error];
+
+
+export const ListMinistrySwapRequests503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type ListMinistrySwapRequests503 = {
+  error: ListMinistrySwapRequests503Error;
+  message: string;
+};
+
 export type KeepSwapRequestBody = {
   reply?: string;
+};
+
+export type KeepSwapRequest401 = {
+  error: string;
+  message: string;
+};
+
+export type KeepSwapRequest403 = {
+  error: string;
+  message: string;
 };
 
 export type KeepSwapRequest404 = {
@@ -10188,6 +12223,18 @@ export type KeepSwapRequest404 = {
 
 export type KeepSwapRequest409 = {
   error: string;
+  message: string;
+};
+
+export type KeepSwapRequest503Error = typeof KeepSwapRequest503Error[keyof typeof KeepSwapRequest503Error];
+
+
+export const KeepSwapRequest503Error = {
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+} as const;
+
+export type KeepSwapRequest503 = {
+  error: KeepSwapRequest503Error;
   message: string;
 };
 

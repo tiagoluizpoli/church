@@ -1,6 +1,16 @@
-import { fromDate, instantSchema, timeOfDaySchema } from '@church/time';
+import {
+  fromDate,
+  instantSchema,
+  parseInstant,
+  timeOfDaySchema,
+} from '@church/time';
 import { z } from 'zod';
+import { EventTemplateId } from '../../domain/branded-ids';
+import type { TemplatePrecedenceView } from '../../domain/contracts/application/event-template-manager';
+import type { GeneratedPlanningCounts } from '../../domain/contracts/application/planning-event-manager';
 import type { EventTemplate } from '../../domain/entities/event-template';
+import { errorResponseSchema } from './error-response.dto';
+import { idSchema } from './id.dto';
 import { timeBlockPlaceFields, withOnePlace } from './time-block-place.dto';
 
 /** The single trim point for template names and block labels. */
@@ -23,7 +33,7 @@ export const eventTemplateTimeBlockBodySchema = withOnePlace(
 
 /** Edit may name a persisted block `id` to update it in place; absent creates a block. */
 export const updateEventTemplateTimeBlockBodySchema = withOnePlace(
-  templateTimeBlockFieldsSchema.extend({ id: z.string().uuid().optional() }),
+  templateTimeBlockFieldsSchema.extend({ id: idSchema.optional() }),
 );
 
 type UpdateEventTemplateTimeBlockBody = z.infer<
@@ -93,7 +103,7 @@ export const createEventTemplateBodySchema = z.object({
   precedences: z
     .array(
       z.object({
-        otherTemplateId: z.string().uuid(),
+        otherTemplateId: idSchema,
         answer: precedenceAnswerSchema,
       }),
     )
@@ -101,9 +111,7 @@ export const createEventTemplateBodySchema = z.object({
 });
 
 /** A 409 `UNANSWERED_TEMPLATE_COLLISIONS`: each colliding template still to answer, by name. */
-export const templateCollisionsResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+export const templateCollisionsResponseSchema = errorResponseSchema.extend({
   collisions: z
     .array(z.object({ templateId: z.string(), name: z.string() }))
     .optional(),
@@ -215,8 +223,46 @@ function toEventTemplateResponse(template: EventTemplate) {
   };
 }
 
+type PrecedencesBody = z.infer<
+  typeof createEventTemplateBodySchema
+>['precedences'];
+
 export const eventTemplateMapper = {
   toResponse: toEventTemplateResponse,
+  /** The answers a save sends back for the pairs a 409 named. */
+  precedencesFromBody(precedences: PrecedencesBody) {
+    return precedences?.map((precedence) => ({
+      otherTemplateId: EventTemplateId.from(precedence.otherTemplateId),
+      answer: precedence.answer,
+    }));
+  },
+  precedenceListToResponse(precedences: TemplatePrecedenceView[]) {
+    return { precedences };
+  },
+  /** The leftover blocks without their day, source or empty label. */
+  generatedCountsToResponse({
+    leftoverEventTimeBlocks,
+    ...counts
+  }: GeneratedPlanningCounts) {
+    return {
+      ...counts,
+      leftoverEventTimeBlocks: leftoverEventTimeBlocks.map(
+        ({
+          eventDate: _day,
+          sourceTemplateTimeBlockId: _source,
+          label,
+          startTime,
+          endTime,
+          ...block
+        }) => ({
+          ...block,
+          label: label ?? null,
+          startTime: parseInstant({ value: startTime }),
+          endTime: parseInstant({ value: endTime }),
+        }),
+      ),
+    };
+  },
   listToResponse(templates: EventTemplate[]) {
     return {
       templates: templates.map(toEventTemplateResponse),

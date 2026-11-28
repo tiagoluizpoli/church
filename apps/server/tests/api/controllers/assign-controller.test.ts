@@ -17,6 +17,7 @@ import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: {
@@ -70,6 +71,7 @@ async function buildApp(config: typeof appConfig) {
     errorReporter: testErrorReporter,
   });
   const controller = new AssignController({
+    sessionGateway: testSessionGateway(),
     scheduleBuilderReader: participationManager as never,
     assignmentProposalManager: participationManager as never,
     schedulePublisher: participationManager as never,

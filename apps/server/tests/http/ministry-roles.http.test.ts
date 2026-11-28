@@ -63,6 +63,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -88,6 +89,7 @@ beforeAll(async () => {
   // Real manager, repositories and AuthorityService; only the session and
   // Active Church selection are seams.
   const controller = new MinistryRoleController({
+    sessionGateway: testSessionGateway(),
     ministryRoleManager: new DbMinistryRoleManager({
       ministryRepository: ministryRepo,
       roleRepository,
@@ -360,12 +362,18 @@ describe('GET /ministries/:ministryId/roles', () => {
       fixture.archivedMinistryId,
       fixture.foreignMinistryId,
       randomUUID(),
-      'nope',
     ]) {
       const res = await list(id);
       expect(res.statusCode).toBe(404);
       expect(res.json()).toEqual(notFoundBody());
     }
+    // A malformed id fails validation (#1221).
+    const malformed = await list('nope');
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      message: m.common_validation_error({}, PT_BR),
+    });
   });
 
   it.each([
@@ -514,12 +522,20 @@ describe('PATCH /ministries/:ministryId/roles/:roleId', () => {
       fixture.teacherId,
       fixture.foreignRoleId,
       randomUUID(),
-      'nope',
     ]) {
       const res = await rename(fixture.worshipId, id, { name: 'Renamed' });
       expect(res.statusCode).toBe(404);
       expect(res.json()).toEqual(notFoundBody());
     }
+    // A malformed id fails validation (#1221).
+    const malformed = await rename(fixture.worshipId, 'nope', {
+      name: 'Renamed',
+    });
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      message: m.common_validation_error({}, PT_BR),
+    });
   });
 });
 

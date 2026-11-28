@@ -30,6 +30,7 @@ import {
 } from '@/tests/scheduling-reshape/setup';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -54,6 +55,7 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   const controller = new PrepareController({
+    sessionGateway: testSessionGateway(),
     config: appConfig,
     ...managers.participationModules,
     availabilityCheckManager: {} as never,

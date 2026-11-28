@@ -1,5 +1,6 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
+import { idSchema } from './id.dto';
 
 // The note's maximum length is enforced by the domain (400 naming the limit),
 // not here: a schema violation would answer 422.
@@ -21,7 +22,7 @@ export const swapRequestResponseSchema = z.object({
 });
 
 export const leaderSwapRequestsQuerySchema = z.object({
-  cycleId: z.uuid().optional(),
+  cycleId: idSchema.optional(),
 });
 
 export const leaderSwapRequestsResponseSchema = z.object({

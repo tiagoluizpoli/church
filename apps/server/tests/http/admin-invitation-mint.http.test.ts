@@ -42,6 +42,7 @@ import {
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import { createMinistryInvitationTestHarness } from '@/tests/test-support/ministry-invitation-test-harness';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -74,6 +75,7 @@ beforeAll(async () => {
   // Real managers, repositories and AuthorityService; only session and Active Church are seams.
   const controllers = [
     new InvitationController({
+      sessionGateway: testSessionGateway(),
       invitationListManager: {} as never,
       ministryInvitationManager: harness.manager,
       activeChurchResolver: activeChurchResolver as never,
@@ -81,6 +83,7 @@ beforeAll(async () => {
       maxPageSize: 50,
     }),
     new MinistryController({
+      sessionGateway: testSessionGateway(),
       config: appConfig,
       ministryManager: {} as never,
       ministryInvitationManager: harness.manager,

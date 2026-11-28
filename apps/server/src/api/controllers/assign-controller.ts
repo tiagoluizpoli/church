@@ -3,13 +3,11 @@ import { NotFoundError } from '@church/core';
 import { z } from 'zod';
 import {
   AssignmentId,
-  ChurchId,
   CycleId,
   MinistryId,
   MinistryParticipationId,
   ShiftId,
   ShiftRequirementId,
-  UserId,
   VolunteerId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -19,9 +17,14 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IScheduleBuilderReader } from '../../domain/contracts/application/schedule-builder-reader';
 import type { ISchedulePublisher } from '../../domain/contracts/application/schedule-publisher';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
-import type { Assignment } from '../../domain/entities/assignment';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
+import {
+  assertAllowedDecision,
+  assertParticipationScope,
+  assertShiftScope,
+} from '../auth/authority-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   applyAssignmentProposalBodySchema,
@@ -48,43 +51,21 @@ import {
   publishCycleMapper,
   publishCycleResponseSchema,
 } from '../dtos/cycle-builder.dto';
-import { refuse } from '../utils/refuse';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
+import { assignmentParamsSchema, idSchema } from '../dtos/id.dto';
 import { requestCaller } from '../utils/request-caller';
 import type {
-  ApplyAssignmentProposalBody,
+  AssertAssignmentScopeInput,
   AssignControllerDependencies,
-  CreateParticipationAssignmentBody,
-  CycleMinistryQuery,
-  DenyAuthorityDecisionInput,
-  DenyParticipationScopeInput,
-  DenyShiftScopeInput,
-  MoveAssignmentBody,
-  PublishCycleBody,
-  ReassignAssignmentBody,
-  ResolveOwnedAssignmentInput,
-  ResolveOwnedAssignmentResult,
-  ResolveScheduleShiftInput,
-  ReviewedPairBody,
 } from './assign-controller.types';
 
-const shiftParamsSchema = z.object({ shiftId: z.guid() });
-const assignmentParamsSchema = z.object({ assignmentId: z.guid() });
-const participationParamsSchema = z.object({ participationId: z.guid() });
+const shiftParamsSchema = z.object({ shiftId: idSchema });
+const participationParamsSchema = z.object({ participationId: idSchema });
 
-const cycleMinistryQuerySchema = z.object({ ministryId: z.guid() });
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
-
-const toReviewedAddition = ({
-  shiftRequirementId,
-  volunteerId,
-}: ReviewedPairBody) => ({
-  shiftRequirementId: ShiftRequirementId.from({ raw: shiftRequirementId }),
-  volunteerId: VolunteerId.from(volunteerId),
-});
+const cycleMinistryQuerySchema = z.object({ ministryId: idSchema });
 
 export class AssignController implements FastifyController {
   readonly prefix = '/assign';
@@ -95,6 +76,7 @@ export class AssignController implements FastifyController {
   private readonly schedulePublisher: ISchedulePublisher;
   private readonly assignmentManager: IAssignmentManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
 
   private readonly parked: AppConfig['parked'];
@@ -106,6 +88,7 @@ export class AssignController implements FastifyController {
     schedulePublisher,
     assignmentManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
     config,
   }: AssignControllerDependencies) {
@@ -115,6 +98,7 @@ export class AssignController implements FastifyController {
     this.schedulePublisher = schedulePublisher;
     this.assignmentManager = assignmentManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
     const { parked } = config;
     this.parked = parked;
@@ -127,7 +111,10 @@ export class AssignController implements FastifyController {
   ): void {
     app.addHook(
       'preValidation',
-      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
+      }),
     );
 
     app.get(
@@ -143,33 +130,30 @@ export class AssignController implements FastifyController {
           querystring: cycleMinistryQuerySchema,
           response: {
             200: cycleBuilderResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { cycleId } = request.params;
+        const { ministryId } = request.query;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await this.denyAuthorityDecision({
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const view = await this.scheduleBuilderReader.getCycleBuilderData({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
-          userId: UserId.from(request.userId),
+          userId: request.userId,
         });
         return reply.send(cycleBuilderMapper.toResponse(view));
       },
@@ -189,32 +173,27 @@ export class AssignController implements FastifyController {
             querystring: cycleMinistryQuerySchema,
             response: {
               200: auditListResponseSchema,
-              403: errorResponseSchema,
+              ...authErrorResponses,
               404: errorResponseSchema,
             },
           },
         },
         async (request, reply) => {
-          const { cycleId } = request.params as z.infer<
-            typeof cycleParamsSchema
-          >;
-          const { ministryId } = request.query as CycleMinistryQuery;
+          const { cycleId } = request.params;
+          const { ministryId } = request.query;
 
           const decision = await this.authorityGuard.decideManageMinistry({
             ...requestCaller({ request }),
             ministryId: MinistryId.from(ministryId),
           });
-          if (
-            await this.denyAuthorityDecision({
-              request,
-              reply,
-              allowed: decision.allowed,
-            })
-          )
-            return;
+          await assertAllowedDecision({
+            authorityGuard: this.authorityGuard,
+            request,
+            allowed: decision.allowed,
+          });
 
           const items = await this.assignmentManager.listAuditLogForCycle({
-            churchId: ChurchId.from(request.churchId),
+            churchId: request.churchId,
             cycleId: CycleId.from(cycleId),
             ministryId: MinistryId.from(ministryId),
           });
@@ -236,32 +215,29 @@ export class AssignController implements FastifyController {
           querystring: cycleMinistryQuerySchema,
           response: {
             200: assignmentProposalResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { cycleId } = request.params;
+        const { ministryId } = request.query;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await this.denyAuthorityDecision({
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
         const proposal =
           await this.assignmentProposalManager.getAssignmentProposal({
-            churchId: ChurchId.from(request.churchId),
+            churchId: request.churchId,
             cycleId: CycleId.from(cycleId),
             ministryId: MinistryId.from(ministryId),
           });
@@ -283,7 +259,7 @@ export class AssignController implements FastifyController {
           body: applyAssignmentProposalBodySchema,
           response: {
             200: assignmentProposalOutcomeResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
             422: errorResponseSchema,
@@ -291,35 +267,30 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { cycleId } = request.params;
+        const { ministryId } = request.query;
 
         // Checked again on every attempt, recovery included.
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await this.denyAuthorityDecision({
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
-        const { applicationKey, reviewToken, additions, excludedAdditions } =
-          request.body as ApplyAssignmentProposalBody;
+        const { applicationKey, reviewToken } = request.body;
         const outcome =
           await this.assignmentProposalManager.applyAssignmentProposal({
-            churchId: ChurchId.from(request.churchId),
+            churchId: request.churchId,
             cycleId: CycleId.from(cycleId),
             ministryId: MinistryId.from(ministryId),
-            actorId: UserId.from(request.userId),
+            actorId: request.userId,
             applicationKey,
             reviewToken,
-            additions: additions.map(toReviewedAddition),
-            excludedAdditions: excludedAdditions.map(toReviewedAddition),
+            ...assignMapper.reviewedAdditionsFromBody(request.body),
           });
         return reply.send(assignMapper.proposalOutcomeToResponse(outcome));
       },
@@ -340,34 +311,31 @@ export class AssignController implements FastifyController {
           response: {
             200: publishCycleResponseSchema,
             409: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { cycleId } = request.params;
+        const { ministryId } = request.query;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await this.denyAuthorityDecision({
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
 
-        const body = request.body as PublishCycleBody;
+        const body = request.body;
         const view = await this.schedulePublisher.publishCycle({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
-          userId: UserId.from(request.userId),
+          userId: request.userId,
           confirmBelowFull: body.confirmBelowFull,
         });
         return reply.send(publishCycleMapper.toResponse(view));
@@ -385,32 +353,29 @@ export class AssignController implements FastifyController {
           querystring: cycleMinistryQuerySchema,
           response: {
             200: z.object({ notifiedCount: z.number() }),
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { cycleId } = request.params;
+        const { ministryId } = request.query;
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
         });
-        if (
-          await this.denyAuthorityDecision({
-            request,
-            reply,
-            allowed: decision.allowed,
-          })
-        )
-          return;
+        await assertAllowedDecision({
+          authorityGuard: this.authorityGuard,
+          request,
+          allowed: decision.allowed,
+        });
         const result = await this.schedulePublisher.sendScheduleUpdates({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
-          userId: UserId.from(request.userId),
+          userId: request.userId,
         });
         return reply.send(result);
       },
@@ -428,19 +393,22 @@ export class AssignController implements FastifyController {
             'List the Volunteers eligible to be assigned to a Shift, for the schedule builder.',
           response: {
             200: eligibleVolunteerListResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { shiftId } = request.params as z.infer<typeof shiftParamsSchema>;
-        const denied = await this.denyShiftScope({ request, reply, shiftId });
-        if (denied) return;
+        const { shiftId } = request.params;
+        await assertShiftScope({
+          authorityGuard: this.authorityGuard,
+          request,
+          shiftId,
+        });
 
         const volunteers =
           await this.scheduleBuilderReader.listEligibleVolunteers({
-            churchId: ChurchId.from(request.churchId),
+            churchId: request.churchId,
             shiftId: ShiftId.from(shiftId),
           });
         return reply.send(
@@ -462,26 +430,25 @@ export class AssignController implements FastifyController {
           body: createParticipationAssignmentBodySchema,
           response: {
             201: createParticipationAssignmentResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { shiftId } = request.params as z.infer<typeof shiftParamsSchema>;
-        const body = request.body as CreateParticipationAssignmentBody;
-        const scope = await this.resolveScheduleShift({
+        const { shiftId } = request.params;
+        const body = request.body;
+        await assertShiftScope({
+          authorityGuard: this.authorityGuard,
           request,
-          reply,
           shiftId,
         });
-        if (scope.denied) return;
 
         const input = {
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           shiftId: ShiftId.from(shiftId),
           volunteerId: VolunteerId.from(body.volunteerId),
-          actorId: UserId.from(request.userId),
+          actorId: request.userId,
           shiftRequirementId: ShiftRequirementId.from({
             raw: body.shiftRequirementId,
           }),
@@ -505,26 +472,19 @@ export class AssignController implements FastifyController {
           description: 'Remove a Volunteer Assignment from its Shift.',
           response: {
             204: z.null(),
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as z.infer<
-          typeof assignmentParamsSchema
-        >;
-        const resolved = await this.resolveScheduleAssignment({
-          request,
-          reply,
-          assignmentId,
-        });
-        if (resolved.denied) return;
+        const { assignmentId } = request.params;
+        await this.assertAssignmentScope({ request, assignmentId });
 
         await this.assignmentManager.deleteAssignment({
           assignmentId: AssignmentId.from(assignmentId),
-          churchId: ChurchId.from(request.churchId),
-          actorId: UserId.from(request.userId),
+          churchId: request.churchId,
+          actorId: request.userId,
         });
         return reply.status(204).send(null);
       },
@@ -541,29 +501,22 @@ export class AssignController implements FastifyController {
           body: moveAssignmentBodySchema,
           response: {
             200: assignmentResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as z.infer<
-          typeof assignmentParamsSchema
-        >;
-        const resolved = await this.resolveScheduleAssignment({
-          request,
-          reply,
-          assignmentId,
-        });
-        if (resolved.denied) return;
-        const body = request.body as MoveAssignmentBody;
+        const { assignmentId } = request.params;
+        await this.assertAssignmentScope({ request, assignmentId });
+        const body = request.body;
         const moved = await this.assignmentManager.moveParticipationAssignment({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           assignmentId: AssignmentId.from(assignmentId),
           shiftRequirementId: ShiftRequirementId.from({
             raw: body.shiftRequirementId,
           }),
-          actorId: UserId.from(request.userId),
+          actorId: request.userId,
         });
         return reply.send(assignmentMapper.toResponse(moved));
       },
@@ -582,29 +535,22 @@ export class AssignController implements FastifyController {
           body: reassignAssignmentBodySchema,
           response: {
             200: assignmentResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as z.infer<
-          typeof assignmentParamsSchema
-        >;
-        const resolved = await this.resolveScheduleAssignment({
-          request,
-          reply,
-          assignmentId,
-        });
-        if (resolved.denied) return;
+        const { assignmentId } = request.params;
+        await this.assertAssignmentScope({ request, assignmentId });
 
-        const body = request.body as ReassignAssignmentBody;
+        const body = request.body;
         const reassigned =
           await this.assignmentManager.reassignParticipationAssignment({
-            churchId: ChurchId.from(request.churchId),
+            churchId: request.churchId,
             assignmentId: AssignmentId.from(assignmentId),
             volunteerId: VolunteerId.from(body.volunteerId),
-            actorId: UserId.from(request.userId),
+            actorId: request.userId,
           });
         return reply.send(assignmentMapper.toResponse(reassigned));
       },
@@ -622,24 +568,21 @@ export class AssignController implements FastifyController {
             'Get how fully a MinistryParticipation is staffed against its ShiftRequirements.',
           response: {
             200: participationCompletionResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { participationId } = request.params as z.infer<
-          typeof participationParamsSchema
-        >;
-        const denied = await this.denyParticipationScope({
+        const { participationId } = request.params;
+        await assertParticipationScope({
+          authorityGuard: this.authorityGuard,
           request,
-          reply,
           participationId,
         });
-        if (denied) return;
 
         const completion = await this.scheduleReadModel.getCompletion({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           participationId: MinistryParticipationId.from(participationId),
         });
         return reply.send(assignMapper.completionToResponse(completion));
@@ -648,110 +591,25 @@ export class AssignController implements FastifyController {
   }
 
   /**
-   * Returns whether access was denied. `FastifyReply` is a thenable (it
-   * resolves once the response is flushed) — `return reply.send(...)` from
-   * an `async` method would have its own returned promise silently adopt
-   * that reply's resolution instead of the reply object itself, so callers
-   * must never `await` a reply and branch on the awaited value. Each guard
-   * here sends the appropriate refusal as a side effect and returns a plain
-   * boolean.
+   * `assertShiftScope` for the Assignment's Shift. A missing Assignment, or one
+   * with no Shift, is refused as a denied object decision.
    */
-  private async denyParticipationScope({
+  private async assertAssignmentScope({
     request,
-    reply,
-    participationId,
-  }: DenyParticipationScopeInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageParticipation({
-      ...requestCaller({ request }),
-      participationId: MinistryParticipationId.from(participationId),
-    });
-    return this.denyAuthorityDecision({
-      request,
-      reply,
-      allowed: decision.allowed,
-    });
-  }
-
-  private async resolveScheduleAssignment({
-    request,
-    reply,
     assignmentId,
-  }: ResolveOwnedAssignmentInput): Promise<ResolveOwnedAssignmentResult> {
-    let assignment: Assignment;
+  }: AssertAssignmentScopeInput): Promise<void> {
+    const access = { authorityGuard: this.authorityGuard, request };
+    let shiftId: ShiftId | undefined;
     try {
-      assignment = await this.assignmentManager.getAssignment({
-        churchId: ChurchId.from(request.churchId),
+      const assignment = await this.assignmentManager.getAssignment({
+        churchId: request.churchId,
         assignmentId: AssignmentId.from(assignmentId),
       });
+      shiftId = assignment.shiftId;
     } catch (error) {
-      if (error instanceof NotFoundError) {
-        await this.denyAuthorityDecision({ request, reply, allowed: false });
-        return { denied: true };
-      }
-      throw error;
+      if (!(error instanceof NotFoundError)) throw error;
     }
-    if (!assignment.shiftId) {
-      await this.denyAuthorityDecision({ request, reply, allowed: false });
-      return { denied: true };
-    }
-
-    const scope = await this.resolveScheduleShift({
-      request,
-      reply,
-      shiftId: assignment.shiftId,
-    });
-    return scope.denied ? { denied: true } : { assignment, denied: false };
-  }
-
-  private async resolveScheduleShift({
-    request,
-    reply,
-    shiftId,
-  }: ResolveScheduleShiftInput): Promise<ResolveOwnedAssignmentResult> {
-    const caller = requestCaller({ request });
-    const brandedShiftId = ShiftId.from(shiftId);
-    const decision = await this.authorityGuard.decideManageShift({
-      ...caller,
-      shiftId: brandedShiftId,
-    });
-    if (decision.allowed) {
-      return { denied: false };
-    }
-
-    await this.denyAuthorityDecision({ request, reply, allowed: false });
-    return { denied: true };
-  }
-
-  private async denyShiftScope({
-    request,
-    reply,
-    shiftId,
-  }: DenyShiftScopeInput): Promise<boolean> {
-    const decision = await this.authorityGuard.decideManageShift({
-      ...requestCaller({ request }),
-      shiftId: ShiftId.from(shiftId),
-    });
-    return this.denyAuthorityDecision({
-      request,
-      reply,
-      allowed: decision.allowed,
-    });
-  }
-
-  private async denyAuthorityDecision({
-    request,
-    reply,
-    allowed,
-  }: DenyAuthorityDecisionInput): Promise<boolean> {
-    if (allowed) return false;
-    const functionDecision = await this.authorityGuard.decideManageAnyMinistry(
-      requestCaller({ request }),
-    );
-    if (!functionDecision.allowed) {
-      refuse({ reply, request, code: 'FORBIDDEN' });
-      return true;
-    }
-    refuse({ reply, request, code: 'NOT_FOUND' });
-    return true;
+    if (!shiftId) return assertAllowedDecision({ ...access, allowed: false });
+    await assertShiftScope({ ...access, shiftId });
   }
 }

@@ -1,5 +1,6 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
+import { EventTimeBlockId } from '../../domain/branded-ids';
 import type {
   PlanningEditPreview,
   PlanningEventGraph,
@@ -7,11 +8,13 @@ import type {
   PlanningMoveResult,
 } from '../../domain/contracts/application/planning-event-manager';
 import type { MoveClash } from '../../domain/services/planning/event-move.types';
+import { dateFromInstantString } from '../utils/request-time';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
   eventTimeBlockMapper,
   eventTimeBlockResponseSchema,
 } from './event-time-block.dto';
+import { idSchema } from './id.dto';
 import { timeBlockPlaceFields, withOnePlace } from './time-block-place.dto';
 
 const planningEventTimeBlockFieldsSchema = z.object({
@@ -23,6 +26,12 @@ const planningEventTimeBlockFieldsSchema = z.object({
 });
 
 /** A complete Draft Event: its fields and every Time block, saved together. */
+/** Path params of a route nested under one planning Event of a Cycle. */
+export const cycleEventParamsSchema = z.object({
+  cycleId: idSchema,
+  eventId: idSchema,
+});
+
 export const createPlanningEventBodySchema = z.object({
   title: z.string().trim().min(1),
   location: z.string().optional(),
@@ -30,10 +39,6 @@ export const createPlanningEventBodySchema = z.object({
   end: z.string().datetime(),
   eventTimeBlocks: z.array(withOnePlace(planningEventTimeBlockFieldsSchema)),
 });
-
-export type CreatePlanningEventBody = z.infer<
-  typeof createPlanningEventBodySchema
->;
 
 /**
  * The complete desired Draft Event: a block with `id` is retained and updated
@@ -45,15 +50,11 @@ export const updatePlanningEventBodySchema = createPlanningEventBodySchema
     eventTimeBlocks: z.array(
       withOnePlace(
         planningEventTimeBlockFieldsSchema.extend({
-          id: z.guid().optional(),
+          id: idSchema.optional(),
         }),
       ),
     ),
   });
-
-export type UpdatePlanningEventBody = z.infer<
-  typeof updatePlanningEventBodySchema
->;
 
 /** A Sent Event's details correction: title, optional location and the public fields of blocks. */
 export const updatePlanningEventDetailsBodySchema = z.object({
@@ -63,7 +64,7 @@ export const updatePlanningEventDetailsBodySchema = z.object({
     .array(
       withOnePlace(
         z.object({
-          id: z.guid(),
+          id: idSchema,
           isPublic: z.boolean(),
           ...timeBlockPlaceFields,
         }),
@@ -71,10 +72,6 @@ export const updatePlanningEventDetailsBodySchema = z.object({
     )
     .optional(),
 });
-
-export type UpdatePlanningEventDetailsBody = z.infer<
-  typeof updatePlanningEventDetailsBodySchema
->;
 
 /** An Event with its EventTimeBlocks, as Cycle detail, create and edit return it. */
 export const eventGraphResponseSchema = z.object({
@@ -97,8 +94,6 @@ export const eventGraphMapper = {
 export const movePlanningEventBodySchema = z.object({
   start: z.string().datetime(),
 });
-
-export type MovePlanningEventBody = z.infer<typeof movePlanningEventBodySchema>;
 
 const instantBoundsResponseSchema = z.object({
   start: instantSchema,
@@ -192,7 +187,7 @@ export const editPlanningEventBodySchema = z.object({
   end: z.string().datetime(),
   eventTimeBlocks: z.array(
     z.object({
-      id: z.guid().optional(),
+      id: idSchema.optional(),
       label: z.string().trim().min(1),
       startTime: z.string().datetime(),
       endTime: z.string().datetime(),
@@ -201,6 +196,90 @@ export const editPlanningEventBodySchema = z.object({
 });
 
 export type EditPlanningEventBody = z.infer<typeof editPlanningEventBodySchema>;
+
+type CreatePlanningEventBody = z.infer<typeof createPlanningEventBodySchema>;
+type UpdatePlanningEventBody = z.infer<typeof updatePlanningEventBodySchema>;
+type UpdatePlanningEventDetailsBody = z.infer<
+  typeof updatePlanningEventDetailsBodySchema
+>;
+
+/** The one rule for a submitted block id: absent means a new block. */
+function eventTimeBlockIdFromBody(id: string | undefined) {
+  return id === undefined ? undefined : EventTimeBlockId.from(id);
+}
+
+/** A padded location is trimmed; a blank one is no location. */
+function locationFromBody(location: string | undefined) {
+  const trimmed = location?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+type PlanningEventTimeBlockBody =
+  CreatePlanningEventBody['eventTimeBlocks'][number];
+
+function eventTimeBlockFromBody(block: PlanningEventTimeBlockBody) {
+  return {
+    label: block.label,
+    startTime: dateFromInstantString({ value: block.startTime }),
+    endTime: dateFromInstantString({ value: block.endTime }),
+    isPublic: block.isPublic,
+    place: block.place,
+    placeAddressId: block.placeAddressId,
+  };
+}
+
+/** Planning Event bodies as the manager reads them. */
+export const planningEventBodyMapper = {
+  create(body: CreatePlanningEventBody) {
+    return {
+      title: body.title,
+      location: locationFromBody(body.location),
+      start: dateFromInstantString({ value: body.start }),
+      end: dateFromInstantString({ value: body.end }),
+      eventTimeBlocks: body.eventTimeBlocks.map(eventTimeBlockFromBody),
+    };
+  },
+
+  update(body: UpdatePlanningEventBody) {
+    return {
+      title: body.title,
+      location: locationFromBody(body.location),
+      start: dateFromInstantString({ value: body.start }),
+      end: dateFromInstantString({ value: body.end }),
+      eventTimeBlocks: body.eventTimeBlocks.map((block) => ({
+        id: eventTimeBlockIdFromBody(block.id),
+        ...eventTimeBlockFromBody(block),
+      })),
+    };
+  },
+
+  details(body: UpdatePlanningEventDetailsBody) {
+    return {
+      title: body.title,
+      location: locationFromBody(body.location),
+      eventTimeBlocks: body.eventTimeBlocks?.map((block) => ({
+        ...block,
+        id: EventTimeBlockId.from(block.id),
+      })),
+    };
+  },
+
+  /** The edit body: the same for preview and apply. */
+  edit(body: EditPlanningEventBody) {
+    return {
+      start: dateFromInstantString({ value: body.start }),
+      end: dateFromInstantString({ value: body.end }),
+      eventTimeBlocks: body.eventTimeBlocks.map(
+        ({ id, label, startTime, endTime }) => ({
+          id: eventTimeBlockIdFromBody(id),
+          label,
+          startTime: dateFromInstantString({ value: startTime }),
+          endTime: dateFromInstantString({ value: endTime }),
+        }),
+      ),
+    };
+  },
+};
 
 /** Proposed bounds, a row per block and typed clash rows; nothing was written. */
 export const eventEditPreviewResponseSchema = z.object({
@@ -248,13 +327,7 @@ export const cancelPlanningEventBodySchema = z.object({
   hidden: z.boolean().optional(),
 });
 
-export type CancelPlanningEventBody = z.infer<
-  typeof cancelPlanningEventBodySchema
->;
-
 export const setPlanningHiddenBodySchema = z.object({ hidden: z.boolean() });
-
-export type SetPlanningHiddenBody = z.infer<typeof setPlanningHiddenBodySchema>;
 
 /** What a cancellation affects: preview and confirm both return it. */
 export const cancellationImpactResponseSchema = z.object({

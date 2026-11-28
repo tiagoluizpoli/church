@@ -1,6 +1,14 @@
-import { instantSchema } from '@church/time';
+import { fromDate, instantSchema } from '@church/time';
 import { z } from 'zod';
 import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../domain/authority/types';
+import type {
+  AuthenticatedInvitationStatus,
+  ChurchInvitationReviewStatus,
+  PublicRedemptionPreview,
+} from '../../domain/contracts/application/redemption-manager';
+import type { TransferPreview } from '../../domain/contracts/application/volunteer-transfer-manager';
+import type { RedemptionBundleMinistry } from '../../domain/entities/redemption-bundle';
+import { idSchema } from './id.dto';
 
 const ministryAccessLevelValues = ['volunteer', 'leader'] as const;
 const terminalFailureReasons = [
@@ -10,14 +18,14 @@ const terminalFailureReasons = [
 ] as const;
 
 export const redemptionParamsSchema = z.object({
-  invitationId: z.string().uuid(),
+  invitationId: idSchema,
 });
 
 export const redeemNewUserBodySchema = z.object({
   name: z.string().trim().min(1).max(255),
   password: z.string().min(8),
   code: z.string().regex(/^\d{6}$/),
-  idempotencyKey: z.string().uuid(),
+  idempotencyKey: idSchema,
 });
 
 export const unavailableRedemptionResponseSchema = z.object({
@@ -32,7 +40,7 @@ export const rateLimitedResponseSchema = z.object({
 
 /** The Ministry half a paired Church Invitation also grants. */
 export const redemptionPreviewMinistrySchema = z.object({
-  invitationId: z.string().uuid(),
+  invitationId: idSchema,
   name: z.string(),
   ministryAccessLevel: z.enum(ministryAccessLevelValues),
   roleNames: z.array(z.string()),
@@ -78,7 +86,7 @@ export const churchOnlyOutcomeSchema = z.object({
   sourceChurchName: z.string(),
   destinationChurchId: z.string(),
   destinationChurchName: z.string(),
-  ministryInvitationId: z.string().uuid(),
+  ministryInvitationId: idSchema,
   ministryName: z.string(),
 });
 
@@ -151,7 +159,7 @@ export const authenticatedInvitationStatusResponseSchema = z.discriminatedUnion(
 );
 
 export const acceptExistingMemberBodySchema = z.object({
-  idempotencyKey: z.string().uuid(),
+  idempotencyKey: idSchema,
   /** The `reviewToken` of the reviewed status; a changed offer is refused. */
   reviewToken: z.string().min(1),
 });
@@ -191,7 +199,7 @@ export const churchInvitationReviewStatusResponseSchema = z.discriminatedUnion(
     z.object({
       kind: z.literal('paired'),
       /** The oldest pending Ministry half, whose review covers the whole offer. */
-      ministryInvitationId: z.string().uuid(),
+      ministryInvitationId: idSchema,
     }),
     z.object({ kind: z.literal('already-accepted'), churchId: z.string() }),
     z.object({
@@ -264,7 +272,7 @@ export const transferPreviewResponseSchema = z.discriminatedUnion('kind', [
 export const confirmTransferBodySchema = z.object({
   destinationChurchName: z.string().min(1),
   password: z.string().min(8),
-  idempotencyKey: z.string().uuid(),
+  idempotencyKey: idSchema,
 });
 
 const transferTerminalReasons = [
@@ -292,3 +300,74 @@ export const confirmTransferOutcomeResponseSchema = z.discriminatedUnion(
     }),
   ],
 );
+
+/** One Ministry grant of the signed-in review; internal ids stay server-side. */
+function toReviewedMinistry(half: RedemptionBundleMinistry) {
+  return {
+    invitationId: half.ministryInvitationId,
+    ministryName: half.ministryName,
+    ministryAccessLevel: half.ministryAccessLevel,
+    roleNames: half.roleNames,
+    inviterName: half.inviterName,
+    expiresAt: fromDate({ date: half.expiresAt }),
+  };
+}
+
+export const redemptionMapper = {
+  /** The public Church Invitation preview: the Ministry block only for a paired invitation. */
+  publicPreviewToResponse(preview: PublicRedemptionPreview) {
+    // The public preview names the newest pending half; redemption grants them all.
+    const ministries = preview.ministries.map((half) => ({
+      invitationId: half.ministryInvitationId,
+      name: half.ministryName,
+      ministryAccessLevel: half.ministryAccessLevel,
+      roleNames: half.roleNames,
+    }));
+    return {
+      email: preview.email,
+      churchName: preview.churchName,
+      churchAccessLevel: preview.churchAccessLevel,
+      expiresAt: fromDate({ date: preview.expiresAt }),
+      ...(ministries[0] ? { ministry: ministries[0] } : {}),
+      ministries,
+    };
+  },
+
+  churchReviewStatusToResponse(status: ChurchInvitationReviewStatus) {
+    if (status.kind !== 'redeemable') return status;
+    return { ...status, expiresAt: fromDate({ date: status.expiresAt }) };
+  },
+
+  /** The existing-member review exposes a restricted field set (spec §7.1). */
+  ministryInvitationStatusToResponse(status: AuthenticatedInvitationStatus) {
+    if (status.kind !== 'redeemable') return status;
+    return {
+      kind: status.kind,
+      invitationKind: status.invitationKind,
+      email: status.email,
+      churchName: status.churchName,
+      ministryName: status.ministryName,
+      ministryAccessLevel: status.ministryAccessLevel,
+      roleNames: status.roleNames,
+      expiresAt: fromDate({ date: status.expiresAt }),
+      churchAccessLevel: status.churchAccessLevel,
+      ministries: status.ministries.map(toReviewedMinistry),
+      reviewToken: status.reviewToken,
+    };
+  },
+
+  transferPreviewToResponse(preview: TransferPreview) {
+    if (preview.kind !== 'reviewable') return preview;
+    return {
+      kind: preview.kind,
+      sourceChurchName: preview.sourceChurchName,
+      destinationChurchName: preview.destinationChurchName,
+      endedMemberships: preview.endedMemberships,
+      withdrawnAssignments: preview.withdrawnAssignments.map((assignment) => ({
+        eventName: assignment.eventName,
+        eventTimeBlockStart: fromDate({ date: assignment.eventTimeBlockStart }),
+        roleName: assignment.roleName,
+      })),
+    };
+  },
+};

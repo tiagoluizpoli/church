@@ -1,12 +1,15 @@
-import { NotFoundError } from '@church/core';
-import { z } from 'zod';
-import { ChurchId, NotificationId, UserId } from '../../domain/branded-ids';
+import { NotificationId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { INotificationManager } from '../../domain/contracts/application/notification-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import {
   markedResponseSchema,
   memberNotificationListResponseSchema,
@@ -14,15 +17,10 @@ import {
   memberNotificationParamsSchema,
   memberNotificationsQuerystringSchema,
 } from '../dtos/member-notification.dto';
-import { pageLimitSchema } from '../dtos/page-limit.dto';
-import { refuse } from '../utils/refuse';
+import { withPageLimit } from '../dtos/page-limit.dto';
+import { RefusalError } from '../utils/refusal-error';
 import { requestCaller } from '../utils/request-caller';
 import type { NotificationControllerDependencies } from './notification-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 /**
  * A Church Member's own inbox. The session supplies User and Active Church —
@@ -33,17 +31,20 @@ export class NotificationController implements FastifyController {
 
   private readonly notificationManager: INotificationManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
   private readonly authorityGuard: IAuthorityGuard;
   private readonly maxPageSize: number;
 
   constructor({
     notificationManager,
     activeChurchResolver,
+    sessionGateway,
     authorityGuard,
     maxPageSize,
   }: NotificationControllerDependencies) {
     this.notificationManager = notificationManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
     this.authorityGuard = authorityGuard;
     this.maxPageSize = maxPageSize;
   }
@@ -55,12 +56,15 @@ export class NotificationController implements FastifyController {
   ): void {
     app.addHook(
       'preValidation',
-      createActiveChurchPreValidation({ resolver: this.activeChurchResolver }),
+      createActiveChurchPreValidation({
+        resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
+      }),
     );
 
     // Every route is the caller's own inbox: the owner is the session User,
     // never a parameter, so member-level access is the only rule to ask.
-    app.addHook('preHandler', async (request, reply) => {
+    app.addHook('preHandler', async (request) => {
       const caller = requestCaller({ request });
       const { churchId } = caller;
       const decision = await this.authorityGuard.decideAuthority({
@@ -69,13 +73,11 @@ export class NotificationController implements FastifyController {
         resource: { type: 'church', churchId },
         scope: 'function',
       });
-      if (!decision.allowed)
-        return refuse({ reply, request, code: 'FORBIDDEN' });
+      if (!decision.allowed) throw new RefusalError({ code: 'FORBIDDEN' });
     });
 
     const refusals = {
-      401: errorResponseSchema,
-      403: errorResponseSchema,
+      ...authErrorResponses,
       409: errorResponseSchema,
       422: errorResponseSchema,
     };
@@ -89,21 +91,18 @@ export class NotificationController implements FastifyController {
           summary: "List the caller's Notifications",
           description:
             "List the caller's own Notifications in the Active Church, newest first, with the unread count of the whole inbox.",
-          querystring: memberNotificationsQuerystringSchema.extend({
-            limit: pageLimitSchema({
-              maxPageSize: this.maxPageSize,
-            }).optional(),
+          querystring: withPageLimit({
+            querystring: memberNotificationsQuerystringSchema,
+            maxPageSize: this.maxPageSize,
           }),
           response: { 200: memberNotificationListResponseSchema, ...refusals },
         },
       },
       async (request, reply) => {
-        const { cursor, limit } = request.query as z.infer<
-          typeof memberNotificationsQuerystringSchema
-        >;
+        const { cursor, limit } = request.query;
         const page = await this.notificationManager.list({
-          userId: UserId.from(request.userId),
-          churchId: ChurchId.from(request.churchId),
+          userId: request.userId,
+          churchId: request.churchId,
           cursor,
           limit,
         });
@@ -129,21 +128,11 @@ export class NotificationController implements FastifyController {
         },
       },
       async (request, reply) => {
-        try {
-          await this.notificationManager.markRead({
-            userId: UserId.from(request.userId),
-            churchId: ChurchId.from(request.churchId),
-            notificationId: NotificationId.from(
-              (request.params as z.infer<typeof memberNotificationParamsSchema>)
-                .notificationId,
-            ),
-          });
-        } catch (error) {
-          if (error instanceof NotFoundError) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
+        await this.notificationManager.markRead({
+          userId: request.userId,
+          churchId: request.churchId,
+          notificationId: NotificationId.from(request.params.notificationId),
+        });
         return reply.status(200).send({ marked: true });
       },
     );
@@ -162,8 +151,8 @@ export class NotificationController implements FastifyController {
       },
       async (request, reply) => {
         await this.notificationManager.markAllRead({
-          userId: UserId.from(request.userId),
-          churchId: ChurchId.from(request.churchId),
+          userId: request.userId,
+          churchId: request.churchId,
         });
         return reply.status(201).send({ marked: true });
       },

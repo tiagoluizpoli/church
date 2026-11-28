@@ -9,6 +9,7 @@ import {
   vi,
 } from 'vitest';
 import { z } from 'zod';
+import { ChurchId, UserId } from '@/domain/branded-ids';
 import { OverlappingCycleError } from '@/domain/errors/overlapping-cycle';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
@@ -44,8 +45,8 @@ beforeAll(async () => {
     errorReporter: testErrorReporter,
   });
   app.addHook('preHandler', async (request) => {
-    request.userId = 'user_1';
-    request.churchId = 'church_1';
+    request.userId = UserId.from('user_1');
+    request.churchId = ChurchId.from('church_1');
   });
   app.post('/boom/crash/:eventId', async () => {
     throw new Error(`failed for ${EMAIL} (${NAME})`);

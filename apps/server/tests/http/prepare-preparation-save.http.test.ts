@@ -91,6 +91,7 @@ import {
   releasePausedCalls,
   waitForLockWaiter,
 } from '@/tests/test-support/paused-calls';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn(), setActiveOrganization: vi.fn() } },
@@ -115,6 +116,7 @@ beforeAll(async () => {
   // Better Auth session is a seam.
   const actorRepository = new DrizzleAuthorityActorResolver({ db });
   const controller = new PrepareController({
+    sessionGateway: testSessionGateway(),
     config: appConfig,
     ...participationModules,
     availabilityCheckManager: {} as never,
@@ -1302,7 +1304,9 @@ describe('PUT .../event-time-blocks/:eventTimeBlockId/preparation', () => {
 
       expect(missing.statusCode).toBe(404);
       expect(otherEvent.statusCode).toBe(404);
-      expect(notAnId.statusCode).toBe(404);
+      // A malformed id fails validation (#1221).
+      expect(notAnId.statusCode).toBe(422);
+      expect(notAnId.json().error).toBe('VALIDATION_ERROR');
       expect(await blockShifts(foreign.eventTimeBlock.id)).toEqual([]);
     });
 

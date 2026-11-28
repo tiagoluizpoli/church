@@ -6,6 +6,6 @@ import type { CompositionRootDependencies } from './dependencies.types';
 export interface BuildControllersInput {
   config: CompositionRootDependencies['config'];
   managers: Managers;
-  services: Pick<Services, 'webShell'>;
+  services: Pick<Services, 'webShell' | 'sessionGateway'>;
   auth: Auth;
 }

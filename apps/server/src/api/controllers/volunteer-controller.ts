@@ -1,20 +1,15 @@
-import { NotFoundError } from '@church/core';
 import { z } from 'zod';
 import {
   AssignmentId,
   AvailabilityCheckId,
-  ChurchId,
   CycleId,
   MinistryId,
   ShiftId,
-  UserId,
-  VolunteerId,
+  type VolunteerId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
-import type {
-  IVolunteerManager,
-  MinistrySchedule,
-} from '../../domain/contracts/application/volunteer-manager';
+import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import { AssignmentAccessDeniedError } from '../../domain/errors/assignment-access-denied';
 import { CheckAccessDeniedError } from '../../domain/errors/check-access-denied';
 import { IsolationBreachError } from '../../domain/errors/isolation-breach-error';
@@ -22,50 +17,62 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
+import {
+  assignmentParamsSchema,
+  idSchema,
+  ministryParamsSchema,
+} from '../dtos/id.dto';
+import {
   answerAvailabilityCheckBodySchema,
   answerConflictResponseSchema,
   assignmentDetailResponseSchema,
   availabilityCheckDetailResponseSchema,
   availabilityCheckListQuerystringSchema,
   availabilityCheckListResponseSchema,
+  availabilityCheckParamsSchema,
   dashboardResponseSchema,
   ministryScheduleResponseSchema,
   volunteerMapper,
 } from '../dtos/volunteer.dto';
-import { refuse } from '../utils/refuse';
-import type {
-  AssignmentRouteParams,
-  AvailabilityCheckRouteParams,
-  MinistryRouteParams,
-  PrivateObjectOperationInput,
-  VolunteerControllerDependencies,
-} from './volunteer-controller.types';
+import { hideAsNotFound } from '../utils/hide-as-not-found';
+import type { VolunteerControllerDependencies } from './volunteer-controller.types';
+
+/**
+ * What a Volunteer may not see of another's Assignment, AvailabilityCheck or
+ * Ministry schedule; each route answers them as 404, as for a missing one.
+ */
+const PRIVATE_OBJECT_ERRORS = [
+  AssignmentAccessDeniedError,
+  CheckAccessDeniedError,
+  IsolationBreachError,
+];
 
 const ministryScheduleQuerySchema = z.object({
-  cycleId: z.string().uuid(),
-});
-
-const notFoundResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+  cycleId: idSchema,
 });
 
 export class VolunteerController implements FastifyController {
   readonly prefix = '/volunteer';
-  // `VolunteerId.from(request.volunteerId as string)` below: this
+  // `request.volunteerId as VolunteerId` below: this
   // controller's preValidation hook requires a Volunteer profile for every
   // route, so `volunteerId` is always present here despite being optional
   // on `FastifyRequest`.
 
   private readonly volunteerManager: IVolunteerManager;
   private readonly activeChurchResolver: IActiveChurchResolver;
+  private readonly sessionGateway: SessionGateway;
 
   constructor({
     volunteerManager,
     activeChurchResolver,
+    sessionGateway,
   }: VolunteerControllerDependencies) {
     this.volunteerManager = volunteerManager;
     this.activeChurchResolver = activeChurchResolver;
+    this.sessionGateway = sessionGateway;
   }
 
   // named-parameters-ignore: Fastify plugin signature (instance, opts); registered through app.register
@@ -77,6 +84,7 @@ export class VolunteerController implements FastifyController {
       'preValidation',
       createActiveChurchPreValidation({
         resolver: this.activeChurchResolver,
+        sessionGateway: this.sessionGateway,
         requireVolunteer: true,
       }),
     );
@@ -90,14 +98,14 @@ export class VolunteerController implements FastifyController {
           summary: "Get the caller's Volunteer dashboard",
           description:
             "Get the current Volunteer's dashboard summary for the Active Church.",
-          response: { 200: dashboardResponseSchema },
+          response: { 200: dashboardResponseSchema, ...authErrorResponses },
         },
       },
       async (request, reply) => {
         const dashboard = await this.volunteerManager.getDashboard({
-          userId: UserId.from(request.userId),
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
+          userId: request.userId,
+          volunteerId: request.volunteerId as VolunteerId,
+          churchId: request.churchId,
         });
         return reply.send(volunteerMapper.dashboardToResponse(dashboard));
       },
@@ -109,29 +117,29 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getAssignmentDetail',
+          params: assignmentParamsSchema,
           summary: "Get one of the caller's Assignments",
           description:
             "Get one of the current Volunteer's own published Assignments with its Shift roster. Anyone else's, or one no longer on the schedule, is 404.",
           response: {
             200: assignmentDetailResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as AssignmentRouteParams;
-        const detail = await this.withPrivateObjectNotFound({
-          request,
-          reply,
+        const { assignmentId } = request.params;
+        const detail = await hideAsNotFound({
+          errors: PRIVATE_OBJECT_ERRORS,
           operation: () =>
             this.volunteerManager.getAssignmentDetail({
               assignmentId: AssignmentId.from(assignmentId),
-              userId: UserId.from(request.userId),
-              volunteerId: VolunteerId.from(request.volunteerId as string),
-              churchId: ChurchId.from(request.churchId),
+              userId: request.userId,
+              volunteerId: request.volunteerId as VolunteerId,
+              churchId: request.churchId,
             }),
         });
-        if (!detail) return;
         return reply.send(detail);
       },
     );
@@ -142,38 +150,31 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getMinistrySchedule',
+          params: ministryParamsSchema,
           querystring: ministryScheduleQuerySchema,
           summary: "Get the caller's published Ministry schedule",
           description:
             "Get the current Volunteer's published schedule within one Ministry.",
           response: {
             200: ministryScheduleResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { ministryId } = request.params as MinistryRouteParams;
-        const { cycleId } = request.query as z.infer<
-          typeof ministryScheduleQuerySchema
-        >;
-        let schedule: MinistrySchedule;
-        try {
-          schedule = await this.volunteerManager.getMinistrySchedule({
-            ministryId: MinistryId.from(ministryId),
-            cycleId: CycleId.from(cycleId),
-            volunteerId: VolunteerId.from(request.volunteerId as string),
-            churchId: ChurchId.from(request.churchId),
-          });
-        } catch (error) {
-          if (
-            error instanceof IsolationBreachError ||
-            error instanceof NotFoundError
-          ) {
-            return refuse({ reply, request, code: 'NOT_FOUND' });
-          }
-          throw error;
-        }
+        const { ministryId } = request.params;
+        const { cycleId } = request.query;
+        const schedule = await hideAsNotFound({
+          errors: PRIVATE_OBJECT_ERRORS,
+          operation: () =>
+            this.volunteerManager.getMinistrySchedule({
+              ministryId: MinistryId.from(ministryId),
+              cycleId: CycleId.from(cycleId),
+              volunteerId: request.volunteerId as VolunteerId,
+              churchId: request.churchId,
+            }),
+        });
         return reply.send(volunteerMapper.ministryScheduleToResponse(schedule));
       },
     );
@@ -188,24 +189,28 @@ export class VolunteerController implements FastifyController {
           querystring: availabilityCheckListQuerystringSchema,
           description:
             "List the current Volunteer's AvailabilityChecks. `state` narrows `checks` only: `counts` covers every state.",
-          response: { 200: availabilityCheckListResponseSchema },
+          response: {
+            200: availabilityCheckListResponseSchema,
+            ...authErrorResponses,
+          },
         },
       },
       async (request, reply) => {
-        const { state } = request.query as z.infer<
-          typeof availabilityCheckListQuerystringSchema
-        >;
+        const { state } = request.query;
         const owner = {
-          volunteerId: VolunteerId.from(request.volunteerId as string),
-          churchId: ChurchId.from(request.churchId),
+          volunteerId: request.volunteerId as VolunteerId,
+          churchId: request.churchId,
         };
         const [summaries, counts] = await Promise.all([
           this.volunteerManager.listAvailabilityChecks({ ...owner, state }),
           this.volunteerManager.countAvailabilityChecks(owner),
         ]);
-        const listed =
-          volunteerMapper.availabilityCheckListToResponse(summaries);
-        return reply.send({ ...listed, counts });
+        return reply.send(
+          volunteerMapper.availabilityCheckPageToResponse({
+            summaries,
+            counts,
+          }),
+        );
       },
     );
 
@@ -215,28 +220,28 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'getAvailabilityCheck',
+          params: availabilityCheckParamsSchema,
           summary: "Get one of the caller's AvailabilityChecks",
           description:
             'Get the detail of a single AvailabilityCheck belonging to the current Volunteer.',
           response: {
             200: availabilityCheckDetailResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { checkId } = request.params as AvailabilityCheckRouteParams;
-        const detail = await this.withPrivateObjectNotFound({
-          request,
-          reply,
+        const { checkId } = request.params;
+        const detail = await hideAsNotFound({
+          errors: PRIVATE_OBJECT_ERRORS,
           operation: () =>
             this.volunteerManager.getAvailabilityCheck({
               checkId: AvailabilityCheckId.from(checkId),
-              volunteerId: VolunteerId.from(request.volunteerId as string),
-              churchId: ChurchId.from(request.churchId),
+              volunteerId: request.volunteerId as VolunteerId,
+              churchId: request.churchId,
             }),
         });
-        if (!detail) return;
         return reply.send(
           volunteerMapper.availabilityCheckDetailToResponse(detail),
         );
@@ -249,59 +254,37 @@ export class VolunteerController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'answerAvailabilityCheck',
+          params: availabilityCheckParamsSchema,
           summary: 'Answer an AvailabilityCheck',
           description:
             "Record the current Volunteer's unavailable shifts — by Shift or by whole CalendarDay — against an AvailabilityCheck.",
           body: answerAvailabilityCheckBodySchema,
           response: {
             200: availabilityCheckDetailResponseSchema,
-            404: notFoundResponseSchema,
+            ...authErrorResponses,
+            404: errorResponseSchema,
             409: answerConflictResponseSchema,
           },
         },
       },
       async (request, reply) => {
-        const { checkId } = request.params as AvailabilityCheckRouteParams;
-        const body = request.body as z.infer<
-          typeof answerAvailabilityCheckBodySchema
-        >;
-        const detail = await this.withPrivateObjectNotFound({
-          request,
-          reply,
+        const { checkId } = request.params;
+        const body = request.body;
+        const detail = await hideAsNotFound({
+          errors: PRIVATE_OBJECT_ERRORS,
           operation: () =>
             this.volunteerManager.answerAvailabilityCheck({
               checkId: AvailabilityCheckId.from(checkId),
-              volunteerId: VolunteerId.from(request.volunteerId as string),
-              churchId: ChurchId.from(request.churchId),
+              volunteerId: request.volunteerId as VolunteerId,
+              churchId: request.churchId,
               shiftIds: body.shiftIds.map((shiftId) => ShiftId.from(shiftId)),
               wholeDayDates: body.wholeDayDates,
             }),
         });
-        if (!detail) return;
         return reply.send(
           volunteerMapper.availabilityCheckDetailToResponse(detail),
         );
       },
     );
-  }
-
-  private async withPrivateObjectNotFound<T>({
-    request,
-    reply,
-    operation,
-  }: PrivateObjectOperationInput<T>): Promise<T | undefined> {
-    try {
-      return await operation();
-    } catch (error) {
-      if (
-        error instanceof CheckAccessDeniedError ||
-        error instanceof AssignmentAccessDeniedError ||
-        error instanceof NotFoundError
-      ) {
-        refuse({ reply, request, code: 'NOT_FOUND' });
-        return undefined;
-      }
-      throw error;
-    }
   }
 }

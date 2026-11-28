@@ -21,7 +21,6 @@ import {
   vi,
 } from 'vitest';
 import { AuthorityGuard } from '@/api/auth/authority-guard';
-import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { DbAuthorityManager } from '@/application/db-authority-manager';
 import { DbEventTemplateManager } from '@/application/db-event-template-manager';
 import {
@@ -57,8 +56,10 @@ import {
   seedSchedulingPhase3Base,
 } from '@/tests/scheduling-reshape/setup';
 import { insertChurchAddress } from '@/tests/test-support/church-address';
+import { ChurchAdminControllers } from '@/tests/test-support/church-admin-controllers';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -80,7 +81,8 @@ beforeAll(async () => {
   });
   // Real manager, repository and AuthorityService decision; only the session and
   // the actor lookup are seams.
-  const controller = new ChurchAdminController({
+  const controller = new ChurchAdminControllers({
+    sessionGateway: testSessionGateway(),
     cycleManager: {} as never,
     eventTemplateManager: new DbEventTemplateManager({
       templateRepository: new DrizzleEventTemplateRepository({

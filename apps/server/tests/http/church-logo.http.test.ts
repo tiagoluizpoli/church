@@ -28,6 +28,7 @@ import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 import { InMemoryObjectStorage } from '@/tests/test-support/in-memory-object-storage';
 import { multipartFile } from '@/tests/test-support/multipart';
+import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
   auth: { api: { getSession: vi.fn() } },
@@ -54,6 +55,7 @@ beforeAll(async () => {
   });
   storage = new InMemoryObjectStorage();
   const controller = new ChurchSettingsController({
+    sessionGateway: testSessionGateway(),
     churchSettingsManager: new DbChurchSettingsManager({
       churchRepository: new DrizzleChurchRepository({ db }),
       unitOfWork: new DrizzleUnitOfWork({ db }),

@@ -1,9 +1,13 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../domain/authority/types';
+import type { PersonDetailResult } from '../../domain/contracts/application/people-list-manager';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
 import { PEOPLE_ACCESS_OPTIONS } from '../../domain/entities/people-list-item';
 import { decodePeopleListCursor } from '../../domain/people-list-cursor';
+import { RefusalError } from '../utils/refusal-error';
+import { errorResponseSchema } from './error-response.dto';
+import { idSchema } from './id.dto';
 
 export const peopleListResponseSchema = z.object({
   items: z.array(
@@ -39,7 +43,7 @@ export const peopleListResponseSchema = z.object({
 
 export const peopleListQuerystringSchema = z.object({
   search: z.string().trim().min(1).max(254).optional(),
-  ministryId: z.string().uuid().optional(),
+  ministryId: idSchema.optional(),
   access: z.enum(PEOPLE_ACCESS_OPTIONS).optional(),
   /** `true` keeps only members in no visible Ministry; `false` or absent applies no filter. */
   withoutMinistry: z.stringbool().optional(),
@@ -106,7 +110,7 @@ export const churchAccessChangeResponseSchema = z.object({
 
 export const ministryMembershipParamsSchema = z.object({
   memberId: z.string().min(1),
-  membershipId: z.string().min(1),
+  membershipId: idSchema,
 });
 
 /** Far above any Ministry's Role catalog; only bounds the request. */
@@ -114,13 +118,13 @@ const MAX_ROLE_IDS_PER_REQUEST = 200;
 
 export const setMinistryRolesBodySchema = z.object({
   /** The complete set; omitted Roles are removed. */
-  roleIds: z.array(z.string().uuid()).max(MAX_ROLE_IDS_PER_REQUEST),
+  roleIds: z.array(idSchema).max(MAX_ROLE_IDS_PER_REQUEST),
 });
 
 export const changeMinistryAccessBodySchema = z.object({
   accessLevel: z.enum(MINISTRY_ACCESS_LEVEL_OPTIONS),
   /** The complete replacement set; omitted keeps the held Roles. */
-  roleIds: z.array(z.string().uuid()).max(MAX_ROLE_IDS_PER_REQUEST).optional(),
+  roleIds: z.array(idSchema).max(MAX_ROLE_IDS_PER_REQUEST).optional(),
 });
 
 export const ministryMembershipChangeResponseSchema = z.object({
@@ -157,8 +161,35 @@ export const upcomingAssignmentSchema = z.object({
 });
 
 /** A 409 `UPCOMING_ASSIGNMENTS`: the localized envelope plus every blocking Assignment. */
-export const upcomingAssignmentsResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+export const upcomingAssignmentsResponseSchema = errorResponseSchema.extend({
   assignments: z.array(upcomingAssignmentSchema),
 });
+
+/** A People manager outcome: a refused or hidden target, or the applied change. */
+type MembershipOutcome<Applied extends { kind: 'applied' }> =
+  | { kind: 'forbidden' }
+  | { kind: 'not-found' }
+  | Applied;
+
+export const membershipOutcomeMapper = {
+  /** Throws the shared refusals and answers the applied change without its `kind`. */
+  toResponse<Applied extends { kind: 'applied' }>(
+    outcome: MembershipOutcome<Applied>,
+  ): Omit<Applied, 'kind'> {
+    if (outcome.kind === 'forbidden') {
+      throw new RefusalError({ code: 'FORBIDDEN' });
+    }
+    if (outcome.kind === 'not-found') {
+      throw new RefusalError({ code: 'NOT_FOUND' });
+    }
+    const { kind: _applied, ...result } = outcome;
+    return result;
+  },
+};
+
+export const personDetailMapper = {
+  /** The person with the caller's capabilities over them, flattened. */
+  toResponse({ person, ...capabilities }: PersonDetailResult) {
+    return { ...person, ...capabilities };
+  },
+};

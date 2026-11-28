@@ -3,9 +3,10 @@ import { z } from 'zod';
 import type { ScheduleBuilderData } from '../../domain/contracts/application/event-manager';
 import { ASSIGNMENT_STATUS_OPTIONS } from '../../domain/entities/assignment';
 import type { Event } from '../../domain/entities/event';
+import { idSchema } from './id.dto';
 
 export const listEventsQuerySchema = z.object({
-  ministryId: z.string(),
+  ministryId: idSchema,
   status: z.enum(['draft', 'scheduled', 'cancelled', 'past']).optional(),
 });
 

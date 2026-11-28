@@ -121,6 +121,24 @@ describe.each(ENTRY_POINTS)('%s session lookup', (_name, url) => {
   });
 
   it.each([
+    ['400', new APIError('BAD_REQUEST')],
+    ['403', new APIError('FORBIDDEN')],
+    ['404', new APIError('NOT_FOUND')],
+  ])('answers 401 when Better Auth refuses the session with its own %s', async (_status, refusal) => {
+    mockGetSession.mockRejectedValueOnce(refusal);
+
+    const response = await app.inject({
+      method: 'GET',
+      url,
+      headers: { cookie: AUTH_COOKIE },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual(UNAUTHORIZED_BODY);
+    expect(activeChurchResolver.resolve).not.toHaveBeenCalled();
+  });
+
+  it.each([
     ['a thrown connection error', new Error('connect ECONNREFUSED')],
     ['a Better Auth 500', new APIError('INTERNAL_SERVER_ERROR')],
   ])('answers 503, not 401, when the auth backend fails with %s', async (_label, failure) => {

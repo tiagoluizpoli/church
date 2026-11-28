@@ -10,7 +10,17 @@ import type {
 import { AuthBackendUnavailableError } from './auth-backend-unavailable-error';
 import type { BetterAuthSessionGatewayInput } from './better-auth-session-gateway.types';
 
-const UNAUTHORIZED = 401;
+const CLIENT_ERROR_MIN = 400;
+const SERVER_ERROR_MIN = 500;
+
+/** Better Auth's own 4xx: it refused this session, so there is none. */
+function isSessionRefusal(error: unknown): boolean {
+  return (
+    isAPIError(error) &&
+    error.statusCode >= CLIENT_ERROR_MIN &&
+    error.statusCode < SERVER_ERROR_MIN
+  );
+}
 
 export class BetterAuthSessionGateway implements SessionGateway {
   private readonly auth: Auth;
@@ -23,8 +33,9 @@ export class BetterAuthSessionGateway implements SessionGateway {
     const session = await this.auth.api
       .getSession({ headers })
       .catch((error: unknown) => {
-        // Better Auth refuses a session it cannot refresh with its own 401.
-        if (isAPIError(error) && error.statusCode === UNAUTHORIZED) return null;
+        // A refusal reads as no session (401); only an outage (a 5xx or an
+        // unexpected throw, such as a network failure) is a 503.
+        if (isSessionRefusal(error)) return null;
         throw new AuthBackendUnavailableError({ cause: error });
       });
     if (!session?.user) return null;

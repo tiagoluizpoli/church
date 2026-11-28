@@ -200,9 +200,12 @@ export class VolunteerController implements FastifyController {
           this.volunteerManager.listAvailabilityChecks({ ...owner, state }),
           this.volunteerManager.countAvailabilityChecks(owner),
         ]);
-        const listed =
-          volunteerMapper.availabilityCheckListToResponse(summaries);
-        return reply.send({ ...listed, counts });
+        return reply.send(
+          volunteerMapper.availabilityCheckPageToResponse({
+            summaries,
+            counts,
+          }),
+        );
       },
     );
 

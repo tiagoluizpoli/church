@@ -27,6 +27,7 @@ import {
   ministryMembershipParamsSchema,
   peopleListQuerystringSchema,
   peopleListResponseSchema,
+  personDetailMapper,
   personDetailResponseSchema,
   personParamsSchema,
   setMinistryRolesBodySchema,
@@ -275,8 +276,7 @@ export class PeopleController implements FastifyController {
           memberId: request.params.memberId,
         });
         if (!result) throw new RefusalError({ code: 'NOT_FOUND' });
-        const { person, ...capabilities } = result;
-        return reply.send({ ...person, ...capabilities });
+        return reply.send(personDetailMapper.toResponse(result));
       },
     );
 

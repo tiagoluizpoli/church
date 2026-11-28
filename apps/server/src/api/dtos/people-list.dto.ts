@@ -1,6 +1,7 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import { CHURCH_ACCESS_LEVEL_OPTIONS } from '../../domain/authority/types';
+import type { PersonDetailResult } from '../../domain/contracts/application/people-list-manager';
 import { MINISTRY_ACCESS_LEVEL_OPTIONS } from '../../domain/entities/ministry-membership';
 import { PEOPLE_ACCESS_OPTIONS } from '../../domain/entities/people-list-item';
 import { decodePeopleListCursor } from '../../domain/people-list-cursor';
@@ -183,5 +184,12 @@ export const membershipOutcomeMapper = {
     }
     const { kind: _applied, ...result } = outcome;
     return result;
+  },
+};
+
+export const personDetailMapper = {
+  /** The person with the caller's capabilities over them, flattened. */
+  toResponse({ person, ...capabilities }: PersonDetailResult) {
+    return { ...person, ...capabilities };
   },
 };

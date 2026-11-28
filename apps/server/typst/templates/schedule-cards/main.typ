@@ -15,7 +15,11 @@
 #let bd = oklch(88.5%, 0.012, 242deg)
 #let mut = oklch(95.5%, 0.008, 236deg)
 #let acc = oklch(94.8%, 0.018, 247deg)
-#let pri = oklch(37.8%, 0.09, 255deg)
+// The Church's accent colour (`#rrggbb`) when it set one, with the text that
+// reads on it; otherwise the app's primary.
+#let pri = if "accent" in sys.inputs { rgb(sys.inputs.accent) } else { oklch(37.8%, 0.09, 255deg) }
+#let on-pri = if "accentText" in sys.inputs { rgb(sys.inputs.accentText) } else { white }
+#let on-pri-soft = if "accent" in sys.inputs { on-pri.transparentize(20%) } else { oklch(88%, 0.03, 255deg) }
 #let des = oklch(56%, 0.207, 26deg)
 #let des-bg = oklch(97%, 0.015, 26deg)
 // Sector colours only repeat the written Sector name.
@@ -83,10 +87,10 @@
 // A bar over cards: an Event group's name and its Events' title when they
 // share one (the cards then leave it out).
 #let bar(name, shared) = block(width: 100%, fill: pri, radius: 10pt, inset: (x: 12pt, y: 8pt), {
-  text(size: 16pt, weight: "bold", fill: white, name)
+  text(size: 16pt, weight: "bold", fill: on-pri, name)
   if shared != none {
     h(8pt)
-    text(size: 12.5pt, fill: oklch(88%, 0.03, 255deg), shared)
+    text(size: 12.5pt, fill: on-pri-soft, shared)
   }
 })
 #let shared-title(events) = {
@@ -97,7 +101,7 @@
 // The time band left of a row: a plain time reads vertically in a narrow
 // band; a label, a day or a span reads horizontally in a wider one.
 #let band(lines, vertical) = {
-  let label = text(size: 13pt, weight: "bold", fill: white, lines.join(linebreak()))
+  let label = text(size: 13pt, weight: "bold", fill: on-pri, lines.join(linebreak()))
   if vertical {
     (width: 30pt, body: rotate(-90deg, reflow: true, label))
   } else {

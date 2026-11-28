@@ -12,6 +12,7 @@ import {
   toTimeOfDay,
   weekdayIndex,
 } from '@church/time';
+import { accentTextColor } from '../domain/church-settings';
 import type { IScheduleChangeReader } from '../domain/contracts/application/schedule-change-reader';
 import type {
   BuildScheduleExportEventsInput,
@@ -35,6 +36,8 @@ import type {
   ScheduleExportGroup,
   ScheduleExportPart,
   ScheduleExportRange,
+  ScheduleExportRenderContext,
+  ScheduleExportRenderContextInput,
   ScheduleExportSector,
   ScheduleExportShift,
   ScheduleExportSingles,
@@ -433,9 +436,8 @@ export class DbScheduleExportReader implements IScheduleExportReader {
       format,
       page,
       ppi: layout === 'cards' ? CARDS_PPI : undefined,
+      ...this.renderContext({ exported }),
       payload,
-      creationTimestamp: exported.changedAt,
-      logoKey: exported.logoKey ?? undefined,
     });
   }
 
@@ -446,10 +448,24 @@ export class DbScheduleExportReader implements IScheduleExportReader {
   }: CountScheduleExportPagesInput): Promise<number> {
     return this.typstRenderer.countPages({
       template: TEMPLATES[layout],
+      ...this.renderContext({ exported }),
       payload,
-      creationTimestamp: exported.changedAt,
-      logoKey: exported.logoKey ?? undefined,
     });
+  }
+
+  /** What every render of the export embeds besides its payload. */
+  private renderContext({
+    exported,
+  }: ScheduleExportRenderContextInput): ScheduleExportRenderContext {
+    const { accentColor, logoKey, changedAt } = exported;
+    return {
+      creationTimestamp: changedAt,
+      logoKey: logoKey ?? undefined,
+      // Bars and time bands carry text on the accent: white or near-black.
+      inputs: accentColor
+        ? { accent: accentColor, accentText: accentTextColor({ accentColor }) }
+        : {},
+    };
   }
 
   listCycles({
@@ -534,6 +550,7 @@ export class DbScheduleExportReader implements IScheduleExportReader {
           parts,
         },
         logoKey: facts.logoKey,
+        accentColor: facts.accentColor,
         changedAt: facts.changedAt,
       };
     });

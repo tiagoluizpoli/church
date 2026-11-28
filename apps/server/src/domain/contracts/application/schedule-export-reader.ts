@@ -12,6 +12,7 @@ import type {
 import type {
   TypstFormat,
   TypstRenderer,
+  TypstRenderInput,
 } from '@/domain/contracts/infrastructure/typst-renderer';
 import type { UnitOfWork } from '@/domain/contracts/infrastructure/unit-of-work';
 
@@ -166,8 +167,19 @@ export interface ScheduleExportData {
 export interface ScheduleExport {
   data: ScheduleExportData;
   logoKey: string | null;
+  /** `#rrggbb`, or null for the app's own primary. */
+  accentColor: string | null;
   changedAt: Date;
 }
+
+export interface ScheduleExportRenderContextInput {
+  exported: ScheduleExport;
+}
+
+export type ScheduleExportRenderContext = Pick<
+  TypstRenderInput,
+  'creationTimestamp' | 'logoKey' | 'inputs'
+>;
 
 export interface BuildScheduleExportEventsInput {
   rows: ScheduleExportRow[];

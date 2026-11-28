@@ -66,6 +66,7 @@ export class DrizzleScheduleExportRepository
         cycleEndDate: cycle.endDate,
         timeZone: church.timezone,
         logoKey: church.logoKey,
+        accentColor: church.accentColor,
         published: sql<boolean>`bool_or(${ministryParticipation.state} = 'published')`,
         changedAt:
           sql<Date>`max(greatest(${ministryParticipation.updatedAt}, ${event.updatedAt}))`.mapWith(

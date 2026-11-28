@@ -15,7 +15,11 @@
 #let bd = oklch(88.5%, 0.012, 242deg)
 #let mut = oklch(95.5%, 0.008, 236deg)
 #let acc = oklch(94.8%, 0.018, 247deg)
-#let pri = oklch(37.8%, 0.09, 255deg)
+// The Church's accent colour (`#rrggbb`) when it set one, with the text that
+// reads on it; otherwise the app's primary.
+#let pri = if "accent" in sys.inputs { rgb(sys.inputs.accent) } else { oklch(37.8%, 0.09, 255deg) }
+#let on-pri = if "accentText" in sys.inputs { rgb(sys.inputs.accentText) } else { white }
+#let on-pri-soft = if "accent" in sys.inputs { on-pri.transparentize(20%) } else { oklch(88%, 0.03, 255deg) }
 #let des = oklch(56%, 0.207, 26deg)
 #let des-bg = oklch(97%, 0.015, 26deg)
 // Sector colours only repeat the written Sector name.
@@ -125,10 +129,10 @@
 
 // The bar heading a group's table: its name, and its Events' title when they share one.
 #let bar-cell(name, shared, cols) = table.cell(colspan: cols, fill: pri, inset: (x: 8pt, y: 5pt), stroke: none, {
-  text(size: 10.5pt, weight: "bold", fill: white, name)
+  text(size: 10.5pt, weight: "bold", fill: on-pri, name)
   if shared != none {
     h(8pt)
-    text(size: 9pt, fill: oklch(88%, 0.03, 255deg), shared)
+    text(size: 9pt, fill: on-pri-soft, shared)
   }
 })
 #let shared-title(events) = {

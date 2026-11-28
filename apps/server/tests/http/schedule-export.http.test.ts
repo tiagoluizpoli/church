@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { appConfig } from '@church/app-config';
 import {
+  church,
   cycle,
   event,
   eventTimeBlock,
@@ -902,6 +903,32 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/preview', () => {
 
     expect(image.width).toBe(pdf.width);
     expect(image.height).not.toBe(pdf.height);
+  });
+
+  it("draws the table and the cards in the Church's accent colour, the app's navy without one", async () => {
+    const ACCENT = '#b45309';
+    const APP_NAVY = 'fill="oklch(37.8% 0.09 -105)"';
+    const cards = () =>
+      app.inject({
+        method: 'GET',
+        url: `${exportUrl('preview')}?format=png&layout=cards&page=1`,
+      });
+    const before = [(await readPreview()).body, (await cards()).body];
+
+    await db
+      .update(church)
+      .set({ accentColor: ACCENT })
+      .where(eq(church.id, EXPORT_CHURCH_A));
+    const after = [(await readPreview()).body, (await cards()).body];
+
+    for (const svg of before) {
+      expect(svg).toContain(APP_NAVY);
+      expect(svg).not.toContain(ACCENT);
+    }
+    for (const svg of after) {
+      expect(svg).toContain(`fill="${ACCENT}"`);
+      expect(svg).not.toContain(APP_NAVY);
+    }
   });
 
   it('refuses a page or format it cannot preview', async () => {

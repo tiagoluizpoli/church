@@ -132,6 +132,7 @@ export class TypstCliRenderer implements TypstRenderer {
           input.ppi ?? DEFAULT_PPI,
           input.creationTimestamp.getTime(),
           input.logoKey ?? null,
+          input.inputs ?? {},
           input.payload,
         ]),
       )
@@ -181,6 +182,10 @@ export class TypstCliRenderer implements TypstRenderer {
         input.format,
         ...(await this.payloadInput({ root, input })),
         ...(await this.logoInput({ root, input })),
+        ...Object.entries(input.inputs ?? {}).flatMap(([name, value]) => [
+          '--input',
+          `${name}=${value}`,
+        ]),
       ];
       if (input.format !== 'pdf') args.push('--pages', String(input.page ?? 1));
       if (input.format === 'png') {

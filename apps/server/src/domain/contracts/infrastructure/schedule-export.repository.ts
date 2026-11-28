@@ -34,6 +34,8 @@ export interface ScheduleExportFacts {
   cycleEndDate: CalendarDay;
   timeZone: string;
   logoKey: string | null;
+  /** `#rrggbb`, or null for the app's own primary. */
+  accentColor: string | null;
   /** Some Participation of the Schedule was published. */
   published: boolean;
   /** Latest change of its Events and Participations. */

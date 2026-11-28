@@ -20,6 +20,8 @@ export interface TypstRenderInput {
   creationTimestamp: Date;
   /** Church logo object key; the template reads the file `sys.inputs.logo` names. */
   logoKey?: string;
+  /** Short `--input` strings the template reads from `sys.inputs`, such as a colour. */
+  inputs?: Record<string, string>;
 }
 
 export type TypstPageCountInput = Omit<

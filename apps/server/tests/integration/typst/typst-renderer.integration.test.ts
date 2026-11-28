@@ -21,6 +21,7 @@ interface RendererInput {
   binary?: string;
   timeoutMs?: number;
   cacheBytes?: number;
+  concurrency?: number;
 }
 
 function renderer(input: RendererInput = {}) {
@@ -35,7 +36,7 @@ function renderer(input: RendererInput = {}) {
         templatesDir: TEMPLATES_DIR,
         timeoutMs: input.timeoutMs ?? 10_000,
         cacheBytes: input.cacheBytes ?? 100 * 1024 * 1024,
-        concurrency: 2,
+        concurrency: input.concurrency ?? 2,
       },
     }),
   };
@@ -65,6 +66,36 @@ function countingBinary(): { binary: string; runs: () => number } {
   return {
     binary,
     runs: () => readFileSync(log, 'utf8').split('\n').filter(Boolean).length,
+  };
+}
+
+/** A Typst wrapper that logs when each process starts and ends. */
+function timingBinary(): { binary: string; maxRunning: () => number } {
+  const dir = mkdtempSync(join(tmpdir(), 'typst-timing-'));
+  const binary = join(dir, 'typst');
+  const log = join(dir, 'events');
+  writeFileSync(log, '');
+  writeFileSync(
+    binary,
+    `#!/bin/sh\necho "$(date +%s%N) 1" >> '${log}'\n'${TYPST_BINARY}' "$@"\ncode=$?\necho "$(date +%s%N) -1" >> '${log}'\nexit $code\n`,
+    { mode: 0o755 },
+  );
+  return {
+    binary,
+    maxRunning: () => {
+      let running = 0;
+      let max = 0;
+      const events = readFileSync(log, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => line.split(' ').map(Number) as [number, number])
+        .sort(([a, da], [b, db]) => a - b || da - db);
+      for (const [, delta] of events) {
+        running += delta;
+        max = Math.max(max, running);
+      }
+      return max;
+    },
   };
 }
 
@@ -256,6 +287,32 @@ describe('Typst CLI renderer', () => {
     expect(second).toEqual(first);
     expect(third).toEqual(first);
     expect(counting.runs()).toBe(2);
+  });
+
+  it('never runs more CLI processes than its concurrency, however renders arrive', async () => {
+    const CONCURRENCY = 2;
+    const RENDERS = 12;
+    const timing = timingBinary();
+    const { renderer: typst } = renderer({
+      binary: timing.binary,
+      concurrency: CONCURRENCY,
+    });
+    const render = (n: number) =>
+      typst.render({
+        template: 'fixture',
+        format: 'pdf',
+        payload: { ...payload, title: `Render ${n}` },
+        creationTimestamp,
+      });
+
+    // Each finished render immediately starts another, racing the queued ones.
+    await Promise.all(
+      Array.from({ length: RENDERS }, (_, n) =>
+        render(n).then(() => render(RENDERS + n)),
+      ),
+    );
+
+    expect(timing.maxRunning()).toBe(CONCURRENCY);
   });
 
   it('evicts the least recently used file past the cache size', async () => {

@@ -77,10 +77,12 @@ export class TypstCliRenderer implements TypstRenderer {
     if (pending) return pending;
 
     const render = (async () => {
-      if (this.running >= this.concurrency) {
+      if (this.running < this.concurrency) {
+        this.running += 1;
+      } else {
+        // A finishing render hands its slot straight to the first waiter.
         await new Promise<void>((resolve) => this.waiting.push(resolve));
       }
-      this.running += 1;
       try {
         const file = await this.compile(input);
         if (file.byteLength <= this.cacheBytes) {
@@ -94,8 +96,9 @@ export class TypstCliRenderer implements TypstRenderer {
         }
         return file;
       } finally {
-        this.running -= 1;
-        this.waiting.shift()?.();
+        const next = this.waiting.shift();
+        if (next) next();
+        else this.running -= 1;
         this.inFlight.delete(key);
       }
     })();

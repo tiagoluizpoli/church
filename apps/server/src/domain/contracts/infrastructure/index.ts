@@ -34,6 +34,7 @@ export * from './redemption.repository';
 export * from './redemption-identity-gateway';
 export * from './role.repository';
 export * from './runtime-configuration.repository';
+export * from './schedule-export.repository';
 export * from './scheduling-scope.repository';
 export * from './sector.repository';
 export * from './security-log.repository';

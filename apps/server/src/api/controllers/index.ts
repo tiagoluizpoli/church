@@ -12,6 +12,7 @@ export { PeopleController } from './people-controller';
 export { PrepareController } from './prepare-controller';
 export { PublicChurchProfileController } from './public-church-profile-controller';
 export { RedemptionController } from './redemption-controller';
+export { ScheduleExportController } from './schedule-export-controller';
 export { SectorController } from './sector-controller';
 export { SwapRequestController } from './swap-request-controller';
 export { SwapRequestListController } from './swap-request-list-controller';

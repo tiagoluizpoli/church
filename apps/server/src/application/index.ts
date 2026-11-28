@@ -25,6 +25,7 @@ export { DbPublicEventManager } from './db-public-event-manager';
 export { DbRedemptionManager } from './db-redemption-manager';
 export { DbScheduleBuilderReader } from './db-schedule-builder-reader';
 export { DbScheduleChangeReader } from './db-schedule-change-reader';
+export { DbScheduleExportReader } from './db-schedule-export-reader';
 export { DbSchedulePublisher } from './db-schedule-publisher';
 export { DbScheduleReadModel } from './db-schedule-read-model';
 export { DbSectorManager } from './db-sector-manager';

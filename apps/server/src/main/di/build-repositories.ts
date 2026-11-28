@@ -23,6 +23,7 @@ import {
   DrizzlePublicEventRepository,
   DrizzleRedemptionRepository,
   DrizzleRoleRepository,
+  DrizzleScheduleExportRepository,
   DrizzleSectorRepository,
   DrizzleSecurityLogRepository,
   DrizzleSetupProgressRepository,
@@ -120,6 +121,9 @@ export function buildRepositories({
     overrides.roleRepository ?? new DrizzleRoleRepository({ db: database });
   const sectorRepository =
     overrides.sectorRepository ?? new DrizzleSectorRepository({ db: database });
+  const scheduleExportRepository =
+    overrides.scheduleExportRepository ??
+    new DrizzleScheduleExportRepository({ db: database });
   const eventTimeBlockRepository =
     overrides.eventTimeBlockRepository ??
     new DrizzleEventTimeBlockRepository({ db: database });
@@ -173,6 +177,7 @@ export function buildRepositories({
     outboxRepository,
     roleRepository,
     sectorRepository,
+    scheduleExportRepository,
     eventTimeBlockRepository,
     notificationRepository,
     invitationListRepository,

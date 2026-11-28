@@ -14,6 +14,7 @@ import {
   PrepareController,
   PublicChurchProfileController,
   RedemptionController,
+  ScheduleExportController,
   SectorController,
   SwapRequestController,
   SwapRequestListController,
@@ -45,6 +46,7 @@ export function buildControllers({
     scheduleBuilderReader,
     assignmentProposalManager,
     scheduleReadModel,
+    scheduleExportReader,
     schedulePublisher,
     availabilityCheckManager,
     activeChurchSelectionManager,
@@ -122,6 +124,11 @@ export function buildControllers({
       activeChurchResolver,
       authorityGuard,
       config,
+    }),
+    new ScheduleExportController({
+      scheduleExportReader,
+      activeChurchResolver,
+      authorityGuard,
     }),
     new CallerCapabilitiesController({
       activeChurchResolver,

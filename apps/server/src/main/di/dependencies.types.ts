@@ -27,6 +27,7 @@ import type {
   IPublicEventManager,
   IRedemptionManager,
   IScheduleBuilderReader,
+  IScheduleExportReader,
   ISchedulePublisher,
   IScheduleReadModel,
   ISectorManager,
@@ -69,6 +70,7 @@ import type {
   RedemptionIdentityGateway,
   RedemptionRepository,
   RoleRepository,
+  ScheduleExportRepository,
   SchedulingScopeRepository,
   SectorRepository,
   SecurityLogRepository,
@@ -118,6 +120,7 @@ export interface CompositionRootDependencies {
   shiftRepository: ShiftRepository;
   roleRepository: RoleRepository;
   sectorRepository: SectorRepository;
+  scheduleExportRepository: ScheduleExportRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
   notificationRepository: NotificationRepository;
   invitationListRepository: InvitationListRepository;
@@ -169,6 +172,7 @@ export interface CompositionRootDependencies {
   scheduleBuilderReader: IScheduleBuilderReader;
   assignmentProposalManager: IAssignmentProposalManager;
   scheduleReadModel: IScheduleReadModel;
+  scheduleExportReader: IScheduleExportReader;
   schedulePublisher: ISchedulePublisher;
   activeChurchSelectionManager: IActiveChurchSelectionManager;
   notificationManager: INotificationManager;

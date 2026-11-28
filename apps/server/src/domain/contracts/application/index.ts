@@ -35,6 +35,7 @@ export * from './public-event-manager';
 export * from './redemption-manager';
 export * from './schedule-builder-reader';
 export * from './schedule-change-reader';
+export * from './schedule-export-reader';
 export * from './schedule-publisher';
 export * from './schedule-read-model';
 export * from './scheduling-notification-facts';

@@ -1,5 +1,13 @@
-import { fromDate, instantSchema, timeOfDaySchema } from '@church/time';
+import {
+  fromDate,
+  instantSchema,
+  parseInstant,
+  timeOfDaySchema,
+} from '@church/time';
 import { z } from 'zod';
+import { EventTemplateId } from '../../domain/branded-ids';
+import type { TemplatePrecedenceView } from '../../domain/contracts/application/event-template-manager';
+import type { GeneratedPlanningCounts } from '../../domain/contracts/application/planning-event-manager';
 import type { EventTemplate } from '../../domain/entities/event-template';
 import { errorResponseSchema } from './error-response.dto';
 import { idSchema } from './id.dto';
@@ -215,8 +223,46 @@ function toEventTemplateResponse(template: EventTemplate) {
   };
 }
 
+type PrecedencesBody = z.infer<
+  typeof createEventTemplateBodySchema
+>['precedences'];
+
 export const eventTemplateMapper = {
   toResponse: toEventTemplateResponse,
+  /** The answers a save sends back for the pairs a 409 named. */
+  precedencesFromBody(precedences: PrecedencesBody) {
+    return precedences?.map((precedence) => ({
+      otherTemplateId: EventTemplateId.from(precedence.otherTemplateId),
+      answer: precedence.answer,
+    }));
+  },
+  precedenceListToResponse(precedences: TemplatePrecedenceView[]) {
+    return { precedences };
+  },
+  /** The leftover blocks without their day, source or empty label. */
+  generatedCountsToResponse({
+    leftoverEventTimeBlocks,
+    ...counts
+  }: GeneratedPlanningCounts) {
+    return {
+      ...counts,
+      leftoverEventTimeBlocks: leftoverEventTimeBlocks.map(
+        ({
+          eventDate: _day,
+          sourceTemplateTimeBlockId: _source,
+          label,
+          startTime,
+          endTime,
+          ...block
+        }) => ({
+          ...block,
+          label: label ?? null,
+          startTime: parseInstant({ value: startTime }),
+          endTime: parseInstant({ value: endTime }),
+        }),
+      ),
+    };
+  },
   listToResponse(templates: EventTemplate[]) {
     return {
       templates: templates.map(toEventTemplateResponse),

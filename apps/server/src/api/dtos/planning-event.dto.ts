@@ -1,5 +1,6 @@
 import { instantSchema } from '@church/time';
 import { z } from 'zod';
+import { EventTimeBlockId } from '../../domain/branded-ids';
 import type {
   PlanningEditPreview,
   PlanningEventGraph,
@@ -7,6 +8,7 @@ import type {
   PlanningMoveResult,
 } from '../../domain/contracts/application/planning-event-manager';
 import type { MoveClash } from '../../domain/services/planning/event-move.types';
+import { dateFromInstantString } from '../utils/request-time';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
   eventTimeBlockMapper,
@@ -188,6 +190,90 @@ export const editPlanningEventBodySchema = z.object({
 });
 
 export type EditPlanningEventBody = z.infer<typeof editPlanningEventBodySchema>;
+
+type CreatePlanningEventBody = z.infer<typeof createPlanningEventBodySchema>;
+type UpdatePlanningEventBody = z.infer<typeof updatePlanningEventBodySchema>;
+type UpdatePlanningEventDetailsBody = z.infer<
+  typeof updatePlanningEventDetailsBodySchema
+>;
+
+/** The one rule for a submitted block id: absent means a new block. */
+function eventTimeBlockIdFromBody(id: string | undefined) {
+  return id === undefined ? undefined : EventTimeBlockId.from(id);
+}
+
+/** A padded location is trimmed; a blank one is no location. */
+function locationFromBody(location: string | undefined) {
+  const trimmed = location?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+type PlanningEventTimeBlockBody =
+  CreatePlanningEventBody['eventTimeBlocks'][number];
+
+function eventTimeBlockFromBody(block: PlanningEventTimeBlockBody) {
+  return {
+    label: block.label,
+    startTime: dateFromInstantString({ value: block.startTime }),
+    endTime: dateFromInstantString({ value: block.endTime }),
+    isPublic: block.isPublic,
+    place: block.place,
+    placeAddressId: block.placeAddressId,
+  };
+}
+
+/** Planning Event bodies as the manager reads them. */
+export const planningEventBodyMapper = {
+  create(body: CreatePlanningEventBody) {
+    return {
+      title: body.title,
+      location: locationFromBody(body.location),
+      start: dateFromInstantString({ value: body.start }),
+      end: dateFromInstantString({ value: body.end }),
+      eventTimeBlocks: body.eventTimeBlocks.map(eventTimeBlockFromBody),
+    };
+  },
+
+  update(body: UpdatePlanningEventBody) {
+    return {
+      title: body.title,
+      location: locationFromBody(body.location),
+      start: dateFromInstantString({ value: body.start }),
+      end: dateFromInstantString({ value: body.end }),
+      eventTimeBlocks: body.eventTimeBlocks.map((block) => ({
+        id: eventTimeBlockIdFromBody(block.id),
+        ...eventTimeBlockFromBody(block),
+      })),
+    };
+  },
+
+  details(body: UpdatePlanningEventDetailsBody) {
+    return {
+      title: body.title,
+      location: locationFromBody(body.location),
+      eventTimeBlocks: body.eventTimeBlocks?.map((block) => ({
+        ...block,
+        id: EventTimeBlockId.from(block.id),
+      })),
+    };
+  },
+
+  /** The edit body: the same for preview and apply. */
+  edit(body: EditPlanningEventBody) {
+    return {
+      start: dateFromInstantString({ value: body.start }),
+      end: dateFromInstantString({ value: body.end }),
+      eventTimeBlocks: body.eventTimeBlocks.map(
+        ({ id, label, startTime, endTime }) => ({
+          id: eventTimeBlockIdFromBody(id),
+          label,
+          startTime: dateFromInstantString({ value: startTime }),
+          endTime: dateFromInstantString({ value: endTime }),
+        }),
+      ),
+    };
+  },
+};
 
 /** Proposed bounds, a row per block and typed clash rows; nothing was written. */
 export const eventEditPreviewResponseSchema = z.object({

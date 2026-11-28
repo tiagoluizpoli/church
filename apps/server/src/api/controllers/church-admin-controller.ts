@@ -1,4 +1,3 @@
-import { parseInstant } from '@church/time';
 import { z } from 'zod';
 import {
   CycleId,
@@ -73,11 +72,15 @@ import {
   eventMovePreviewResponseSchema,
   eventMoveResponseSchema,
   movePlanningEventBodySchema,
+  planningEventBodyMapper,
   setPlanningHiddenBodySchema,
   updatePlanningEventBodySchema,
   updatePlanningEventDetailsBodySchema,
 } from '../dtos/planning-event.dto';
-import { setupProgressResponseSchema } from '../dtos/setup-progress.dto';
+import {
+  setupProgressMapper,
+  setupProgressResponseSchema,
+} from '../dtos/setup-progress.dto';
 import { setDefaultDirectionBodySchema } from '../dtos/usual-setup.dto';
 import { validationErrorResponseSchema } from '../dtos/validation-error.dto';
 import { assertCancelConfirmation } from '../utils/cancel-confirmation';
@@ -86,27 +89,7 @@ import {
   dateFromInstantString,
   optionalDateFromInstantString,
 } from '../utils/request-time';
-import type {
-  ChurchAdminControllerDependencies,
-  EditInputInput,
-  PrecedenceBody,
-} from './church-admin-controller.types';
-
-/** The edit body as the manager reads it: the same for preview and apply. */
-function editInput({ body }: EditInputInput) {
-  return {
-    start: dateFromInstantString({ value: body.start }),
-    end: dateFromInstantString({ value: body.end }),
-    eventTimeBlocks: body.eventTimeBlocks.map(
-      ({ id, label, startTime, endTime }) => ({
-        id: id === undefined ? undefined : EventTimeBlockId.from(id),
-        label,
-        startTime: dateFromInstantString({ value: startTime }),
-        endTime: dateFromInstantString({ value: endTime }),
-      }),
-    ),
-  };
-}
+import type { ChurchAdminControllerDependencies } from './church-admin-controller.types';
 
 const cycleEventParamsSchema = z.object({
   cycleId: idSchema,
@@ -123,13 +106,6 @@ const cycleEventTimeBlockParamsSchema = z.object({
   eventTimeBlockId: idSchema,
 });
 const ministryParamsSchema = z.object({ ministryId: idSchema });
-
-function precedenceAnswers(precedences: PrecedenceBody) {
-  return precedences?.map((precedence) => ({
-    otherTemplateId: EventTemplateId.from(precedence.otherTemplateId),
-    answer: precedence.answer,
-  }));
-}
 
 export class ChurchAdminController implements FastifyController {
   readonly prefix = '/admin';
@@ -196,7 +172,9 @@ export class ChurchAdminController implements FastifyController {
         const progress = await this.setupProgressManager.getSetupProgress({
           churchId,
         });
-        return reply.send({ churchId, ...progress });
+        return reply.send(
+          setupProgressMapper.toResponse({ churchId, progress }),
+        );
       },
     );
 
@@ -436,7 +414,9 @@ export class ChurchAdminController implements FastifyController {
           name: body.name,
           recurrence: body.recurrence,
           blocks: body.blocks,
-          precedences: precedenceAnswers(body.precedences),
+          precedences: eventTemplateMapper.precedencesFromBody(
+            body.precedences,
+          ),
         });
         return reply.status(201).send(eventTemplateMapper.toResponse(template));
       },
@@ -541,7 +521,9 @@ export class ChurchAdminController implements FastifyController {
           name: body.name,
           recurrence: body.recurrence,
           blocks: body.blocks,
-          precedences: precedenceAnswers(body.precedences),
+          precedences: eventTemplateMapper.precedencesFromBody(
+            body.precedences,
+          ),
         });
         return reply.send(eventTemplateMapper.toResponse(template));
       },
@@ -569,7 +551,9 @@ export class ChurchAdminController implements FastifyController {
           churchId: request.churchId,
           templateId: EventTemplateId.from(templateId),
         });
-        return reply.send({ precedences });
+        return reply.send(
+          eventTemplateMapper.precedenceListToResponse(precedences),
+        );
       },
     );
 
@@ -651,25 +635,9 @@ export class ChurchAdminController implements FastifyController {
           cycleId: CycleId.from(cycleId),
           templateIds: body.templateIds.map(EventTemplateId.from),
         });
-        const { leftoverEventTimeBlocks, ...counts } = result;
-        return reply.status(201).send({
-          ...counts,
-          leftoverEventTimeBlocks: leftoverEventTimeBlocks.map(
-            ({
-              eventDate: _day,
-              sourceTemplateTimeBlockId: _source,
-              label,
-              startTime,
-              endTime,
-              ...block
-            }) => ({
-              ...block,
-              label: label ?? null,
-              startTime: parseInstant({ value: startTime }),
-              endTime: parseInstant({ value: endTime }),
-            }),
-          ),
-        });
+        return reply
+          .status(201)
+          .send(eventTemplateMapper.generatedCountsToResponse(result));
       },
     );
 
@@ -693,24 +661,11 @@ export class ChurchAdminController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params;
-        const body = request.body;
-        const location = body.location?.trim();
         const graph = await this.planningEventManager.createEvent({
           churchId: request.churchId,
           actingUserId: request.userId,
           cycleId: CycleId.from(cycleId),
-          title: body.title,
-          location: location ? location : undefined,
-          start: dateFromInstantString({ value: body.start }),
-          end: dateFromInstantString({ value: body.end }),
-          eventTimeBlocks: body.eventTimeBlocks.map((block) => ({
-            label: block.label,
-            startTime: dateFromInstantString({ value: block.startTime }),
-            endTime: dateFromInstantString({ value: block.endTime }),
-            isPublic: block.isPublic,
-            place: block.place,
-            placeAddressId: block.placeAddressId,
-          })),
+          ...planningEventBodyMapper.create(request.body),
         });
         return reply.status(201).send(eventGraphMapper.toResponse(graph));
       },
@@ -736,25 +691,11 @@ export class ChurchAdminController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId, eventId } = request.params;
-        const body = request.body;
-        const location = body.location?.trim();
         const graph = await this.planningEventManager.updateEvent({
           churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
-          title: body.title,
-          location: location ? location : undefined,
-          start: dateFromInstantString({ value: body.start }),
-          end: dateFromInstantString({ value: body.end }),
-          eventTimeBlocks: body.eventTimeBlocks.map((block) => ({
-            id: block.id ? EventTimeBlockId.from(block.id) : undefined,
-            label: block.label,
-            startTime: dateFromInstantString({ value: block.startTime }),
-            endTime: dateFromInstantString({ value: block.endTime }),
-            isPublic: block.isPublic,
-            place: block.place,
-            placeAddressId: block.placeAddressId,
-          })),
+          ...planningEventBodyMapper.update(request.body),
         });
         return reply.send(eventGraphMapper.toResponse(graph));
       },
@@ -780,18 +721,11 @@ export class ChurchAdminController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId, eventId } = request.params;
-        const body = request.body;
-        const location = body.location?.trim();
         const details = {
           churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
-          title: body.title,
-          location: location ? location : undefined,
-          eventTimeBlocks: body.eventTimeBlocks?.map((block) => ({
-            ...block,
-            id: EventTimeBlockId.from(block.id),
-          })),
+          ...planningEventBodyMapper.details(request.body),
         };
         const graph =
           await this.planningEventManager.updateEventDetails(details);
@@ -1046,12 +980,11 @@ export class ChurchAdminController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId, eventId } = request.params;
-        const body = request.body;
         const preview = await this.planningEventManager.previewEdit({
           churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
-          ...editInput({ body }),
+          ...planningEventBodyMapper.edit(request.body),
         });
         return reply.send(eventEditPreviewMapper.toResponse(preview));
       },
@@ -1078,12 +1011,11 @@ export class ChurchAdminController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId, eventId } = request.params;
-        const body = request.body;
         const result = await this.planningEventManager.confirmEdit({
           churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
-          ...editInput({ body }),
+          ...planningEventBodyMapper.edit(request.body),
           actingUserId: request.userId,
         });
         return reply.send(eventMoveMapper.toResponse(result));

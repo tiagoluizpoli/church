@@ -740,11 +740,11 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/file', () => {
   });
 
   it('makes a card taller than 1600 px an image of its own', async () => {
-    const [first, tall, last] = DECEMBER_SUNDAYS;
     const cycleId = fixture.decemberId;
-    await seedCardServices({ fixture, cycleId, days: [first], shifts: 2 });
-    await seedCardServices({ fixture, cycleId, days: [tall], shifts: 16 });
-    await seedCardServices({ fixture, cycleId, days: [last], shifts: 2 });
+    const days = (day: string) => ({ fixture, cycleId, days: [day] });
+    await seedCardServices({ ...days('2026-12-06'), shifts: 2 });
+    await seedCardServices({ ...days('2026-12-13'), shifts: 16 });
+    await seedCardServices({ ...days('2026-12-20'), shifts: 2 });
 
     const images = await readAllCards({ cycleId });
 

@@ -1,5 +1,15 @@
-import { NotFoundError } from '@church/core';
-import { addMilliseconds, fromDate, today, toTimeOfDay } from '@church/time';
+import {
+  addMilliseconds,
+  compareCalendarDays,
+  formatMonthShort,
+  formatMonthYear,
+  fromDate,
+  now,
+  parseCalendarDay,
+  toDate,
+  today,
+  toTimeOfDay,
+} from '@church/time';
 import type { IScheduleChangeReader } from '../domain/contracts/application/schedule-change-reader';
 import type {
   BuildScheduleExportEventsInput,
@@ -8,9 +18,13 @@ import type {
   EventTemplateIdsInput,
   GroupScheduleExportEventsInput,
   IScheduleExportReader,
+  ListScheduleExportCyclesInput,
+  MonthNamesInput,
+  NormalizeSearchInput,
   ReadScheduleExportInput,
   RenderScheduleExportFileInput,
   ScheduleExport,
+  ScheduleExportCycleOption,
   ScheduleExportEvent,
   ScheduleExportGroup,
   ScheduleExportSector,
@@ -22,6 +36,11 @@ import type { EventGroupRepository } from '../domain/contracts/infrastructure/ev
 import type { ScheduleExportRepository } from '../domain/contracts/infrastructure/schedule-export.repository';
 import type { TypstRenderer } from '../domain/contracts/infrastructure/typst-renderer';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
+import {
+  ExportRangeOutsideCycleError,
+  ExportScheduleNotFoundError,
+  InvalidDateRangeError,
+} from '../domain/errors';
 
 /** The Grid Typst template: the A4 landscape PDF table. */
 const GRID_TEMPLATE = 'schedule-grid';
@@ -195,6 +214,25 @@ function singleValue({ values }: SingleValueInput): string | null {
   return distinct.size === 1 ? ([...distinct][0] as string) : null;
 }
 
+/** Lowercase without accents, so search ignores both. */
+function normalizeSearch({ value }: NormalizeSearchInput): string {
+  return value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLocaleLowerCase();
+}
+
+/** The locale's 12 month names, long and short ("fevereiro fev"), January first. */
+function monthNames({ locale }: MonthNamesInput): string[] {
+  return Array.from({ length: 12 }, (_, index) => {
+    const month = String(index + 1).padStart(2, '0');
+    const day = parseCalendarDay({ value: `2000-${month}-01` });
+    const long = formatMonthYear({ day, locale }).replace(/ \d+$/, '');
+    const short = formatMonthShort({ day, locale });
+    return normalizeSearch({ value: `${long} ${short}` });
+  });
+}
+
 /** Names of different Volunteers that read the same ignoring case, accents and spaces. */
 function duplicateNames({ rows }: DuplicateNamesInput): string[][] {
   const namesByKey = new Map<string, Map<string, string>>();
@@ -252,13 +290,46 @@ export class DbScheduleExportReader implements IScheduleExportReader {
     });
   }
 
+  listCycles({
+    churchId,
+    ministryId,
+    q,
+    locale,
+  }: ListScheduleExportCyclesInput): Promise<ScheduleExportCycleOption[]> {
+    return this.scheduleExportRepository.listCycles({
+      churchId,
+      ministryId,
+      words: normalizeSearch({ value: q ?? '' })
+        .split(/\s+/)
+        .filter(Boolean),
+      monthNames: monthNames({ locale }),
+      now: toDate({ instant: now() }),
+    });
+  }
+
   async read(input: ReadScheduleExportInput): Promise<ScheduleExport> {
+    const { from, to } = input;
+    if (from && to && compareCalendarDays({ left: from, right: to }) > 0) {
+      throw new InvalidDateRangeError();
+    }
     return this.unitOfWork.run(async (tx) => {
       const scope = { ...input, tx };
       const facts = await this.scheduleExportRepository.findSchedule(scope);
-      if (!facts) throw new NotFoundError('Schedule');
+      if (!facts) throw new ExportScheduleNotFoundError();
+      const { cycleStartDate: startDate, cycleEndDate: endDate } = facts;
+      const range = { from: from ?? startDate, to: to ?? endDate };
+      if (
+        compareCalendarDays({ left: range.from, right: startDate }) < 0 ||
+        compareCalendarDays({ left: range.to, right: endDate }) > 0
+      ) {
+        throw new ExportRangeOutsideCycleError({ startDate, endDate });
+      }
       // One transaction connection: its queries run one after another.
-      const rows = await this.scheduleExportRepository.listRows(scope);
+      const rows = await this.scheduleExportRepository.listRows({
+        ...scope,
+        ...range,
+        timeZone: facts.timeZone,
+      });
       const sectorIds =
         await this.scheduleExportRepository.listSectorIds(scope);
       const changeCount =
@@ -293,6 +364,7 @@ export class DbScheduleExportReader implements IScheduleExportReader {
             startDate: facts.cycleStartDate,
             endDate: facts.cycleEndDate,
           },
+          range,
           isDraft: !facts.published,
           hasUnsentChanges: changeCount > 0,
           singleSector,

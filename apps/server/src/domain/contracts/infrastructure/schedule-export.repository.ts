@@ -9,6 +9,23 @@ export interface ScheduleExportScopeInput {
   tx?: TransactionContext;
 }
 
+/** The rows of the Events whose Church-local start day is in `from`..`to`. */
+export interface ScheduleExportRowsInput extends ScheduleExportScopeInput {
+  from: CalendarDay;
+  to: CalendarDay;
+  timeZone: string;
+}
+
+export interface ScheduleExportCyclesInput {
+  churchId: ChurchId;
+  ministryId: MinistryId;
+  /** Normalized words (lowercase, no accents); every one must match. */
+  words: string[];
+  /** The 12 month names to search, January first, normalized like the words. */
+  monthNames: string[];
+  now: Date;
+}
+
 /** The Schedule a Ministry has in a Cycle, with what its export header shows. */
 export interface ScheduleExportFacts {
   ministryName: string;
@@ -51,6 +68,14 @@ export interface ScheduleExportRow {
   volunteerName: string | null;
 }
 
+export interface ScheduleExportCycleRow {
+  id: string;
+  name: string;
+  startDate: CalendarDay;
+  endDate: CalendarDay;
+  isCurrent: boolean;
+}
+
 /** The read-only export read of one Ministry's Schedule in one Cycle (#1243). */
 export interface ScheduleExportRepository {
   /** Null when the Ministry has no Schedule in the Cycle. */
@@ -61,7 +86,15 @@ export interface ScheduleExportRepository {
    * In a total order: Event start, block start, Shift start, then Sector,
    * Role and Volunteer name ignoring case, ids breaking ties.
    */
-  listRows(input: ScheduleExportScopeInput): Promise<ScheduleExportRow[]>;
+  listRows(input: ScheduleExportRowsInput): Promise<ScheduleExportRow[]>;
+  /**
+   * Cycles with an Event the Ministry takes part in, newest start first,
+   * each word found in the name, a date (DD/MM/YYYY or ISO) or a month
+   * covered (its name and year).
+   */
+  listCycles(
+    input: ScheduleExportCyclesInput,
+  ): Promise<ScheduleExportCycleRow[]>;
   /** Every Sector of the Ministry, alphabetical ignoring case. */
   listSectorIds(input: ScheduleExportScopeInput): Promise<string[]>;
 }

@@ -220,6 +220,15 @@ export const ERROR_TABLE: Record<ErrorCode, ErrorEntry> = {
   },
   LOGO_KEY_INVALID: { status: 422, message: m.error_logo_key_invalid },
   VALIDATION_ERROR: { status: 422, message: m.error_validation_error },
+  // Takes `{ start, end }`, so domainErrorMessage renders it; the table entry only gives the status.
+  EXPORT_RANGE_OUTSIDE_CYCLE: {
+    status: 422,
+    message: m.error_export_range_outside_cycle_generic,
+  },
+  EXPORT_SCHEDULE_NOT_FOUND: {
+    status: 404,
+    message: m.error_export_schedule_not_found,
+  },
 };
 
 export function isErrorCode(code: string): code is ErrorCode {

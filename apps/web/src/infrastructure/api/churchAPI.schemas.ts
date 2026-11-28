@@ -7177,6 +7177,47 @@ export type GetParticipationCompletion404 = {
   message: string;
 };
 
+export type ListScheduleExportCyclesParams = {
+  /** @maxLength 100 */
+  q?: string;
+};
+
+export type ListScheduleExportCycles200CyclesItem = {
+  id: string;
+  name: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  startDate: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  endDate: string;
+  isCurrent: boolean;
+};
+
+export type ListScheduleExportCycles200 = {
+  cycles: ListScheduleExportCycles200CyclesItem[];
+};
+
+export type ListScheduleExportCycles401 = {
+  error: string;
+  message: string;
+};
+
+export type ListScheduleExportCycles403 = {
+  error: string;
+  message: string;
+};
+
+export type ListScheduleExportCycles404 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleExportDataParams = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  from?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  to?: string;
+};
+
 export type GetScheduleExportData200Ministry = {
   name: string;
 };
@@ -7187,6 +7228,13 @@ export type GetScheduleExportData200Cycle = {
   startDate: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   endDate: string;
+};
+
+export type GetScheduleExportData200Range = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  from: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  to: string;
 };
 
 export type GetScheduleExportData200PartsItemGroupsItemKind = typeof GetScheduleExportData200PartsItemGroupsItemKind[keyof typeof GetScheduleExportData200PartsItemGroupsItemKind];
@@ -7264,6 +7312,7 @@ export type GetScheduleExportData200PartsItem = {
 export type GetScheduleExportData200 = {
   ministry: GetScheduleExportData200Ministry;
   cycle: GetScheduleExportData200Cycle;
+  range: GetScheduleExportData200Range;
   isDraft: boolean;
   hasUnsentChanges: boolean;
   /** @nullable */
@@ -7272,6 +7321,11 @@ export type GetScheduleExportData200 = {
   singleRole: string | null;
   duplicateNames: string[][];
   parts: GetScheduleExportData200PartsItem[];
+};
+
+export type GetScheduleExportData400 = {
+  error: string;
+  message: string;
 };
 
 export type GetScheduleExportData401 = {
@@ -7289,7 +7343,16 @@ export type GetScheduleExportData404 = {
   message: string;
 };
 
+export type GetScheduleExportData422 = {
+  error: string;
+  message: string;
+};
+
 export type GetScheduleExportFileParams = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  from?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  to?: string;
   format: GetScheduleExportFileFormat;
 };
 
@@ -7299,6 +7362,11 @@ export type GetScheduleExportFileFormat = typeof GetScheduleExportFileFormat[key
 export const GetScheduleExportFileFormat = {
   pdf: 'pdf',
 } as const;
+
+export type GetScheduleExportFile400 = {
+  error: string;
+  message: string;
+};
 
 export type GetScheduleExportFile401 = {
   error: string;
@@ -7311,6 +7379,11 @@ export type GetScheduleExportFile403 = {
 };
 
 export type GetScheduleExportFile404 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleExportFile422 = {
   error: string;
   message: string;
 };

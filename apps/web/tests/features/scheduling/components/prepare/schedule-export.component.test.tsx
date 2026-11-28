@@ -38,6 +38,7 @@ vi.mock('@tanstack/react-router', () => ({ Link: () => null }));
 const EXPORT_DATA: GetScheduleExportData200 = {
   ministry: { name: 'Worship' },
   cycle: { name: 'Março 2027', startDate: '2027-01-01', endDate: '2027-01-31' },
+  range: { from: '2027-01-01', to: '2027-01-31' },
   isDraft: false,
   hasUnsentChanges: false,
   singleSector: null,

@@ -15,17 +15,28 @@ import {
   volunteer,
 } from '@church/db';
 import { fromDateColumn } from '@church/time';
-import { and, asc, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, ne, type SQL, sql } from 'drizzle-orm';
 import type {
+  ScheduleExportCycleRow,
+  ScheduleExportCyclesInput,
   ScheduleExportFacts,
   ScheduleExportRepository,
   ScheduleExportRow,
+  ScheduleExportRowsInput,
   ScheduleExportScopeInput,
 } from '../../domain/contracts/infrastructure/schedule-export.repository';
 import type { AnyDrizzleDb } from './drizzle-db.types';
 import type { DrizzleScheduleExportRepositoryInput } from './drizzle-schedule-export.repository.types';
-import { getClient, isValidUuid, withChurchIsolation } from './helpers';
+import {
+  containsPattern,
+  getClient,
+  isValidUuid,
+  withChurchIsolation,
+} from './helpers';
 import { shownEventTimeBlock } from './live-event-time-block';
+
+const ACCENTED = 'áàâãäéèêëíìîïóòôõöúùûüçñ';
+const PLAIN = 'aaaaaeeeeiiiiooooouuuucn';
 
 /**
  * The export read (#1243): its own queries, not the builder's or the
@@ -85,9 +96,61 @@ export class DrizzleScheduleExportRepository
     };
   }
 
-  async listRows(
-    input: ScheduleExportScopeInput,
-  ): Promise<ScheduleExportRow[]> {
+  async listCycles(
+    input: ScheduleExportCyclesInput,
+  ): Promise<ScheduleExportCycleRow[]> {
+    if (!isValidUuid(input.ministryId)) return [];
+    const months = sql.join(
+      input.monthNames.map((name) => sql`${name}`),
+      sql`, `,
+    );
+    // Lowercase, accents dropped, the same way the words were normalized.
+    const haystack = sql`concat_ws(' ',
+      translate(lower(${cycle.name}), ${ACCENTED}, ${PLAIN}),
+      to_char(${cycle.startDate}, 'DD/MM/YYYY YYYY-MM-DD'),
+      to_char(${cycle.endDate}, 'DD/MM/YYYY YYYY-MM-DD'),
+      (select string_agg((array[${months}])[extract(month from covered)::int] || ' ' || to_char(covered, 'YYYY MM/YYYY'), ' ')
+        from generate_series(date_trunc('month', ${cycle.startDate}), ${cycle.endDate}, interval '1 month') covered))`;
+    const matches: SQL[] = input.words.map(
+      (word) => sql`${haystack} like ${containsPattern({ value: word })}`,
+    );
+    const rows = await this.db
+      .select({
+        id: cycle.id,
+        name: cycle.name,
+        startDate: cycle.startDate,
+        endDate: cycle.endDate,
+        isCurrent: sql<boolean>`(${input.now}::timestamptz at time zone ${church.timezone})::date between ${cycle.startDate} and ${cycle.endDate}`,
+      })
+      .from(cycle)
+      .innerJoin(church, eq(church.id, cycle.churchId))
+      .where(
+        and(
+          withChurchIsolation({ table: cycle, churchId: input.churchId }),
+          exists(
+            this.db
+              .select({ id: ministryParticipation.id })
+              .from(ministryParticipation)
+              .innerJoin(event, eq(event.id, ministryParticipation.eventId))
+              .where(
+                and(
+                  eq(event.cycleId, cycle.id),
+                  eq(ministryParticipation.ministryId, input.ministryId),
+                ),
+              ),
+          ),
+          ...matches,
+        ),
+      )
+      .orderBy(desc(cycle.startDate), desc(cycle.id));
+    return rows.map((row) => ({
+      ...row,
+      startDate: fromDateColumn({ date: row.startDate }),
+      endDate: fromDateColumn({ date: row.endDate }),
+    }));
+  }
+
+  async listRows(input: ScheduleExportRowsInput): Promise<ScheduleExportRow[]> {
     const db = getClient({ db: this.db, tx: input.tx });
     return db
       .select({
@@ -155,6 +218,8 @@ export class DrizzleScheduleExportRepository
           }),
           eq(ministryParticipation.ministryId, input.ministryId),
           eq(event.cycleId, input.cycleId),
+          // An Event belongs to the range by its Church-local start day.
+          sql`(${event.start} at time zone ${input.timeZone})::date between ${input.from}::date and ${input.to}::date`,
           shownEventTimeBlock(),
         ),
       )

@@ -33,6 +33,8 @@ export interface ScheduleExportRow {
   eventStart: Date;
   eventEnd: Date;
   eventCancelled: boolean;
+  /** Null for a one-off Event or one whose EventTemplate was deleted. */
+  eventTemplateId: string | null;
   blockId: string;
   blockLabel: string | null;
   blockCancelled: boolean;

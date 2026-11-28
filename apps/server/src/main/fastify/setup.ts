@@ -13,6 +13,7 @@ import {
   jsonSchemaTransform,
   serializerCompiler,
   validatorCompiler,
+  type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 import pino from 'pino';
 import PinoPretty from 'pino-pretty';
@@ -117,7 +118,7 @@ export async function createFastify({
     genReqId: requestId,
     trustProxy: env.TRUST_PROXY_HOPS,
     ...logging,
-  });
+  }).withTypeProvider<ZodTypeProvider>();
 
   // First, so its onRequest hook runs right after genReqId (see request-id.ts).
   await app.register(fastifyOtel.plugin());

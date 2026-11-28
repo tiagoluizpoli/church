@@ -1,4 +1,5 @@
 import { NotFoundError } from '@church/core';
+import { parseInstant } from '@church/time';
 import { z } from 'zod';
 import {
   ChurchId,
@@ -365,7 +366,7 @@ export class ChurchAdminController implements FastifyController {
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
         });
-        return reply.status(204).send();
+        return reply.status(204).send(null);
       },
     );
 
@@ -672,10 +673,14 @@ export class ChurchAdminController implements FastifyController {
               eventDate: _day,
               sourceTemplateTimeBlockId: _source,
               label,
+              startTime,
+              endTime,
               ...block
             }) => ({
               ...block,
               label: label ?? null,
+              startTime: parseInstant({ value: startTime }),
+              endTime: parseInstant({ value: endTime }),
             }),
           ),
         });
@@ -832,7 +837,7 @@ export class ChurchAdminController implements FastifyController {
           cycleId: CycleId.from(cycleId),
           eventId: EventId.from(eventId),
         });
-        return reply.status(204).send();
+        return reply.status(204).send(null);
       },
     );
 
@@ -932,7 +937,7 @@ export class ChurchAdminController implements FastifyController {
           scope: { kind: 'event' },
           hidden,
         });
-        return reply.status(204).send();
+        return reply.status(204).send(null);
       },
     );
 
@@ -976,7 +981,7 @@ export class ChurchAdminController implements FastifyController {
           },
         });
         if (!updated) return;
-        return reply.status(204).send();
+        return reply.status(204).send(null);
       },
     );
 
@@ -1420,7 +1425,7 @@ export class ChurchAdminController implements FastifyController {
           },
         });
         if (!deleted) return;
-        return reply.status(204).send();
+        return reply.status(204).send(null);
       },
     );
 

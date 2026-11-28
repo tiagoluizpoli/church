@@ -59,21 +59,12 @@ import { requestCaller } from '../utils/request-caller';
 import type {
   AssertAssignmentScopeInput,
   AssignControllerDependencies,
-  ReviewedPairBody,
 } from './assign-controller.types';
 
 const shiftParamsSchema = z.object({ shiftId: idSchema });
 const participationParamsSchema = z.object({ participationId: idSchema });
 
 const cycleMinistryQuerySchema = z.object({ ministryId: idSchema });
-
-const toReviewedAddition = ({
-  shiftRequirementId,
-  volunteerId,
-}: ReviewedPairBody) => ({
-  shiftRequirementId: ShiftRequirementId.from({ raw: shiftRequirementId }),
-  volunteerId: VolunteerId.from(volunteerId),
-});
 
 export class AssignController implements FastifyController {
   readonly prefix = '/assign';
@@ -283,8 +274,7 @@ export class AssignController implements FastifyController {
           allowed: decision.allowed,
         });
 
-        const { applicationKey, reviewToken, additions, excludedAdditions } =
-          request.body;
+        const { applicationKey, reviewToken } = request.body;
         const outcome =
           await this.assignmentProposalManager.applyAssignmentProposal({
             churchId: request.churchId,
@@ -293,8 +283,7 @@ export class AssignController implements FastifyController {
             actorId: request.userId,
             applicationKey,
             reviewToken,
-            additions: additions.map(toReviewedAddition),
-            excludedAdditions: excludedAdditions.map(toReviewedAddition),
+            ...assignMapper.reviewedAdditionsFromBody(request.body),
           });
         return reply.send(assignMapper.proposalOutcomeToResponse(outcome));
       },

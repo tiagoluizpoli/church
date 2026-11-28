@@ -14,16 +14,6 @@ export interface RequireRedeemerInput {
   request: FastifyRequest;
 }
 
-/** The restricted preview field set the existing-member route exposes (spec §7.1). */
-export interface InvitationPreviewFields {
-  email: string;
-  churchName: string;
-  ministryName: string;
-  ministryAccessLevel: 'volunteer' | 'leader';
-  roleNames: string[];
-  expiresAt: Date;
-}
-
 export interface RedemptionControllerDependencies {
   redemptionManager: IRedemptionManager;
   volunteerTransferManager: IVolunteerTransferManager;

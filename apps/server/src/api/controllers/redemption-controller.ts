@@ -1,15 +1,10 @@
 import type { AppConfig } from '@church/app-config';
-import { fromDate } from '@church/time';
 import {
   ChurchInvitationId,
   MinistryInvitationId,
 } from '../../domain/branded-ids';
-import type {
-  IRedemptionManager,
-  PublicRedemptionPreview,
-} from '../../domain/contracts/application/redemption-manager';
+import type { IRedemptionManager } from '../../domain/contracts/application/redemption-manager';
 import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
-import type { RedemptionBundleMinistry } from '../../domain/entities/redemption-bundle';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import type { FastifyController } from '../contracts/fastify-controller';
@@ -28,6 +23,7 @@ import {
   publicDeclineResponseSchema,
   rateLimitedResponseSchema,
   redeemNewUserBodySchema,
+  redemptionMapper,
   redemptionOutcomeResponseSchema,
   redemptionParamsSchema,
   redemptionPreviewResponseSchema,
@@ -43,7 +39,6 @@ import { isRateLimited } from '../utils/rate-limit';
 import { RefusalError } from '../utils/refusal-error';
 import type {
   AuthenticatedRedeemer,
-  InvitationPreviewFields,
   RedemptionControllerDependencies,
   RequireRedeemerInput,
 } from './redemption-controller.types';
@@ -103,7 +98,7 @@ export class RedemptionController implements FastifyController {
         });
         if (!preview)
           throw new RefusalError({ code: 'INVITATION_UNAVAILABLE' });
-        return reply.send(toPublicPreview(preview));
+        return reply.send(redemptionMapper.publicPreviewToResponse(preview));
       },
     );
 
@@ -256,13 +251,9 @@ export class RedemptionController implements FastifyController {
             churchInvitationId: ChurchInvitationId.from(params.invitationId),
             userId: redeemer.userId,
           });
-        if (status.kind === 'redeemable') {
-          return reply.send({
-            ...status,
-            expiresAt: fromDate({ date: status.expiresAt }),
-          });
-        }
-        return reply.send(status);
+        return reply.send(
+          redemptionMapper.churchReviewStatusToResponse(status),
+        );
       },
     );
 
@@ -326,17 +317,9 @@ export class RedemptionController implements FastifyController {
             ),
             userId: redeemer.userId,
           });
-        if (status.kind === 'redeemable') {
-          return reply.send({
-            kind: status.kind,
-            invitationKind: status.invitationKind,
-            ...toInvitationPreviewFields(status),
-            churchAccessLevel: status.churchAccessLevel,
-            ministries: status.ministries.map(toReviewedMinistry),
-            reviewToken: status.reviewToken,
-          });
-        }
-        return reply.send(status);
+        return reply.send(
+          redemptionMapper.ministryInvitationStatusToResponse(status),
+        );
       },
     );
 
@@ -431,24 +414,7 @@ export class RedemptionController implements FastifyController {
           ministryInvitationId: MinistryInvitationId.from(params.invitationId),
           userId: redeemer.userId,
         });
-        if (preview.kind === 'reviewable') {
-          return reply.send({
-            kind: preview.kind,
-            sourceChurchName: preview.sourceChurchName,
-            destinationChurchName: preview.destinationChurchName,
-            endedMemberships: preview.endedMemberships,
-            withdrawnAssignments: preview.withdrawnAssignments.map(
-              (assignment) => ({
-                eventName: assignment.eventName,
-                eventTimeBlockStart: fromDate({
-                  date: assignment.eventTimeBlockStart,
-                }),
-                roleName: assignment.roleName,
-              }),
-            ),
-          });
-        }
-        return reply.send(preview);
+        return reply.send(redemptionMapper.transferPreviewToResponse(preview));
       },
     );
 
@@ -557,47 +523,4 @@ export class RedemptionController implements FastifyController {
     }
     return { userId: session.userId, sessionCookie };
   }
-}
-
-/** The public Church Invitation preview: the Ministry block only for a paired invitation. */
-function toPublicPreview(preview: PublicRedemptionPreview) {
-  // The public preview names the newest pending half; redemption grants them all.
-  const ministries = preview.ministries.map((half) => ({
-    invitationId: half.ministryInvitationId,
-    name: half.ministryName,
-    ministryAccessLevel: half.ministryAccessLevel,
-    roleNames: half.roleNames,
-  }));
-  return {
-    email: preview.email,
-    churchName: preview.churchName,
-    churchAccessLevel: preview.churchAccessLevel,
-    expiresAt: fromDate({ date: preview.expiresAt }),
-    ...(ministries[0] ? { ministry: ministries[0] } : {}),
-    ministries,
-  };
-}
-
-/** One Ministry grant of the signed-in review; internal ids stay server-side. */
-function toReviewedMinistry(half: RedemptionBundleMinistry) {
-  return {
-    invitationId: half.ministryInvitationId,
-    ministryName: half.ministryName,
-    ministryAccessLevel: half.ministryAccessLevel,
-    roleNames: half.roleNames,
-    inviterName: half.inviterName,
-    expiresAt: fromDate({ date: half.expiresAt }),
-  };
-}
-
-/** Shared by the existing-member previews — both expose the same restricted field set (spec §7.1). */
-function toInvitationPreviewFields(preview: InvitationPreviewFields) {
-  return {
-    email: preview.email,
-    churchName: preview.churchName,
-    ministryName: preview.ministryName,
-    ministryAccessLevel: preview.ministryAccessLevel,
-    roleNames: preview.roleNames,
-    expiresAt: fromDate({ date: preview.expiresAt }),
-  };
 }

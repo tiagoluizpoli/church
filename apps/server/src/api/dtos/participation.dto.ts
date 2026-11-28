@@ -2,11 +2,13 @@ import {
   calendarDaySchema,
   fromDate,
   instantSchema,
+  parseInstant,
   timeOfDaySchema,
   today,
 } from '@church/time';
 import { z } from 'zod';
 import { decodeAnswersListCursor } from '../../domain/answers-list-cursor';
+import { RoleId, SectorId } from '../../domain/branded-ids';
 import { ANSWER_STATUS_OPTIONS } from '../../domain/contracts/application/availability-check-manager';
 import type {
   CycleParticipationView,
@@ -31,6 +33,7 @@ import type { Shift } from '../../domain/entities/shift';
 import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
 import { VALIDATION_REASONS } from '../../domain/errors/validation-rule-error';
 import { decodeScheduleListCursor } from '../../domain/schedule-list-cursor';
+import type { ShiftSplitStrategy } from '../../domain/services/scheduling/shift-splitter.types';
 import { errorResponseSchema } from './error-response.dto';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
@@ -186,6 +189,37 @@ export const savePreparationBodySchema = z.object({
   headcounts: z.array(preparationHeadcountSchema).optional(),
 });
 export type SavePreparationBody = z.infer<typeof savePreparationBodySchema>;
+
+function toShiftSplitStrategy(
+  shiftSplit: NonNullable<SavePreparationBody['shiftSplit']>,
+): ShiftSplitStrategy {
+  if (shiftSplit.kind === 'equal') {
+    return { kind: 'equal-n', n: shiftSplit.count };
+  }
+  return {
+    kind: 'manual',
+    spans: shiftSplit.spans.map((span) => ({
+      startTime: parseInstant({ value: span.startTime }),
+      endTime: parseInstant({ value: span.endTime }),
+      label: span.label,
+    })),
+  };
+}
+
+export const preparationMapper = {
+  /** The saved block state as the manager reads it: the split strategy and branded headcount ids. */
+  fromBody({ serves, shiftSplit, headcounts }: SavePreparationBody) {
+    return {
+      serves,
+      shiftSplit: shiftSplit && toShiftSplitStrategy(shiftSplit),
+      headcounts: headcounts?.map((headcount) => ({
+        ...headcount,
+        sectorId: SectorId.from(headcount.sectorId),
+        roleId: RoleId.from(headcount.roleId),
+      })),
+    };
+  },
+};
 
 /** A 422: a named rule's `reason`, or the body schema's field-aware `issues`. */
 export const preparationValidationErrorResponseSchema =

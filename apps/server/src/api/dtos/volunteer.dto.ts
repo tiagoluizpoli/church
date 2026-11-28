@@ -6,6 +6,7 @@ import type {
   MinistrySchedule,
   MinistryScheduleEvent,
   VolunteerAvailabilityCheckDetail,
+  VolunteerAvailabilityCheckStateCounts,
   VolunteerAvailabilityCheckSummary,
   VolunteerDashboard,
 } from '../../domain/contracts/application/volunteer-manager';
@@ -428,6 +429,11 @@ function ministryScheduleToResponse(
   };
 }
 
+interface AvailabilityCheckPageResponseInput {
+  summaries: VolunteerAvailabilityCheckSummary[];
+  counts: VolunteerAvailabilityCheckStateCounts;
+}
+
 export const volunteerMapper = {
   dashboardToResponse,
   ministryScheduleToResponse,
@@ -436,6 +442,16 @@ export const volunteerMapper = {
     summaries: VolunteerAvailabilityCheckSummary[],
   ) {
     return { checks: summaries.map(availabilityCheckSummaryToResponse) };
+  },
+  /** The listed checks with the counts of every state. */
+  availabilityCheckPageToResponse({
+    summaries,
+    counts,
+  }: AvailabilityCheckPageResponseInput) {
+    return {
+      ...volunteerMapper.availabilityCheckListToResponse(summaries),
+      counts,
+    };
   },
   availabilityCheckDetailToResponse,
   assignmentToResponse,

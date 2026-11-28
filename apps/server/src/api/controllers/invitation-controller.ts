@@ -29,7 +29,7 @@ import {
   invitationListQuerystringSchema,
   invitationListResponseSchema,
 } from '../dtos/invitation-list.dto';
-import { pageLimitSchema } from '../dtos/page-limit.dto';
+import { withPageLimit } from '../dtos/page-limit.dto';
 import { RefusalError } from '../utils/refusal-error';
 import { requestCaller } from '../utils/request-caller';
 import type { InvitationControllerDependencies } from './invitation-controller.types';
@@ -80,10 +80,9 @@ export class InvitationController implements FastifyController {
           summary: 'List invitations',
           description:
             "List the Active Church's offers, newest created first. Pending (the default) includes expired offers badged; Expired is pending past its expiry; Accepted, Declined and Revoked are history with the closure facts that were recorded. `status=any` lists every status. Status, Ministry, invited-as and email filters combine before pagination. `counts` covers the caller's whole scope per status (pending excludes expired): it ignores the filters and the cursor, so every page repeats the same values. A ChurchAdmin sees every Ministry offer and admin Church grant; a Ministry leader sees only Ministry offers in the Ministries they lead.",
-          querystring: invitationListQuerystringSchema.extend({
-            limit: pageLimitSchema({
-              maxPageSize: this.maxPageSize,
-            }).optional(),
+          querystring: withPageLimit({
+            querystring: invitationListQuerystringSchema,
+            maxPageSize: this.maxPageSize,
           }),
           response: {
             200: invitationListResponseSchema,

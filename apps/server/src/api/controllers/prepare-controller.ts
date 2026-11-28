@@ -1,19 +1,15 @@
-import { parseInstant } from '@church/time';
 import { z } from 'zod';
 import {
   CycleId,
   EventTimeBlockId,
   MinistryId,
   MinistryParticipationId,
-  RoleId,
-  SectorId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IAvailabilityCheckManager } from '../../domain/contracts/application/availability-check-manager';
 import type { IPrepareManager } from '../../domain/contracts/application/prepare-manager';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
-import type { ShiftSplitStrategy } from '../../domain/services/scheduling/shift-splitter.types';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import {
@@ -28,7 +24,7 @@ import {
   errorResponseSchema,
 } from '../dtos/error-response.dto';
 import { idSchema, ministryParamsSchema } from '../dtos/id.dto';
-import { pageLimitSchema } from '../dtos/page-limit.dto';
+import { withDefaultPageLimit, withPageLimit } from '../dtos/page-limit.dto';
 import {
   answersQuerystringSchema,
   answersResponseSchema,
@@ -42,6 +38,7 @@ import {
   headcountBelowAssignedResponseSchema,
   participationEventTimeBlockViewSchema,
   participationMapper,
+  preparationMapper,
   preparationRouteParamsSchema,
   preparationValidationErrorResponseSchema,
   remindOnCooldownResponseSchema,
@@ -58,10 +55,7 @@ import {
   shiftHasResponsesResponseSchema,
 } from '../dtos/participation.dto';
 import { requestCaller } from '../utils/request-caller';
-import type {
-  PrepareControllerDependencies,
-  ToPreparationSplitInput,
-} from './prepare-controller.types';
+import type { PrepareControllerDependencies } from './prepare-controller.types';
 
 const cycleParticipationQuerySchema = z.object({
   ministryId: idSchema,
@@ -116,10 +110,10 @@ export class PrepareController implements FastifyController {
           summary: "List the caller's Schedules",
           description:
             "List one row per Ministry and Cycle with its derived stage: every active Ministry for a ChurchAdmin, the led ones for a leader. `period` picks Sent Cycles (`current`, the default), Past Cycles or both. Ministry, stage, search (Ministry or Cycle name) and `attention` (current Schedules that wait on the leader: not serving excluded, Published only with an open Swap request) filters combine before pagination. Current Schedules come first by stage (to prepare, asking, assigning, published, not serving), then Past ones; within each, newest Cycle first, then Ministry name. `counts` covers the caller's current Schedules per stage: it ignores the filters and the cursor, so every page repeats the same values.",
-          querystring: scheduleListQuerystringSchema.extend({
-            limit: pageLimitSchema({
-              maxPageSize: this.scheduleMaxPageSize,
-            }).default(this.schedulePageSize),
+          querystring: withDefaultPageLimit({
+            querystring: scheduleListQuerystringSchema,
+            maxPageSize: this.scheduleMaxPageSize,
+            pageSize: this.schedulePageSize,
           }),
           response: {
             200: scheduleListResponseSchema,
@@ -381,18 +375,11 @@ export class PrepareController implements FastifyController {
           participationId,
         });
 
-        const { serves, shiftSplit, headcounts } = request.body;
         const view = await this.prepareManager.savePreparation({
           churchId: request.churchId,
           participationId: MinistryParticipationId.from(participationId),
           eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
-          serves,
-          shiftSplit: shiftSplit && toPreparationSplit({ shiftSplit }),
-          headcounts: headcounts?.map((headcount) => ({
-            ...headcount,
-            sectorId: SectorId.from(headcount.sectorId),
-            roleId: RoleId.from(headcount.roleId),
-          })),
+          ...preparationMapper.fromBody(request.body),
         });
         return reply.send(
           participationMapper.eventTimeBlockViewToResponse(view),
@@ -543,10 +530,9 @@ export class PrepareController implements FastifyController {
           summary: "Get the Answers to a Schedule's Ask",
           description:
             'List the asked Volunteers with their marks and relevant Shift totals, plus the confirmed counts, per-status `counts`, Deadline and Remind cooldown. `status` (pending, available, unavailable) and `q` (name search) filter the list; `limit` pages it by `cursor` (omitted, every match comes back) ordered by name then id, and `nextCursor` is null on the last page. `asked`, `confirmed` and `counts` ignore the filters.',
-          querystring: answersQuerystringSchema.extend({
-            limit: pageLimitSchema({
-              maxPageSize: this.answersMaxPageSize,
-            }).optional(),
+          querystring: withPageLimit({
+            querystring: answersQuerystringSchema,
+            maxPageSize: this.answersMaxPageSize,
           }),
           response: {
             200: answersResponseSchema,
@@ -583,20 +569,4 @@ export class PrepareController implements FastifyController {
       },
     );
   }
-}
-
-function toPreparationSplit({
-  shiftSplit,
-}: ToPreparationSplitInput): ShiftSplitStrategy {
-  if (shiftSplit.kind === 'equal') {
-    return { kind: 'equal-n', n: shiftSplit.count };
-  }
-  return {
-    kind: 'manual',
-    spans: shiftSplit.spans.map((span) => ({
-      startTime: parseInstant({ value: span.startTime }),
-      endTime: parseInstant({ value: span.endTime }),
-      label: span.label,
-    })),
-  };
 }

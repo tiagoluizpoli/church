@@ -1,4 +1,3 @@
-import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { RoleId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -17,16 +16,18 @@ import {
   authErrorResponses,
   errorResponseSchema,
 } from '../dtos/error-response.dto';
-import { pageLimitSchema } from '../dtos/page-limit.dto';
+import { withPageLimit } from '../dtos/page-limit.dto';
 import {
   changeMinistryAccessBodySchema,
   churchAccessChangeBodySchema,
   churchAccessChangeResponseSchema,
   endMinistryMembershipResponseSchema,
+  membershipOutcomeMapper,
   ministryMembershipChangeResponseSchema,
   ministryMembershipParamsSchema,
   peopleListQuerystringSchema,
   peopleListResponseSchema,
+  personDetailMapper,
   personDetailResponseSchema,
   personParamsSchema,
   setMinistryRolesBodySchema,
@@ -34,25 +35,7 @@ import {
 } from '../dtos/people-list.dto';
 import { RefusalError } from '../utils/refusal-error';
 import { requestCaller } from '../utils/request-caller';
-import type {
-  PeopleControllerDependencies,
-  SendMembershipOutcomeInput,
-} from './people-controller.types';
-
-/** Maps the shared refusals and sends the applied change without its `kind`. */
-function sendMembershipOutcome({
-  reply,
-  outcome,
-}: SendMembershipOutcomeInput): FastifyReply {
-  if (outcome.kind === 'forbidden') {
-    throw new RefusalError({ code: 'FORBIDDEN' });
-  }
-  if (outcome.kind === 'not-found') {
-    throw new RefusalError({ code: 'NOT_FOUND' });
-  }
-  const { kind: _applied, ...result } = outcome;
-  return reply.send(result);
-}
+import type { PeopleControllerDependencies } from './people-controller.types';
 
 /** The People directory: the Active Church's members within the caller's authority. */
 export class PeopleController implements FastifyController {
@@ -126,17 +109,10 @@ export class PeopleController implements FastifyController {
           memberId,
           accessLevel,
         });
-        if (outcome.kind === 'forbidden') {
-          throw new RefusalError({ code: 'FORBIDDEN' });
-        }
-        if (outcome.kind === 'not-found') {
-          throw new RefusalError({ code: 'NOT_FOUND' });
-        }
         if (outcome.kind === 'last-admin') {
           throw new RefusalError({ code: 'LAST_CHURCH_ADMIN' });
         }
-        const { kind: _applied, ...result } = outcome;
-        return reply.send(result);
+        return reply.send(membershipOutcomeMapper.toResponse(outcome));
       },
     );
 
@@ -180,7 +156,7 @@ export class PeopleController implements FastifyController {
           membershipId,
           roleIds: roleIds.map(RoleId.from),
         });
-        return sendMembershipOutcome({ reply, outcome });
+        return reply.send(membershipOutcomeMapper.toResponse(outcome));
       },
     );
 
@@ -223,7 +199,7 @@ export class PeopleController implements FastifyController {
             accessLevel,
             roleIds: roleIds?.map(RoleId.from),
           });
-        return sendMembershipOutcome({ reply, outcome });
+        return reply.send(membershipOutcomeMapper.toResponse(outcome));
       },
     );
 
@@ -264,7 +240,7 @@ export class PeopleController implements FastifyController {
             memberId,
             membershipId,
           });
-        return sendMembershipOutcome({ reply, outcome });
+        return reply.send(membershipOutcomeMapper.toResponse(outcome));
       },
     );
 
@@ -300,8 +276,7 @@ export class PeopleController implements FastifyController {
           memberId: request.params.memberId,
         });
         if (!result) throw new RefusalError({ code: 'NOT_FOUND' });
-        const { person, ...capabilities } = result;
-        return reply.send({ ...person, ...capabilities });
+        return reply.send(personDetailMapper.toResponse(result));
       },
     );
 
@@ -314,10 +289,9 @@ export class PeopleController implements FastifyController {
           summary: 'List people',
           description:
             "List the Active Church's members ordered by name. A ChurchAdmin sees every member, including those in no Ministry; a Ministry leader sees only members of Ministries they lead, with only those Ministries shown. Search (trimmed, case-insensitive literal name/email substring), Ministry, Access and `withoutMinistry` filters combine before pagination; `withoutMinistry=true` keeps exactly the members `counts.withoutMinistry` counts, so combined with `ministryId` or a leader/volunteer `access` it matches nobody. `counts` covers the caller's whole scope: it ignores the filters and the cursor, so every page repeats the same values. `leaders`/`volunteers` count members with an active membership at that level in a visible Ministry (one person can be both); `withoutMinistry` counts members with none, so it is always 0 for a leader.",
-          querystring: peopleListQuerystringSchema.extend({
-            limit: pageLimitSchema({
-              maxPageSize: this.maxPageSize,
-            }).optional(),
+          querystring: withPageLimit({
+            querystring: peopleListQuerystringSchema,
+            maxPageSize: this.maxPageSize,
           }),
           response: {
             200: peopleListResponseSchema,

@@ -40,7 +40,7 @@ import {
   mintMinistryInvitationConflictSchema,
   mintMinistryInvitationUnprocessableSchema,
 } from '../dtos/ministry-invitation.dto';
-import { pageLimitSchema } from '../dtos/page-limit.dto';
+import { withDefaultPageLimit } from '../dtos/page-limit.dto';
 import { requestCaller } from '../utils/request-caller';
 import type { MinistryControllerDependencies } from './ministry-controller.types';
 
@@ -131,10 +131,10 @@ export class MinistryController implements FastifyController {
           summary: 'List the Ministries management page',
           description:
             "One page of the caller's accessible Ministries, alphabetical ignoring case: every Ministry for a ChurchAdmin, or the Ministries the caller actively leads. Search (trimmed, case-insensitive literal name substring) and status (`review`: a Usual setup block needs review; `no-sectors`: no active Sector) combine before pagination. `counts` covers the caller's whole scope: it ignores the filters and the cursor, so every page repeats the same values.",
-          querystring: ministryPageQuerystringSchema.extend({
-            limit: pageLimitSchema({ maxPageSize: this.maxPageSize }).default(
-              this.pageSize,
-            ),
+          querystring: withDefaultPageLimit({
+            querystring: ministryPageQuerystringSchema,
+            maxPageSize: this.maxPageSize,
+            pageSize: this.pageSize,
           }),
           response: {
             200: ministryPageResponseSchema,

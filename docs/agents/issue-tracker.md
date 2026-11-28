@@ -43,3 +43,24 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 - **Frontier query**: list the map's open children (`gh issue list --state open`, scoped to the map's sub-issues / task list), drop any with an open blocker (`issue_dependencies_summary.blocked_by > 0`, or an open issue in the `Blocked by` line) or an assignee; first in map order wins.
 - **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
 - **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
+
+## Wrapper operations
+
+A **wrapper** is how this repo batches work: one parent issue whose children are run together and land in one PR. [#1218](https://github.com/tiagoluizpoli/church/issues/1218) is the reference.
+
+- **Wrapper**: a single issue titled `Wrapper: <summary>`, with no labels of its own. Its body stands alone, so a run needs no other handoff. It holds:
+  - an intro listing every ticket, marking the isolated ones;
+  - `## Run instructions (orchestrator)`, with a `### Batches` table (batch, child, notes) and the expected merge conflicts;
+  - `## Worker rules (copy into every brief)`;
+  - `## Not in this wrapper`.
+- **Children**: every child is a native sub-issue of the wrapper _and_ carries the `wrapper:<n>` label, where `<n>` is the wrapper's number. A task list or a mention in the body doesn't replace either.
+  - Create the label once: `gh label create wrapper:<n> --color BFD4F2 --description "Child of wrapper #<n>"`.
+  - Label a child: `gh issue edit <child> --add-label "wrapper:<n>"`.
+  - Link it: `gh api -X POST repos/<owner>/<repo>/issues/<n>/sub_issues -F sub_issue_id=<child-db-id>`, where `<child-db-id>` is `gh api repos/<owner>/<repo>/issues/<child> --jq .id` (the database id, _not_ the `#number`).
+  - Read them back: `gh api repos/<owner>/<repo>/issues/<n>/sub_issues`.
+- **Specs**: a spec is added as a single child. Its tickets stay its own sub-issues; don't link or label them under the wrapper.
+- **Board**: add the wrapper and every child to the Church System board (project 5): `gh project item-add 5 --owner tiagoluizpoli --url <issue-url>`. `gh project` needs the `project` token scope (`gh auth refresh -s project`).
+- **Branch and PR**: one integration branch, `spec/<n>-ticket-batch`, cut from `develop`, and one PR into `develop` that closes the wrapper and its children (and a child spec's tickets).
+  - An isolated child (for example, a proposal-only review) is named as such in the wrapper body, with its own branch and, if it changes code, its own PR. The combined PR doesn't close it.
+  - `develop` isn't the default branch, so closing keywords don't close issues when the PR merges. Close them with `gh issue close` and read their state back.
+- **Follow-ups**: an issue filed by a run becomes a sub-issue of the next wrapper. Never leave one without a parent.

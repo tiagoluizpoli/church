@@ -3,12 +3,13 @@ import {
   event,
   eventTimeBlock,
   ministryParticipation,
+  role,
   sector,
   shift,
   shiftRequirement,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { MinistryId } from '../../domain/branded-ids';
 import type {
   CreateEventRepositoryInput,
@@ -120,7 +121,13 @@ export class DrizzleEventRepository implements EventRepository {
           .from(shiftRequirement)
           .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
           .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
-          .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
+          .innerJoin(role, eq(role.id, shiftRequirement.roleId))
+          .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id))
+          .orderBy(
+            asc(sql`lower(${sector.name})`),
+            asc(sql`lower(${role.name})`),
+            asc(shiftRequirement.id),
+          );
         const requirements = reqRows.map(({ requirement, sectorName }) =>
           mapShiftRequirement({
             row: requirement,

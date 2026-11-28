@@ -29,9 +29,22 @@ const UNKNOWN_SHA = '0123456789abcdef0123456789abcdef01234567';
 let repo: string;
 let bin: string;
 
+/**
+ * The runner's environment without what selects a base or a repository: CI
+ * sets `GITHUB_BASE_REF` (read by the constitution guard), `CI` and
+ * `GITHUB_STEP_SUMMARY` (read by `affected.ts`), and a Git hook sets
+ * `GIT_DIR`-style variables that would point Git at the outer clone.
+ */
+const hermeticEnv = Object.fromEntries(
+  Object.entries(process.env).filter(
+    ([name]) => name !== 'CI' && !/^(GITHUB|GIT)_/.test(name),
+  ),
+);
+
 const git = (...args: string[]) => {
   const { exitCode, stderr, stdout } = Bun.spawnSync(['git', ...args], {
     cwd: repo,
+    env: hermeticEnv,
   });
   if (exitCode !== 0) throw new Error(stderr.toString());
   return stdout.toString().trim();
@@ -56,7 +69,7 @@ const commitFile = ({
 const run = ({ args, cwd = repo }: { args: string[]; cwd?: string }) => {
   const result = Bun.spawnSync(['bun', ...args], {
     cwd,
-    env: { ...process.env, PATH: `${bin}${delimiter}${process.env.PATH}` },
+    env: { ...hermeticEnv, PATH: `${bin}${delimiter}${process.env.PATH}` },
     stderr: 'pipe',
     stdout: 'pipe',
   });
@@ -211,7 +224,7 @@ describe('affected.ts with a missing base', () => {
         'origin',
         'develop:refs/remotes/origin/develop',
       ],
-      { cwd: clone },
+      { cwd: clone, env: hermeticEnv },
     );
 
     const result = run({

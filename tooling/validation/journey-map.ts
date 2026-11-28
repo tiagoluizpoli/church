@@ -595,6 +595,13 @@ export const JOURNEY_MAP: JourneyMapping[] = [
     specPaths: BUILDER_SPEC_PATHS,
   },
   {
+    // #1209: the publish confirmations' open-places copy; this journey
+    // publishes below target.
+    sourcePathPrefix:
+      'apps/web/src/features/scheduling/utils/publish-gaps-message.ts',
+    specPaths: ['tests/scheduling/us4-schedule-publish.spec.ts'],
+  },
+  {
     // Feeds the breadcrumb app-shell.tsx renders on every planning route,
     // the same one a11y-planning-nav.spec.ts scans.
     sourcePathPrefix:

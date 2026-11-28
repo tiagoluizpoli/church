@@ -2362,6 +2362,7 @@
   "event_groups_save": "Salvar grupos",
   "event_groups_saved": "Grupos salvos.",
   "event_groups_save_failed": "Não foi possível salvar os grupos. Tente novamente.",
+  "event_groups_loading": "Carregando grupos…",
   "event_groups_load_failed": "Não foi possível carregar os grupos.",
   "event_groups_back_to_schedule": "← Voltar à escala e exportar",
   "export_open": "Exportar",

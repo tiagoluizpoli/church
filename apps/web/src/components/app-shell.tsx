@@ -220,6 +220,7 @@ const BREADCRUMB_SEGMENT_LABELS: Record<string, () => string> = {
   sectors: () => m.ministry_tab_sectors(),
   roles: () => m.ministry_tab_roles(),
   'usual-setup': () => m.ministry_tab_usual_setup(),
+  'event-groups': () => m.ministry_tab_event_groups(),
   settings: () => m.ministry_tab_settings(),
 };
 

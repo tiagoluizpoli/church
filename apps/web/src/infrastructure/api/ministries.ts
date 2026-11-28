@@ -11,6 +11,7 @@ import type {
   CreateMinistryRoleBody,
   CreateSector201,
   CreateSectorBody,
+  GetEventGroups200,
   GetMinistry200,
   ListMinistries200,
   ListMinistryDirectory200,
@@ -27,6 +28,8 @@ import type {
   RenameSector200,
   RenameSectorBody,
   ResendMinistryInvitation200,
+  SaveEventGroups200,
+  SaveEventGroupsBody,
   SaveUsualSetupBlock200,
   SaveUsualSetupBlockBody
 } from './churchAPI.schemas';
@@ -296,7 +299,34 @@ const saveUsualSetupBlock = (
     },
       );
     }
-  return {listMinistries,createMinistry,listMinistryDirectory,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation,revokeMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole,listSectors,createSector,renameSector,archiveSector,listUsualSetup,saveUsualSetupBlock}};
+  /**
+ * The Ministry's Event groups in order with their EventTemplates, the catch-all's custom name, and every EventTemplate of the Church. No groups means the export is one plain list.
+ * @summary Read a Ministry's Event groups
+ */
+const getEventGroups = (
+    ministryId: string,
+ ) => {
+      return apiClient<GetEventGroups200>(
+      {url: `/api/v1/ministries/${ministryId}/event-groups/`, method: 'GET'
+    },
+      );
+    }
+  /**
+ * Replace the whole ordered list; an empty list returns to one plain list and the last save wins. Each EventTemplate sits in at most one group (422 otherwise); a template outside the Church is 404.
+ * @summary Save a Ministry's Event groups
+ */
+const saveEventGroups = (
+    ministryId: string,
+    saveEventGroupsBody: SaveEventGroupsBody,
+ ) => {
+      return apiClient<SaveEventGroups200>(
+      {url: `/api/v1/ministries/${ministryId}/event-groups/`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: saveEventGroupsBody
+    },
+      );
+    }
+  return {listMinistries,createMinistry,listMinistryDirectory,getMinistry,renameMinistry,archiveMinistry,mintMinistryInvitation,resendMinistryInvitation,revokeMinistryInvitation,listMinistryRoles,createMinistryRole,renameMinistryRole,archiveMinistryRole,listSectors,createSector,renameSector,archiveSector,listUsualSetup,saveUsualSetupBlock,getEventGroups,saveEventGroups}};
 export type ListMinistriesResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistries']>>>
 export type CreateMinistryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['createMinistry']>>>
 export type ListMinistryDirectoryResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listMinistryDirectory']>>>
@@ -316,3 +346,5 @@ export type RenameSectorResult = NonNullable<Awaited<ReturnType<ReturnType<typeo
 export type ArchiveSectorResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['archiveSector']>>>
 export type ListUsualSetupResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['listUsualSetup']>>>
 export type SaveUsualSetupBlockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['saveUsualSetupBlock']>>>
+export type GetEventGroupsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['getEventGroups']>>>
+export type SaveEventGroupsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getMinistries>['saveEventGroups']>>>

@@ -499,6 +499,7 @@ describe('AppShell flat nav per persona (F7)', () => {
   it.each([
     ['operational', () => m.ministry_tab_structure()],
     ['usual-setup', () => m.ministry_tab_usual_setup()],
+    ['event-groups', () => m.ministry_tab_event_groups()],
     ['settings', () => m.ministry_tab_settings()],
   ])('reads Home › Ministries › name › tab on the Ministry %s tab', (tab, label) => {
     asPersona({ isChurchAdmin: true });

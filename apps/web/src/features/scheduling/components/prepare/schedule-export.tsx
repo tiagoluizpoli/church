@@ -1,11 +1,12 @@
 import { exportFileName } from '@church/domain-rules/export-file-name';
 import { m } from '@church/i18n/messages';
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import { ScheduleExportGroups } from '@/features/scheduling/components/prepare/schedule-export-groups';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { exportApi } from '@/utils/api-instances';
@@ -13,6 +14,10 @@ import { exportApi } from '@/utils/api-instances';
 interface ScheduleExportProps {
   ministryId: string;
   cycleId: string;
+  /** Opens at once, as when the Event groups tab links back. */
+  initialOpen?: boolean;
+  /** Called once when it opened at once. */
+  onOpened?: () => void;
 }
 
 interface SaveFileInput {
@@ -34,8 +39,17 @@ function saveFile({ file, name }: SaveFileInput) {
  * Exportar: the Schedule's whole Cycle as an A4 PDF table (#1243). The page
  * is only reachable by the Ministry's leaders and ChurchAdmins.
  */
-export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
-  const [open, setOpen] = useState(false);
+export function ScheduleExport({
+  ministryId,
+  cycleId,
+  initialOpen = false,
+  onOpened,
+}: ScheduleExportProps) {
+  const [open, setOpen] = useState(initialOpen);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only the first render opens at once
+  useEffect(() => {
+    if (initialOpen) onOpened?.();
+  }, []);
   const { data } = useSchedule({ ministryId, cycleId });
   const download = useMutation({
     mutationFn: () =>
@@ -92,6 +106,7 @@ export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
             </div>
           ))}
         </dl>
+        <ScheduleExportGroups ministryId={ministryId} cycleId={cycleId} />
       </ResponsiveFormSurface>
     </>
   );

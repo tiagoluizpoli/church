@@ -7189,23 +7189,32 @@ export type GetScheduleExportData200Cycle = {
   endDate: string;
 };
 
-export type GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItemSectorsItemPeopleItem = {
+export type GetScheduleExportData200PartsItemGroupsItemKind = typeof GetScheduleExportData200PartsItemGroupsItemKind[keyof typeof GetScheduleExportData200PartsItemGroupsItemKind];
+
+
+export const GetScheduleExportData200PartsItemGroupsItemKind = {
+  list: 'list',
+  group: 'group',
+  catchAll: 'catchAll',
+} as const;
+
+export type GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItemShiftsItemSectorsItemPeopleItem = {
   /** @nullable */
   name: string | null;
   role: string;
 };
 
-export type GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItemSectorsItem = {
+export type GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItemShiftsItemSectorsItem = {
   name: string;
   /**
      * @minimum -9007199254740991
      * @maximum 9007199254740991
      */
   paletteIndex: number;
-  people: GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItemSectorsItemPeopleItem[];
+  people: GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItemShiftsItemSectorsItemPeopleItem[];
 };
 
-export type GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItem = {
+export type GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItemShiftsItem = {
   /** @nullable */
   label: string | null;
   /**
@@ -7215,24 +7224,31 @@ export type GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItem 
   day: string | null;
   startTime: string;
   endTime: string;
-  sectors: GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItemSectorsItem[];
+  sectors: GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItemShiftsItemSectorsItem[];
 };
 
-export type GetScheduleExportData200PartsItemEventsItemTimeBlocksItem = {
+export type GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItem = {
   /** @nullable */
   label: string | null;
   cancelled: boolean;
-  shifts: GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItem[];
+  shifts: GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItemShiftsItem[];
 };
 
-export type GetScheduleExportData200PartsItemEventsItem = {
+export type GetScheduleExportData200PartsItemGroupsItemEventsItem = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   startDay: string;
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   endDay: string;
   title: string;
   cancelled: boolean;
-  timeBlocks: GetScheduleExportData200PartsItemEventsItemTimeBlocksItem[];
+  timeBlocks: GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItem[];
+};
+
+export type GetScheduleExportData200PartsItemGroupsItem = {
+  kind: GetScheduleExportData200PartsItemGroupsItemKind;
+  /** @nullable */
+  name: string | null;
+  events: GetScheduleExportData200PartsItemGroupsItemEventsItem[];
 };
 
 export type GetScheduleExportData200PartsItem = {
@@ -7242,7 +7258,7 @@ export type GetScheduleExportData200PartsItem = {
   singleSector: string | null;
   /** @nullable */
   singleRole: string | null;
-  events: GetScheduleExportData200PartsItemEventsItem[];
+  groups: GetScheduleExportData200PartsItemGroupsItem[];
 };
 
 export type GetScheduleExportData200 = {
@@ -7295,6 +7311,100 @@ export type GetScheduleExportFile403 = {
 };
 
 export type GetScheduleExportFile404 = {
+  error: string;
+  message: string;
+};
+
+export type GetEventGroups200GroupsItemTemplatesItem = {
+  id: string;
+  name: string;
+};
+
+export type GetEventGroups200GroupsItem = {
+  name: string;
+  templates: GetEventGroups200GroupsItemTemplatesItem[];
+};
+
+export type GetEventGroups200TemplatesItem = {
+  id: string;
+  name: string;
+};
+
+export type GetEventGroups200 = {
+  groups: GetEventGroups200GroupsItem[];
+  /** @nullable */
+  catchAllName: string | null;
+  templates: GetEventGroups200TemplatesItem[];
+};
+
+export type GetEventGroups401 = {
+  error: string;
+  message: string;
+};
+
+export type GetEventGroups403 = {
+  error: string;
+  message: string;
+};
+
+export type GetEventGroups404 = {
+  error: string;
+  message: string;
+};
+
+export type SaveEventGroupsBodyGroupsItem = {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+  /** @items.pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
+  templateIds: string[];
+};
+
+export type SaveEventGroupsBody = {
+  groups: SaveEventGroupsBodyGroupsItem[];
+  /**
+     * @minLength 1
+     * @maxLength 255
+     * @nullable
+     */
+  catchAllName: string | null;
+};
+
+export type SaveEventGroups200GroupsItemTemplatesItem = {
+  id: string;
+  name: string;
+};
+
+export type SaveEventGroups200GroupsItem = {
+  name: string;
+  templates: SaveEventGroups200GroupsItemTemplatesItem[];
+};
+
+export type SaveEventGroups200TemplatesItem = {
+  id: string;
+  name: string;
+};
+
+export type SaveEventGroups200 = {
+  groups: SaveEventGroups200GroupsItem[];
+  /** @nullable */
+  catchAllName: string | null;
+  templates: SaveEventGroups200TemplatesItem[];
+};
+
+export type SaveEventGroups401 = {
+  error: string;
+  message: string;
+};
+
+export type SaveEventGroups403 = {
+  error: string;
+  message: string;
+};
+
+export type SaveEventGroups404 = {
   error: string;
   message: string;
 };

@@ -75,6 +75,8 @@ const prepareSearchSchema = z.object({
     .optional()
     .catch(undefined),
   needsAttention: z.boolean().optional().catch(undefined),
+  /** Opens Exportar, as the Event groups tab's way back does. */
+  export: z.boolean().optional().catch(undefined),
 });
 
 /**
@@ -267,6 +269,16 @@ function PrepareWorkspaceRoute() {
 
   const openSwapRequestCount = schedule?.openSwapRequestCount ?? 0;
   const stage = schedule?.stage;
+  const exportRequested = search.export === true;
+  // Back from the Event groups tab: the dialog opens once, then the URL forgets it.
+  const forgetExportRequest = useCallback(() => {
+    void navigate({
+      to: '.',
+      search: (previous) => ({ ...previous, export: undefined }),
+      hash: true,
+      replace: true,
+    });
+  }, [navigate]);
   // Memoised so the Respostas bar, which receives it, re-renders only when an action changes.
   const pageActions = useMemo(
     () =>
@@ -305,7 +317,12 @@ function PrepareWorkspaceRoute() {
           >
             {m.prepare_open_builder()}
           </Link>
-          <ScheduleExport ministryId={ministryId} cycleId={cycleId} />
+          <ScheduleExport
+            ministryId={ministryId}
+            cycleId={cycleId}
+            initialOpen={exportRequested}
+            onOpened={exportRequested ? forgetExportRequest : undefined}
+          />
         </div>
       ) : null,
     [
@@ -316,6 +333,8 @@ function PrepareWorkspaceRoute() {
       openSwapRequestCount,
       ministryId,
       cycleId,
+      exportRequested,
+      forgetExportRequest,
     ],
   );
 

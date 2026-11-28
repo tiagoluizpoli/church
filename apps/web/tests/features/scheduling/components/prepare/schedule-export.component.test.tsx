@@ -17,8 +17,16 @@ vi.mock('@/features/scheduling/hooks/use-schedule', () => ({
   useSchedule: () => ({ data: state.data }),
 }));
 vi.mock('@/utils/api-instances', () => ({
+  adminApi: {
+    getEventGroups: async () => ({
+      groups: [],
+      catchAllName: null,
+      templates: [],
+    }),
+  },
   exportApi: { getScheduleExportFile: state.getScheduleExportFile },
 }));
+vi.mock('@tanstack/react-router', () => ({ Link: () => null }));
 
 const pdf = new Blob(['%PDF'], { type: 'application/pdf' });
 const downloads: string[] = [];

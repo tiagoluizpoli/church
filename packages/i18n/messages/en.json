@@ -2362,6 +2362,7 @@
   "event_groups_save": "Save groups",
   "event_groups_saved": "Groups saved.",
   "event_groups_save_failed": "Couldn't save the groups. Try again.",
+  "event_groups_loading": "Loading groups…",
   "event_groups_load_failed": "Couldn't load the groups.",
   "event_groups_back_to_schedule": "← Back to the schedule to export",
   "export_open": "Export",

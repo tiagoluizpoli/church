@@ -22,6 +22,7 @@ import { useCallerCapabilities } from '@/shared/hooks/use-caller-capabilities';
 type MinistryTabPath =
   | '/app/ministries/$ministryId/operational'
   | '/app/ministries/$ministryId/usual-setup'
+  | '/app/ministries/$ministryId/event-groups'
   | '/app/ministries/$ministryId/settings';
 
 interface MinistryTab {
@@ -39,6 +40,10 @@ const MINISTRY_TABS: MinistryTab[] = [
   {
     to: '/app/ministries/$ministryId/usual-setup',
     label: m.ministry_tab_usual_setup,
+  },
+  {
+    to: '/app/ministries/$ministryId/event-groups',
+    label: m.ministry_tab_event_groups,
   },
   {
     to: '/app/ministries/$ministryId/settings',

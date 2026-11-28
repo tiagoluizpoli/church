@@ -43,6 +43,7 @@ export * from './swap-request.repository';
 export * from './template-precedence.repository';
 export * from './tracing';
 export * from './transaction-context';
+export * from './typst-renderer';
 export * from './unavailable-shift.repository';
 export * from './unit-of-work';
 export * from './usual-setup.repository';

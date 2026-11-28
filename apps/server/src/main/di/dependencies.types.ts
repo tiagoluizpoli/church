@@ -77,6 +77,7 @@ import type {
   SwapRequestRepository,
   TemplatePrecedenceRepository,
   Tracing,
+  TypstRenderer,
   UnavailableShiftRepository,
   UnitOfWork,
   UsualSetupRepository,
@@ -134,6 +135,8 @@ export interface CompositionRootDependencies {
   tracing: Tracing;
   /** S3 from the env; HTTP tests inject the in-memory fake. */
   objectStorage: ObjectStorage;
+  /** Schedule export files (#1242); reads the church logo from `objectStorage`. */
+  typstRenderer: TypstRenderer;
   /** The deployed web's index.html; HTTP tests inject a fake. */
   webShell: WebShell;
   // Auth

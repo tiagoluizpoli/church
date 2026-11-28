@@ -7,6 +7,7 @@ export type Services = Pick<
   | 'errorReporter'
   | 'tracing'
   | 'objectStorage'
+  | 'typstRenderer'
   | 'webShell'
 > &
   // Absent unless the sender is capture.

@@ -74,12 +74,12 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
   const tabList = useRef<HTMLUListElement>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Keeps the active tab on screen in a narrow, scrolling bar. Instant, never smooth.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run on navigation
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run on navigation and when admin-only tabs appear
   useEffect(() => {
     tabList.current
       ?.querySelector('[data-status="active"]')
       ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
-  }, [pathname, ministryQuery.isSuccess]);
+  }, [pathname, ministryQuery.isSuccess, isChurchAdmin]);
 
   function reopenGuide() {
     try {
@@ -155,7 +155,7 @@ export function MinistryWorkspace({ ministryId }: MinistryWorkspaceProps) {
       <nav aria-label={m.ministry_tabs_label()}>
         <ul
           ref={tabList}
-          className="flex gap-1 overflow-x-auto border-border border-b pb-px"
+          className="flex scroll-pe-1 gap-1 overflow-x-auto border-border border-b pe-1 pb-px"
         >
           {tabs.map((tab) => (
             <li key={tab.to}>

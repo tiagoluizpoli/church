@@ -40,7 +40,7 @@ it('confirms summary gaps and unanswered people before publishing the whole Sche
     screen.getByText(m.prepare_publish_gaps_other({ count: 2 })),
   ).toBeVisible();
   expect(
-    screen.getByText(m.prepare_publish_unanswered({ count: 7 })),
+    screen.getByText(m.prepare_publish_unanswered_other({ count: 7 })),
   ).toBeVisible();
   fireEvent.click(
     within(screen.getByRole('dialog')).getByRole('button', {
@@ -203,4 +203,20 @@ it('words one open place in the singular', () => {
   expect(m.prepare_publish_gaps_one({ count: 1 }, { locale: 'pt-BR' })).toBe(
     '1 vaga ainda precisa de pessoas. Publicar mesmo assim?',
   );
+});
+it('words one unanswered person in the singular', () => {
+  renderWithProviders(
+    <SchedulePublish ministryId="m" cycleId="c" unanswered={1} />,
+  );
+  expect(
+    within(openConfirmation()).getByText(
+      m.prepare_publish_unanswered_one({ count: 1 }),
+    ),
+  ).toBeVisible();
+  expect(m.prepare_publish_unanswered_one({ count: 1 }, { locale: 'en' })).toBe(
+    '1 person has not answered availability yet.',
+  );
+  expect(
+    m.prepare_publish_unanswered_one({ count: 1 }, { locale: 'pt-BR' }),
+  ).toBe('1 pessoa ainda não respondeu à disponibilidade.');
 });

@@ -13,3 +13,12 @@ export function publishGapsMessage({ count }: PublishGapsMessageInput) {
     other: () => m.prepare_publish_gaps_other({ count }),
   });
 }
+
+/** What a publish confirmation says when `count` people have not answered. */
+export function publishUnansweredMessage({ count }: PublishGapsMessageInput) {
+  return pluralMessage({
+    count,
+    one: () => m.prepare_publish_unanswered_one({ count }),
+    other: () => m.prepare_publish_unanswered_other({ count }),
+  });
+}

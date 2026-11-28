@@ -687,3 +687,15 @@ describe('AuthorityService — ministry membership resource', () => {
     expect(denyReason(decision)).toBe(expectReason);
   });
 });
+
+describe('AuthorityService — Church admin question', () => {
+  it.each([
+    { accessLevel: 'admin' as const, expected: true },
+    { accessLevel: 'member' as const, expected: false },
+  ])('accessLevel=$accessLevel -> isChurchAdmin=$expected', ({
+    accessLevel,
+    expected,
+  }) => {
+    expect(AuthorityService.isChurchAdmin({ accessLevel })).toBe(expected);
+  });
+});

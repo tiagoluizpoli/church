@@ -102,6 +102,46 @@ describe('DbAuthorityManager', () => {
     ).toHaveBeenCalledExactlyOnceWith({ userId, churchIds });
   });
 
+  it('lists scheduling Churches in scope-read order, an admin who also leads once, reading no actor', async () => {
+    const plainFirst = 'chu_plain_first' as ChurchId;
+    const adminAndLeader = 'chu_admin_and_leader' as ChurchId;
+    const leaderLast = 'chu_leader_last' as ChurchId;
+    const churchIds = [leaderLast, adminAndLeader, plainFirst];
+    scopeRepository.listSchedulingScopes.mockResolvedValueOnce([
+      {
+        churchId: plainFirst,
+        churchAccessLevel: 'member',
+        leadsMinistry: false,
+      },
+      {
+        churchId: adminAndLeader,
+        churchAccessLevel: 'admin',
+        leadsMinistry: true,
+      },
+      {
+        churchId: leaderLast,
+        churchAccessLevel: 'member',
+        leadsMinistry: true,
+      },
+    ]);
+
+    await expect(
+      createManager().listSchedulingChurchIds({ userId, churchIds }),
+    ).resolves.toEqual([adminAndLeader, leaderLast]);
+    expect(actorRepository.resolveActor).not.toHaveBeenCalled();
+  });
+
+  it('lists no scheduling Church when the scope read returns none', async () => {
+    scopeRepository.listSchedulingScopes.mockResolvedValueOnce([]);
+
+    await expect(
+      createManager().listSchedulingChurchIds({
+        userId,
+        churchIds: [churchId],
+      }),
+    ).resolves.toEqual([]);
+  });
+
   it('canManageChurch allows a Church admin and denies a plain member', async () => {
     const manager = createManager();
 

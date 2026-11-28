@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { z } from 'zod';
-import { ChurchId, NotificationId, UserId } from '../../domain/branded-ids';
+import { NotificationId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { INotificationManager } from '../../domain/contracts/application/notification-manager';
@@ -100,8 +100,8 @@ export class NotificationController implements FastifyController {
       async (request, reply) => {
         const { cursor, limit } = request.query;
         const page = await this.notificationManager.list({
-          userId: UserId.from(request.userId),
-          churchId: ChurchId.from(request.churchId),
+          userId: request.userId,
+          churchId: request.churchId,
           cursor,
           limit,
         });
@@ -129,8 +129,8 @@ export class NotificationController implements FastifyController {
       async (request, reply) => {
         try {
           await this.notificationManager.markRead({
-            userId: UserId.from(request.userId),
-            churchId: ChurchId.from(request.churchId),
+            userId: request.userId,
+            churchId: request.churchId,
             notificationId: NotificationId.from(request.params.notificationId),
           });
         } catch (error) {
@@ -157,8 +157,8 @@ export class NotificationController implements FastifyController {
       },
       async (request, reply) => {
         await this.notificationManager.markAllRead({
-          userId: UserId.from(request.userId),
-          churchId: ChurchId.from(request.churchId),
+          userId: request.userId,
+          churchId: request.churchId,
         });
         return reply.status(201).send({ marked: true });
       },

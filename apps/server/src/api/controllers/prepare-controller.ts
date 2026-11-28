@@ -1,7 +1,6 @@
 import { parseInstant } from '@church/time';
 import { z } from 'zod';
 import {
-  ChurchId,
   CycleId,
   EventTimeBlockId,
   MinistryId,
@@ -274,7 +273,7 @@ export class PrepareController implements FastifyController {
           return;
 
         const view = await this.prepareManager.getCycleParticipation({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
           filters: {
@@ -325,7 +324,7 @@ export class PrepareController implements FastifyController {
           return;
 
         const preview = await this.availabilityCheckManager.getAskPreview({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
           ministryId: MinistryId.from(ministryId),
         });
@@ -367,7 +366,7 @@ export class PrepareController implements FastifyController {
           return;
 
         const views = await this.scheduleReadModel.listScheduleSummaries({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId: MinistryId.from(ministryId),
         });
         return reply.send(
@@ -413,7 +412,7 @@ export class PrepareController implements FastifyController {
 
         const { serves, shiftSplit, headcounts } = request.body;
         const view = await this.prepareManager.savePreparation({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           participationId: MinistryParticipationId.from(participationId),
           eventTimeBlockId: EventTimeBlockId.from(eventTimeBlockId),
           serves,
@@ -472,7 +471,7 @@ export class PrepareController implements FastifyController {
           return;
 
         const result = await this.availabilityCheckManager.askSchedule({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId: MinistryId.from(ministryId),
           cycleId: CycleId.from(cycleId),
           answerBy,
@@ -520,7 +519,7 @@ export class PrepareController implements FastifyController {
           return;
 
         await this.availabilityCheckManager.setDeadline({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId: MinistryId.from(ministryId),
           cycleId: CycleId.from(cycleId),
           answerBy,
@@ -567,7 +566,7 @@ export class PrepareController implements FastifyController {
           return;
 
         const result = await this.availabilityCheckManager.remindSchedule({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId: MinistryId.from(ministryId),
           cycleId: CycleId.from(cycleId),
         });
@@ -616,7 +615,7 @@ export class PrepareController implements FastifyController {
 
         const answers =
           await this.availabilityCheckManager.listCycleCheckStatuses({
-            churchId: ChurchId.from(request.churchId),
+            churchId: request.churchId,
             cycleId: CycleId.from(cycleId),
             ministryId: MinistryId.from(ministryId),
             status,

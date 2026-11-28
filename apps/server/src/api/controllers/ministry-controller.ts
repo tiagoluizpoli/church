@@ -1,11 +1,9 @@
 import { z } from 'zod';
 import {
-  ChurchId,
   MinistryId,
   MinistryInvitationId,
   RoleId,
-  UserId,
-  VolunteerId,
+  type VolunteerId,
 } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
@@ -116,7 +114,7 @@ export class MinistryController implements FastifyController {
           ? await this.ministryManager.listByChurch(churchId)
           : await this.ministryManager.listByLeader({
               churchId,
-              leaderId: VolunteerId.from(request.volunteerId as string),
+              leaderId: request.volunteerId as VolunteerId,
             });
         const summaries = await this.ministryManager.summarize({
           churchId,
@@ -192,7 +190,7 @@ export class MinistryController implements FastifyController {
         if (await this.denyNonAdmin({ request, reply })) return;
         const { name } = request.body;
         const ministry = await this.ministryManager.create({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           name,
         });
         return reply.status(201).send(ministryMapper.toResponse(ministry));
@@ -224,7 +222,7 @@ export class MinistryController implements FastifyController {
           return;
         }
         const ministry = await this.ministryManager.getActive({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
         });
         return reply.send(ministryMapper.toResponse(ministry));
@@ -256,7 +254,7 @@ export class MinistryController implements FastifyController {
         const { ministryId } = request.params;
         const { name } = request.body;
         const ministry = await this.ministryManager.rename({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId: MinistryId.from(ministryId),
           name,
         });
@@ -287,9 +285,9 @@ export class MinistryController implements FastifyController {
         if (await this.denyNonAdmin({ request, reply })) return;
         const { ministryId } = request.params;
         await this.ministryManager.archive({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId: MinistryId.from(ministryId),
-          callerId: UserId.from(request.userId),
+          callerId: request.userId,
         });
         return reply.status(204).send(null);
       },

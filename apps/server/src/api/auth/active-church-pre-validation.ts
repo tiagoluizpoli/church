@@ -58,7 +58,7 @@ export function createActiveChurchPreValidation(
       return refuse({ reply, request, code: 'FORBIDDEN' });
     }
 
-    request.userId = session.user.id;
+    request.userId = userId;
     request.churchId = resolution.churchId;
     request.actor = resolution.actor;
     if (resolution.volunteerId) {

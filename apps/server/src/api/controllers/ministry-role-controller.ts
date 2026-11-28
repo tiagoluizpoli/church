@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ChurchId, MinistryId, RoleId } from '../../domain/branded-ids';
+import { MinistryId, RoleId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryRoleManager } from '../../domain/contracts/application/ministry-role-manager';
@@ -88,7 +88,7 @@ export class MinistryRoleController implements FastifyController {
           return;
         }
         const roles = await this.ministryRoleManager.list({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
         });
         return reply.send(roleMapper.toResponseList(roles));
@@ -129,7 +129,7 @@ export class MinistryRoleController implements FastifyController {
         }
         const { name } = request.body;
         const role = await this.ministryRoleManager.create({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
           name,
         });
@@ -172,7 +172,7 @@ export class MinistryRoleController implements FastifyController {
         }
         const { name } = request.body;
         const role = await this.ministryRoleManager.rename({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
           roleId: RoleId.from(params.roleId),
           name,
@@ -214,7 +214,7 @@ export class MinistryRoleController implements FastifyController {
           return;
         }
         await this.ministryRoleManager.archive({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
           roleId: RoleId.from(params.roleId),
         });

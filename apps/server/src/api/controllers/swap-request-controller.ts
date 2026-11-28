@@ -1,6 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { z } from 'zod';
-import { AssignmentId, ChurchId, UserId } from '../../domain/branded-ids';
+import { AssignmentId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { ISwapRequestManager } from '../../domain/contracts/application/swap-request-manager';
 import { AssignmentAccessDeniedError } from '../../domain/errors/assignment-access-denied';
@@ -71,8 +71,8 @@ export class SwapRequestController implements FastifyController {
         const body = request.body;
         try {
           const raised = await this.swapRequestManager.raise({
-            churchId: ChurchId.from(request.churchId),
-            userId: UserId.from(request.userId),
+            churchId: request.churchId,
+            userId: request.userId,
             assignmentId: AssignmentId.from(assignmentId),
             note: body.note,
           });
@@ -111,8 +111,8 @@ export class SwapRequestController implements FastifyController {
         const { assignmentId } = request.params;
         try {
           await this.swapRequestManager.withdraw({
-            churchId: ChurchId.from(request.churchId),
-            userId: UserId.from(request.userId),
+            churchId: request.churchId,
+            userId: request.userId,
             assignmentId: AssignmentId.from(assignmentId),
           });
           return reply.status(204).send(null);

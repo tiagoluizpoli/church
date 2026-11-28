@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import {
-  ChurchId,
-  MinistryId,
-  TemplateTimeBlockId,
-} from '../../domain/branded-ids';
+import { MinistryId, TemplateTimeBlockId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
@@ -89,7 +85,7 @@ export class UsualSetupController implements FastifyController {
         });
         if (!ministryId) return;
         const blocks = await this.usualSetupManager.listUsualSetupBlocks({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
         });
         return reply.send(usualSetupMapper.toBlockListResponse(blocks));
@@ -124,7 +120,7 @@ export class UsualSetupController implements FastifyController {
         if (!ministryId) return;
         const { sourceTemplateTimeBlockId } = request.params;
         const block = await this.usualSetupManager.saveUsualSetupBlock({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId,
           entry: usualSetupMapper.toEntryInput({
             sourceTemplateTimeBlockId: TemplateTimeBlockId.from(
@@ -156,7 +152,7 @@ export class UsualSetupController implements FastifyController {
     });
     if (denied) return undefined;
     await this.ministryManager.getActive({
-      churchId: ChurchId.from(request.churchId),
+      churchId: request.churchId,
       ministryId,
     });
     return ministryId;

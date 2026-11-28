@@ -1,11 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { z } from 'zod';
-import {
-  ChurchId,
-  EventId,
-  MinistryId,
-  UserId,
-} from '../../domain/branded-ids';
+import { EventId, MinistryId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IEventManager } from '../../domain/contracts/application/event-manager';
@@ -93,9 +88,9 @@ export class EventController implements FastifyController {
         const { eventId, ministryId } = request.query;
         try {
           const data = await this.eventManager.getScheduleBuilderData({
-            churchId: ChurchId.from(request.churchId),
+            churchId: request.churchId,
             eventId: EventId.from(eventId),
-            userId: UserId.from(request.userId),
+            userId: request.userId,
             ministryId: ministryId ? MinistryId.from(ministryId) : undefined,
           });
           return reply.send(eventMapper.scheduleBuilderToResponse(data));
@@ -142,7 +137,7 @@ export class EventController implements FastifyController {
         if (deniedObject) return;
 
         const events = await this.eventManager.listEvents({
-          churchId: ChurchId.from(request.churchId),
+          churchId: request.churchId,
           ministryId: MinistryId.from(ministryId),
           status: status as EventStatus | undefined,
         });

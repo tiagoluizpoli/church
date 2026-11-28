@@ -147,29 +147,30 @@ describe('constitution-version-guard.ts with a missing base', () => {
 });
 
 describe('affected.ts with a missing base', () => {
-  it('plans the working tree only when no base ref resolves', () => {
+  it('fails, naming the fix, when no base ref resolves', () => {
     commitFile({ message: 'feat: a', path: 'apps/web/src/App.tsx' });
     git('branch', '-m', 'develop', 'main');
 
     const result = run({ args: [AFFECTED, '--dry-run'] });
 
-    expect(result.exitCode).toBe(0);
-    expect(result.stderr).toContain('Base ref: (none — working tree only)');
-    expect(JSON.parse(result.stdout).workspaceNames).toEqual([]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain('No base ref found');
+    expect(result.stderr).toContain(FIX);
   });
 
-  it('fails when --base names a commit missing from the clone', () => {
+  it('fails, naming the fix, when --base names a commit missing from the clone', () => {
     const result = run({
       args: [AFFECTED, '--dry-run', '--base', UNKNOWN_SHA],
     });
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain(
-      `Invalid symmetric difference expression ${UNKNOWN_SHA}...HEAD`,
+      `Base "${UNKNOWN_SHA}" is not a commit in this clone`,
     );
+    expect(result.stderr).toContain(FIX);
   });
 
-  it('fails when the base shares no history with HEAD', () => {
+  it('fails, naming the fix, when the base shares no history with HEAD', () => {
     createUnrelatedBranch({ name: 'spec/9-unrelated' });
 
     const result = run({
@@ -177,10 +178,13 @@ describe('affected.ts with a missing base', () => {
     });
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('spec/9-unrelated...HEAD: no merge base');
+    expect(result.stderr).toContain(
+      'Base "spec/9-unrelated" shares no history with HEAD',
+    );
+    expect(result.stderr).toContain(FIX);
   });
 
-  it('fails in a shallow clone whose base commit was not fetched', () => {
+  it('fails, naming the fix, in a shallow clone whose base commit was not fetched', () => {
     commitFile({ message: 'feat: a', path: 'apps/web/src/App.tsx' });
     git('checkout', '-q', 'develop');
     commitFile({ message: 'chore: develop moves', path: 'develop.txt' });
@@ -216,7 +220,10 @@ describe('affected.ts with a missing base', () => {
     });
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('origin/develop...HEAD: no merge base');
+    expect(result.stderr).toContain(
+      'Base "origin/develop" shares no history with HEAD',
+    );
+    expect(result.stderr).toContain(FIX);
   });
 });
 

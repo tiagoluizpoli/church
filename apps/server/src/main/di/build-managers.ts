@@ -8,6 +8,7 @@ import {
   DbChurchAccessManager,
   DbChurchSettingsManager,
   DbCycleManager,
+  DbEventGroupManager,
   DbEventManager,
   DbEventTemplateManager,
   DbInvitationListManager,
@@ -86,6 +87,7 @@ export function buildManagers({
     roleRepository,
     sectorRepository,
     scheduleExportRepository,
+    eventGroupRepository,
     eventTimeBlockRepository,
     notificationRepository,
     invitationListRepository,
@@ -437,10 +439,14 @@ export function buildManagers({
     overrides.scheduleExportReader ??
     new DbScheduleExportReader({
       scheduleExportRepository,
+      eventGroupRepository,
       scheduleChangeReader,
       unitOfWork,
       typstRenderer,
     });
+  const eventGroupManager =
+    overrides.eventGroupManager ??
+    new DbEventGroupManager({ eventGroupRepository, unitOfWork });
   const schedulePublisher =
     overrides.schedulePublisher ??
     new DbSchedulePublisher({
@@ -566,6 +572,7 @@ export function buildManagers({
     assignmentProposalManager,
     scheduleReadModel,
     scheduleExportReader,
+    eventGroupManager,
     schedulePublisher,
     availabilityCheckManager,
     activeChurchSelectionManager,

@@ -227,7 +227,7 @@ describe('from/to on the export data and file', () => {
 
     expect(body.range).toEqual({ from: '2026-10-07', to: '2026-10-24' });
     expect(
-      body.parts[0].events.map(
+      body.parts[0].groups[0].events.map(
         (found: { startDay: string; title: string }) =>
           `${found.startDay} ${found.title}`,
       ),
@@ -243,7 +243,7 @@ describe('from/to on the export data and file', () => {
     const body = (await readRange({ to: '2026-10-04' })).json();
 
     expect(body.range).toEqual({ from: '2026-10-01', to: '2026-10-04' });
-    expect(body.parts[0].events).toHaveLength(1);
+    expect(body.parts[0].groups[0].events).toHaveLength(1);
     expect((await readRange({})).json().range).toEqual({
       from: '2026-10-01',
       to: '2026-10-31',

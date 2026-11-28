@@ -26,6 +26,13 @@ vi.mock('@/features/scheduling/hooks/use-schedule', () => ({
   useSchedule: () => ({ data: state.data }),
 }));
 vi.mock('@/utils/api-instances', () => ({
+  adminApi: {
+    getEventGroups: async () => ({
+      groups: [],
+      catchAllName: null,
+      templates: [],
+    }),
+  },
   exportApi: {
     getScheduleExportFile: state.getScheduleExportFile,
     getScheduleExportData: state.getScheduleExportData,
@@ -33,6 +40,7 @@ vi.mock('@/utils/api-instances', () => ({
     listScheduleExportCycles: state.listScheduleExportCycles,
   },
 }));
+vi.mock('@tanstack/react-router', () => ({ Link: () => null }));
 
 function cycle(
   id: string,

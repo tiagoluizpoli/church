@@ -35,6 +35,7 @@ import {
   DrizzleRoleRepository,
   DrizzleShiftRepository,
 } from '@/infrastructure/repositories';
+import { DrizzleEventGroupRepository } from '@/infrastructure/repositories/drizzle-event-group.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleScheduleExportRepository } from '@/infrastructure/repositories/drizzle-schedule-export.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
@@ -85,6 +86,7 @@ beforeAll(async () => {
   const controller = new ScheduleExportController({
     scheduleExportReader: new DbScheduleExportReader({
       scheduleExportRepository: new DrizzleScheduleExportRepository({ db }),
+      eventGroupRepository: new DrizzleEventGroupRepository({ db }),
       scheduleChangeReader: new DbScheduleChangeReader({
         assignmentRepository: new DrizzleAssignmentRepository({ db }),
         eventRepository: new DrizzlePlanningEventRepository({ db }),
@@ -400,7 +402,7 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/data', () => {
           name: null,
           singleSector: null,
           singleRole: null,
-          events: OCTOBER_EVENTS,
+          groups: [{ kind: 'list', name: null, events: OCTOBER_EVENTS }],
         },
       ],
     });
@@ -416,7 +418,7 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/data', () => {
       .set({ isHidden: false })
       .where(eq(eventTimeBlock.id, fixture.hiddenBlockId));
 
-    const { events } = (await readData()).json().parts[0];
+    const { events } = (await readData()).json().parts[0].groups[0];
 
     expect(events).toEqual([
       ...OCTOBER_EVENTS.slice(0, 3),
@@ -448,7 +450,9 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/data', () => {
 
     expect(body.isDraft).toBe(true);
     expect(body.hasUnsentChanges).toBe(false);
-    expect(body.parts[0].events[0].timeBlocks[0].shifts[0].sectors[0]).toEqual({
+    expect(
+      body.parts[0].groups[0].events[0].timeBlocks[0].shifts[0].sectors[0],
+    ).toEqual({
       name: BERCARIO,
       paletteIndex: 1,
       people: [
@@ -470,7 +474,7 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/data', () => {
 
     expect(published).toBeDefined();
     expect(body.isDraft).toBe(false);
-    expect(body.parts[0].events).toEqual(OCTOBER_EVENTS);
+    expect(body.parts[0].groups[0].events).toEqual(OCTOBER_EVENTS);
   });
 
   it('flags names that clash ignoring case, accents and extra spaces', async () => {

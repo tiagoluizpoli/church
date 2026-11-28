@@ -30,6 +30,7 @@ export type Repositories = Pick<
   | 'roleRepository'
   | 'sectorRepository'
   | 'scheduleExportRepository'
+  | 'eventGroupRepository'
   | 'eventTimeBlockRepository'
   | 'notificationRepository'
   | 'invitationListRepository'

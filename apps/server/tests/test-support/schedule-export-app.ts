@@ -12,6 +12,7 @@ import {
   DrizzleRoleRepository,
   DrizzleShiftRepository,
 } from '@/infrastructure/repositories';
+import { DrizzleEventGroupRepository } from '@/infrastructure/repositories/drizzle-event-group.repository';
 import { DrizzleMinistryRepository } from '@/infrastructure/repositories/drizzle-ministry.repository';
 import { DrizzleScheduleExportRepository } from '@/infrastructure/repositories/drizzle-schedule-export.repository';
 import { DrizzleUnitOfWork } from '@/infrastructure/repositories/drizzle-unit-of-work';
@@ -43,6 +44,7 @@ export async function buildScheduleExportApp({
   const controller = new ScheduleExportController({
     scheduleExportReader: new DbScheduleExportReader({
       scheduleExportRepository: new DrizzleScheduleExportRepository({ db }),
+      eventGroupRepository: new DrizzleEventGroupRepository({ db }),
       scheduleChangeReader: new DbScheduleChangeReader({
         assignmentRepository: new DrizzleAssignmentRepository({ db }),
         eventRepository: new DrizzlePlanningEventRepository({ db }),

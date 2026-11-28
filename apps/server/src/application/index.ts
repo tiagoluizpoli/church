@@ -7,6 +7,7 @@ export { DbAvailabilityCheckManager } from './db-availability-check-manager';
 export { DbChurchAccessManager } from './db-church-access-manager';
 export { DbChurchSettingsManager } from './db-church-settings-manager';
 export { DbCycleManager } from './db-cycle-manager';
+export { DbEventGroupManager } from './db-event-group-manager';
 export { DbEventManager } from './db-event-manager';
 export { DbEventTemplateManager } from './db-event-template-manager';
 export { DbInvitationListManager } from './db-invitation-list-manager';

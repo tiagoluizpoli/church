@@ -33,6 +33,7 @@ function exportText({
     noService: m.export_no_service({}, { locale }),
     cancelled: m.export_block_cancelled({}, { locale }),
     emptySpot: m.export_empty_spot({}, { locale }),
+    catchAll: m.export_catch_all_default({}, { locale }),
     columns: {
       date: m.export_column_date({}, { locale }),
       event: m.export_column_event({}, { locale }),
@@ -51,15 +52,16 @@ export function scheduleExportRenderPayload({
   const { data, locale } = input;
   const dayList: CalendarDay[] = [];
   const times: Record<string, string> = {};
-  for (const part of data.parts) {
-    for (const event of part.events) {
-      dayList.push(event.startDay, event.endDay);
-      for (const shift of event.timeBlocks.flatMap((block) => block.shifts)) {
-        if (shift.day) dayList.push(shift.day);
-        for (const time of [shift.startTime, shift.endTime]) {
-          const [hours = '', minutes = ''] = time.split(':');
-          times[time] = m.export_time({ hours, minutes }, { locale });
-        }
+  const events = data.parts.flatMap((part) =>
+    part.groups.flatMap((group) => group.events),
+  );
+  for (const event of events) {
+    dayList.push(event.startDay, event.endDay);
+    for (const shift of event.timeBlocks.flatMap((block) => block.shifts)) {
+      if (shift.day) dayList.push(shift.day);
+      for (const time of [shift.startTime, shift.endTime]) {
+        const [hours = '', minutes = ''] = time.split(':');
+        times[time] = m.export_time({ hours, minutes }, { locale });
       }
     }
   }

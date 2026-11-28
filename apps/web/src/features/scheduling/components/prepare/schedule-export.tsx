@@ -1,6 +1,6 @@
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DatePickerField } from '@/components/date-picker-field';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -14,6 +14,7 @@ import {
   ScheduleExportCyclePicker,
 } from '@/features/scheduling/components/prepare/schedule-export-cycle-picker';
 import { ScheduleExportFooter } from '@/features/scheduling/components/prepare/schedule-export-footer';
+import { ScheduleExportGroups } from '@/features/scheduling/components/prepare/schedule-export-groups';
 import {
   ScheduleExportPreview,
   useSettledExportSettings,
@@ -28,6 +29,10 @@ import { exportApi } from '@/utils/api-instances';
 interface ScheduleExportProps {
   ministryId: string;
   cycleId: string;
+  /** Opens at once, as when the Event groups tab links back. */
+  initialOpen?: boolean;
+  /** Called once when it opened at once. */
+  onOpened?: () => void;
 }
 
 const FORMATS = [
@@ -49,8 +54,17 @@ interface ExportRange {
  * The files are prefetched once the preview settles, for Baixar and, on a
  * phone, Compartilhar (#1251).
  */
-export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
-  const [open, setOpen] = useState(false);
+export function ScheduleExport({
+  ministryId,
+  cycleId,
+  initialOpen = false,
+  onOpened,
+}: ScheduleExportProps) {
+  const [open, setOpen] = useState(initialOpen);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only the first render opens at once
+  useEffect(() => {
+    if (initialOpen) onOpened?.();
+  }, []);
   const [cycle, setCycle] = useState<ExportCycle | null>(null);
   // Null: the whole Cycle.
   const [range, setRange] = useState<ExportRange | null>(null);
@@ -185,6 +199,7 @@ export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
               ))}
             </RadioGroup>
           </div>
+          <ScheduleExportGroups ministryId={ministryId} cycleId={cycleId} />
         </div>
         {refused ? (
           <Alert role="alert" variant="destructive" className="mt-4">

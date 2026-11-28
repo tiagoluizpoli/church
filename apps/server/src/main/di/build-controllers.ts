@@ -6,6 +6,7 @@ import {
   ChurchAdminController,
   ChurchSettingsController,
   EventController,
+  EventGroupController,
   InvitationController,
   MinistryController,
   MinistryRoleController,
@@ -47,6 +48,7 @@ export function buildControllers({
     assignmentProposalManager,
     scheduleReadModel,
     scheduleExportReader,
+    eventGroupManager,
     schedulePublisher,
     availabilityCheckManager,
     activeChurchSelectionManager,
@@ -127,6 +129,11 @@ export function buildControllers({
     }),
     new ScheduleExportController({
       scheduleExportReader,
+      activeChurchResolver,
+      authorityGuard,
+    }),
+    new EventGroupController({
+      eventGroupManager,
       activeChurchResolver,
       authorityGuard,
     }),

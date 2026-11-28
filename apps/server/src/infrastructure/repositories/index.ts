@@ -7,6 +7,7 @@ export { DrizzleChurchAccessRepository } from './drizzle-church-access.repositor
 export { DrizzleChurchProgrammeRepository } from './drizzle-church-programme.repository';
 export { DrizzleCycleRepository } from './drizzle-cycle.repository';
 export { DrizzleEventRepository } from './drizzle-event.repository';
+export { DrizzleEventGroupRepository } from './drizzle-event-group.repository';
 export { DrizzleEventTemplateRepository } from './drizzle-event-template.repository';
 export { DrizzleEventTimeBlockRepository } from './drizzle-event-time-block.repository';
 export { DrizzleInvitationListRepository } from './drizzle-invitation-list.repository';

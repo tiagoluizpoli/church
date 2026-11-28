@@ -15,7 +15,6 @@ import { requestCaller } from '../utils/request-caller';
 import type {
   AssertAllowedDecisionInput,
   AssertManagedMinistryInput,
-  AssertMinistryManagementInput,
   AssertParticipationScopeInput,
   AssertShiftScopeInput,
   AuthorityAccessInput,
@@ -49,13 +48,13 @@ export async function assertManagedMinistry({
   if (!decision.allowed) throw new RefusalError({ code: 'NOT_FOUND' });
 }
 
-/** The function check (403), then, given a Ministry, the object check (404). */
+/** The function check (403), then the object check for the Ministry (404). */
 export async function assertMinistryManagement({
   ministryId,
   ...access
-}: AssertMinistryManagementInput): Promise<void> {
+}: AssertManagedMinistryInput): Promise<void> {
   await assertMinistryFunction(access);
-  if (ministryId) await assertManagedMinistry({ ...access, ministryId });
+  await assertManagedMinistry({ ...access, ministryId });
 }
 
 /**

@@ -21,8 +21,6 @@ import type {
   CreatePlanningEventBody,
   CreatePlanningEventTimeBlock201,
   CreatePlanningEventTimeBlockBody,
-  DeletePlanningEvent204,
-  DeletePlanningEventTimeBlock204,
   EditPlanningEvent200,
   EditPlanningEventBody,
   GetCycle200,
@@ -46,12 +44,9 @@ import type {
   PreviewPlanningEventTimeBlockCancellation200,
   PreviewPlanningEventTimeBlockMove200,
   PreviewPlanningEventTimeBlockMoveBody,
-  SendCycle204,
   SetMinistryDefaultDirection200,
   SetMinistryDefaultDirectionBody,
-  SetPlanningEventHidden204,
   SetPlanningEventHiddenBody,
-  SetPlanningEventTimeBlockHidden204,
   SetPlanningEventTimeBlockHiddenBody,
   UpdateCycle200,
   UpdateCycleBody,
@@ -168,7 +163,7 @@ const getCycleSendSummary = (
 const sendCycle = (
     cycleId: string,
  ) => {
-      return apiClient<SendCycle204>(
+      return apiClient<null>(
       {url: `/api/v1/admin/cycles/${cycleId}/send`, method: 'POST'
     },
       );
@@ -332,7 +327,7 @@ const deletePlanningEvent = (
     cycleId: string,
     eventId: string,
  ) => {
-      return apiClient<DeletePlanningEvent204>(
+      return apiClient<null>(
       {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}`, method: 'DELETE'
     },
       );
@@ -391,7 +386,7 @@ const setPlanningEventHidden = (
     eventId: string,
     setPlanningEventHiddenBody: SetPlanningEventHiddenBody,
  ) => {
-      return apiClient<SetPlanningEventHidden204>(
+      return apiClient<null>(
       {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/hidden`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: setPlanningEventHiddenBody
@@ -408,7 +403,7 @@ const setPlanningEventTimeBlockHidden = (
     eventTimeBlockId: string,
     setPlanningEventTimeBlockHiddenBody: SetPlanningEventTimeBlockHiddenBody,
  ) => {
-      return apiClient<SetPlanningEventTimeBlockHidden204>(
+      return apiClient<null>(
       {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${eventTimeBlockId}/hidden`, method: 'PUT',
       headers: {'Content-Type': 'application/json', },
       data: setPlanningEventTimeBlockHiddenBody
@@ -586,7 +581,7 @@ const deletePlanningEventTimeBlock = (
     eventId: string,
     eventTimeBlockId: string,
  ) => {
-      return apiClient<DeletePlanningEventTimeBlock204>(
+      return apiClient<null>(
       {url: `/api/v1/admin/cycles/${cycleId}/events/${eventId}/event-time-blocks/${eventTimeBlockId}`, method: 'DELETE'
     },
       );

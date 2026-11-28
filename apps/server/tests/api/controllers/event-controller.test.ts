@@ -263,3 +263,41 @@ describe('Event controller authorization wiring', () => {
     expect(response.statusCode).toBe(200);
   });
 });
+
+describe('Event controller query validation (#1222)', () => {
+  it.each([
+    ['GET /events without a ministryId', '/api/v1/events'],
+    [
+      'GET /events with an unknown status',
+      '/api/v1/events?ministryId=22222222-2222-2222-8222-222222222222&status=archived',
+    ],
+    [
+      'GET /events/schedule-builder without an eventId',
+      '/api/v1/events/schedule-builder',
+    ],
+  ])('%s answers 422 VALIDATION_ERROR', async (_case, url) => {
+    const response = await app.inject({ method: 'GET', url });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({ error: 'VALIDATION_ERROR' });
+    expect(eventManager.listEvents).not.toHaveBeenCalled();
+    expect(eventManager.getScheduleBuilderData).not.toHaveBeenCalled();
+  });
+
+  it('GET /events passes the queried Ministry and status to the manager', async () => {
+    eventManager.listEvents.mockResolvedValue([]);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/events?ministryId=22222222-2222-2222-8222-222222222222&status=draft',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(eventManager.listEvents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ministryId: '22222222-2222-2222-8222-222222222222',
+        status: 'draft',
+      }),
+    );
+  });
+});

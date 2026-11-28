@@ -56,6 +56,7 @@ const planningEventManager = {
   createEventTimeBlock: vi.fn(),
   updateEventTimeBlock: vi.fn(),
   deleteEventTimeBlock: vi.fn(),
+  setHidden: vi.fn(),
 };
 
 const ministryManager = {
@@ -472,5 +473,107 @@ describe('Church admin planning routes', () => {
         eventTimeBlockId: hiddenTimeBlockId,
       }),
     );
+  });
+});
+
+describe('Church admin request input and empty replies (#1222)', () => {
+  const cycleUrl = '/api/v1/admin/cycles/22222222-2222-2222-2222-222222222222';
+  const eventUrl = `${cycleUrl}/events/66666666-6666-6666-6666-666666666666`;
+  const blockUrl = `${eventUrl}/event-time-blocks/99999999-9999-9999-9999-999999999999`;
+
+  it('GET /admin/cycles passes the parsed query filters to the manager', async () => {
+    cycleManager.listCycles.mockResolvedValue({
+      cycles: [],
+      counts: { draft: 0, sent: 0, past: 0 },
+      eventCounts: {},
+      pastMatching: 0,
+      currentCycleId: null,
+      next: { startDate: '2026-11-01', endDate: '2026-11-30', isDue: false },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/cycles?state=draft&period=past&search=%20Outubro%20&from=2026-10-01&to=2026-10-31',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(cycleManager.listCycles).toHaveBeenCalledWith({
+      churchId: '11111111-1111-1111-1111-111111111111',
+      state: 'draft',
+      period: 'past',
+      search: 'Outubro',
+      from: new Date('2026-10-01T00:00:00.000Z'),
+      to: new Date('2026-10-31T00:00:00.000Z'),
+    });
+  });
+
+  it('GET /admin/cycles refuses an unknown state with 422 VALIDATION_ERROR', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/cycles?state=archived',
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({ error: 'VALIDATION_ERROR' });
+    expect(cycleManager.listCycles).not.toHaveBeenCalled();
+  });
+
+  it('POST .../apply-templates answers the leftover blocks without their day, source or empty label', async () => {
+    planningEventManager.generateFromTemplates.mockResolvedValue({
+      generatedEventCount: 1,
+      generatedEventTimeBlockCount: 2,
+      leftoverEventTimeBlocks: [
+        {
+          eventId: '66666666-6666-6666-6666-666666666666',
+          eventTitle: 'Culto',
+          eventDate: parseCalendarDay({ value: '2026-08-02' }),
+          eventTimeBlockId: '99999999-9999-9999-9999-999999999999',
+          startTime: parseInstant({ value: '2026-08-02T09:00:00.000Z' }),
+          endTime: parseInstant({ value: '2026-08-02T10:00:00.000Z' }),
+          sourceTemplateTimeBlockId: '77777777-7777-7777-7777-777777777777',
+          loserTemplateName: 'Domingo',
+          winnerTemplateName: 'Natal',
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `${cycleUrl}/apply-templates`,
+      payload: { templateIds: ['33333333-3333-3333-3333-333333333333'] },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual({
+      generatedEventCount: 1,
+      generatedEventTimeBlockCount: 2,
+      leftoverEventTimeBlocks: [
+        {
+          eventId: '66666666-6666-6666-6666-666666666666',
+          eventTitle: 'Culto',
+          eventTimeBlockId: '99999999-9999-9999-9999-999999999999',
+          label: null,
+          startTime: '2026-08-02T09:00:00.000Z',
+          endTime: '2026-08-02T10:00:00.000Z',
+          loserTemplateName: 'Domingo',
+          winnerTemplateName: 'Natal',
+        },
+      ],
+    });
+  });
+
+  it.each([
+    ['send a Cycle', 'POST', `${cycleUrl}/send`, undefined],
+    ['delete an Event', 'DELETE', eventUrl, undefined],
+    ['hide an Event', 'PUT', `${eventUrl}/hidden`, { hidden: true }],
+    ['hide an EventTimeBlock', 'PUT', `${blockUrl}/hidden`, { hidden: true }],
+    ['delete an EventTimeBlock', 'DELETE', blockUrl, undefined],
+  ] as const)('%s answers 204 with an empty body', async (_case, method, url, payload) => {
+    const response = await app.inject({ method, url, payload });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.body).toBe('');
+    expect(response.headers['content-type']).toBeUndefined();
+    expect(response.headers['content-length']).toBeUndefined();
   });
 });

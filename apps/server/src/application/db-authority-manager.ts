@@ -320,23 +320,13 @@ export class DbAuthorityManager implements IAuthorityManager {
   async listSchedulingChurchIds(
     input: ListSchedulingChurchIdsInput,
   ): Promise<ChurchId[]> {
-    const { userId } = input;
     const scopes = await this.scopeRepository.listSchedulingScopes(input);
     return scopes
-      .filter(({ churchId, churchAccessLevel, leadsMinistry }) => {
-        const churchDecision = AuthorityService.authorize({
-          actor: {
-            userId,
-            volunteerId: null,
-            activeChurchId: churchId,
-            churchMembership: { churchId, accessLevel: churchAccessLevel },
-            ministryMemberships: [],
-          },
-          action: 'manage',
-          resource: { type: 'church', churchId },
-        });
-        return churchDecision.allowed || leadsMinistry;
-      })
+      .filter(
+        ({ churchAccessLevel, leadsMinistry }) =>
+          AuthorityService.isChurchAdmin({ accessLevel: churchAccessLevel }) ||
+          leadsMinistry,
+      )
       .map(({ churchId }) => churchId);
   }
 

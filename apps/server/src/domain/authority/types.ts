@@ -26,6 +26,11 @@ export interface ChurchMembershipFact {
   accessLevel: ChurchAccessLevel;
 }
 
+/** The one fact the Church-admin question reads: the caller's Church Access Level. */
+export interface IsChurchAdminInput {
+  accessLevel: ChurchAccessLevel;
+}
+
 export interface MinistryMembershipFact {
   churchId: ChurchId;
   ministryId: MinistryId;

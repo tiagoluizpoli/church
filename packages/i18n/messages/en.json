@@ -2374,5 +2374,8 @@
   "export_format_label": "Format",
   "export_format_pdf": "PDF for printing",
   "export_download": "Download",
-  "export_download_failed": "Couldn't download the schedule. Try again."
+  "export_download_failed": "Couldn't download the schedule. Try again.",
+  "export_draft_notice": "This schedule was never published, so the file is marked as a draft and shows empty spots.",
+  "export_unsent_changes": "Some changes haven't been sent to the volunteers yet",
+  "export_duplicate_names_title": "Two volunteers with the same name"
 }

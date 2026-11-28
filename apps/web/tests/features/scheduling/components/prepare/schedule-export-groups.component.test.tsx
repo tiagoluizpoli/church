@@ -20,7 +20,10 @@ vi.mock('@/features/scheduling/hooks/use-schedule', () => ({
 }));
 vi.mock('@/utils/api-instances', () => ({
   adminApi: { getEventGroups: state.getEventGroups },
-  exportApi: { getScheduleExportFile: vi.fn() },
+  exportApi: {
+    getScheduleExportFile: vi.fn(),
+    getScheduleExportData: () => new Promise(() => undefined),
+  },
 }));
 
 interface LinkMockProps {

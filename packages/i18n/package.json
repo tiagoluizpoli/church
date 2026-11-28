@@ -25,7 +25,7 @@
     "build": "bun run compile"
   },
   "devDependencies": {
-    "@inlang/paraglide-js": "~2.29.0",
+    "@inlang/paraglide-js": "~3.2.0",
     "@inlang/plugin-message-format": "^4.4.5"
   }
 }

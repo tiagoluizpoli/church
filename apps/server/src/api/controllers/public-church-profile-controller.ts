@@ -1,5 +1,4 @@
 import type { AppConfig } from '@church/app-config';
-import type { z } from 'zod';
 import type { IPublicChurchProfileManager } from '../../domain/contracts/application/public-church-profile-manager';
 import type { IPublicEventManager } from '../../domain/contracts/application/public-event-manager';
 import type { WebShell } from '../../domain/contracts/infrastructure';
@@ -24,7 +23,6 @@ import type {
   ChurchPageInput,
   LimitedInput,
   PublicChurchProfileControllerDependencies,
-  PublicChurchProfileParams,
 } from './public-church-profile-controller.types';
 
 /** Sign-in-free reads of the Public Church Profile, rate limited per client IP. */
@@ -76,7 +74,7 @@ export class PublicChurchProfileController implements FastifyController {
       async (request, reply) => {
         if (this.limited({ bucket: 'public-church-profile', ip: request.ip }))
           return refuse({ reply, request, code: 'RATE_LIMITED' });
-        const { slug } = request.params as PublicChurchProfileParams;
+        const { slug } = request.params;
         const profile = await this.publicChurchProfileManager.getProfile({
           slug,
         });
@@ -93,7 +91,7 @@ export class PublicChurchProfileController implements FastifyController {
       async (request, reply) => {
         const page = await this.churchPage({
           ip: request.ip,
-          ...(request.params as PublicChurchProfileParams),
+          ...request.params,
         });
         if ('redirectTo' in page) {
           // Old printed or shared links keep their tracking parameters.
@@ -129,10 +127,8 @@ export class PublicChurchProfileController implements FastifyController {
       async (request, reply) => {
         if (this.limited({ bucket: 'public-church-events', ip: request.ip }))
           return refuse({ reply, request, code: 'RATE_LIMITED' });
-        const { slug } = request.params as PublicChurchProfileParams;
-        const { cursor } = request.query as z.infer<
-          typeof publicEventsQuerystringSchema
-        >;
+        const { slug } = request.params;
+        const { cursor } = request.query;
         const result = await this.publicEventManager.listPublicEventsBySlug({
           slug,
           after: cursor ? decodePublicEventCursor({ cursor }) : undefined,

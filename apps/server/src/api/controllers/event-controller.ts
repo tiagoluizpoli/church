@@ -25,8 +25,6 @@ import type {
   DenyMinistryObjectInput,
   DenySchedulingFunctionInput,
   EventControllerDependencies,
-  ListEventsQuery,
-  ScheduleBuilderQuery,
 } from './event-controller.types';
 
 const errorResponseSchema = z.object({
@@ -72,7 +70,7 @@ export class EventController implements FastifyController {
           summary: 'Get schedule builder data for an Event',
           description:
             'Get the EventTimeBlocks, Shifts, and eligible Volunteers needed to build a schedule for an Event.',
-          query: z.object({
+          querystring: z.object({
             eventId: z.string(),
             ministryId: z.string().optional(),
           }),
@@ -91,7 +89,7 @@ export class EventController implements FastifyController {
         });
         if (deniedFunction) return;
 
-        const { eventId, ministryId } = request.query as ScheduleBuilderQuery;
+        const { eventId, ministryId } = request.query;
         try {
           const data = await this.eventManager.getScheduleBuilderData({
             churchId: ChurchId.from(request.churchId),
@@ -118,7 +116,7 @@ export class EventController implements FastifyController {
           summary: "List a Ministry's Events",
           description:
             'List Events for a Ministry, optionally filtered by status.',
-          query: listEventsQuerySchema,
+          querystring: listEventsQuerySchema,
           response: {
             200: eventListResponseSchema,
             401: errorResponseSchema,
@@ -128,7 +126,7 @@ export class EventController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { ministryId, status } = request.query as ListEventsQuery;
+        const { ministryId, status } = request.query;
         const deniedFunction = await this.denyMissingSchedulingFunction({
           request,
           reply,

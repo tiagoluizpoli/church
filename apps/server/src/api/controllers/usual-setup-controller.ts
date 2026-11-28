@@ -13,7 +13,6 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import { denyMinistryManagement } from '../auth/ministry-management-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
-  type UsualSetupEntryBody,
   usualSetupBlockListResponseSchema,
   usualSetupBlockResponseSchema,
   usualSetupEntryBodySchema,
@@ -128,7 +127,7 @@ export class UsualSetupController implements FastifyController {
             sourceTemplateTimeBlockId: TemplateTimeBlockId.from(
               sourceTemplateTimeBlockId,
             ),
-            body: request.body as UsualSetupEntryBody,
+            body: request.body,
           }),
         });
         return reply.send(usualSetupMapper.toBlockResponse(block));

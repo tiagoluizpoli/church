@@ -51,16 +51,10 @@ import {
 import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
 import type {
-  ApplyAssignmentProposalBody,
   AssignControllerDependencies,
-  CreateParticipationAssignmentBody,
-  CycleMinistryQuery,
   DenyAuthorityDecisionInput,
   DenyParticipationScopeInput,
   DenyShiftScopeInput,
-  MoveAssignmentBody,
-  PublishCycleBody,
-  ReassignAssignmentBody,
   ResolveOwnedAssignmentInput,
   ResolveOwnedAssignmentResult,
   ResolveScheduleShiftInput,
@@ -149,8 +143,8 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { cycleId } = request.params;
+        const { ministryId } = request.query;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
@@ -195,10 +189,8 @@ export class AssignController implements FastifyController {
           },
         },
         async (request, reply) => {
-          const { cycleId } = request.params as z.infer<
-            typeof cycleParamsSchema
-          >;
-          const { ministryId } = request.query as CycleMinistryQuery;
+          const { cycleId } = request.params;
+          const { ministryId } = request.query;
 
           const decision = await this.authorityGuard.decideManageMinistry({
             ...requestCaller({ request }),
@@ -243,8 +235,8 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { cycleId } = request.params;
+        const { ministryId } = request.query;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
@@ -291,8 +283,8 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { cycleId } = request.params;
+        const { ministryId } = request.query;
 
         // Checked again on every attempt, recovery included.
         const decision = await this.authorityGuard.decideManageMinistry({
@@ -309,7 +301,7 @@ export class AssignController implements FastifyController {
           return;
 
         const { applicationKey, reviewToken, additions, excludedAdditions } =
-          request.body as ApplyAssignmentProposalBody;
+          request.body;
         const outcome =
           await this.assignmentProposalManager.applyAssignmentProposal({
             churchId: ChurchId.from(request.churchId),
@@ -346,8 +338,8 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { cycleId } = request.params;
+        const { ministryId } = request.query;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
@@ -362,7 +354,7 @@ export class AssignController implements FastifyController {
         )
           return;
 
-        const body = request.body as PublishCycleBody;
+        const body = request.body;
         const view = await this.schedulePublisher.publishCycle({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -392,8 +384,8 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { cycleId } = request.params;
+        const { ministryId } = request.query;
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
           ministryId: MinistryId.from(ministryId),
@@ -434,7 +426,7 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { shiftId } = request.params as z.infer<typeof shiftParamsSchema>;
+        const { shiftId } = request.params;
         const denied = await this.denyShiftScope({ request, reply, shiftId });
         if (denied) return;
 
@@ -468,8 +460,8 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { shiftId } = request.params as z.infer<typeof shiftParamsSchema>;
-        const body = request.body as CreateParticipationAssignmentBody;
+        const { shiftId } = request.params;
+        const body = request.body;
         const scope = await this.resolveScheduleShift({
           request,
           reply,
@@ -511,9 +503,7 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as z.infer<
-          typeof assignmentParamsSchema
-        >;
+        const { assignmentId } = request.params;
         const resolved = await this.resolveScheduleAssignment({
           request,
           reply,
@@ -547,16 +537,14 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as z.infer<
-          typeof assignmentParamsSchema
-        >;
+        const { assignmentId } = request.params;
         const resolved = await this.resolveScheduleAssignment({
           request,
           reply,
           assignmentId,
         });
         if (resolved.denied) return;
-        const body = request.body as MoveAssignmentBody;
+        const body = request.body;
         const moved = await this.assignmentManager.moveParticipationAssignment({
           churchId: ChurchId.from(request.churchId),
           assignmentId: AssignmentId.from(assignmentId),
@@ -588,9 +576,7 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as z.infer<
-          typeof assignmentParamsSchema
-        >;
+        const { assignmentId } = request.params;
         const resolved = await this.resolveScheduleAssignment({
           request,
           reply,
@@ -598,7 +584,7 @@ export class AssignController implements FastifyController {
         });
         if (resolved.denied) return;
 
-        const body = request.body as ReassignAssignmentBody;
+        const body = request.body;
         const reassigned =
           await this.assignmentManager.reassignParticipationAssignment({
             churchId: ChurchId.from(request.churchId),
@@ -628,9 +614,7 @@ export class AssignController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { participationId } = request.params as z.infer<
-          typeof participationParamsSchema
-        >;
+        const { participationId } = request.params;
         const denied = await this.denyParticipationScope({
           request,
           reply,

@@ -6,8 +6,6 @@ export const sectorNameBodySchema = z.object({
   name: z.string().trim().min(1).max(255),
 });
 
-export type SectorNameBody = z.infer<typeof sectorNameBodySchema>;
-
 export const sectorResponseSchema = z.object({
   id: z.string(),
   name: z.string(),

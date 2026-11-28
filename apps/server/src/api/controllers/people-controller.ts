@@ -28,7 +28,6 @@ import {
 import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
 import type {
-  ListLimitQuery,
   PeopleControllerDependencies,
   ResolveScopeInput,
   SendMembershipOutcomeInput,
@@ -138,12 +137,8 @@ export class PeopleController implements FastifyController {
         // Refuse a non-admin before any target lookup; the manager rechecks under the Church lock.
         const isAdmin = await this.authorityGuard.canManageChurch(caller);
         if (!isAdmin) return refuse({ reply, request, code: 'FORBIDDEN' });
-        const { memberId } = request.params as z.infer<
-          typeof personParamsSchema
-        >;
-        const { accessLevel } = request.body as z.infer<
-          typeof churchAccessChangeBodySchema
-        >;
+        const { memberId } = request.params;
+        const { accessLevel } = request.body;
         const outcome = await this.churchAccessManager.changeChurchAccess({
           churchId,
           actorId,
@@ -194,12 +189,8 @@ export class PeopleController implements FastifyController {
         // The area gate; the manager decides the target under the Church lock.
         const scope = await this.resolveScope(caller);
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
-        const { memberId, membershipId } = request.params as z.infer<
-          typeof ministryMembershipParamsSchema
-        >;
-        const { roleIds } = request.body as z.infer<
-          typeof setMinistryRolesBodySchema
-        >;
+        const { memberId, membershipId } = request.params;
+        const { roleIds } = request.body;
         const outcome = await this.ministryMembershipManager.setMinistryRoles({
           churchId,
           actorId,
@@ -241,12 +232,8 @@ export class PeopleController implements FastifyController {
         // Refuse a non-admin before any target lookup; the manager rechecks under the Church lock.
         const isAdmin = await this.authorityGuard.canManageChurch(caller);
         if (!isAdmin) return refuse({ reply, request, code: 'FORBIDDEN' });
-        const { memberId, membershipId } = request.params as z.infer<
-          typeof ministryMembershipParamsSchema
-        >;
-        const { accessLevel, roleIds } = request.body as z.infer<
-          typeof changeMinistryAccessBodySchema
-        >;
+        const { memberId, membershipId } = request.params;
+        const { accessLevel, roleIds } = request.body;
         const outcome =
           await this.ministryMembershipManager.changeMinistryAccess({
             churchId,
@@ -288,9 +275,7 @@ export class PeopleController implements FastifyController {
         // The area gate; the manager decides the target under the Church lock.
         const scope = await this.resolveScope(caller);
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
-        const { memberId, membershipId } = request.params as z.infer<
-          typeof ministryMembershipParamsSchema
-        >;
+        const { memberId, membershipId } = request.params;
         const outcome =
           await this.ministryMembershipManager.endMinistryMembership({
             churchId,
@@ -330,8 +315,7 @@ export class PeopleController implements FastifyController {
           scope,
           callerId,
           callerActor,
-          memberId: (request.params as z.infer<typeof personParamsSchema>)
-            .memberId,
+          memberId: request.params.memberId,
         });
         if (!result) return refuse({ reply, request, code: 'NOT_FOUND' });
         const { person, ...capabilities } = result;
@@ -366,10 +350,7 @@ export class PeopleController implements FastifyController {
         const { churchId } = caller;
         const scope = await this.resolveScope(caller);
         if (!scope) return refuse({ reply, request, code: 'FORBIDDEN' });
-        const { cursor, limit, ...filters } = request.query as z.infer<
-          typeof peopleListQuerystringSchema
-        > &
-          ListLimitQuery;
+        const { cursor, limit, ...filters } = request.query;
         return reply.send(
           await this.peopleListManager.list({
             churchId,

@@ -154,9 +154,7 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const { ministryId } = request.params as MinistryRouteParams;
-        const { cycleId } = request.query as z.infer<
-          typeof ministryScheduleQuerySchema
-        >;
+        const { cycleId } = request.query;
         let schedule: MinistrySchedule;
         try {
           schedule = await this.volunteerManager.getMinistrySchedule({
@@ -192,9 +190,7 @@ export class VolunteerController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { state } = request.query as z.infer<
-          typeof availabilityCheckListQuerystringSchema
-        >;
+        const { state } = request.query;
         const owner = {
           volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
@@ -262,9 +258,7 @@ export class VolunteerController implements FastifyController {
       },
       async (request, reply) => {
         const { checkId } = request.params as AvailabilityCheckRouteParams;
-        const body = request.body as z.infer<
-          typeof answerAvailabilityCheckBodySchema
-        >;
+        const body = request.body;
         const detail = await this.withPrivateObjectNotFound({
           request,
           reply,

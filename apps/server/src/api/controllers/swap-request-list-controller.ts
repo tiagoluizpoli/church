@@ -15,12 +15,7 @@ import {
 } from '../dtos/swap-request.dto';
 import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
-import type {
-  KeepRouteParams,
-  LeaderSwapRequestsQuery,
-  MinistryRouteParams,
-  SwapRequestListControllerDependencies,
-} from './swap-request-list-controller.types';
+import type { SwapRequestListControllerDependencies } from './swap-request-list-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -78,8 +73,8 @@ export class SwapRequestListController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { ministryId } = request.params as MinistryRouteParams;
-        const { cycleId } = request.query as LeaderSwapRequestsQuery;
+        const { ministryId } = request.params;
+        const { cycleId } = request.query;
         const caller = requestCaller({ request });
         const { churchId } = caller;
         const decision = await this.authorityGuard.decideManageMinistry({
@@ -120,8 +115,8 @@ export class SwapRequestListController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { ministryId, swapRequestId } = request.params as KeepRouteParams;
-        const body = request.body as z.infer<typeof keepSwapRequestBodySchema>;
+        const { ministryId, swapRequestId } = request.params;
+        const body = request.body;
         const caller = requestCaller({ request });
         const { churchId, userId } = caller;
         const decision = await this.authorityGuard.decideManageMinistry({

@@ -1,7 +1,6 @@
 import type { AppConfig } from '@church/app-config';
 import { fromDate } from '@church/time';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { z } from 'zod';
 import {
   ChurchInvitationId,
   MinistryInvitationId,
@@ -45,12 +44,9 @@ import { headersFromRequest } from '../utils/headers';
 import { isRateLimited } from '../utils/rate-limit';
 import { refuse } from '../utils/refuse';
 import type {
-  AcceptExistingMemberBody,
   AuthenticatedRedeemer,
-  ConfirmTransferBody,
   ControllerRateLimitInput,
   InvitationPreviewFields,
-  RedeemNewUserBody,
   RedemptionControllerDependencies,
   RedemptionParams,
   RequireRedeemerInput,
@@ -104,7 +100,7 @@ export class RedemptionController implements FastifyController {
       async (request, reply) => {
         if (this.isRateLimitedRequest({ key: request.ip }))
           return refuse({ reply, request, code: 'RATE_LIMITED' });
-        const params = request.params as RedemptionParams;
+        const params = request.params;
         const preview = await this.redemptionManager.getPublicPreview({
           churchInvitationId: ChurchInvitationId.from(params.invitationId),
         });
@@ -134,7 +130,7 @@ export class RedemptionController implements FastifyController {
       async (request, reply) => {
         if (this.isRateLimitedRequest({ key: request.ip }))
           return refuse({ reply, request, code: 'RATE_LIMITED' });
-        const params = request.params as RedemptionParams;
+        const params = request.params;
         let sent: boolean;
         try {
           sent = await this.redemptionManager.requestVerificationCode({
@@ -172,8 +168,8 @@ export class RedemptionController implements FastifyController {
       async (request, reply) => {
         if (this.isRateLimitedRequest({ key: request.ip }))
           return refuse({ reply, request, code: 'RATE_LIMITED' });
-        const params = request.params as RedemptionParams;
-        const body = request.body as RedeemNewUserBody;
+        const params = request.params;
+        const body = request.body;
         const outcome = await this.redemptionManager.redeemNewUser({
           churchInvitationId: ChurchInvitationId.from(params.invitationId),
           name: body.name,
@@ -211,7 +207,7 @@ export class RedemptionController implements FastifyController {
       async (request, reply) => {
         if (this.isRateLimitedRequest({ key: request.ip }))
           return refuse({ reply, request, code: 'RATE_LIMITED' });
-        const params = request.params as RedemptionParams;
+        const params = request.params;
         const outcome = await this.redemptionManager.declineChurchInvitation({
           churchInvitationId: ChurchInvitationId.from(params.invitationId),
         });
@@ -240,7 +236,7 @@ export class RedemptionController implements FastifyController {
       async (request, reply) => {
         const redeemer = await this.requireRedeemer({ request, reply });
         if (!redeemer) return;
-        const params = request.params as RedemptionParams;
+        const params = request.params;
         const status =
           await this.redemptionManager.getChurchInvitationReviewStatus({
             churchInvitationId: ChurchInvitationId.from(params.invitationId),
@@ -276,8 +272,8 @@ export class RedemptionController implements FastifyController {
       async (request, reply) => {
         const redeemer = await this.requireRedeemer({ request, reply });
         if (!redeemer) return;
-        const params = request.params as RedemptionParams;
-        const body = request.body as AcceptExistingMemberBody;
+        const params = request.params;
+        const body = request.body;
         const outcome = await this.redemptionManager.acceptChurchInvitation({
           churchInvitationId: ChurchInvitationId.from(params.invitationId),
           userId: redeemer.userId,
@@ -308,7 +304,7 @@ export class RedemptionController implements FastifyController {
       async (request, reply) => {
         const redeemer = await this.requireRedeemer({ request, reply });
         if (!redeemer) return;
-        const params = request.params as RedemptionParams;
+        const params = request.params;
         const status =
           await this.redemptionManager.getAuthenticatedInvitationStatus({
             ministryInvitationId: MinistryInvitationId.from(
@@ -350,8 +346,8 @@ export class RedemptionController implements FastifyController {
       async (request, reply) => {
         const redeemer = await this.requireRedeemer({ request, reply });
         if (!redeemer) return;
-        const params = request.params as RedemptionParams;
-        const body = request.body as AcceptExistingMemberBody;
+        const params = request.params;
+        const body = request.body;
         const outcome = await this.redemptionManager.acceptExistingMember({
           ministryInvitationId: MinistryInvitationId.from(params.invitationId),
           userId: redeemer.userId,
@@ -403,7 +399,7 @@ export class RedemptionController implements FastifyController {
       async (request, reply) => {
         const redeemer = await this.requireRedeemer({ request, reply });
         if (!redeemer) return;
-        const params = request.params as RedemptionParams;
+        const params = request.params;
         const preview = await this.volunteerTransferManager.getTransferPreview({
           ministryInvitationId: MinistryInvitationId.from(params.invitationId),
           userId: redeemer.userId,
@@ -449,8 +445,8 @@ export class RedemptionController implements FastifyController {
       async (request, reply) => {
         const redeemer = await this.requireRedeemer({ request, reply });
         if (!redeemer) return;
-        const params = request.params as RedemptionParams;
-        const body = request.body as ConfirmTransferBody;
+        const params = request.params;
+        const body = request.body;
         const outcome = await this.volunteerTransferManager.confirmTransfer({
           ministryInvitationId: MinistryInvitationId.from(params.invitationId),
           userId: redeemer.userId,
@@ -480,7 +476,7 @@ export class RedemptionController implements FastifyController {
           },
         },
         async (request, reply) => {
-          const params = request.params as RedemptionParams;
+          const params = request.params;
           const code = await this.redemptionManager.getDebugVerificationCode({
             churchInvitationId: ChurchInvitationId.from(params.invitationId),
           });
@@ -506,9 +502,7 @@ export class RedemptionController implements FastifyController {
           },
         },
         async (request, reply) => {
-          const { email } = request.query as z.infer<
-            typeof debugInvitationLinkQuerystringSchema
-          >;
+          const { email } = request.query;
           const redemptionUrl =
             await this.redemptionManager.getDebugInvitationLink({ email });
           if (!redemptionUrl)

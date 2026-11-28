@@ -9,7 +9,6 @@ import { denyMinistryManagement } from '../auth/ministry-management-access';
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
 import {
-  type RoleNameBody,
   roleListResponseSchema,
   roleMapper,
   roleNameBodySchema,
@@ -132,7 +131,7 @@ export class MinistryRoleController implements FastifyController {
         ) {
           return;
         }
-        const { name } = request.body as RoleNameBody;
+        const { name } = request.body;
         const role = await this.ministryRoleManager.create({
           churchId: ChurchId.from(request.churchId),
           ministryId,
@@ -174,7 +173,7 @@ export class MinistryRoleController implements FastifyController {
         ) {
           return;
         }
-        const { name } = request.body as RoleNameBody;
+        const { name } = request.body;
         const role = await this.ministryRoleManager.rename({
           churchId: ChurchId.from(request.churchId),
           ministryId,

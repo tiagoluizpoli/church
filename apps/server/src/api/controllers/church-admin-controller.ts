@@ -57,12 +57,9 @@ import {
 } from '../dtos/event-time-block.dto';
 import { ministryMapper, ministryResponseSchema } from '../dtos/ministry.dto';
 import {
-  type CancelPlanningEventBody,
-  type CreatePlanningEventBody,
   cancellationImpactResponseSchema,
   cancelPlanningEventBodySchema,
   createPlanningEventBodySchema,
-  type EditPlanningEventBody,
   editPlanningEventBodySchema,
   eventEditPreviewMapper,
   eventEditPreviewResponseSchema,
@@ -72,20 +69,13 @@ import {
   eventMovePreviewMapper,
   eventMovePreviewResponseSchema,
   eventMoveResponseSchema,
-  type MovePlanningEventBody,
   movePlanningEventBodySchema,
-  type SetPlanningHiddenBody,
   setPlanningHiddenBodySchema,
-  type UpdatePlanningEventBody,
-  type UpdatePlanningEventDetailsBody,
   updatePlanningEventBodySchema,
   updatePlanningEventDetailsBodySchema,
 } from '../dtos/planning-event.dto';
 import { setupProgressResponseSchema } from '../dtos/setup-progress.dto';
-import {
-  type SetDefaultDirectionBody,
-  setDefaultDirectionBodySchema,
-} from '../dtos/usual-setup.dto';
+import { setDefaultDirectionBodySchema } from '../dtos/usual-setup.dto';
 import { validationErrorResponseSchema } from '../dtos/validation-error.dto';
 import { assertCancelConfirmation } from '../utils/cancel-confirmation';
 import { refuse } from '../utils/refuse';
@@ -237,7 +227,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const body = request.body as z.infer<typeof createCycleBodySchema>;
+        const body = request.body;
         const cycle = await this.cycleManager.createCycle({
           churchId: ChurchId.from(request.churchId),
           name: body.name,
@@ -257,12 +247,12 @@ export class ChurchAdminController implements FastifyController {
           summary: 'List Cycles',
           description:
             'List the Church Cycles newest start first, filtered by state or period, name and an overlapping day range, with the per-state counts of all of them.',
-          query: listCyclesQuerySchema,
+          querystring: listCyclesQuerySchema,
           response: { 200: cycleListResponseSchema },
         },
       },
       async (request, reply) => {
-        const query = request.query as z.infer<typeof listCyclesQuerySchema>;
+        const query = request.query;
         const list = await this.cycleManager.listCycles({
           churchId: ChurchId.from(request.churchId),
           state: query.state,
@@ -312,7 +302,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
+        const { cycleId } = request.params;
         const details = await this.cycleManager.getCycle({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -338,7 +328,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
+        const { cycleId } = request.params;
         const summary = await this.cycleManager.getSendSummary({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -361,7 +351,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
+        const { cycleId } = request.params;
         await this.cycleManager.sendCycle({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -388,8 +378,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const body = request.body as z.infer<typeof updateCycleBodySchema>;
+        const { cycleId } = request.params;
+        const body = request.body;
         const cycle = await this.cycleManager.updateCycle({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -414,7 +404,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
+        const { cycleId } = request.params;
         await this.cycleManager.deleteCycle({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -441,9 +431,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const body = request.body as z.infer<
-          typeof createEventTemplateBodySchema
-        >;
+        const body = request.body;
         const template = await this.eventTemplateManager.createTemplate({
           churchId: ChurchId.from(request.churchId),
           name: body.name,
@@ -488,9 +476,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { templateId } = request.params as z.infer<
-          typeof templateParamsSchema
-        >;
+        const { templateId } = request.params;
         const template = await this.eventTemplateManager.getTemplate({
           churchId: ChurchId.from(request.churchId),
           templateId: EventTemplateId.from(templateId),
@@ -513,9 +499,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { templateId } = request.params as z.infer<
-          typeof templateParamsSchema
-        >;
+        const { templateId } = request.params;
         const usage = await this.eventTemplateManager.getTemplateUsage({
           churchId: ChurchId.from(request.churchId),
           templateId: EventTemplateId.from(templateId),
@@ -543,12 +527,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { templateId } = request.params as z.infer<
-          typeof templateParamsSchema
-        >;
-        const body = request.body as z.infer<
-          typeof updateEventTemplateBodySchema
-        >;
+        const { templateId } = request.params;
+        const body = request.body;
         const template = await this.eventTemplateManager.updateTemplate({
           churchId: ChurchId.from(request.churchId),
           templateId: EventTemplateId.from(templateId),
@@ -575,9 +555,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { templateId } = request.params as z.infer<
-          typeof templateParamsSchema
-        >;
+        const { templateId } = request.params;
         const precedences = await this.eventTemplateManager.listPrecedences({
           churchId: ChurchId.from(request.churchId),
           templateId: EventTemplateId.from(templateId),
@@ -604,12 +582,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { templateId, otherTemplateId } = request.params as z.infer<
-          typeof templatePrecedenceParamsSchema
-        >;
-        const body = request.body as z.infer<
-          typeof changeTemplatePrecedenceBodySchema
-        >;
+        const { templateId, otherTemplateId } = request.params;
+        const body = request.body;
         const precedence = await this.eventTemplateManager.changePrecedence({
           churchId: ChurchId.from(request.churchId),
           templateId: EventTemplateId.from(templateId),
@@ -632,9 +606,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { templateId } = request.params as z.infer<
-          typeof templateParamsSchema
-        >;
+        const { templateId } = request.params;
         await this.eventTemplateManager.deleteTemplate({
           churchId: ChurchId.from(request.churchId),
           templateId: EventTemplateId.from(templateId),
@@ -658,8 +630,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const body = request.body as z.infer<typeof applyTemplatesBodySchema>;
+        const { cycleId } = request.params;
+        const body = request.body;
         const result = await this.planningEventManager.generateFromTemplates({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -705,8 +677,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId } = request.params as z.infer<typeof cycleParamsSchema>;
-        const body = request.body as CreatePlanningEventBody;
+        const { cycleId } = request.params;
+        const body = request.body;
         const location = body.location?.trim();
         const graph = await this.planningEventManager.createEvent({
           churchId: ChurchId.from(request.churchId),
@@ -747,10 +719,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as z.infer<
-          typeof cycleEventParamsSchema
-        >;
-        const body = request.body as UpdatePlanningEventBody;
+        const { cycleId, eventId } = request.params;
+        const body = request.body;
         const location = body.location?.trim();
         const graph = await this.planningEventManager.updateEvent({
           churchId: ChurchId.from(request.churchId),
@@ -792,10 +762,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as z.infer<
-          typeof cycleEventParamsSchema
-        >;
-        const body = request.body as UpdatePlanningEventDetailsBody;
+        const { cycleId, eventId } = request.params;
+        const body = request.body;
         const location = body.location?.trim();
         const details = {
           churchId: ChurchId.from(request.churchId),
@@ -829,9 +797,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as z.infer<
-          typeof cycleEventParamsSchema
-        >;
+        const { cycleId, eventId } = request.params;
         await this.planningEventManager.deleteEvent({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -858,9 +824,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as z.infer<
-          typeof cycleEventParamsSchema
-        >;
+        const { cycleId, eventId } = request.params;
         const impact = await this.planningEventManager.previewCancellation({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -889,11 +853,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as z.infer<
-          typeof cycleEventParamsSchema
-        >;
-        const { confirmation, hidden } =
-          request.body as CancelPlanningEventBody;
+        const { cycleId, eventId } = request.params;
+        const { confirmation, hidden } = request.body;
         assertCancelConfirmation({ confirmation, locale: request.locale });
         const impact = await this.planningEventManager.confirmCancellation({
           hidden,
@@ -926,10 +887,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as z.infer<
-          typeof cycleEventParamsSchema
-        >;
-        const { hidden } = request.body as SetPlanningHiddenBody;
+        const { cycleId, eventId } = request.params;
+        const { hidden } = request.body;
         await this.planningEventManager.setHidden({
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -960,9 +919,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId, eventTimeBlockId } =
-          request.params as z.infer<typeof cycleEventTimeBlockParamsSchema>;
-        const { hidden } = request.body as SetPlanningHiddenBody;
+        const { cycleId, eventId, eventTimeBlockId } = request.params;
+        const { hidden } = request.body;
         const updated = await this.withNestedNotFound({
           request,
           reply,
@@ -1003,10 +961,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as z.infer<
-          typeof cycleEventParamsSchema
-        >;
-        const body = request.body as MovePlanningEventBody;
+        const { cycleId, eventId } = request.params;
+        const body = request.body;
         const move = {
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -1038,10 +994,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as z.infer<
-          typeof cycleEventParamsSchema
-        >;
-        const body = request.body as MovePlanningEventBody;
+        const { cycleId, eventId } = request.params;
+        const body = request.body;
         const move = {
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -1075,10 +1029,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as z.infer<
-          typeof cycleEventParamsSchema
-        >;
-        const body = request.body as EditPlanningEventBody;
+        const { cycleId, eventId } = request.params;
+        const body = request.body;
         const preview = await this.withNestedNotFound({
           request,
           reply,
@@ -1114,10 +1066,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as z.infer<
-          typeof cycleEventParamsSchema
-        >;
-        const body = request.body as EditPlanningEventBody;
+        const { cycleId, eventId } = request.params;
+        const body = request.body;
         const result = await this.withNestedNotFound({
           request,
           reply,
@@ -1154,12 +1104,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId } = request.params as z.infer<
-          typeof cycleEventParamsSchema
-        >;
-        const body = request.body as z.infer<
-          typeof createEventTimeBlockBodySchema
-        >;
+        const { cycleId, eventId } = request.params;
+        const body = request.body;
         const eventTimeBlock = await this.withNestedNotFound({
           request,
           reply,
@@ -1199,9 +1145,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId, eventTimeBlockId } =
-          request.params as z.infer<typeof cycleEventTimeBlockParamsSchema>;
-        const body = request.body as MovePlanningEventBody;
+        const { cycleId, eventId, eventTimeBlockId } = request.params;
+        const body = request.body;
         const move = {
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -1242,9 +1187,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId, eventTimeBlockId } =
-          request.params as z.infer<typeof cycleEventTimeBlockParamsSchema>;
-        const body = request.body as MovePlanningEventBody;
+        const { cycleId, eventId, eventTimeBlockId } = request.params;
+        const body = request.body;
         const move = {
           churchId: ChurchId.from(request.churchId),
           cycleId: CycleId.from(cycleId),
@@ -1285,8 +1229,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId, eventTimeBlockId } =
-          request.params as z.infer<typeof cycleEventTimeBlockParamsSchema>;
+        const { cycleId, eventId, eventTimeBlockId } = request.params;
         const impact = await this.withNestedNotFound({
           request,
           reply,
@@ -1325,10 +1268,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId, eventTimeBlockId } =
-          request.params as z.infer<typeof cycleEventTimeBlockParamsSchema>;
-        const { confirmation, hidden } =
-          request.body as CancelPlanningEventBody;
+        const { cycleId, eventId, eventTimeBlockId } = request.params;
+        const { confirmation, hidden } = request.body;
         assertCancelConfirmation({ confirmation, locale: request.locale });
         const impact = await this.withNestedNotFound({
           request,
@@ -1370,11 +1311,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId, eventTimeBlockId } =
-          request.params as z.infer<typeof cycleEventTimeBlockParamsSchema>;
-        const body = request.body as z.infer<
-          typeof updateEventTimeBlockBodySchema
-        >;
+        const { cycleId, eventId, eventTimeBlockId } = request.params;
+        const body = request.body;
         const eventTimeBlock = await this.withNestedNotFound({
           request,
           reply,
@@ -1409,8 +1347,7 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cycleId, eventId, eventTimeBlockId } =
-          request.params as z.infer<typeof cycleEventTimeBlockParamsSchema>;
+        const { cycleId, eventId, eventTimeBlockId } = request.params;
         const deleted = await this.withNestedNotFound({
           request,
           reply,
@@ -1444,10 +1381,8 @@ export class ChurchAdminController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { ministryId } = request.params as z.infer<
-          typeof ministryParamsSchema
-        >;
-        const body = request.body as SetDefaultDirectionBody;
+        const { ministryId } = request.params;
+        const body = request.body;
         const ministry = await this.ministryManager.setDefaultDirection({
           churchId: ChurchId.from(request.churchId),
           ministryId: MinistryId.from(ministryId),

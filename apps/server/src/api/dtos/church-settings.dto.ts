@@ -130,9 +130,6 @@ export const updateChurchSettingsBodySchema = z.object({
     'The Church Legal Profile: `legalName` and `cnpj` (mask accepted, check digits validated; stored as 14 digits) and the `isPublic` toggle (visitors see it only when true). Both blank clears the profile; one without the other is refused on the blank one. A CNPJ another Church holds is refused with a generic CNPJ_TAKEN that never names that Church.',
   ),
 });
-export type UpdateChurchSettingsBody = z.output<
-  typeof updateChurchSettingsBodySchema
->;
 
 export const churchAddressUsageParamsSchema = z.object({
   addressId: z.uuid(),
@@ -168,7 +165,6 @@ export const uploadChurchLogoBodySchema = z.object({ file: z.file() });
 export const restoreChurchLogoBodySchema = z.object({
   key: z.string().describe('A logo key this Church used before.'),
 });
-export type RestoreChurchLogoBody = z.infer<typeof restoreChurchLogoBodySchema>;
 
 export const churchSettingsFieldErrorSchema = z.object({
   /** The refused request field; a list row is addressed by index, e.g. `contacts.1.value`. */

@@ -19,7 +19,10 @@ import { IsolationBreachError } from '../../domain/errors/isolation-breach-error
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
-import { errorResponseSchema } from '../dtos/error-response.dto';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import {
   assignmentParamsSchema,
   idSchema,
@@ -87,7 +90,7 @@ export class VolunteerController implements FastifyController {
           summary: "Get the caller's Volunteer dashboard",
           description:
             "Get the current Volunteer's dashboard summary for the Active Church.",
-          response: { 200: dashboardResponseSchema },
+          response: { 200: dashboardResponseSchema, ...authErrorResponses },
         },
       },
       async (request, reply) => {
@@ -112,6 +115,7 @@ export class VolunteerController implements FastifyController {
             "Get one of the current Volunteer's own published Assignments with its Shift roster. Anyone else's, or one no longer on the schedule, is 404.",
           response: {
             200: assignmentDetailResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -147,6 +151,7 @@ export class VolunteerController implements FastifyController {
             "Get the current Volunteer's published schedule within one Ministry.",
           response: {
             200: ministryScheduleResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -185,7 +190,10 @@ export class VolunteerController implements FastifyController {
           querystring: availabilityCheckListQuerystringSchema,
           description:
             "List the current Volunteer's AvailabilityChecks. `state` narrows `checks` only: `counts` covers every state.",
-          response: { 200: availabilityCheckListResponseSchema },
+          response: {
+            200: availabilityCheckListResponseSchema,
+            ...authErrorResponses,
+          },
         },
       },
       async (request, reply) => {
@@ -216,6 +224,7 @@ export class VolunteerController implements FastifyController {
             'Get the detail of a single AvailabilityCheck belonging to the current Volunteer.',
           response: {
             200: availabilityCheckDetailResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -252,6 +261,7 @@ export class VolunteerController implements FastifyController {
           body: answerAvailabilityCheckBodySchema,
           response: {
             200: availabilityCheckDetailResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: answerConflictResponseSchema,
           },

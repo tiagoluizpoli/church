@@ -8,7 +8,10 @@ import type { ISwapRequestManager } from '../../domain/contracts/application/swa
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
-import { errorResponseSchema } from '../dtos/error-response.dto';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import { idSchema } from '../dtos/id.dto';
 import {
   keepSwapRequestBodySchema,
@@ -65,6 +68,7 @@ export class SwapRequestListController implements FastifyController {
           querystring: leaderSwapRequestsQuerySchema,
           response: {
             200: leaderSwapRequestsResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -106,6 +110,7 @@ export class SwapRequestListController implements FastifyController {
           body: keepSwapRequestBodySchema,
           response: {
             204: z.null(),
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },

@@ -334,7 +334,6 @@ export class PeopleController implements FastifyController {
           response: {
             200: peopleListResponseSchema,
             ...authErrorResponses,
-            404: errorResponseSchema,
           },
         },
       },

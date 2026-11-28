@@ -6708,6 +6708,11 @@ export type GetCycleBuilderData200 = {
   roles: GetCycleBuilderData200RolesItem[];
 };
 
+export type GetCycleBuilderData401 = {
+  error: string;
+  message: string;
+};
+
 export type GetCycleBuilderData403 = {
   error: string;
   message: string;
@@ -6747,6 +6752,11 @@ export type GetCycleAuditLog200ItemsItem = {
 
 export type GetCycleAuditLog200 = {
   items: GetCycleAuditLog200ItemsItem[];
+};
+
+export type GetCycleAuditLog401 = {
+  error: string;
+  message: string;
 };
 
 export type GetCycleAuditLog403 = {
@@ -6815,6 +6825,11 @@ export type GetAssignmentProposal200 = {
   reviewToken: string;
 };
 
+export type GetAssignmentProposal401 = {
+  error: string;
+  message: string;
+};
+
 export type GetAssignmentProposal403 = {
   error: string;
   message: string;
@@ -6867,6 +6882,11 @@ export type ApplyAssignmentProposal200 = {
   appliedAt: string;
   replayed: boolean;
   additions: ApplyAssignmentProposal200AdditionsItem[];
+};
+
+export type ApplyAssignmentProposal401 = {
+  error: string;
+  message: string;
 };
 
 export type ApplyAssignmentProposal403 = {
@@ -6923,6 +6943,11 @@ export type PublishCycle200 = {
   gapCount?: number;
 };
 
+export type PublishCycle401 = {
+  error: string;
+  message: string;
+};
+
 export type PublishCycle403 = {
   error: string;
   message: string;
@@ -6945,6 +6970,11 @@ export type SendScheduleUpdatesParams = {
 
 export type SendScheduleUpdates200 = {
   notifiedCount: number;
+};
+
+export type SendScheduleUpdates401 = {
+  error: string;
+  message: string;
 };
 
 export type SendScheduleUpdates403 = {
@@ -7009,6 +7039,11 @@ export type ListEligibleVolunteers200 = {
   volunteers: ListEligibleVolunteers200VolunteersItem[];
 };
 
+export type ListEligibleVolunteers401 = {
+  error: string;
+  message: string;
+};
+
 export type ListEligibleVolunteers403 = {
   error: string;
   message: string;
@@ -7068,12 +7103,22 @@ export type CreateParticipationAssignment201 = {
   warnings: CreateParticipationAssignment201WarningsItem[];
 };
 
+export type CreateParticipationAssignment401 = {
+  error: string;
+  message: string;
+};
+
 export type CreateParticipationAssignment403 = {
   error: string;
   message: string;
 };
 
 export type CreateParticipationAssignment404 = {
+  error: string;
+  message: string;
+};
+
+export type DeleteParticipationAssignment401 = {
   error: string;
   message: string;
 };
@@ -7117,6 +7162,11 @@ export type MoveParticipationAssignment200 = {
   assignedBy?: string;
 };
 
+export type MoveParticipationAssignment401 = {
+  error: string;
+  message: string;
+};
+
 export type MoveParticipationAssignment403 = {
   error: string;
   message: string;
@@ -7156,6 +7206,11 @@ export type ReassignParticipationAssignment200 = {
   assignedBy?: string;
 };
 
+export type ReassignParticipationAssignment401 = {
+  error: string;
+  message: string;
+};
+
 export type ReassignParticipationAssignment403 = {
   error: string;
   message: string;
@@ -7171,6 +7226,11 @@ export type GetParticipationCompletion200 = {
   peopleNeeded: number;
   assignedCount: number;
   completionPercent: number;
+};
+
+export type GetParticipationCompletion401 = {
+  error: string;
+  message: string;
 };
 
 export type GetParticipationCompletion403 = {
@@ -8493,11 +8553,6 @@ export type ListPeople403 = {
   message: string;
 };
 
-export type ListPeople404 = {
-  error: string;
-  message: string;
-};
-
 export type PreviewChurchInvitation200ChurchAccessLevel = typeof PreviewChurchInvitation200ChurchAccessLevel[keyof typeof PreviewChurchInvitation200ChurchAccessLevel];
 
 
@@ -9645,6 +9700,16 @@ export type GetVolunteerDashboard200 = {
   servingHistory: GetVolunteerDashboard200ServingHistoryItem[];
 };
 
+export type GetVolunteerDashboard401 = {
+  error: string;
+  message: string;
+};
+
+export type GetVolunteerDashboard403 = {
+  error: string;
+  message: string;
+};
+
 export type GetAssignmentDetail200RosterItemPeopleItem = {
   name: string;
   isYou: boolean;
@@ -9702,6 +9767,16 @@ export type GetAssignmentDetail200 = {
   swapRequest: GetAssignmentDetail200SwapRequest;
 };
 
+export type GetAssignmentDetail401 = {
+  error: string;
+  message: string;
+};
+
+export type GetAssignmentDetail403 = {
+  error: string;
+  message: string;
+};
+
 export type GetAssignmentDetail404 = {
   error: string;
   message: string;
@@ -9744,6 +9819,16 @@ export type GetMinistrySchedule200 = {
   cycleName: string;
   published: boolean;
   events: GetMinistrySchedule200EventsItem[];
+};
+
+export type GetMinistrySchedule401 = {
+  error: string;
+  message: string;
+};
+
+export type GetMinistrySchedule403 = {
+  error: string;
+  message: string;
 };
 
 export type GetMinistrySchedule404 = {
@@ -9812,6 +9897,16 @@ export type ListAvailabilityChecks200 = {
   counts: ListAvailabilityChecks200Counts;
 };
 
+export type ListAvailabilityChecks401 = {
+  error: string;
+  message: string;
+};
+
+export type ListAvailabilityChecks403 = {
+  error: string;
+  message: string;
+};
+
 export type GetAvailabilityCheck200State = typeof GetAvailabilityCheck200State[keyof typeof GetAvailabilityCheck200State];
 
 
@@ -9875,6 +9970,16 @@ export type GetAvailabilityCheck200 = {
   confirmedAt?: string;
   days: GetAvailabilityCheck200DaysItem[];
   counts: GetAvailabilityCheck200Counts;
+};
+
+export type GetAvailabilityCheck401 = {
+  error: string;
+  message: string;
+};
+
+export type GetAvailabilityCheck403 = {
+  error: string;
+  message: string;
 };
 
 export type GetAvailabilityCheck404 = {
@@ -9952,6 +10057,16 @@ export type AnswerAvailabilityCheck200 = {
   confirmedAt?: string;
   days: AnswerAvailabilityCheck200DaysItem[];
   counts: AnswerAvailabilityCheck200Counts;
+};
+
+export type AnswerAvailabilityCheck401 = {
+  error: string;
+  message: string;
+};
+
+export type AnswerAvailabilityCheck403 = {
+  error: string;
+  message: string;
 };
 
 export type AnswerAvailabilityCheck404 = {
@@ -10085,6 +10200,16 @@ export type GetPublishedVolunteerSchedule200 = {
   options: GetPublishedVolunteerSchedule200Options;
 };
 
+export type GetPublishedVolunteerSchedule401 = {
+  error: string;
+  message: string;
+};
+
+export type GetPublishedVolunteerSchedule403 = {
+  error: string;
+  message: string;
+};
+
 export type RaiseSwapRequestBody = {
   note?: string;
 };
@@ -10114,12 +10239,32 @@ export type RaiseSwapRequest400 = {
   message: string;
 };
 
+export type RaiseSwapRequest401 = {
+  error: string;
+  message: string;
+};
+
+export type RaiseSwapRequest403 = {
+  error: string;
+  message: string;
+};
+
 export type RaiseSwapRequest404 = {
   error: string;
   message: string;
 };
 
 export type RaiseSwapRequest409 = {
+  error: string;
+  message: string;
+};
+
+export type WithdrawSwapRequest401 = {
+  error: string;
+  message: string;
+};
+
+export type WithdrawSwapRequest403 = {
   error: string;
   message: string;
 };
@@ -10178,6 +10323,16 @@ export type ListMinistrySwapRequests200 = {
   schedules: ListMinistrySwapRequests200SchedulesItem[];
 };
 
+export type ListMinistrySwapRequests401 = {
+  error: string;
+  message: string;
+};
+
+export type ListMinistrySwapRequests403 = {
+  error: string;
+  message: string;
+};
+
 export type ListMinistrySwapRequests404 = {
   error: string;
   message: string;
@@ -10185,6 +10340,16 @@ export type ListMinistrySwapRequests404 = {
 
 export type KeepSwapRequestBody = {
   reply?: string;
+};
+
+export type KeepSwapRequest401 = {
+  error: string;
+  message: string;
+};
+
+export type KeepSwapRequest403 = {
+  error: string;
+  message: string;
 };
 
 export type KeepSwapRequest404 = {

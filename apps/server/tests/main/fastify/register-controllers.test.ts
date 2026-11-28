@@ -77,7 +77,45 @@ describe('the Active Church hook refusal body', () => {
   });
 });
 
-describe('declared response statuses', () => {
+describe('declared response statuses (#1226)', () => {
+  // The Active Church hook answers 401 without a session and 403 without a
+  // Church Membership (or, where a Volunteer profile is required, without one).
+  it.each([
+    ['getVolunteerDashboard', ['200', '401', '403']],
+    ['getAssignmentDetail', ['200', '401', '403', '404']],
+    ['getMinistrySchedule', ['200', '401', '403', '404']],
+    ['listAvailabilityChecks', ['200', '401', '403']],
+    ['getAvailabilityCheck', ['200', '401', '403', '404']],
+    ['answerAvailabilityCheck', ['200', '401', '403', '404', '409']],
+    ['getPublishedVolunteerSchedule', ['200', '401', '403']],
+    ['raiseSwapRequest', ['201', '400', '401', '403', '404', '409']],
+    ['withdrawSwapRequest', ['204', '401', '403', '404', '409']],
+    ['listMinistrySwapRequests', ['200', '401', '403', '404']],
+    ['keepSwapRequest', ['204', '401', '403', '404', '409']],
+    ['getCycleBuilderData', ['200', '401', '403', '404']],
+    ['getCycleAuditLog', ['200', '401', '403', '404']],
+    ['getAssignmentProposal', ['200', '401', '403', '404', '409']],
+    ['applyAssignmentProposal', ['200', '401', '403', '404', '409', '422']],
+    ['publishCycle', ['200', '401', '403', '404', '409']],
+    ['sendScheduleUpdates', ['200', '401', '403', '404', '409']],
+    ['listEligibleVolunteers', ['200', '401', '403', '404']],
+    ['createParticipationAssignment', ['201', '401', '403', '404']],
+    ['deleteParticipationAssignment', ['204', '401', '403', '404']],
+    ['moveParticipationAssignment', ['200', '401', '403', '404']],
+    ['reassignParticipationAssignment', ['200', '401', '403', '404']],
+    ['getParticipationCompletion', ['200', '401', '403', '404']],
+  ])('%s declares the 401 and 403 its hook sends', (operationId, statuses) => {
+    expect(declaredStatuses({ operationId })).toEqual(statuses);
+  });
+
+  it('listPeople declares no 404: a caller without People scope gets 403', () => {
+    expect(declaredStatuses({ operationId: 'listPeople' })).toEqual([
+      '200',
+      '401',
+      '403',
+    ]);
+  });
+
   // The hook sends 409 until an Active Church is chosen and the querystring
   // refuses a bad cursor or page size with 422 (notification-controller tests).
   it('getNotifications keeps the 409 and 422 it sends', () => {
@@ -88,5 +126,12 @@ describe('declared response statuses', () => {
       '409',
       '422',
     ]);
+  });
+
+  it.each([
+    'deleteCycle',
+    'deleteEventTemplate',
+  ])('%s declares its 204 like every other delete', (operationId) => {
+    expect(declaredStatuses({ operationId })).toEqual(['204']);
   });
 });

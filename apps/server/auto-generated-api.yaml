@@ -1108,8 +1108,15 @@ paths:
           name: cycleId
           required: true
       responses:
-        "200":
+        "204":
           description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
   /api/v1/admin/cycles/{cycleId}/send-summary:
     get:
       operationId: getCycleSendSummary
@@ -2671,8 +2678,15 @@ paths:
           name: templateId
           required: true
       responses:
-        "200":
+        "204":
           description: Default Response
+          content:
+            application/json:
+              schema:
+                type: string
+                nullable: true
+                enum:
+                  - null
   /api/v1/admin/event-templates/{templateId}/usage:
     get:
       operationId: getEventTemplateUsage
@@ -14535,6 +14549,21 @@ paths:
                   - events
                   - roles
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -14630,6 +14659,21 @@ paths:
                       additionalProperties: false
                 required:
                   - items
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "403":
           description: Default Response
@@ -14764,6 +14808,21 @@ paths:
                   - excludedUnconfirmedCount
                   - emptyReason
                   - reviewToken
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "403":
           description: Default Response
@@ -14919,6 +14978,21 @@ paths:
                   - replayed
                   - additions
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -15055,6 +15129,21 @@ paths:
                   - belowFull
                   - participations
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -15133,6 +15222,21 @@ paths:
                     type: number
                 required:
                   - notifiedCount
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "403":
           description: Default Response
@@ -15268,6 +15372,21 @@ paths:
                 required:
                   - volunteers
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -15401,6 +15520,21 @@ paths:
                   - assignment
                   - warnings
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -15456,6 +15590,21 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -15559,6 +15708,21 @@ paths:
                   - shiftRequirementId
                   - status
                   - assignedAt
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "403":
           description: Default Response
@@ -15665,6 +15829,21 @@ paths:
                   - status
                   - assignedAt
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "403":
           description: Default Response
           content:
@@ -15732,6 +15911,21 @@ paths:
                   - peopleNeeded
                   - assignedCount
                   - completionPercent
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "403":
           description: Default Response
@@ -18882,21 +19076,6 @@ paths:
                   - error
                   - message
                 additionalProperties: false
-        "404":
-          description: Default Response
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                  message:
-                    type: string
-                required:
-                  - error
-                  - message
-                additionalProperties: false
   /api/v1/redemption/church/{invitationId}:
     get:
       operationId: previewChurchInvitation
@@ -21965,6 +22144,36 @@ paths:
                   - ministryOptions
                   - servingHistory
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/assignments/{assignmentId}:
     get:
       operationId: getAssignmentDetail
@@ -22093,6 +22302,36 @@ paths:
                   - roster
                   - swapRequest
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -22220,6 +22459,36 @@ paths:
                   - published
                   - events
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -22327,6 +22596,36 @@ paths:
                 required:
                   - checks
                   - counts
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/volunteer/availability-checks/{checkId}:
     get:
@@ -22466,6 +22765,36 @@ paths:
                   - state
                   - days
                   - counts
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "404":
           description: Default Response
@@ -22641,6 +22970,36 @@ paths:
                   - state
                   - days
                   - counts
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
         "404":
           description: Default Response
@@ -22900,6 +23259,36 @@ paths:
                   - next
                   - options
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/volunteer/assignments/{assignmentId}/swap-requests:
     post:
       operationId: raiseSwapRequest
@@ -22973,6 +23362,36 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -23030,6 +23449,36 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -23160,6 +23609,36 @@ paths:
                 required:
                   - schedules
                 additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:
@@ -23220,6 +23699,36 @@ paths:
                 nullable: true
                 enum:
                   - null
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
         "404":
           description: Default Response
           content:

@@ -398,6 +398,7 @@ export class ChurchAdminController implements FastifyController {
           summary: 'Delete a Draft Cycle',
           description:
             'Hard-delete a Draft Cycle with every Event, Time Block and participation it owns. Sent and Past Cycles are refused.',
+          response: { 204: z.null() },
         },
       },
       async (request, reply) => {
@@ -406,7 +407,7 @@ export class ChurchAdminController implements FastifyController {
           churchId: request.churchId,
           cycleId: CycleId.from(cycleId),
         });
-        return reply.status(204).send();
+        return reply.status(204).send(null);
       },
     );
 
@@ -600,6 +601,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'deleteEventTemplate',
           summary: 'Delete an EventTemplate',
           description: 'Delete an EventTemplate from the Church.',
+          response: { 204: z.null() },
         },
       },
       async (request, reply) => {
@@ -608,7 +610,7 @@ export class ChurchAdminController implements FastifyController {
           churchId: request.churchId,
           templateId: EventTemplateId.from(templateId),
         });
-        return reply.status(204).send();
+        return reply.status(204).send(null);
       },
     );
 

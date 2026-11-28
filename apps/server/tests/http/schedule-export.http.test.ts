@@ -650,13 +650,31 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/file', () => {
     );
   });
 
-  it('refuses a format it cannot render', async () => {
-    const response = await app.inject({
+  it('answers 404 past the last image or the one PDF, so every file is read in order', async () => {
+    const first = await app.inject({
       method: 'GET',
-      url: `${exportUrl('file')}?format=docx`,
+      url: `${exportUrl('file')}?format=png&page=1`,
     });
+    expect(first.statusCode).toBe(200);
+    expect(first.rawPayload.equals((await readPng()).rawPayload)).toBe(true);
 
-    expect(response.statusCode).toBe(422);
+    for (const format of ['png', 'pdf']) {
+      const response = await app.inject({
+        method: 'GET',
+        url: `${exportUrl('file')}?format=${format}&page=2`,
+      });
+      expect(response.statusCode).toBe(404);
+    }
+  });
+
+  it('refuses a format or page it cannot render', async () => {
+    for (const query of ['format=docx', 'format=png&page=0']) {
+      const response = await app.inject({
+        method: 'GET',
+        url: `${exportUrl('file')}?${query}`,
+      });
+      expect(response.statusCode).toBe(422);
+    }
   });
 });
 

@@ -167,7 +167,7 @@ export class ScheduleExportController implements FastifyController {
           operationId: 'getScheduleExportFile',
           summary: "Download a Ministry's Schedule for one Cycle",
           description:
-            'The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`) or as the whole grid in one PNG, never cut by size (`png`), fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same access, range and errors as the data.',
+            'The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`) or as the whole grid in one PNG, never cut by size (`png`), fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". `page` (1-based, default 1) picks one image; the PDF is one file. 404 past the last, so a client reads every file in order until then. Same access, range and errors as the data.',
           params: paramsSchema,
           querystring: scheduleExportFileQuerySchema,
           response: {
@@ -180,17 +180,23 @@ export class ScheduleExportController implements FastifyController {
       async (request, reply) => {
         const exported = await this.read({ request, reply });
         if (!exported) return;
-        const { format } = request.query as ScheduleExportFileQuery;
+        const { format, page } = request.query as ScheduleExportFileQuery;
+        // The PDF holds every page in its one file.
+        if (format === 'pdf' && page > 1)
+          throw new NotFoundError('Export file');
         const { locale } = request;
         const file = await this.scheduleExportReader.renderFile({
           exported,
           format,
+          page,
           payload: scheduleExportRenderPayload({
             data: exported.data,
             locale,
             media: MEDIA[format],
           }),
         });
+        // Typst writes nothing for an image past the last.
+        if (file.byteLength === 0) throw new NotFoundError('Export file');
         const name = `${scheduleExportFileName({ data: exported.data, locale })}.${format}`;
         return reply
           .type(CONTENT_TYPE[format])

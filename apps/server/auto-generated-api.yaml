@@ -15912,34 +15912,38 @@ paths:
                         singleRole:
                           nullable: true
                           type: string
-                        events:
+                        groups:
                           type: array
                           items:
                             type: object
                             properties:
-                              startDay:
+                              kind:
                                 type: string
-                                format: date
-                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
-                              endDay:
+                                enum:
+                                  - list
+                                  - group
+                                  - catchAll
+                              name:
+                                nullable: true
                                 type: string
-                                format: date
-                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
-                              title:
-                                type: string
-                              cancelled:
-                                type: boolean
-                              timeBlocks:
+                              events:
                                 type: array
                                 items:
                                   type: object
                                   properties:
-                                    label:
-                                      nullable: true
+                                    startDay:
+                                      type: string
+                                      format: date
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                    endDay:
+                                      type: string
+                                      format: date
+                                      pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                    title:
                                       type: string
                                     cancelled:
                                       type: boolean
-                                    shifts:
+                                    timeBlocks:
                                       type: array
                                       items:
                                         type: object
@@ -15947,69 +15951,84 @@ paths:
                                           label:
                                             nullable: true
                                             type: string
-                                          day:
-                                            nullable: true
-                                            type: string
-                                            format: date
-                                            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
-                                          startTime:
-                                            type: string
-                                          endTime:
-                                            type: string
-                                          sectors:
+                                          cancelled:
+                                            type: boolean
+                                          shifts:
                                             type: array
                                             items:
                                               type: object
                                               properties:
-                                                name:
+                                                label:
+                                                  nullable: true
                                                   type: string
-                                                paletteIndex:
-                                                  type: integer
-                                                  minimum: -9007199254740991
-                                                  maximum: 9007199254740991
-                                                people:
+                                                day:
+                                                  nullable: true
+                                                  type: string
+                                                  format: date
+                                                  pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                                startTime:
+                                                  type: string
+                                                endTime:
+                                                  type: string
+                                                sectors:
                                                   type: array
                                                   items:
                                                     type: object
                                                     properties:
                                                       name:
-                                                        nullable: true
                                                         type: string
-                                                      role:
-                                                        type: string
+                                                      paletteIndex:
+                                                        type: integer
+                                                        minimum: -9007199254740991
+                                                        maximum: 9007199254740991
+                                                      people:
+                                                        type: array
+                                                        items:
+                                                          type: object
+                                                          properties:
+                                                            name:
+                                                              nullable: true
+                                                              type: string
+                                                            role:
+                                                              type: string
+                                                          required:
+                                                            - name
+                                                            - role
+                                                          additionalProperties: false
                                                     required:
                                                       - name
-                                                      - role
+                                                      - paletteIndex
+                                                      - people
                                                     additionalProperties: false
                                               required:
-                                                - name
-                                                - paletteIndex
-                                                - people
+                                                - label
+                                                - day
+                                                - startTime
+                                                - endTime
+                                                - sectors
                                               additionalProperties: false
                                         required:
                                           - label
-                                          - day
-                                          - startTime
-                                          - endTime
-                                          - sectors
+                                          - cancelled
+                                          - shifts
                                         additionalProperties: false
                                   required:
-                                    - label
+                                    - startDay
+                                    - endDay
+                                    - title
                                     - cancelled
-                                    - shifts
+                                    - timeBlocks
                                   additionalProperties: false
                             required:
-                              - startDay
-                              - endDay
-                              - title
-                              - cancelled
-                              - timeBlocks
+                              - kind
+                              - name
+                              - events
                             additionalProperties: false
                       required:
                         - name
                         - singleSector
                         - singleRole
-                        - events
+                        - groups
                       additionalProperties: false
                 required:
                   - ministry
@@ -16377,6 +16396,264 @@ paths:
                   - message
                 additionalProperties: false
         "422":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/ministries/{ministryId}/event-groups/:
+    get:
+      operationId: getEventGroups
+      summary: Read a Ministry's Event groups
+      tags:
+        - ministries
+      description: The Ministry's Event groups in order with their EventTemplates, the
+        catch-all's custom name, and every EventTemplate of the Church. No
+        groups means the export is one plain list.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        templates:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                            additionalProperties: false
+                      required:
+                        - name
+                        - templates
+                      additionalProperties: false
+                  catchAllName:
+                    nullable: true
+                    type: string
+                  templates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                required:
+                  - groups
+                  - catchAllName
+                  - templates
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+    put:
+      operationId: saveEventGroups
+      summary: Save a Ministry's Event groups
+      tags:
+        - ministries
+      description: Replace the whole ordered list; an empty list returns to one plain
+        list and the last save wins. Each EventTemplate sits in at most one
+        group (422 otherwise); a template outside the Church is 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                groups:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        minLength: 1
+                        maxLength: 255
+                      templateIds:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+                    required:
+                      - name
+                      - templateIds
+                catchAllName:
+                  nullable: true
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+              required:
+                - groups
+                - catchAllName
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        templates:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                            additionalProperties: false
+                      required:
+                        - name
+                        - templates
+                      additionalProperties: false
+                  catchAllName:
+                    nullable: true
+                    type: string
+                  templates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                      additionalProperties: false
+                required:
+                  - groups
+                  - catchAllName
+                  - templates
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
           description: Default Response
           content:
             application/json:

@@ -15,6 +15,7 @@ export * from './email-templates';
 export * from './error-report-tunnel';
 export * from './error-reporter';
 export * from './event.repository';
+export * from './event-group.repository';
 export * from './event-template.repository';
 export * from './event-time-block.repository';
 export * from './invitation-list.repository';

@@ -180,7 +180,7 @@ describe('/app/ministries/$ministryId workspace', () => {
     ).toBeVisible();
   });
 
-  it('shows the three routed tabs in order to a ChurchAdmin', async () => {
+  it('shows the four routed tabs in order to a ChurchAdmin', async () => {
     asAdmin();
 
     renderWorkspace('/operational');
@@ -188,6 +188,7 @@ describe('/app/ministries/$ministryId workspace', () => {
     expect(await tabNames()).toEqual([
       m.ministry_tab_structure(),
       m.ministry_tab_usual_setup(),
+      m.ministry_tab_event_groups(),
       m.ministry_tab_settings(),
     ]);
     expect(

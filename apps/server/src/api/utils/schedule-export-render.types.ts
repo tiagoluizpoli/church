@@ -35,6 +35,8 @@ export interface ScheduleExportText {
   noService: string;
   cancelled: string;
   emptySpot: string;
+  /** The catch-all Event group's default name. */
+  catchAll: string;
   columns: ScheduleExportColumnsText;
 }
 

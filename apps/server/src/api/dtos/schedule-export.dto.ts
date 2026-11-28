@@ -35,11 +35,19 @@ const eventSchema = z.object({
   timeBlocks: z.array(timeBlockSchema),
 });
 
+/** `list` without Event groups; else each `group` in order, then the `catchAll`. */
+const groupSchema = z.object({
+  kind: z.enum(['list', 'group', 'catchAll']),
+  /** Null for the plain list and a catch-all keeping its default name. */
+  name: z.string().nullable(),
+  events: z.array(eventSchema),
+});
+
 const partSchema = z.object({
   name: z.string().nullable(),
   singleSector: z.string().nullable(),
   singleRole: z.string().nullable(),
-  events: z.array(eventSchema),
+  groups: z.array(groupSchema),
 });
 
 export const scheduleExportDataSchema = z.object({

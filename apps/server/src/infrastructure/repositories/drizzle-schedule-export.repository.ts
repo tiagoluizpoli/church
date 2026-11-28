@@ -159,6 +159,7 @@ export class DrizzleScheduleExportRepository
         eventStart: event.start,
         eventEnd: event.end,
         eventCancelled: sql<boolean>`${event.status} = 'cancelled'`,
+        eventTemplateId: event.sourceTemplateId,
         blockId: eventTimeBlock.id,
         blockLabel: eventTimeBlock.label,
         blockCancelled: sql<boolean>`${eventTimeBlock.status} = 'cancelled'`,

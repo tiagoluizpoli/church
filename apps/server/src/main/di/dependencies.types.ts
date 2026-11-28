@@ -10,6 +10,7 @@ import type {
   IChurchAccessManager,
   IChurchSettingsManager,
   ICycleManager,
+  IEventGroupManager,
   IEventManager,
   IEventTemplateManager,
   IInvitationListManager,
@@ -52,6 +53,7 @@ import type {
   CycleRepository,
   EmailSender,
   ErrorReporter,
+  EventGroupRepository,
   EventRepository,
   EventTemplateRepository,
   EventTimeBlockRepository,
@@ -121,6 +123,7 @@ export interface CompositionRootDependencies {
   roleRepository: RoleRepository;
   sectorRepository: SectorRepository;
   scheduleExportRepository: ScheduleExportRepository;
+  eventGroupRepository: EventGroupRepository;
   eventTimeBlockRepository: EventTimeBlockRepository;
   notificationRepository: NotificationRepository;
   invitationListRepository: InvitationListRepository;
@@ -173,6 +176,7 @@ export interface CompositionRootDependencies {
   assignmentProposalManager: IAssignmentProposalManager;
   scheduleReadModel: IScheduleReadModel;
   scheduleExportReader: IScheduleExportReader;
+  eventGroupManager: IEventGroupManager;
   schedulePublisher: ISchedulePublisher;
   activeChurchSelectionManager: IActiveChurchSelectionManager;
   notificationManager: INotificationManager;

@@ -4,6 +4,7 @@ export { CallerCapabilitiesController } from './caller-capabilities-controller';
 export { ChurchAdminController } from './church-admin-controller';
 export { ChurchSettingsController } from './church-settings-controller';
 export { EventController } from './event-controller';
+export { EventGroupController } from './event-group-controller';
 export { InvitationController } from './invitation-controller';
 export { MinistryController } from './ministry-controller';
 export { MinistryRoleController } from './ministry-role-controller';

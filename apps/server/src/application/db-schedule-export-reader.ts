@@ -16,6 +16,8 @@ import type {
   CountScheduleExportPagesInput,
   DbScheduleExportReaderDependencies,
   DuplicateNamesInput,
+  EventTemplateIdsInput,
+  GroupScheduleExportEventsInput,
   IScheduleExportReader,
   ListScheduleExportCyclesInput,
   MonthNamesInput,
@@ -25,11 +27,13 @@ import type {
   ScheduleExport,
   ScheduleExportCycleOption,
   ScheduleExportEvent,
+  ScheduleExportGroup,
   ScheduleExportSector,
   ScheduleExportShift,
   ScheduleExportTimeBlock,
   SingleValueInput,
 } from '../domain/contracts/application/schedule-export-reader';
+import type { EventGroupRepository } from '../domain/contracts/infrastructure/event-group.repository';
 import type { ScheduleExportRepository } from '../domain/contracts/infrastructure/schedule-export.repository';
 import type { TypstRenderer } from '../domain/contracts/infrastructure/typst-renderer';
 import type { UnitOfWork } from '../domain/contracts/infrastructure/unit-of-work';
@@ -157,6 +161,56 @@ function buildEvents({
   return events;
 }
 
+/**
+ * Sorts the Events into the Ministry's Event groups, keeping date order in
+ * each: the groups in their order, then the catch-all with every Event no
+ * group's EventTemplate claims. Empty groups are left out; without groups
+ * the Events stay one plain list.
+ */
+function groupEvents({
+  events,
+  templateIds,
+  setup,
+}: GroupScheduleExportEventsInput): ScheduleExportGroup[] {
+  if (setup.groups.length === 0) {
+    return [{ kind: 'list', name: null, events }];
+  }
+  const groups: ScheduleExportGroup[] = setup.groups.map((group) => ({
+    kind: 'group',
+    name: group.name,
+    events: [],
+  }));
+  const catchAll: ScheduleExportGroup = {
+    kind: 'catchAll',
+    name: setup.catchAllName,
+    events: [],
+  };
+  const groupByTemplateId = new Map<string, ScheduleExportGroup>();
+  for (const [index, group] of setup.groups.entries()) {
+    for (const template of group.templates) {
+      groupByTemplateId.set(template.id, groups[index] as ScheduleExportGroup);
+    }
+  }
+  for (const [index, exported] of events.entries()) {
+    const templateId = templateIds[index];
+    const group = templateId ? groupByTemplateId.get(templateId) : undefined;
+    (group ?? catchAll).events.push(exported);
+  }
+  return [...groups, catchAll].filter((group) => group.events.length > 0);
+}
+
+/** Each Event's EventTemplate, in the rows' Event order. */
+function eventTemplateIds({ rows }: EventTemplateIdsInput): (string | null)[] {
+  const ids: (string | null)[] = [];
+  let eventId: string | null = null;
+  for (const row of rows) {
+    if (row.eventId === eventId) continue;
+    eventId = row.eventId;
+    ids.push(row.eventTemplateId);
+  }
+  return ids;
+}
+
 /** The one value every entry shares, if there is exactly one. */
 function singleValue({ values }: SingleValueInput): string | null {
   const distinct = new Set(values);
@@ -206,17 +260,20 @@ function duplicateNames({ rows }: DuplicateNamesInput): string[][] {
 
 export class DbScheduleExportReader implements IScheduleExportReader {
   private readonly scheduleExportRepository: ScheduleExportRepository;
+  private readonly eventGroupRepository: EventGroupRepository;
   private readonly scheduleChangeReader: IScheduleChangeReader;
   private readonly unitOfWork: UnitOfWork;
   private readonly typstRenderer: TypstRenderer;
 
   constructor({
     scheduleExportRepository,
+    eventGroupRepository,
     scheduleChangeReader,
     unitOfWork,
     typstRenderer,
   }: DbScheduleExportReaderDependencies) {
     this.scheduleExportRepository = scheduleExportRepository;
+    this.eventGroupRepository = eventGroupRepository;
     this.scheduleChangeReader = scheduleChangeReader;
     this.unitOfWork = unitOfWork;
     this.typstRenderer = typstRenderer;
@@ -297,6 +354,7 @@ export class DbScheduleExportReader implements IScheduleExportReader {
         await this.scheduleExportRepository.listSectorIds(scope);
       const changeCount =
         await this.scheduleChangeReader.countScheduleChanges(scope);
+      const setup = await this.eventGroupRepository.findSetup(scope);
       const events = buildEvents({
         rows,
         paletteIndexBySectorId: new Map(
@@ -332,7 +390,18 @@ export class DbScheduleExportReader implements IScheduleExportReader {
           singleSector,
           singleRole,
           duplicateNames: duplicateNames({ rows }),
-          parts: [{ name: null, singleSector, singleRole, events }],
+          parts: [
+            {
+              name: null,
+              singleSector,
+              singleRole,
+              groups: groupEvents({
+                events,
+                templateIds: eventTemplateIds({ rows }),
+                setup,
+              }),
+            },
+          ],
         },
         logoKey: facts.logoKey,
         changedAt: facts.changedAt,

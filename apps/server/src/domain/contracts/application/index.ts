@@ -13,6 +13,7 @@ export * from './church-settings-manager';
 export * from './cycle-manager';
 export * from './email-notification-sink';
 export * from './email-routing';
+export * from './event-group-manager';
 export * from './event-manager';
 export * from './event-template-manager';
 export * from './inbox-notification-sink';

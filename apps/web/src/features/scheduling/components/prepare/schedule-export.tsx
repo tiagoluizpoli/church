@@ -2,7 +2,7 @@ import { exportFileName } from '@church/domain-rules/export-file-name';
 import { m } from '@church/i18n/messages';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DatePickerField } from '@/components/date-picker-field';
 import { ResponsiveFormSurface } from '@/components/responsive-form-surface';
@@ -16,6 +16,7 @@ import {
   type ExportCycle,
   ScheduleExportCyclePicker,
 } from '@/features/scheduling/components/prepare/schedule-export-cycle-picker';
+import { ScheduleExportGroups } from '@/features/scheduling/components/prepare/schedule-export-groups';
 import {
   type ExportFormat,
   FILE_PARAMS,
@@ -30,6 +31,10 @@ import { exportApi } from '@/utils/api-instances';
 interface ScheduleExportProps {
   ministryId: string;
   cycleId: string;
+  /** Opens at once, as when the Event groups tab links back. */
+  initialOpen?: boolean;
+  /** Called once when it opened at once. */
+  onOpened?: () => void;
 }
 
 const FORMATS = [
@@ -83,8 +88,17 @@ interface ExportRange {
  * reachable by the Ministry's leaders and ChurchAdmins. The export data's
  * facts drive the Rascunho, unsent-changes and same-name notices (#1245).
  */
-export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
-  const [open, setOpen] = useState(false);
+export function ScheduleExport({
+  ministryId,
+  cycleId,
+  initialOpen = false,
+  onOpened,
+}: ScheduleExportProps) {
+  const [open, setOpen] = useState(initialOpen);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only the first render opens at once
+  useEffect(() => {
+    if (initialOpen) onOpened?.();
+  }, []);
   const [cycle, setCycle] = useState<ExportCycle | null>(null);
   // Null: the whole Cycle.
   const [range, setRange] = useState<ExportRange | null>(null);
@@ -267,6 +281,7 @@ export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
               ))}
             </RadioGroup>
           </div>
+          <ScheduleExportGroups ministryId={ministryId} cycleId={cycleId} />
         </div>
         {refused ? (
           <Alert role="alert" variant="destructive" className="mt-4">

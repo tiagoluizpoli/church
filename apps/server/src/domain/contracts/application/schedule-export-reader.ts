@@ -2,6 +2,10 @@ import type { CalendarDay, Locale } from '@church/time';
 import type { ChurchId, CycleId, MinistryId } from '../../branded-ids';
 import type { IScheduleChangeReader } from './schedule-change-reader';
 import type {
+  EventGroupRepository,
+  EventGroupSetup,
+} from '@/domain/contracts/infrastructure/event-group.repository';
+import type {
   ScheduleExportRepository,
   ScheduleExportRow,
 } from '@/domain/contracts/infrastructure/schedule-export.repository';
@@ -75,12 +79,27 @@ export interface ScheduleExportEvent {
   timeBlocks: ScheduleExportTimeBlock[];
 }
 
+/**
+ * How a group of Events reads: `list` is the one plain list of a Ministry
+ * without Event groups, `group` a named Event group, `catchAll` every Event
+ * no group holds.
+ */
+export type ScheduleExportGroupKind = 'list' | 'group' | 'catchAll';
+
+export interface ScheduleExportGroup {
+  kind: ScheduleExportGroupKind;
+  /** Null for the plain list, and for a catch-all keeping its default name. */
+  name: string | null;
+  events: ScheduleExportEvent[];
+}
+
 export interface ScheduleExportPart {
   /** Null for the one part of an unsplit export. */
   name: string | null;
   singleSector: string | null;
   singleRole: string | null;
-  events: ScheduleExportEvent[];
+  /** In the Ministry's order, the catch-all last; never an empty group. */
+  groups: ScheduleExportGroup[];
 }
 
 export interface ScheduleExportMinistry {
@@ -147,8 +166,20 @@ export interface DuplicateNamesInput {
   rows: ScheduleExportRow[];
 }
 
+export interface EventTemplateIdsInput {
+  rows: ScheduleExportRow[];
+}
+
+export interface GroupScheduleExportEventsInput {
+  events: ScheduleExportEvent[];
+  /** Each Event's EventTemplate, in the Events' order. */
+  templateIds: (string | null)[];
+  setup: EventGroupSetup;
+}
+
 export interface DbScheduleExportReaderDependencies {
   scheduleExportRepository: ScheduleExportRepository;
+  eventGroupRepository: EventGroupRepository;
   scheduleChangeReader: IScheduleChangeReader;
   unitOfWork: UnitOfWork;
   typstRenderer: TypstRenderer;

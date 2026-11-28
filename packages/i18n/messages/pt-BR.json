@@ -2342,6 +2342,14 @@
   "export_whole_cycle": "Ciclo inteiro · {span}",
   "export_format_label": "Formato",
   "export_format_pdf": "PDF para imprimir",
+  "export_format_table_image": "Imagem em tabela",
+  "export_table_image_notice": "No WhatsApp, a imagem em tabela chega reduzida e fica difícil de ler. Para enviar, prefira o PDF ou as imagens em cartões.",
+  "export_preview_label": "Prévia",
+  "export_preview_page": "Página {page} da prévia",
+  "export_preview_full_size": "ver em tamanho real",
+  "export_preview_loading": "Gerando a prévia…",
+  "export_preview_failed": "Não foi possível gerar a prévia. Tente novamente.",
+  "export_offline": "Sem conexão: não há prévia nem exportação. Conecte-se para continuar.",
   "export_download": "Baixar",
   "export_download_failed": "Não foi possível baixar a escala. Tente novamente."
 }

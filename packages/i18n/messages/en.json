@@ -2342,6 +2342,14 @@
   "export_whole_cycle": "Whole cycle · {span}",
   "export_format_label": "Format",
   "export_format_pdf": "PDF for printing",
+  "export_format_table_image": "Table image",
+  "export_table_image_notice": "On WhatsApp, the table image arrives shrunk and is hard to read. To send it, use the PDF or the card images instead.",
+  "export_preview_label": "Preview",
+  "export_preview_page": "Preview page {page}",
+  "export_preview_full_size": "view at full size",
+  "export_preview_loading": "Rendering the preview…",
+  "export_preview_failed": "Couldn't render the preview. Try again.",
+  "export_offline": "No connection: there is no preview and no export. Connect to continue.",
   "export_download": "Download",
   "export_download_failed": "Couldn't download the schedule. Try again."
 }

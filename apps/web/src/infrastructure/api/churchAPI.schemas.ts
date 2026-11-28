@@ -7282,6 +7282,7 @@ export type GetScheduleExportFileFormat = typeof GetScheduleExportFileFormat[key
 
 export const GetScheduleExportFileFormat = {
   pdf: 'pdf',
+  png: 'png',
 } as const;
 
 export type GetScheduleExportFile401 = {
@@ -7295,6 +7296,38 @@ export type GetScheduleExportFile403 = {
 };
 
 export type GetScheduleExportFile404 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleExportPreviewParams = {
+  format: GetScheduleExportPreviewFormat;
+  /**
+   * @minimum 1
+   * @maximum 9007199254740991
+   */
+  page?: number;
+};
+
+export type GetScheduleExportPreviewFormat = typeof GetScheduleExportPreviewFormat[keyof typeof GetScheduleExportPreviewFormat];
+
+
+export const GetScheduleExportPreviewFormat = {
+  pdf: 'pdf',
+  png: 'png',
+} as const;
+
+export type GetScheduleExportPreview401 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleExportPreview403 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleExportPreview404 = {
   error: string;
   message: string;
 };

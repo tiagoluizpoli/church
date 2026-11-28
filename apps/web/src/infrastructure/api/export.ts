@@ -6,7 +6,8 @@
  */
 import type {
   GetScheduleExportData200,
-  GetScheduleExportFileParams
+  GetScheduleExportFileParams,
+  GetScheduleExportPreviewParams
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -29,7 +30,7 @@ const getScheduleExportData = (
       );
     }
   /**
- * The whole Cycle as an A4 landscape text PDF table, fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same access and 404 as the data.
+ * The whole Cycle as an A4 landscape text PDF table (`pdf`) or as the whole grid in one PNG, never cut by size (`png`). Fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same access and 404 as the data.
  * @summary Download a Ministry's Schedule for one Cycle
  */
 const getScheduleExportFile = (
@@ -44,6 +45,23 @@ const getScheduleExportFile = (
     },
       );
     }
-  return {getScheduleExportData,getScheduleExportFile}};
+  /**
+ * Page `page` of the file `format` names, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, or the one page of the table image. Fixed text in the locale-cookie language. 404 past the last page; otherwise the same access and 404 as the data.
+ * @summary One SVG page of a Ministry's Schedule export
+ */
+const getScheduleExportPreview = (
+    ministryId: string,
+    cycleId: string,
+    params: GetScheduleExportPreviewParams,
+ ) => {
+      return apiClient<Blob>(
+      {url: `/api/v1/export/ministries/${ministryId}/cycles/${cycleId}/preview`, method: 'GET',
+        params,
+        responseType: 'blob'
+    },
+      );
+    }
+  return {getScheduleExportData,getScheduleExportFile,getScheduleExportPreview}};
 export type GetScheduleExportDataResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getExport>['getScheduleExportData']>>>
 export type GetScheduleExportFileResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getExport>['getScheduleExportFile']>>>
+export type GetScheduleExportPreviewResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getExport>['getScheduleExportPreview']>>>

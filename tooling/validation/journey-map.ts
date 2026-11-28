@@ -1241,6 +1241,8 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'apps/web/src/features/ministries/components/event-groups-editor.tsx',
       'apps/web/src/features/scheduling/components/prepare/schedule-export',
       'apps/web/src/features/scheduling/hooks/use-schedule-export-files.ts',
+      'apps/web/src/features/scheduling/hooks/use-schedule-export-workbook.ts',
+      'apps/web/src/features/scheduling/utils/export/',
       'apps/web/src/infrastructure/api/export.ts',
       'apps/web/src/routes/app/_active-church/ministries/$ministryId/event-groups.tsx',
     ],

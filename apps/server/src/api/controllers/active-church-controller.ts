@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { ChurchId, UserId } from '../../domain/branded-ids';
+import { ChurchId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IActiveChurchSelectionManager } from '../../domain/contracts/application/active-church-selection-manager';
-import { auth } from '../../main/di/server-auth';
+import type { CallerSession } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { resolveActiveChurchAndPersist } from '../auth/resolve-active-church-and-persist';
 import type { FastifyController } from '../contracts/fastify-controller';
@@ -13,11 +13,11 @@ import {
   churchSelectionListResponseSchema,
   selectActiveChurchBodySchema,
 } from '../dtos/active-church.dto';
+import { serviceUnavailableResponseSchema } from '../dtos/service-unavailable.dto';
 import { headersFromRequest } from '../utils/headers';
 import { refuse } from '../utils/refuse';
 import type {
   ActiveChurchControllerDependencies,
-  AuthenticatedSession,
   BuildStatusResponseInput,
   RequireSessionInput,
 } from './active-church-controller.types';
@@ -40,19 +40,16 @@ const internalErrorResponseSchema = errorResponseSchema.extend({
 async function requireSession({
   request,
   reply,
-}: RequireSessionInput): Promise<AuthenticatedSession | null> {
-  const session = await auth.api
-    .getSession({ headers: headersFromRequest(request) })
-    .catch(() => null);
-  if (!session?.user) {
+}: RequireSessionInput): Promise<CallerSession | null> {
+  const session = await request.server.sessionGateway.lookup({
+    headers: headersFromRequest(request),
+  });
+  if (!session) {
     // FastifyReply is thenable: send without awaiting, return a plain value.
     refuse({ reply, request, code: 'UNAUTHORIZED' });
     return null;
   }
-  return {
-    userId: session.user.id,
-    activeOrganizationId: session.session.activeOrganizationId ?? null,
-  };
+  return session;
 }
 
 export class ActiveChurchController implements FastifyController {
@@ -86,6 +83,7 @@ export class ActiveChurchController implements FastifyController {
           response: {
             200: activeChurchStatusResponseSchema,
             401: errorResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -96,10 +94,8 @@ export class ActiveChurchController implements FastifyController {
         const resolution = await resolveActiveChurchAndPersist({
           resolver: this.activeChurchResolver,
           request,
-          userId: UserId.from(session.userId),
-          activeOrganizationId: session.activeOrganizationId
-            ? ChurchId.from(session.activeOrganizationId)
-            : null,
+          userId: session.userId,
+          activeOrganizationId: session.activeOrganizationId,
         });
         return reply.send(await this.buildStatusResponse({ resolution }));
       },
@@ -117,6 +113,7 @@ export class ActiveChurchController implements FastifyController {
           response: {
             200: churchSelectionListResponseSchema,
             401: errorResponseSchema,
+            503: serviceUnavailableResponseSchema,
           },
         },
       },
@@ -125,7 +122,7 @@ export class ActiveChurchController implements FastifyController {
         if (!session) return;
 
         const options = await this.selectionManager.listSelectableChurches({
-          userId: UserId.from(session.userId),
+          userId: session.userId,
         });
         return reply.send(activeChurchMapper.toSelectionListResponse(options));
       },
@@ -144,6 +141,7 @@ export class ActiveChurchController implements FastifyController {
           response: {
             200: activeChurchStatusResponseSchema,
             401: errorResponseSchema,
+            503: serviceUnavailableResponseSchema,
             403: errorResponseSchema,
             500: internalErrorResponseSchema,
           },
@@ -155,7 +153,7 @@ export class ActiveChurchController implements FastifyController {
 
         const body = request.body;
         const resolution = await this.selectionManager.selectActiveChurch({
-          userId: UserId.from(session.userId),
+          userId: session.userId,
           churchId: ChurchId.from(body.churchId),
         });
 
@@ -164,9 +162,9 @@ export class ActiveChurchController implements FastifyController {
         }
 
         // A failed save must reach the standard 500: answering "resolved" would show a Church the session does not scope.
-        await auth.api.setActiveOrganization({
+        await request.server.sessionGateway.setActiveChurch({
           headers: headersFromRequest(request),
-          body: { organizationId: resolution.churchId },
+          churchId: resolution.churchId,
         });
 
         return reply.send(await this.buildStatusResponse({ resolution }));

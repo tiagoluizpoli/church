@@ -30,7 +30,3 @@ export interface RedemptionControllerDependencies {
   volunteerTransferManager: IVolunteerTransferManager;
   config: AppConfig;
 }
-
-export interface ControllerRateLimitInput {
-  key: string;
-}

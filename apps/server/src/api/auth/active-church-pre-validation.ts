@@ -1,5 +1,3 @@
-import { ChurchId, UserId } from '../../domain/branded-ids';
-import { auth } from '../../main/di/server-auth';
 import { headersFromRequest } from '../utils/headers';
 import { refuse } from '../utils/refuse';
 import type {
@@ -24,20 +22,17 @@ export function createActiveChurchPreValidation(
   // named-parameters-ignore: Fastify preValidation hook signature (request, reply)
   return async (request, reply) => {
     const headers = headersFromRequest(request);
-    const session = await auth.api.getSession({ headers }).catch(() => null);
-    if (!session?.user) {
+    const session = await request.server.sessionGateway.lookup({ headers });
+    if (!session) {
       return refuse({ reply, request, code: 'UNAUTHORIZED' });
     }
 
-    const userId = UserId.from(session.user.id);
-    const activeOrganizationId = session.session.activeOrganizationId;
+    const { userId, activeOrganizationId } = session;
     const resolution = await resolveActiveChurchAndPersist({
       resolver,
       request,
       userId,
-      activeOrganizationId: activeOrganizationId
-        ? ChurchId.from(activeOrganizationId)
-        : null,
+      activeOrganizationId,
     });
 
     if (resolution.status === 'selection_required') {

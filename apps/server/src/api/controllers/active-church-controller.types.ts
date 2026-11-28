@@ -14,11 +14,6 @@ export interface RequireSessionInput {
   reply: FastifyReply;
 }
 
-export interface AuthenticatedSession {
-  userId: string;
-  activeOrganizationId: string | null;
-}
-
 /**
  * Entry-gate status and the compare-access selector (spec.md §1.5). Deliberately
  * outside `createActiveChurchPreValidation`'s hook: every route here must work

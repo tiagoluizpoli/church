@@ -14,6 +14,11 @@ const { createActiveChurchPreValidation } = await import(
   '@/api/auth/active-church-pre-validation'
 );
 const { auth } = await import('@/main/di/server-auth');
+const { BetterAuthSessionGateway } = await import(
+  '@/infrastructure/services/better-auth-session-gateway'
+);
+// The real session lookup over the mocked auth instance.
+const sessionGateway = new BetterAuthSessionGateway({ auth: auth as never });
 
 const mockGetSession = vi.mocked(auth.api.getSession);
 const mockSetActiveOrganization = vi.mocked(auth.api.setActiveOrganization);
@@ -23,6 +28,7 @@ const resolver = { resolve: vi.fn() };
 interface MockRequest {
   headers: Record<string, string>;
   log: { warn: ReturnType<typeof vi.fn> };
+  server: { sessionGateway: typeof sessionGateway };
 }
 
 interface RequestFields {
@@ -32,7 +38,7 @@ interface RequestFields {
 }
 
 function createRequest(): MockRequest {
-  return { headers: {}, log: { warn: vi.fn() } };
+  return { headers: {}, log: { warn: vi.fn() }, server: { sessionGateway } };
 }
 
 function requestFields(request: MockRequest): RequestFields {
@@ -303,6 +309,7 @@ describe('createActiveChurchPreValidation', () => {
     } as never);
     resolver.resolve.mockResolvedValueOnce({ status: 'no_membership' });
     const app = Fastify();
+    app.decorate('sessionGateway', sessionGateway);
     app.get(
       '/protected',
       {

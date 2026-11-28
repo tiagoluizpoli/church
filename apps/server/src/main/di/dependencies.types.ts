@@ -72,6 +72,7 @@ import type {
   SchedulingScopeRepository,
   SectorRepository,
   SecurityLogRepository,
+  SessionGateway,
   SetupProgressRepository,
   ShiftRepository,
   SwapRequestRepository,
@@ -128,6 +129,8 @@ export interface CompositionRootDependencies {
   // Services
   emailSender: EmailSender;
   redemptionIdentityGateway: RedemptionIdentityGateway;
+  /** The caller's auth session, for every route that needs one. */
+  sessionGateway: SessionGateway;
   /** Non-production only; set alongside a capturing `emailSender`. */
   verificationCodeInspector: VerificationCodeInspector;
   errorReporter: ErrorReporter;

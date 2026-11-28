@@ -76,6 +76,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/active-church/options:
     get:
       operationId: listActiveChurchOptions
@@ -152,6 +169,23 @@ paths:
                 properties:
                   error:
                     type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -260,6 +294,23 @@ paths:
                   - error
                   - message
                   - requestId
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
                 additionalProperties: false
   /api/v1/admin/setup-progress:
     get:
@@ -19413,6 +19464,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/redemption/church/{invitationId}/accept:
     post:
       operationId: acceptChurchInvitation
@@ -19539,6 +19607,23 @@ paths:
                     type: string
                     enum:
                       - UNAUTHORIZED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -19703,6 +19788,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/redemption/ministry/{invitationId}/accept:
     post:
       operationId: acceptMinistryInvitation
@@ -19858,6 +19960,23 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/redemption/ministry/{invitationId}/decline:
     post:
       operationId: declineMinistryInvitation
@@ -19926,6 +20045,23 @@ paths:
                     type: string
                     enum:
                       - UNAUTHORIZED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -20039,6 +20175,23 @@ paths:
                     type: string
                     enum:
                       - UNAUTHORIZED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:
@@ -20167,6 +20320,23 @@ paths:
                     type: string
                     enum:
                       - UNAUTHORIZED
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "503":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - SERVICE_UNAVAILABLE
                   message:
                     type: string
                 required:

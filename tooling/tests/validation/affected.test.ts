@@ -636,7 +636,7 @@ describe('classifyChanges', () => {
   it('selects the #217 guard/edge journeys for the church-admin, assign, and volunteer controllers', () => {
     const churchAdminPlan = classifyChanges({
       changedPaths: [
-        'apps/server/src/api/controllers/church-admin-controller.ts',
+        'apps/server/src/api/controllers/cycle-admin-controller.ts',
       ],
     });
     expect(churchAdminPlan.e2eSpecPaths).toEqual([

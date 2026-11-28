@@ -26,6 +26,12 @@ const planningEventTimeBlockFieldsSchema = z.object({
 });
 
 /** A complete Draft Event: its fields and every Time block, saved together. */
+/** Path params of a route nested under one planning Event of a Cycle. */
+export const cycleEventParamsSchema = z.object({
+  cycleId: idSchema,
+  eventId: idSchema,
+});
+
 export const createPlanningEventBodySchema = z.object({
   title: z.string().trim().min(1),
   location: z.string().optional(),

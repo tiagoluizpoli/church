@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AssignController } from '@/api/controllers/assign-controller';
-import { ChurchAdminController } from '@/api/controllers/church-admin-controller';
 import { createFastify } from '@/main/fastify/setup';
 import type { FastifyTypedInstance } from '@/main/fastify/types';
+import { ChurchAdminControllers } from '@/tests/test-support/church-admin-controllers';
 import { testErrorReporter } from '@/tests/test-support/error-report-capture';
 import { testLocale } from '@/tests/test-support/fastify-locale';
 
@@ -58,7 +58,7 @@ beforeAll(async () => {
     locale: testLocale,
     errorReporter: testErrorReporter,
   });
-  const admin = new ChurchAdminController({
+  const admin = new ChurchAdminControllers({
     cycleManager: {} as never,
     eventTemplateManager: {} as never,
     planningEventManager: {} as never,

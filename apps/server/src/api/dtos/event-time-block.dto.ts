@@ -2,6 +2,14 @@ import { instantSchema } from '@church/time';
 import { z } from 'zod';
 import type { EventTimeBlock } from '../../domain/entities/event-time-block';
 import type { ShiftRequirement } from '../../domain/entities/shift-requirement';
+import { idSchema } from './id.dto';
+
+/** Path params of a route on one EventTimeBlock of a planning Event. */
+export const cycleEventTimeBlockParamsSchema = z.object({
+  cycleId: idSchema,
+  eventId: idSchema,
+  eventTimeBlockId: idSchema,
+});
 
 export const createEventTimeBlockBodySchema = z.object({
   startTime: z.string().datetime(),

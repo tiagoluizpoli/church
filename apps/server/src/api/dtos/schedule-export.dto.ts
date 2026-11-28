@@ -82,6 +82,8 @@ export const scheduleExportRangeQuerySchema = z.object({
 export const scheduleExportFileQuerySchema =
   scheduleExportRangeQuerySchema.extend({
     format: exportFormatSchema,
+    /** 1-based image; the PDF is one file. Past the last is 404. */
+    page: z.coerce.number().int().min(1).default(1),
   });
 
 export const scheduleExportPreviewQuerySchema =

@@ -49,7 +49,7 @@ const getScheduleExportData = (
       );
     }
   /**
- * The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`) or as the whole grid in one PNG, never cut by size (`png`), fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same access, range and errors as the data.
+ * The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`) or as the whole grid in one PNG, never cut by size (`png`), fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". `page` (1-based, default 1) picks one image; the PDF is one file. 404 past the last, so a client reads every file in order until then. Same access, range and errors as the data.
  * @summary Download a Ministry's Schedule for one Cycle
  */
 const getScheduleExportFile = (

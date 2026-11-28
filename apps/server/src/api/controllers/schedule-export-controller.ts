@@ -1,4 +1,5 @@
 import { NotFoundError } from '@church/core';
+import { m } from '@church/i18n/messages';
 import { z } from 'zod';
 import { ChurchId, CycleId, MinistryId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -6,6 +7,7 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type {
   IScheduleExportReader,
   ScheduleExport,
+  ScheduleExportLayout,
 } from '../../domain/contracts/application/schedule-export-reader';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
@@ -33,6 +35,7 @@ import {
 import type {
   ScheduleExportControllerDependencies,
   ScheduleExportFilePart,
+  ScheduleExportLayoutInput,
   ScheduleExportPartInput,
   ScheduleExportRequestInput,
   ScheduleExportRouteParams,
@@ -45,6 +48,14 @@ const errorResponseSchema = z.object({
 
 /** The PDF prints A4 pages; the table PNG is one page as tall as the grid. */
 const MEDIA = { pdf: 'print', png: 'image' } as const;
+
+/** Cards are PNG only: the PDF is always the table. */
+function layoutOf({
+  format,
+  layout,
+}: ScheduleExportLayoutInput): ScheduleExportLayout {
+  return format === 'png' ? layout : 'grid';
+}
 const CONTENT_TYPE = { pdf: 'application/pdf', png: 'image/png' } as const;
 
 const paramsSchema = z.object({
@@ -184,7 +195,7 @@ export class ScheduleExportController implements FastifyController {
           operationId: 'getScheduleExportFile',
           summary: "Download a Ministry's Schedule for one Cycle",
           description:
-            'The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`), every `split` part starting on a new page, or as one part\'s whole grid as PNG, never cut by size (`png`, the 1-based `part`), fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>" plus " - <part>" for a PNG of a split. `page` (1-based, default 1) picks one image of the part; the PDF is one file. 404 past the last part or page, so a client reads every file in order until then. Same access, range, split and errors as the data.',
+            'The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`, whatever the layout), every `split` part starting on a new page; one part\'s (the 1-based `part`) whole grid in one PNG never cut by size (`png`); or with `layout=cards` the part\'s card image `page`: 1080 px wide, cut at most 1600 px tall only between cards, a taller card being an image of its own. Fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>", plus " - <part>" for a PNG of a split and " - parte N de M" when the part\'s cards make several images. `page` is 1-based, default 1; the PDF is one file. 404 past the last part or page, so a client reads every file in order until then. Same access, range, split and errors as the data.',
           params: paramsSchema,
           querystring: scheduleExportFileQuerySchema,
           response: {
@@ -197,25 +208,46 @@ export class ScheduleExportController implements FastifyController {
       async (request, reply) => {
         const exported = await this.read({ request, reply });
         if (!exported) return;
-        const { format, part, page } = request.query as ScheduleExportFileQuery;
+        const query = request.query as ScheduleExportFileQuery;
+        const { format, part, page } = query;
         // The PDF holds every page in its one file.
         if (format === 'pdf' && page > 1)
           throw new NotFoundError('Export file');
         const { locale } = request;
         const chosen = filePart({ data: exported.data, format, part });
+        const layout = layoutOf(query);
+        const payload = scheduleExportRenderPayload({
+          data: chosen.data,
+          locale,
+          media: layout === 'cards' ? 'cards' : MEDIA[format],
+        });
+        const suffixes: string[] = [];
+        if (layout === 'cards') {
+          const count = await this.scheduleExportReader.countPages({
+            exported,
+            payload,
+            layout,
+          });
+          if (page > count) throw new NotFoundError('Export file');
+          if (count > 1) {
+            suffixes.push(
+              m.export_file_part(
+                { part: String(page), count: String(count) },
+                { locale },
+              ),
+            );
+          }
+        }
         const file = await this.scheduleExportReader.renderFile({
           exported,
           format,
           page,
-          payload: scheduleExportRenderPayload({
-            data: chosen.data,
-            locale,
-            media: MEDIA[format],
-          }),
+          layout,
+          payload,
         });
-        // Typst writes nothing for an image past the last.
+        // Typst writes nothing for a page past the last.
         if (file.byteLength === 0) throw new NotFoundError('Export file');
-        const name = `${scheduleExportFileName({ ...chosen, locale })}.${format}`;
+        const name = `${scheduleExportFileName({ ...chosen, locale, suffixes })}.${format}`;
         return reply
           .type(CONTENT_TYPE[format])
           .header('Content-Disposition', attachmentDisposition({ name }))
@@ -232,7 +264,7 @@ export class ScheduleExportController implements FastifyController {
           operationId: 'getScheduleExportPreview',
           summary: "One SVG page of a Ministry's Schedule export",
           description:
-            'Page `page` of the file `format` names, for the Cycle or its `from`/`to` days and `split`, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, its pages running through every part, or the one page of the table image of `part`. Fixed text in the locale-cookie language. 404 past the last page or part; otherwise the same access, range and errors as the data.',
+            'Page `page` of the file `format` and `layout` name, for the Cycle or its `from`/`to` days and `split`, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, its pages running through every part, the one page of the table image of `part`, or card image `page` of `part`. Fixed text in the locale-cookie language. 404 past the last page or part; otherwise the same access, range and errors as the data.',
           params: paramsSchema,
           querystring: scheduleExportPreviewQuerySchema,
           response: {
@@ -245,17 +277,19 @@ export class ScheduleExportController implements FastifyController {
       async (request, reply) => {
         const exported = await this.read({ request, reply });
         if (!exported) return;
-        const { format, part, page } =
-          request.query as ScheduleExportPreviewQuery;
+        const query = request.query as ScheduleExportPreviewQuery;
+        const { format, part, page } = query;
         const { data } = filePart({ data: exported.data, format, part });
+        const layout = layoutOf(query);
         const svg = await this.scheduleExportReader.renderFile({
           exported,
           format: 'svg',
           page,
+          layout,
           payload: scheduleExportRenderPayload({
             data,
             locale: request.locale,
-            media: MEDIA[format],
+            media: layout === 'cards' ? 'cards' : MEDIA[format],
           }),
         });
         // Typst writes nothing for a page past the last.

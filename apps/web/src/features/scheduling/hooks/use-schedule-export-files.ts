@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
   type ExportPage,
+  FILE_PARAMS,
   previewQueryOptions,
   readExportPages,
   type ScheduleExportSettings,
@@ -10,15 +11,15 @@ import {
 import type { GetScheduleExportFileFormat } from '@/infrastructure/api/churchAPI.schemas';
 import { exportApi } from '@/utils/api-instances';
 
-/** What the leader exports: a server-rendered file, or the workbook built here. */
-export type ExportFormat = GetScheduleExportFileFormat | 'xlsx';
+/** A downloaded file's format: a server-rendered file, or the workbook built here. */
+export type DownloadFormat = GetScheduleExportFileFormat | 'xlsx';
 
 /** Each format's MIME type; the share sheet takes the PDF as a document. */
 export const EXPORT_FILE_TYPE = {
   pdf: 'application/pdf',
   png: 'image/png',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-} as const satisfies Record<ExportFormat, string>;
+} as const satisfies Record<DownloadFormat, string>;
 
 /** The refusal's translated message; a blob download carries it as a Blob. */
 async function refusalMessage(error: unknown): Promise<string | undefined> {
@@ -48,7 +49,7 @@ async function readExportFiles({
   const splitQuery = split ? { split } : {};
   if (format === 'pdf') {
     const file = await exportApi.getScheduleExportFile(ministryId, cycleId, {
-      format,
+      ...FILE_PARAMS[format],
       ...range,
       ...splitQuery,
     });
@@ -58,7 +59,7 @@ async function readExportFiles({
     byPart: split !== undefined,
     read: ({ page, part }) =>
       exportApi.getScheduleExportFile(ministryId, cycleId, {
-        format,
+        ...FILE_PARAMS[format],
         page,
         ...range,
         ...splitQuery,

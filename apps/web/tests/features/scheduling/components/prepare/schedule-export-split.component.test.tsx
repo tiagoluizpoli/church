@@ -212,8 +212,10 @@ it('starts on Por grupo when the Ministry has Event groups', async () => {
   await waitFor(() => expect(dataCalls()).toContainEqual({ split: 'group' }));
   await waitFor(() =>
     expect(previewCalls()).toContainEqual({
-      format: 'pdf',
+      format: 'png',
+      layout: 'cards',
       page: 1,
+      part: 1,
       split: 'group',
     }),
   );
@@ -320,6 +322,9 @@ it('previews and downloads one table image per part, named after it', async () =
 
 it('downloads one PDF holding every part', async () => {
   const dialog = await openDialog();
+  fireEvent.click(
+    within(dialog).getByRole('radio', { name: m.export_format_pdf() }),
+  );
   fireEvent.click(
     await within(dialog).findByRole('radio', { name: m.export_split_week() }),
   );

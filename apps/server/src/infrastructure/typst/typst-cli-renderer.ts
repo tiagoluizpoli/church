@@ -16,6 +16,7 @@ import type { ObjectStorage } from '@/domain/contracts/infrastructure/object-sto
 import type {
   TypstCliRendererDependencies,
   TypstDirectoryInput,
+  TypstPageCountInput,
   TypstRenderer,
   TypstRenderInput,
   TypstRenderRoot,
@@ -28,6 +29,8 @@ const MAX_ARGUMENT_BYTES = 128 * 1024 - 1;
 const DEFAULT_PPI = 200;
 const MAX_OUTPUT_BYTES = 256 * 1024 * 1024;
 const execFileAsync = promisify(execFile);
+/** The PDF's page tree root, as the pinned Typst writes it. */
+const PDF_PAGE_COUNT = /\/Type\/Pages\/Count (\d+)\//;
 
 /**
  * `TypstRenderer` over the pinned CLI: one CLI process per render in a fresh
@@ -98,6 +101,15 @@ export class TypstCliRenderer implements TypstRenderer {
     })();
     this.inFlight.set(key, render);
     return render;
+  }
+
+  async countPages(input: TypstPageCountInput): Promise<number> {
+    // The PDF holds every page and is the cheapest render; it is cached too.
+    const pdf = await this.render({ ...input, format: 'pdf' });
+    const [, count] =
+      PDF_PAGE_COUNT.exec(Buffer.from(pdf).toString('latin1')) ?? [];
+    if (!count) throw new TypstRenderError({ reason: 'failed' });
+    return Number(count);
   }
 
   private async cacheKey(input: TypstRenderInput): Promise<string> {

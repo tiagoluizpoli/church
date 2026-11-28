@@ -551,6 +551,9 @@ export async function seedScheduleExport() {
 
   return {
     kidsId: kids.id,
+    bercarioId: bercario.id,
+    professorId: professor.id,
+    carlaId: people['Carla Dias'] as string,
     worshipId: worship.id,
     foreignMinistryId: foreign.id,
     octoberId: october.id,
@@ -586,6 +589,86 @@ export async function seedScheduleExport() {
 export type ScheduleExportFixture = Awaited<
   ReturnType<typeof seedScheduleExport>
 >;
+
+export interface CardServicesInput {
+  fixture: ScheduleExportFixture;
+  cycleId: string;
+  /** One Kids-served Event on each Church-local day. */
+  days: string[];
+  /** Hour-long Shifts from 08:00, one row of a card each. */
+  shifts: number;
+}
+
+/**
+ * Published Kids services with `shifts` Shifts each, Carla Dias serving as
+ * Professor in Berçário in every one: cards as tall as needed.
+ */
+export async function seedCardServices({
+  fixture,
+  cycleId,
+  days,
+  shifts,
+}: CardServicesInput) {
+  const churchId = EXPORT_CHURCH_A;
+  for (const day of days) {
+    const hours = Array.from({ length: shifts }, (_, index) =>
+      String(8 + index).padStart(2, '0'),
+    );
+    const created = await buildEvent({
+      db,
+      churchId,
+      cycleId,
+      title: 'Culto',
+      start: local(day, `${hours[0]}:00`),
+      end: local(day, `${hours.at(-1)}:59`),
+      status: 'scheduled',
+    });
+    const block = await buildEventTimeBlock({
+      db,
+      churchId,
+      eventId: created.id,
+      start: local(day, `${hours[0]}:00`),
+      end: local(day, `${hours.at(-1)}:59`),
+    });
+    const participation = await buildMinistryParticipation({
+      db,
+      churchId,
+      ministryId: fixture.kidsId,
+      eventId: created.id,
+      state: 'published',
+      eventTimeBlockIds: [block.id],
+    });
+    for (const hour of hours) {
+      const shiftRow = await buildShift({
+        db,
+        churchId,
+        participationId: participation.id,
+        eventTimeBlockId: block.id,
+        start: local(day, `${hour}:00`),
+        end: local(day, `${hour}:59`),
+      });
+      const place = await buildShiftRequirement({
+        db,
+        churchId,
+        participationId: participation.id,
+        shiftId: shiftRow.id,
+        roleId: fixture.professorId,
+        sectorId: fixture.bercarioId,
+        peopleNeeded: 1,
+      });
+      await buildAssignment({
+        db,
+        churchId,
+        participationId: participation.id,
+        shiftId: shiftRow.id,
+        volunteerId: fixture.carlaId,
+        roleId: fixture.professorId,
+        shiftRequirementId: place.id,
+        status: 'pending',
+      });
+    }
+  }
+}
 
 interface SeedTallBandsInput {
   ministryId: string;

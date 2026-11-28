@@ -19,15 +19,14 @@ import { ScheduleExportFooter } from '@/features/scheduling/components/prepare/s
 import { ScheduleExportGroups } from '@/features/scheduling/components/prepare/schedule-export-groups';
 import { exportPartName } from '@/features/scheduling/components/prepare/schedule-export-part-name';
 import {
+  type ExportFormat,
+  FILE_PARAMS,
   ScheduleExportPreview,
   useSettledExportSettings,
 } from '@/features/scheduling/components/prepare/schedule-export-preview';
 import { ScheduleExportWorkbookPreview } from '@/features/scheduling/components/prepare/schedule-export-workbook-preview';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
-import {
-  type ExportFormat,
-  useScheduleExportFiles,
-} from '@/features/scheduling/hooks/use-schedule-export-files';
+import { useScheduleExportFiles } from '@/features/scheduling/hooks/use-schedule-export-files';
 import { useScheduleExportWorkbook } from '@/features/scheduling/hooks/use-schedule-export-workbook';
 import { useOnlineState } from '@/features/volunteers/hooks/use-online-state';
 import type { GetScheduleExportDataSplit } from '@/infrastructure/api/churchAPI.schemas';
@@ -44,10 +43,14 @@ interface ScheduleExportProps {
 }
 
 const FORMATS = [
+  { format: 'cards', label: m.export_format_cards },
   { format: 'pdf', label: m.export_format_pdf },
   { format: 'png', label: m.export_format_table_image },
   { format: 'xlsx', label: m.export_format_excel },
 ] as const;
+
+/** Formato: a file the server renders, or the workbook built here. */
+type FormatChoice = ExportFormat | 'xlsx';
 
 const SPLITS = [
   { split: 'none', label: m.export_split_none },
@@ -72,7 +75,8 @@ function splitQuery({ split }: SplitQueryInput) {
 }
 
 /**
- * Exportar: the Schedule as an A4 PDF table (#1243) or one table image under
+ * Exportar: the Schedule as card images cut for WhatsApp (#1250, the default),
+ * an A4 PDF table (#1243) or one table image under
  * a live preview of the file (#1244), for any Cycle with a Schedule and
  * optionally only some of its dates (#1246). The page is only
  * reachable by the Ministry's leaders and ChurchAdmins. The export data's
@@ -96,7 +100,7 @@ export function ScheduleExport({
   const [cycle, setCycle] = useState<ExportCycle | null>(null);
   // Null: the whole Cycle.
   const [range, setRange] = useState<ExportRange | null>(null);
-  const [format, setFormat] = useState<ExportFormat>('pdf');
+  const [format, setFormat] = useState<FormatChoice>('cards');
   // Null: the Ministry's default, never remembered between exports.
   const [split, setSplit] = useState<GetScheduleExportDataSplit | null>(null);
   const online = useOnlineState();
@@ -131,7 +135,7 @@ export function ScheduleExport({
     ministryId,
     cycleId: selectedId,
     // The workbook is built here: the server's settings fetch nothing for it.
-    format: isExcel ? ('pdf' as const) : format,
+    format: isExcel ? ('cards' as const) : format,
     range,
     ...splitQuery({ split: chosenSplit }),
   };
@@ -171,7 +175,7 @@ export function ScheduleExport({
         description={m.export_dialog_description()}
         footer={
           <ScheduleExportFooter
-            format={format}
+            format={isExcel ? format : FILE_PARAMS[format].format}
             name={m.export_file_name({
               ministry: data.ministry.name,
               cycle: selected.name,

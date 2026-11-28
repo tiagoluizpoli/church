@@ -7392,6 +7392,7 @@ export type GetScheduleExportFileParams = {
   to?: string;
   split?: GetScheduleExportFileSplit;
   format: GetScheduleExportFileFormat;
+  layout?: GetScheduleExportFileLayout;
   /**
    * @minimum 1
    * @maximum 9007199254740991
@@ -7421,6 +7422,14 @@ export type GetScheduleExportFileFormat = typeof GetScheduleExportFileFormat[key
 export const GetScheduleExportFileFormat = {
   pdf: 'pdf',
   png: 'png',
+} as const;
+
+export type GetScheduleExportFileLayout = typeof GetScheduleExportFileLayout[keyof typeof GetScheduleExportFileLayout];
+
+
+export const GetScheduleExportFileLayout = {
+  grid: 'grid',
+  cards: 'cards',
 } as const;
 
 export type GetScheduleExportFile400 = {
@@ -7455,6 +7464,7 @@ export type GetScheduleExportPreviewParams = {
   to?: string;
   split?: GetScheduleExportPreviewSplit;
   format: GetScheduleExportPreviewFormat;
+  layout?: GetScheduleExportPreviewLayout;
   /**
    * @minimum 1
    * @maximum 9007199254740991
@@ -7484,6 +7494,14 @@ export type GetScheduleExportPreviewFormat = typeof GetScheduleExportPreviewForm
 export const GetScheduleExportPreviewFormat = {
   pdf: 'pdf',
   png: 'png',
+} as const;
+
+export type GetScheduleExportPreviewLayout = typeof GetScheduleExportPreviewLayout[keyof typeof GetScheduleExportPreviewLayout];
+
+
+export const GetScheduleExportPreviewLayout = {
+  grid: 'grid',
+  cards: 'cards',
 } as const;
 
 export type GetScheduleExportPreview400 = {

@@ -60,21 +60,27 @@ const QUARTER = cycle('q1', '1º trimestre 2026', '2026-01-01', '2026-03-31');
 beforeEach(() => {
   vi.resetAllMocks();
   state.data = { ...SCHEDULE, stage: 'published' };
-  state.getScheduleExportFile.mockResolvedValue(new Blob(['%PDF']));
+  const notFound = () =>
+    Promise.reject(
+      new AxiosError('404', 'ERR_BAD_REQUEST', undefined, undefined, {
+        status: 404,
+        statusText: '',
+        headers: {},
+        config: { headers: new AxiosHeaders() },
+        data: null,
+      }),
+    );
+  // One page or image of each file; 404 past it, as the server answers.
+  state.getScheduleExportFile.mockImplementation(
+    (_ministryId: string, _cycleId: string, params: { page?: number }) =>
+      (params.page ?? 1) === 1
+        ? Promise.resolve(new Blob(['%PDF']))
+        : notFound(),
+  );
   // The files are fetched once the preview settles.
   state.getScheduleExportPreview.mockImplementation(
     (_ministryId: string, _cycleId: string, params: { page: number }) =>
-      params.page === 1
-        ? Promise.resolve(new Blob(['<svg/>']))
-        : Promise.reject(
-            new AxiosError('404', 'ERR_BAD_REQUEST', undefined, undefined, {
-              status: 404,
-              statusText: '',
-              headers: {},
-              config: { headers: new AxiosHeaders() },
-              data: null,
-            }),
-          ),
+      params.page === 1 ? Promise.resolve(new Blob(['<svg/>'])) : notFound(),
   );
   state.getScheduleExportData.mockResolvedValue({
     isDraft: false,
@@ -110,6 +116,10 @@ async function openDialog() {
   await user.click(screen.getByRole('button', { name: m.export_open() }));
   await waitForDialogFocus();
   const dialog = screen.getByRole('dialog', { name: m.export_dialog_title() });
+  // These cases are about the Cycle and dates: they export the PDF.
+  await user.click(
+    within(dialog).getByRole('radio', { name: m.export_format_pdf() }),
+  );
   return { user, dialog };
 }
 

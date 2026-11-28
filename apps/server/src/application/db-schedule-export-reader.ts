@@ -16,6 +16,7 @@ import type { IScheduleChangeReader } from '../domain/contracts/application/sche
 import type {
   BuildScheduleExportEventsInput,
   BuildScheduleExportPartInput,
+  CountScheduleExportPagesInput,
   DbScheduleExportReaderDependencies,
   DuplicateNamesInput,
   EventTemplateIdsInput,
@@ -56,7 +57,9 @@ import {
 } from '../domain/errors';
 
 /** The Grid Typst template: the A4 landscape PDF table. */
-const GRID_TEMPLATE = 'schedule-grid';
+const TEMPLATES = { grid: 'schedule-grid', cards: 'schedule-cards' } as const;
+/** The cards page is 540pt wide: 1080 px at 144 ppi. */
+const CARDS_PPI = 144;
 
 const DAYS_PER_WEEK = 7;
 /** Weeks start on Monday; `weekdayIndex` counts Sunday as 0. */
@@ -421,13 +424,28 @@ export class DbScheduleExportReader implements IScheduleExportReader {
   renderFile({
     exported,
     payload,
+    layout,
     format,
     page,
   }: RenderScheduleExportFileInput): Promise<Uint8Array> {
     return this.typstRenderer.render({
-      template: GRID_TEMPLATE,
+      template: TEMPLATES[layout],
       format,
       page,
+      ppi: layout === 'cards' ? CARDS_PPI : undefined,
+      payload,
+      creationTimestamp: exported.changedAt,
+      logoKey: exported.logoKey ?? undefined,
+    });
+  }
+
+  countPages({
+    exported,
+    payload,
+    layout,
+  }: CountScheduleExportPagesInput): Promise<number> {
+    return this.typstRenderer.countPages({
+      template: TEMPLATES[layout],
       payload,
       creationTimestamp: exported.changedAt,
       logoKey: exported.logoKey ?? undefined,

@@ -58,6 +58,7 @@ import {
   EXPORT_CHURCH_A,
   type ExportPersona,
   type ScheduleExportFixture,
+  seedCardServices,
   seedScheduleExport,
 } from '@/tests/test-support/schedule-export-fixture';
 
@@ -199,6 +200,53 @@ function readPng(request: ExportRequest = {}) {
     url: `${exportUrl('file', request)}?format=png`,
   });
 }
+
+interface CardsRequest extends ExportRequest {
+  page?: number;
+}
+
+function readCards({ page = 1, ...request }: CardsRequest = {}) {
+  return app.inject({
+    method: 'GET',
+    url: `${exportUrl('file', request)}?format=png&layout=cards&page=${page}`,
+    cookies: { [appConfig.localeCookieName]: request.locale ?? 'pt-BR' },
+  });
+}
+
+/** Every card image, read until the 404 past the last. */
+async function readAllCards(request: ExportRequest = {}) {
+  const images = [];
+  for (let page = 1; ; page += 1) {
+    const response = await readCards({ ...request, page });
+    if (response.statusCode === 404) return images;
+    expect(response.statusCode).toBe(200);
+    const preview = await app.inject({
+      method: 'GET',
+      url: `${exportUrl('preview', request)}?format=png&layout=cards&page=${page}`,
+    });
+    images.push({
+      name: response.headers['content-disposition'],
+      size: pngSize(response.rawPayload),
+      svg: preview.body,
+    });
+  }
+}
+
+/** Each card's header strip is the one shape in this colour. */
+const CARD_HEADER = 'fill="oklch(94.8% 0.018 -113)"';
+/** A card's frame, and on the first image the rule under the header. */
+const CARD_EDGE = 'stroke="oklch(88.5% 0.012 -118)"';
+
+function count(svg: string, mark: string) {
+  return svg.split(mark).length - 1;
+}
+
+const DECEMBER_SUNDAYS = [
+  '2026-12-06',
+  '2026-12-13',
+  '2026-12-20',
+  '2026-12-27',
+];
 
 function readPreview({
   format = 'pdf',
@@ -649,6 +697,153 @@ describe('GET /export/ministries/:ministryId/cycles/:cycleId/file', () => {
     expect(png.height).toBe(Math.ceil((preview.height * 200) / 72));
     expect((await readPreview({ format: 'png', page: 2 })).statusCode).toBe(
       404,
+    );
+  });
+
+  it('downloads the cards as one 1080 px image when they fit in 1600 px', async () => {
+    const response = await readCards();
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toBe('image/png');
+    expect(response.headers['content-disposition']).toBe(
+      `attachment; filename="Escala - Kids - Outubro 2026.png"; filename*=UTF-8''Escala%20-%20Kids%20-%20Outubro%202026.png`,
+    );
+    const png = pngSize(response.rawPayload);
+    expect(png.width).toBe(1080);
+    expect(png.height).toBeLessThanOrEqual(1600);
+    expect((await readCards({ page: 2 })).statusCode).toBe(404);
+  });
+
+  it('cuts the cards into images at most 1600 px tall, only between cards', async () => {
+    await seedCardServices({
+      fixture,
+      cycleId: fixture.decemberId,
+      days: [...DECEMBER_SUNDAYS, '2026-12-02', '2026-12-09', '2026-12-16'],
+      shifts: 3,
+    });
+
+    const images = await readAllCards({ cycleId: fixture.decemberId });
+
+    expect(images.map((image) => image.name)).toEqual(
+      [1, 2, 3].map(
+        (part) =>
+          `attachment; filename="Escala - Kids - Dezembro 2026 - parte ${part} de 3.png"; filename*=UTF-8''${encodeURIComponent(`Escala - Kids - Dezembro 2026 - parte ${part} de 3.png`)}`,
+      ),
+    );
+    for (const [index, { size, svg }] of images.entries()) {
+      expect(size.width).toBe(1080);
+      expect(size.height).toBeLessThanOrEqual(1600);
+      // Whole cards only: a cut card would leave a frame without its header.
+      const rule = index === 0 ? 1 : 0;
+      expect(count(svg, CARD_EDGE)).toBe(count(svg, CARD_HEADER) + rule);
+    }
+    const cards = images.map(({ svg }) => count(svg, CARD_HEADER));
+    expect(cards.reduce((sum, each) => sum + each)).toBe(7);
+  });
+
+  it('cuts the cards within each Separar part, naming the part and the cut', async () => {
+    const cycleId = fixture.decemberId;
+    await seedCardServices({
+      fixture,
+      cycleId,
+      days: ['2026-12-08', '2026-12-09', '2026-12-10', '2026-12-11'],
+      shifts: 4,
+    });
+    await seedCardServices({
+      fixture,
+      cycleId,
+      days: ['2026-12-16'],
+      shifts: 4,
+    });
+
+    const names = [];
+    for (const [part, page] of [
+      [1, 1],
+      [1, 2],
+      [1, 3],
+      [2, 1],
+      [2, 2],
+      [3, 1],
+    ]) {
+      const response = await app.inject({
+        method: 'GET',
+        url: `${exportUrl('file', { cycleId })}?format=png&layout=cards&split=week&part=${part}&page=${page}`,
+        cookies: { [appConfig.localeCookieName]: 'pt-BR' },
+      });
+      names.push(
+        response.statusCode === 200
+          ? decodeURIComponent(
+              /filename\*=UTF-8''(.*)$/.exec(
+                response.headers['content-disposition'] as string,
+              )?.[1] ?? '',
+            )
+          : response.statusCode,
+      );
+    }
+
+    expect(names).toEqual([
+      'Escala - Kids - Dezembro 2026 - Semana 07–13 dez - parte 1 de 2.png',
+      'Escala - Kids - Dezembro 2026 - Semana 07–13 dez - parte 2 de 2.png',
+      404,
+      'Escala - Kids - Dezembro 2026 - Semana 14–20 dez.png',
+      404,
+      404,
+    ]);
+  });
+
+  it('makes a card taller than 1600 px an image of its own', async () => {
+    const cycleId = fixture.decemberId;
+    const days = (day: string) => ({ fixture, cycleId, days: [day] });
+    await seedCardServices({ ...days('2026-12-06'), shifts: 2 });
+    await seedCardServices({ ...days('2026-12-13'), shifts: 16 });
+    await seedCardServices({ ...days('2026-12-20'), shifts: 2 });
+
+    const images = await readAllCards({ cycleId });
+
+    expect(images.map(({ svg }) => count(svg, CARD_HEADER))).toEqual([1, 1, 1]);
+    expect(images.map(({ size }) => size.height > 1600)).toEqual([
+      false,
+      true,
+      false,
+    ]);
+  });
+
+  it('names card images in the locale-cookie language', async () => {
+    await seedCardServices({
+      fixture,
+      cycleId: fixture.decemberId,
+      days: DECEMBER_SUNDAYS,
+      shifts: 4,
+    });
+
+    const response = await readCards({
+      cycleId: fixture.decemberId,
+      locale: 'en',
+      page: 2,
+    });
+
+    expect(response.headers['content-disposition']).toContain(
+      'filename="Schedule - Kids - Dezembro 2026 - part 2 of 2.png"',
+    );
+  });
+
+  it('previews each card image as an SVG page 540pt wide', async () => {
+    const pages = await readAllCards();
+
+    expect(pages).toHaveLength(1);
+    expect(svgSize(pages[0]?.svg ?? '').width).toBe(540);
+    expect(count(pages[0]?.svg ?? '', CARD_HEADER)).toBe(OCTOBER_EVENTS.length);
+  });
+
+  it('keeps the PDF the table whatever the layout', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `${exportUrl('file')}?format=pdf&layout=cards`,
+    });
+
+    expect(response.headers['content-type']).toBe('application/pdf');
+    expect(poppler('pdfinfo', response.rawPayload)).toMatch(
+      /Page size:\s+841\.89 x 595\.276 pts/,
     );
   });
 

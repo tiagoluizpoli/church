@@ -73,34 +73,53 @@ const notFound = new AxiosError('Not Found', '404', undefined, undefined, {
   status: 404,
 } as never);
 
-/** The server's preview: two A4 pages for the PDF, one page for the image. */
-function previewPages({ pdfPages = 2 } = {}) {
+interface FileParams {
+  format: string;
+  layout?: string;
+  page?: number;
+}
+
+/** The server's preview: two A4 pages, one per card image, one table image. */
+function previewPages({ pdfPages = 2, cards = 2 } = {}) {
   state.getScheduleExportPreview.mockImplementation(
-    (
-      _ministryId: string,
-      _cycleId: string,
-      params: { format: string; page: number },
-    ) =>
-      params.page <= (params.format === 'pdf' ? pdfPages : 1)
+    (_ministryId: string, _cycleId: string, params: FileParams) => {
+      const pages =
+        params.layout === 'cards'
+          ? cards
+          : params.format === 'pdf'
+            ? pdfPages
+            : 1;
+      return (params.page ?? 1) <= pages
         ? Promise.resolve(svg)
-        : Promise.reject(notFound),
+        : Promise.reject(notFound);
+    },
   );
 }
 
-/** The server's files: one PDF, `images` table PNGs read by page until 404. */
-function filePages({ images = 1 } = {}) {
+/**
+ * The server's files: one PDF, `cards` card images and `images` table PNGs,
+ * the images read by page until 404.
+ */
+function filePages({ images = 1, cards = 2 } = {}) {
   state.getScheduleExportFile.mockImplementation(
-    (
-      _ministryId: string,
-      _cycleId: string,
-      params: { format: string; page?: number },
-    ) => {
+    (_ministryId: string, _cycleId: string, params: FileParams) => {
       if (params.format === 'pdf') return Promise.resolve(pdf);
-      return (params.page ?? 1) <= images
+      const count = params.layout === 'cards' ? cards : images;
+      return (params.page ?? 1) <= count
         ? Promise.resolve(png)
         : Promise.reject(notFound);
     },
   );
+}
+
+const CARD_FILE_CALLS = [1, 2, 3].map((page) => ({
+  format: 'png',
+  layout: 'cards',
+  page,
+}));
+
+function chooseFormat(dialog: HTMLElement, name: string) {
+  fireEvent.click(within(dialog).getByRole('radio', { name }));
 }
 
 interface ShareSupport {
@@ -160,7 +179,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it('opens on the Schedule Cycle and downloads the whole Cycle as a PDF', async () => {
+it('opens on the Schedule Cycle and Imagem em cartões, and downloads every card image', async () => {
   renderWithProviders(<ScheduleExport ministryId="m" cycleId="c" />);
 
   fireEvent.click(screen.getByRole('button', { name: m.export_open() }));
@@ -172,7 +191,44 @@ it('opens on the Schedule Cycle and downloads the whole Cycle as a PDF', async (
       m.export_whole_cycle({ span: '01/01/2027 – 31/01/2027' }),
     ),
   ).toBeVisible();
-  expect(within(dialog).getByText(m.export_format_pdf())).toBeVisible();
+  expect(
+    within(dialog).getByRole('radio', { name: m.export_format_cards() }),
+  ).toBeChecked();
+
+  await clickDownload(dialog);
+
+  const name = m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' });
+  await waitFor(() =>
+    expect(downloads).toEqual([
+      `${name} - ${m.export_file_part({ part: '1', count: '2' })}.png`,
+      `${name} - ${m.export_file_part({ part: '2', count: '2' })}.png`,
+    ]),
+  );
+  expect(fileCalls()).toEqual(CARD_FILE_CALLS);
+  expect(URL.createObjectURL).toHaveBeenCalledWith(png);
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: m.export_dialog_title() }),
+    ).not.toBeInTheDocument(),
+  );
+});
+
+it('names a single card image without a part number', async () => {
+  filePages({ cards: 1 });
+  const dialog = await openDialog();
+
+  await clickDownload(dialog);
+
+  await waitFor(() =>
+    expect(downloads).toEqual([
+      `${m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' })}.png`,
+    ]),
+  );
+});
+
+it('downloads the whole Cycle as one PDF', async () => {
+  const dialog = await openDialog();
+  chooseFormat(dialog, m.export_format_pdf());
 
   await clickDownload(dialog);
 
@@ -181,17 +237,8 @@ it('opens on the Schedule Cycle and downloads the whole Cycle as a PDF', async (
       `${m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' })}.pdf`,
     ]),
   );
-  expect(state.getScheduleExportFile).toHaveBeenCalledExactlyOnceWith(
-    'm',
-    'c',
-    { format: 'pdf' },
-  );
+  expect(fileCalls().at(-1)).toEqual({ format: 'pdf' });
   expect(URL.createObjectURL).toHaveBeenCalledWith(pdf);
-  await waitFor(() =>
-    expect(
-      screen.queryByRole('dialog', { name: m.export_dialog_title() }),
-    ).not.toBeInTheDocument(),
-  );
 });
 
 it('says so and keeps Baixar off when the files cannot be fetched', async () => {
@@ -255,9 +302,11 @@ it('says a never-published Schedule downloads as a Rascunho', async () => {
   expect(within(dialog).queryByText(m.export_unsent_changes())).toBeNull();
   await clickDownload(dialog);
 
+  const name = m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' });
   await waitFor(() =>
     expect(downloads).toEqual([
-      `${m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' })} - ${m.export_draft()}.pdf`,
+      `${name} - ${m.export_draft()} - ${m.export_file_part({ part: '1', count: '2' })}.png`,
+      `${name} - ${m.export_draft()} - ${m.export_file_part({ part: '2', count: '2' })}.png`,
     ]),
   );
 });
@@ -313,11 +362,7 @@ it('previews every page of the file with a link to each at full size', async () 
     expect(link).toHaveAttribute('href', 'blob:export');
     expect(link).toHaveAttribute('target', '_blank');
   }
-  expect(previewCalls()).toEqual([
-    { format: 'pdf', page: 1 },
-    { format: 'pdf', page: 2 },
-    { format: 'pdf', page: 3 },
-  ]);
+  expect(previewCalls()).toEqual(CARD_FILE_CALLS);
 });
 
 it('requests the preview 300 ms after the last settings change', async () => {
@@ -374,9 +419,9 @@ it('downloads the table image as one PNG', async () => {
       `${m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' })}.png`,
     ]),
   );
-  // The PDF was prefetched first, before the format changed.
+  // The card images were prefetched first, before the format changed.
   expect(fileCalls()).toEqual([
-    { format: 'pdf' },
+    ...CARD_FILE_CALLS,
     { format: 'png', page: 1 },
     { format: 'png', page: 2 },
   ]);
@@ -425,7 +470,8 @@ it('previews only the chosen dates', async () => {
 
   await waitFor(() =>
     expect(previewCalls()).toContainEqual({
-      format: 'pdf',
+      format: 'png',
+      layout: 'cards',
       page: 1,
       from: '2027-01-01',
       to: '2027-01-31',
@@ -469,11 +515,11 @@ it('fetches the files once the preview settles and turns Baixar on when they are
   );
   expect(state.getScheduleExportFile).not.toHaveBeenCalled();
   preview.resolve(svg);
-  await waitFor(() => expect(fileCalls()).toEqual([{ format: 'pdf' }]));
+  await waitFor(() => expect(fileCalls()).toEqual([CARD_FILE_CALLS[0]]));
   expect(download).toBeDisabled();
   expect(share).toBeDisabled();
 
-  file.resolve(pdf);
+  file.resolve(png);
   await waitFor(() => expect(download).toBeEnabled());
   expect(share).toBeEnabled();
 });
@@ -495,7 +541,7 @@ it('fetches the files again only once the changed preview settles', async () => 
   ).toBeDisabled();
   await waitFor(() =>
     expect(fileCalls()).toEqual([
-      { format: 'pdf' },
+      ...CARD_FILE_CALLS,
       { format: 'png', page: 1 },
       { format: 'png', page: 2 },
     ]),
@@ -513,6 +559,7 @@ it('shows Compartilhar only where the device can share the files', async () => {
   );
   setShare({ canShare, share: vi.fn() });
   const dialog = await openDialog();
+  chooseFormat(dialog, m.export_format_pdf());
 
   expect(
     within(dialog).getByRole('button', { name: m.export_share() }),
@@ -579,6 +626,7 @@ it('shares the PDF as application/pdf', async () => {
   const share = vi.fn(() => Promise.resolve());
   setShare({ canShare: () => true, share });
   const dialog = await openDialog();
+  chooseFormat(dialog, m.export_format_pdf());
 
   fireEvent.click(await shareButton(dialog));
 
@@ -646,8 +694,8 @@ it('sums up the files in the footer: count, format and span', async () => {
   await waitFor(() =>
     expect(footerSummary(dialog)).toHaveTextContent(
       m.export_summary({
-        files: m.export_files_one(),
-        format: m.export_format_pdf(),
+        files: m.export_files_other({ count: '2' }),
+        format: m.export_format_cards(),
         span: '01/01/2027 – 31/01/2027',
       }),
     ),

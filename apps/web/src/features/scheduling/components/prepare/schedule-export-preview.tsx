@@ -7,10 +7,7 @@ import {
 import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { Spinner } from '@/components/ui/spinner';
-import type {
-  GetScheduleExportDataSplit,
-  GetScheduleExportFileFormat,
-} from '@/infrastructure/api/churchAPI.schemas';
+import type { GetScheduleExportDataSplit } from '@/infrastructure/api/churchAPI.schemas';
 import { exportApi } from '@/utils/api-instances';
 
 /** The preview waits this long after the last settings change. */
@@ -21,11 +18,21 @@ interface PreviewRange {
   to: string;
 }
 
+/** The file each Formato downloads: card images are PNG files of the cards layout. */
+export const FILE_PARAMS = {
+  cards: { format: 'png', layout: 'cards' },
+  pdf: { format: 'pdf' },
+  png: { format: 'png' },
+} as const;
+
+/** Formato: the card images, the PDF table or the table image. */
+export type ExportFormat = keyof typeof FILE_PARAMS;
+
 /** What one export is: the preview, the files and their summary follow it. */
 export interface ScheduleExportSettings {
   ministryId: string;
   cycleId: string;
-  format: GetScheduleExportFileFormat;
+  format: ExportFormat;
   /** Null: the whole Cycle. */
   range: PreviewRange | null;
   /** Separar; left out for one part. */
@@ -112,10 +119,10 @@ function readPreviewPages({
   split,
 }: ScheduleExportSettings): Promise<ExportPage[]> {
   return readExportPages({
-    byPart: format === 'png' && split !== undefined,
+    byPart: format !== 'pdf' && split !== undefined,
     read: ({ page, part }) =>
       exportApi.getScheduleExportPreview(ministryId, cycleId, {
-        format,
+        ...FILE_PARAMS[format],
         page,
         ...range,
         ...(split ? { split } : {}),

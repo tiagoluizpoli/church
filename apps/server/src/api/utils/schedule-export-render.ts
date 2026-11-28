@@ -105,24 +105,29 @@ export function scheduleExportRenderPayload({
 }
 
 /**
- * `Escala - <Ministry> - <Cycle>`, plus ` - Rascunho` on a draft and
- * ` - <part>` for one part of a split, without characters file systems refuse.
+ * `Escala - <Ministry> - <Cycle>`, plus ` - Rascunho` on a draft,
+ * ` - <part>` for one part of a split and then the given suffixes, without
+ * characters file systems refuse.
  */
 export function scheduleExportFileName({
   data,
   locale,
   part,
+  suffixes = [],
 }: ScheduleExportFileNameInput): string {
   const name = m.export_file_name(
     { ministry: data.ministry.name, cycle: data.cycle.name },
     { locale },
   );
   const partName = part ? scheduleExportPartName({ part, locale }) : null;
-  const suffixes = [
-    ...(data.isDraft ? [m.export_draft({}, { locale })] : []),
-    ...(partName ? [partName] : []),
-  ];
-  return exportFileName({ name, suffixes });
+  return exportFileName({
+    name,
+    suffixes: [
+      ...(data.isDraft ? [m.export_draft({}, { locale })] : []),
+      ...(partName ? [partName] : []),
+      ...suffixes,
+    ],
+  });
 }
 
 /** An attachment header: an ASCII `filename` fallback and the UTF-8 `filename*`. */

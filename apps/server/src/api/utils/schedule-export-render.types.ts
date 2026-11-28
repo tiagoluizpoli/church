@@ -9,8 +9,11 @@ export interface ScheduleExportTextInput {
   locale: Locale;
 }
 
-/** `print`: A4 landscape pages (the PDF); `image`: one page as tall as the grid (the PNG). */
-export type ScheduleExportMedia = 'print' | 'image';
+/**
+ * `print`: A4 landscape pages (the PDF); `image`: one page as tall as the grid
+ * (the table PNG); `cards`: the card images, which the cards template lays out.
+ */
+export type ScheduleExportMedia = 'print' | 'image' | 'cards';
 
 export interface ScheduleExportRenderPayloadInput
   extends ScheduleExportTextInput {
@@ -68,6 +71,8 @@ export interface ScheduleExportRenderPayload {
 export interface ScheduleExportFileNameInput extends ScheduleExportTextInput {
   /** The image's one part, named after it unless it is the whole export. */
   part?: ScheduleExportPart;
+  /** After the part's name, such as ` - parte 2 de 3`. */
+  suffixes?: string[];
 }
 
 export interface AttachmentDispositionInput {

@@ -16164,14 +16164,17 @@ paths:
       summary: Download a Ministry's Schedule for one Cycle
       tags:
         - export
-      description: The Cycle or its `from`/`to` days as an A4 landscape text PDF table
-        (`pdf`), every `split` part starting on a new page, or as one part's
-        whole grid as PNG, never cut by size (`png`, the 1-based `part`), fixed
-        text in the locale-cookie language, named "Escala - <Ministry> -
-        <Cycle>" plus " - <part>" for a PNG of a split. `page` (1-based, default
-        1) picks one image of the part; the PDF is one file. 404 past the last
-        part or page, so a client reads every file in order until then. Same
-        access, range, split and errors as the data.
+      description: "The Cycle or its `from`/`to` days as an A4 landscape text PDF
+        table (`pdf`, whatever the layout), every `split` part starting on a new
+        page; one part's (the 1-based `part`) whole grid in one PNG never cut by
+        size (`png`); or with `layout=cards` the part's card image `page`: 1080
+        px wide, cut at most 1600 px tall only between cards, a taller card
+        being an image of its own. Fixed text in the locale-cookie language,
+        named \"Escala - <Ministry> - <Cycle>\", plus \" - <part>\" for a PNG of
+        a split and \" - parte N de M\" when the part's cards make several
+        images. `page` is 1-based, default 1; the PDF is one file. 404 past the
+        last part or page, so a client reads every file in order until then.
+        Same access, range, split and errors as the data."
       parameters:
         - schema:
             type: string
@@ -16208,6 +16211,15 @@ paths:
           name: format
           required: true
         - schema:
+            default: grid
+            type: string
+            enum:
+              - grid
+              - cards
+          in: query
+          name: layout
+          required: false
+        - schema:
             default: 1
             type: integer
             minimum: 1
@@ -16235,13 +16247,13 @@ paths:
           required: true
       responses:
         "200":
-          description: The PDF or PNG file
+          description: The PDF or one PNG image
           content:
             application/json:
               schema:
                 type: string
                 format: binary
-                description: The PDF or PNG file
+                description: The PDF or one PNG image
         "400":
           description: Default Response
           content:
@@ -16323,12 +16335,13 @@ paths:
       summary: One SVG page of a Ministry's Schedule export
       tags:
         - export
-      description: "Page `page` of the file `format` names, for the Cycle or its
-        `from`/`to` days and `split`, rendered as SVG from the same template and
-        payload as the file: an A4 page of the PDF, its pages running through
-        every part, or the one page of the table image of `part`. Fixed text in
-        the locale-cookie language. 404 past the last page or part; otherwise
-        the same access, range and errors as the data."
+      description: "Page `page` of the file `format` and `layout` name, for the Cycle
+        or its `from`/`to` days and `split`, rendered as SVG from the same
+        template and payload as the file: an A4 page of the PDF, its pages
+        running through every part, the one page of the table image of `part`,
+        or card image `page` of `part`. Fixed text in the locale-cookie
+        language. 404 past the last page or part; otherwise the same access,
+        range and errors as the data."
       parameters:
         - schema:
             type: string
@@ -16364,6 +16377,15 @@ paths:
           in: query
           name: format
           required: true
+        - schema:
+            default: grid
+            type: string
+            enum:
+              - grid
+              - cards
+          in: query
+          name: layout
+          required: false
         - schema:
             default: 1
             type: integer

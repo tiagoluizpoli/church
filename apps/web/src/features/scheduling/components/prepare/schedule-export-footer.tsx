@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import type { ExportPage } from '@/features/scheduling/components/prepare/schedule-export-preview';
 import {
+  type DownloadFormat,
   EXPORT_FILE_TYPE,
-  type ExportFormat,
 } from '@/features/scheduling/hooks/use-schedule-export-files';
 
 interface ExportFilesInput {
   files: ExportPage[];
-  format: ExportFormat;
+  format: DownloadFormat;
   /** The localized "Escala - <Ministry> - <Cycle>". */
   name: string;
   isDraft: boolean;
@@ -62,7 +62,7 @@ function saveFile(file: File) {
  * Whether this device's share sheet takes files of the format. Never the
  * workbook: share sheets that claim to take it still reject it (#1108).
  */
-function canShareFormat(format: ExportFormat): boolean {
+function canShareFormat(format: DownloadFormat): boolean {
   if (format === 'xlsx' || typeof navigator.canShare !== 'function') {
     return false;
   }
@@ -73,7 +73,7 @@ function canShareFormat(format: ExportFormat): boolean {
 }
 
 interface ScheduleExportFooterProps {
-  format: ExportFormat;
+  format: DownloadFormat;
   /** The files' "Escala - <Ministry> - <Cycle>" name, once known. */
   name: string;
   isDraft: boolean;

@@ -4,6 +4,7 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type {
   IScheduleExportReader,
   ScheduleExportData,
+  ScheduleExportLayout,
   ScheduleExportPart,
 } from '../../domain/contracts/application/schedule-export-reader';
 
@@ -21,6 +22,11 @@ export interface ScheduleExportControllerDependencies {
 export interface ScheduleExportRequestInput {
   request: FastifyRequest;
   reply: FastifyReply;
+}
+
+export interface ScheduleExportLayoutInput {
+  format: 'pdf' | 'png';
+  layout: ScheduleExportLayout;
 }
 
 export interface ScheduleExportPartInput {

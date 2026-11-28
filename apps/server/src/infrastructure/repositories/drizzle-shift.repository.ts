@@ -112,6 +112,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
     }
 
     const db = getClient({ db: this.db, tx: input.tx });
+    // list-order: one shift by primary key
     const [row] = await db
       .select()
       .from(shift)
@@ -288,6 +289,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
       throw new Error('Shift requirement upsert failed');
     }
 
+    // list-order: one sector by primary key
     const [named] = await db
       .select({ name: sector.name })
       .from(sector)
@@ -321,6 +323,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
   ): Promise<ShiftRequirement[]> {
     if (input.shiftRequirementIds.length === 0) return [];
     const db = getClient({ db: this.db, tx: input.tx });
+    // list-order: callers index the requirements by id; order unused
     const rows = await db
       .select({ requirement: shiftRequirement, sectorName: sector.name })
       .from(shiftRequirement)
@@ -393,6 +396,7 @@ export class DrizzleShiftRepository implements ShiftRepository {
       withChurchIsolation({ table: shift, churchId: input.churchId }),
     ];
     const requirementPredicate = and(...requirementConditions);
+    // list-order: one requirement by id, joined to its own shift and sector
     const [row] = await db
       .select({
         requirement: shiftRequirement,

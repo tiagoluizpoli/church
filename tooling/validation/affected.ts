@@ -506,6 +506,11 @@ export function buildValidationSteps({
       command: 'bun',
       label: 'constitution-version',
     });
+    checkLane.push({
+      args: ['run', 'validate:list-order'],
+      command: 'bun',
+      label: 'list-order',
+    });
 
     if (plan.workspaceNames.length > 0) {
       const filters = plan.workspaceNames.flatMap((workspaceName) => [
@@ -547,6 +552,7 @@ export function buildValidationSteps({
       'date-time-seam',
       'bun-version',
       'constitution-version',
+      'list-order',
       'typecheck',
       'bundle-budget',
       ...ALL_TEST_LAYERS,

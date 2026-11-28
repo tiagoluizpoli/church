@@ -262,6 +262,7 @@ export class DrizzleInvitationListRepository
     };
     const client = getClient({ db: this.db });
     const [[ministryRow], [churchRow]] = await Promise.all([
+      // list-order: aggregate tally: one row
       client
         .select(
           tally({
@@ -283,7 +284,8 @@ export class DrizzleInvitationListRepository
         ),
       // Standalone admin grants are never visible to a Ministry leader.
       scope.kind === 'church'
-        ? client
+        ? // list-order: aggregate tally: one row
+          client
             .select(
               tally({
                 status: sql`${churchInvitation.status}`,
@@ -391,6 +393,7 @@ export class DrizzleInvitationListRepository
     }
     const names = new Map<string, string>();
     if (actorIds.size > 0) {
+      // list-order: read into a Map of names by user id
       const users = await getClient({ db: this.db })
         .select({ id: user.id, name: user.name })
         .from(user)

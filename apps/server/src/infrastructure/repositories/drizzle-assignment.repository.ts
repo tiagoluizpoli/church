@@ -129,6 +129,7 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
       conditions.push(requestedParticipation);
     }
     const requirementPredicate = and(...conditions);
+    // list-order: one requirement by id, joined to its own shift
     const [selected] = await db
       .select({ requirement: shiftRequirement, targetShift: shift })
       .from(shiftRequirement)
@@ -166,6 +167,7 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
   }: GetAssignmentInput): Promise<Assignment> {
     if (!isValidUuid(assignmentId))
       throw new NotFoundError(`Assignment not found: ${assignmentId}`);
+    // list-order: lookup by primary key
     const query = getClient({ db: this.db, tx })
       .select({ assignment, eventTimeBlockId: shift.eventTimeBlockId })
       .from(assignment)
@@ -473,6 +475,7 @@ export class DrizzleAssignmentRepository implements AssignmentRepository {
     eventId,
     tx,
   }: AssignmentsByEventInput): Promise<void> {
+    // list-order: ids feed the delete below; order unused
     const rows = await getClient({ db: this.db, tx })
       .select({ id: assignment.id })
       .from(assignment)

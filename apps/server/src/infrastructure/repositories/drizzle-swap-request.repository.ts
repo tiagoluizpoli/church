@@ -137,6 +137,7 @@ export class DrizzleSwapRequestRepository implements SwapRequestRepository {
     assignmentId,
     tx,
   }: FindOpenSwapRequestInput): Promise<SwapRequest | null> {
+    // list-order: one open request per assignment (unique index)
     const [row] = await getClient({ db: this.db, tx })
       .select()
       .from(swapRequest)
@@ -155,6 +156,7 @@ export class DrizzleSwapRequestRepository implements SwapRequestRepository {
     swapRequestId,
     tx,
   }: FindSwapRequestByIdInput): Promise<SwapRequest | null> {
+    // list-order: one request by primary key
     const [row] = await getClient({ db: this.db, tx })
       .select()
       .from(swapRequest)
@@ -207,6 +209,7 @@ export class DrizzleSwapRequestRepository implements SwapRequestRepository {
     assignmentIds,
   }: ListOpenAssignmentIdsInput) {
     if (assignmentIds.length === 0) return [];
+    // list-order: the caller reads the ids into a Set
     const rows = await getClient({ db: this.db })
       .select({ assignmentId: swapRequest.assignmentId })
       .from(swapRequest)

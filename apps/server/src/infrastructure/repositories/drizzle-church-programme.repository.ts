@@ -120,6 +120,7 @@ export class DrizzleChurchProgrammeRepository
   }: ListRegularActivitiesInput): Promise<Map<string, WinnerBlock[]>> {
     const winner = alias(eventTemplate, 'winner');
     const winnerBlock = alias(templateTimeBlock, 'winner_block');
+    // list-order: grouped into a Map; each winner list feeds an order-free ordinal set
     const rows = await this.db
       .select({
         loserId: sql<string>`case when ${templatePrecedence.outcome} = 'a_wins' then ${templatePrecedence.templateBId} else ${templatePrecedence.templateAId} end`,

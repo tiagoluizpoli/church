@@ -150,6 +150,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
 
     // Row lock serializes concurrent edits of one template, so each validated
     // desired state (unique labels, contiguous order) is applied whole.
+    // list-order: locks one template by primary key
     const [locked] = await db
       .select({ id: eventTemplate.id })
       .from(eventTemplate)
@@ -170,6 +171,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
       addressIds: input.blocks.map((block) => block.placeAddressId),
     });
 
+    // list-order: read into a Set of block ids
     const currentRows = await db
       .select({ id: templateTimeBlock.id })
       .from(templateTimeBlock)
@@ -343,6 +345,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
     }
 
     const db = getClient({ db: this.db, tx: input.tx });
+    // list-order: one template by primary key
     const [templateRow] = await db
       .select()
       .from(eventTemplate)
@@ -375,6 +378,7 @@ export class DrizzleEventTemplateRepository implements EventTemplateRepository {
     }
 
     const db = getClient({ db: this.db, tx: input.tx });
+    // list-order: callers index the templates by id; only inserts and counts follow
     const templateRows = await db
       .select()
       .from(eventTemplate)

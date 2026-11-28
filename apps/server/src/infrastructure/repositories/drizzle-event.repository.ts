@@ -3,12 +3,13 @@ import {
   event,
   eventTimeBlock,
   ministryParticipation,
+  role,
   sector,
   shift,
   shiftRequirement,
 } from '@church/db';
 import { nowAsDate } from '@church/time';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { MinistryId } from '../../domain/branded-ids';
 import type {
   CreateEventRepositoryInput,
@@ -62,6 +63,7 @@ export class DrizzleEventRepository implements EventRepository {
       throw new NotFoundError(`Event not found: ${eventId}`);
     }
     const db = getClient({ db: this.db, tx });
+    // list-order: one event by primary key
     const [row] = await db
       .select()
       .from(event)
@@ -110,7 +112,8 @@ export class DrizzleEventRepository implements EventRepository {
           eq(eventTimeBlock.eventId, eventId),
           withChurchIsolation({ table: eventTimeBlock, churchId }),
         ),
-      );
+      )
+      .orderBy(asc(eventTimeBlock.startTime), asc(eventTimeBlock.id));
 
     const eventTimeBlocks = await Promise.all(
       eventTimeBlockRows.map(async (eventTimeBlockRow) => {
@@ -119,7 +122,13 @@ export class DrizzleEventRepository implements EventRepository {
           .from(shiftRequirement)
           .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
           .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
-          .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
+          .innerJoin(role, eq(role.id, shiftRequirement.roleId))
+          .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id))
+          .orderBy(
+            asc(sql`lower(${sector.name})`),
+            asc(sql`lower(${role.name})`),
+            asc(shiftRequirement.id),
+          );
         const requirements = reqRows.map(({ requirement, sectorName }) =>
           mapShiftRequirement({
             row: requirement,

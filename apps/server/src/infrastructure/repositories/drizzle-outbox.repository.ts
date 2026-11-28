@@ -187,6 +187,7 @@ export class DrizzleOutboxRepository implements OutboxRepository {
     input: FindOutboxEmailDeliveryInput,
   ): Promise<OutboxEmailDelivery | null> {
     const { id, tx } = input;
+    // list-order: one outbox message by primary key
     const [row] = await getClient({ db: this.db, tx })
       .select()
       .from(outboxMessage)

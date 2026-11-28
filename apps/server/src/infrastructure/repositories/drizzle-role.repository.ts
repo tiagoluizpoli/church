@@ -74,6 +74,7 @@ export class DrizzleRoleRepository implements RoleRepository {
       throw new NotFoundError(`Role not found: ${id}`);
     }
     const db = getClient({ db: this.db, tx });
+    // list-order: one role by primary key
     const [row] = await db
       .select()
       .from(role)
@@ -139,6 +140,7 @@ export class DrizzleRoleRepository implements RoleRepository {
     ministryIds,
   }: CountActiveRolesByMinistryInput): Promise<Map<MinistryId, number>> {
     if (ministryIds.length === 0) return new Map();
+    // list-order: grouped counts read into a Map by ministry
     const rows = await this.db
       .select({ ministryId: role.ministryId, total: count() })
       .from(role)
@@ -220,6 +222,7 @@ export class DrizzleRoleRepository implements RoleRepository {
     if (!isValidUuid(roleId)) {
       throw new NotFoundError(`Role not found: ${roleId}`);
     }
+    // list-order: locks one role by primary key
     const [row] = await getClient({ db: this.db, tx })
       .select()
       .from(role)

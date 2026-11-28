@@ -82,6 +82,7 @@ export class DrizzleSetupProgressRepository implements SetupProgressRepository {
         ),
       );
 
+    // list-order: one church by primary key
     const [row] = await this.db
       .select({
         hasMinistry: sql<boolean>`${exists(activeMinistries)}`,

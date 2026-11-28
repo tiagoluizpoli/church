@@ -75,6 +75,23 @@ Owner rule. `bun run lint` and `validate:affected` fail on an `interface` or
   a method on it, such as `Shift.overlaps`; a type that only copies an
   entity's fields is the smell that points there.
 
+## List queries
+
+Owner rules: the backend owns ordering and filtering.
+
+- Every list query ends in a total `ORDER BY`: its last key is unique, usually
+  `id`, so equal sort values still come back in one fixed order. Never sort on
+  the client or in application code. The only exception is one documented where
+  the sort happens.
+- List filters, search and counts are query parameters applied in SQL. Loading
+  rows and then filtering them in memory is a smell.
+- `bun run lint` and `validate:affected` flag a Drizzle select in
+  `infrastructure/` that can return several rows and has no `.orderBy()`
+  ([the list-order guard](tooling.md#list-order)). A read whose order does not
+  matter says why on a one-line `// list-order: <reason>` comment. Examples: a
+  lookup by a primary or unique key, a row lock, an aggregate, or rows read
+  into a `Set`, a `Map` or a write.
+
 ## Rollback-compatible migrations
 
 Prefer migrations the previous application still runs against (add nullable

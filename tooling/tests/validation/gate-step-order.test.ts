@@ -13,6 +13,7 @@ const GUARD_LABELS = [
   'date-time-seam',
   'bun-version',
   'constitution-version',
+  'list-order',
 ];
 
 const webSteps = () =>

@@ -81,6 +81,7 @@ export class DrizzleVolunteerTransferRepository
     now,
   }: GetTransferImpactInput): Promise<TransferImpact> {
     const db = getClient({ db: this.db });
+    // list-order: the one live volunteer profile per user (unique index)
     const [activeProfile] = await db
       .select({ id: volunteer.id })
       .from(volunteer)
@@ -154,6 +155,7 @@ export class DrizzleVolunteerTransferRepository
     }
 
     // 2. Lock the active profile and the memberships about to end.
+    // list-order: locks the one live volunteer profile per user (unique index)
     const [activeProfile] = await db
       .select({ id: volunteer.id })
       .from(volunteer)
@@ -181,6 +183,7 @@ export class DrizzleVolunteerTransferRepository
       }
       return { kind: 'terminal-failure', reason: 'INVITATION_UNAVAILABLE' };
     }
+    // list-order: locks the memberships that end; ids feed updates and a per-Ministry Set
     const sourceMemberships = await db
       .select({
         id: ministryMembership.id,
@@ -198,6 +201,7 @@ export class DrizzleVolunteerTransferRepository
       .for('update');
 
     // 3. Re-validate the destination invitation is still redeemable.
+    // list-order: locks one invitation by primary key
     const [invitationRow] = await db
       .select({
         status: ministryInvitation.status,
@@ -227,6 +231,7 @@ export class DrizzleVolunteerTransferRepository
     // 3b. The destination Ministry and every invited Role must still be active;
     //     share locks serialize with a concurrent archive. Refusing here, before
     //     any write, leaves the source profile and the invitation untouched.
+    // list-order: locks one ministry by primary key
     const [activeMinistry] = await db
       .select({ id: ministry.id })
       .from(ministry)
@@ -241,23 +246,25 @@ export class DrizzleVolunteerTransferRepository
         ),
       )
       .for('share');
-    const invitedRoleIds = (
-      await db
-        .select({ roleId: ministryInvitationRole.roleId })
-        .from(ministryInvitationRole)
-        .where(
-          and(
-            withChurchIsolation({
-              table: ministryInvitationRole,
-              churchId: destinationChurchId,
-            }),
-            eq(
-              ministryInvitationRole.ministryInvitationId,
-              ministryInvitationId,
+    const invitedRoleIds =
+      // list-order: a set of role ids, checked against the active Roles; order unused
+      (
+        await db
+          .select({ roleId: ministryInvitationRole.roleId })
+          .from(ministryInvitationRole)
+          .where(
+            and(
+              withChurchIsolation({
+                table: ministryInvitationRole,
+                churchId: destinationChurchId,
+              }),
+              eq(
+                ministryInvitationRole.ministryInvitationId,
+                ministryInvitationId,
+              ),
             ),
-          ),
-        )
-    ).map(({ roleId }) => roleId);
+          )
+      ).map(({ roleId }) => roleId);
     const activeRoles =
       invitedRoleIds.length === 0
         ? []
@@ -300,6 +307,7 @@ export class DrizzleVolunteerTransferRepository
     // 6. Cancel assignments whose event time block starts strictly after the commit
     //    (§8.4: the cut is the event time block start, not the shift or the event date).
     const reason = `Volunteer Transfer ${correlationId}`;
+    // list-order: ids feed the cancellation and a per-Ministry Set; order unused
     const futureAssignments = await db
       .select({
         id: assignment.id,
@@ -495,6 +503,7 @@ export class DrizzleVolunteerTransferRepository
   }: GetTransferDigestDetailsInput): Promise<TransferDigestDetails> {
     const db = getClient({ db: this.db });
 
+    // list-order: one ministry by primary key
     const [ministryRow] = await db
       .select({ name: ministry.name })
       .from(ministry)
@@ -511,6 +520,7 @@ export class DrizzleVolunteerTransferRepository
     }
 
     // The retired source profile — never deleted, so still resolvable here.
+    // list-order: one volunteer by primary key
     const [volunteerRow] = await db
       .select({ name: user.name })
       .from(volunteer)
@@ -527,6 +537,7 @@ export class DrizzleVolunteerTransferRepository
       );
     }
 
+    // list-order: one church by primary key
     const [churchRow] = await db
       .select({ name: organization.name, timezone: church.timezone })
       .from(church)
@@ -539,6 +550,7 @@ export class DrizzleVolunteerTransferRepository
     }
 
     // Membership is rechecked by the email sink; this only names the greeting.
+    // list-order: one user by primary key
     const [recipientRow] = await db
       .select({ name: user.name })
       .from(user)
@@ -599,6 +611,7 @@ async function listActiveLeaderUserIds({
   churchId,
   ministryId,
 }: ListActiveLeaderUserIdsInput): Promise<UserId[]> {
+  // list-order: digest recipients; each gets its own message, order unused
   const rows = await db
     .select({ userId: volunteer.userId })
     .from(ministryMembership)
@@ -618,6 +631,7 @@ async function listChurchAdminUserIds({
   db,
   churchId,
 }: ListChurchAdminUserIdsInput): Promise<UserId[]> {
+  // list-order: digest recipients; each gets its own message, order unused
   const rows = await db
     .select({ userId: member.userId })
     .from(member)
@@ -631,6 +645,7 @@ async function findExistingTransfer({
   userId,
   ministryInvitationId,
 }: FindExistingTransferInput): Promise<VolunteerTransferRow | undefined> {
+  // list-order: one transfer per user and invitation (unique index)
   const [existing] = await db
     .select()
     .from(volunteerTransfer)

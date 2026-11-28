@@ -1,5 +1,7 @@
 import { m } from '@church/i18n/messages';
+import { QueryClient } from '@tanstack/react-query';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { toast } from 'sonner';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { SchedulePublish } from '@/features/scheduling/components/prepare/schedule-publish';
 import type { GetSchedule200 } from '@/infrastructure/api/churchAPI.schemas';
@@ -10,6 +12,9 @@ const state = vi.hoisted(() => ({
   data: undefined as GetSchedule200 | undefined,
   publishCycle: vi.fn(),
   sendScheduleUpdates: vi.fn(),
+}));
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
 }));
 vi.mock('@/features/scheduling/hooks/use-schedule', () => ({
   useSchedule: () => ({ data: state.data }),
@@ -72,5 +77,93 @@ it('sends pending changes from a published Schedule without loading the board', 
     expect(state.sendScheduleUpdates).toHaveBeenCalledExactlyOnceWith('c', {
       ministryId: 'm',
     }),
+  );
+});
+
+function openConfirmation() {
+  fireEvent.click(screen.getByRole('button', { name: m.builder_ui_publish() }));
+  return screen.getByRole('dialog');
+}
+function confirmPublish() {
+  fireEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', {
+      name: m.builder_ui_publish(),
+    }),
+  );
+}
+it('publishes a full Schedule unconfirmed, refreshes it and closes', async () => {
+  state.data = { ...SCHEDULE, stage: 'assigning', gapCount: 0 };
+  const queryClient = new QueryClient();
+  const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+  renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />, {
+    queryClient,
+  });
+  const dialog = openConfirmation();
+  expect(within(dialog).getByText(m.builder_ui_publish_full())).toBeVisible();
+  confirmPublish();
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  expect(state.publishCycle).toHaveBeenCalledExactlyOnceWith(
+    'c',
+    { confirmBelowFull: false },
+    { ministryId: 'm' },
+  );
+  expect(invalidate.mock.calls.map(([filters]) => filters?.queryKey)).toEqual([
+    ['prepare-schedules'],
+    ['cycle-builder', 'c', 'm'],
+    ['prepare-cycle-participation', 'm', 'c'],
+  ]);
+  expect(toast.success).toHaveBeenCalledExactlyOnceWith(
+    m.builder_logic_cycle_published(),
+  );
+});
+it('keeps the confirmation open and reports a failed publish', async () => {
+  state.publishCycle.mockRejectedValue(new Error('boom'));
+  renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />);
+  openConfirmation();
+  confirmPublish();
+  await waitFor(() =>
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith(
+      m.common_publish_failed(),
+    ),
+  );
+  expect(screen.getByRole('dialog')).toBeVisible();
+  expect(toast.success).not.toHaveBeenCalled();
+});
+it('publishes nothing when the confirmation is cancelled', async () => {
+  renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />);
+  fireEvent.click(
+    within(openConfirmation()).getByRole('button', {
+      name: m.builder_ui_cancel(),
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+  expect(state.publishCycle).not.toHaveBeenCalled();
+});
+it('only warns when the server refuses the publish', async () => {
+  state.data = { ...SCHEDULE, stage: 'assigning', gapCount: 0 };
+  state.publishCycle.mockResolvedValue({ published: false, gapCount: 2 });
+  renderWithProviders(<SchedulePublish ministryId="m" cycleId="c" />);
+  openConfirmation();
+  confirmPublish();
+  await waitFor(() =>
+    expect(toast.warning).toHaveBeenCalledExactlyOnceWith(
+      m.builder_logic_cycle_not_published(),
+    ),
+  );
+  expect(
+    within(screen.getByRole('dialog')).getByText(m.builder_ui_publish_full()),
+  ).toBeVisible();
+  expect(toast.success).not.toHaveBeenCalled();
+});
+it('words several open places in the plural', () => {
+  expect(m.prepare_publish_gaps({ count: 2 }, { locale: 'en' })).toBe(
+    '2 places still need people. Publish anyway?',
+  );
+  expect(m.prepare_publish_gaps({ count: 2 }, { locale: 'pt-BR' })).toBe(
+    '2 vagas ainda precisam de pessoas. Publicar mesmo assim?',
   );
 });

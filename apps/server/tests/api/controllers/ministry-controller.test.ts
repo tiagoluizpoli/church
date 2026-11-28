@@ -33,6 +33,7 @@ const ministryManager = {
   listByChurch: vi.fn(),
   listByLeader: vi.fn(),
   summarize: vi.fn(async () => new Map()),
+  archive: vi.fn(),
 };
 
 const ministryInvitationManager = {
@@ -48,6 +49,7 @@ const activeChurchResolver = {
 const authorityGuard = {
   resolveCallerCapabilities: vi.fn(),
   decideManageAnyMinistry: vi.fn(),
+  canManageChurch: vi.fn(),
 };
 
 let app: FastifyTypedInstance;
@@ -333,5 +335,22 @@ describe('Ministry Invitation minting routes', () => {
       message: m.error_ministry_not_found(),
     });
     expect(ministryInvitationManager.getDeliveryStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('Ministry archive reply (#1222)', () => {
+  it('POST /ministries/:ministryId/archive answers 204 with an empty body', async () => {
+    authorityGuard.canManageChurch.mockResolvedValue(true);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/ministries/33333333-3333-3333-3333-333333333333/archive',
+    });
+
+    expect(response.statusCode).toBe(204);
+    expect(response.body).toBe('');
+    expect(response.headers['content-type']).toBeUndefined();
+    expect(response.headers['content-length']).toBeUndefined();
+    expect(ministryManager.archive).toHaveBeenCalledOnce();
   });
 });

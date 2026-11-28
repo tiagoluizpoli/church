@@ -9,35 +9,13 @@ import type { IScheduleBuilderReader } from '../../domain/contracts/application/
 import type { ISchedulePublisher } from '../../domain/contracts/application/schedule-publisher';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
 import type { Assignment } from '../../domain/entities/assignment';
-import type {
-  applyAssignmentProposalBodySchema,
-  createParticipationAssignmentBodySchema,
-  moveAssignmentBodySchema,
-  reassignAssignmentBodySchema,
-} from '../dtos/assign.dto';
-import type { publishCycleBodySchema } from '../dtos/cycle-builder.dto';
-
-export interface CycleMinistryQuery {
-  ministryId: string;
-}
-
-export type CreateParticipationAssignmentBody = z.infer<
-  typeof createParticipationAssignmentBodySchema
->;
-
-export type PublishCycleBody = z.infer<typeof publishCycleBodySchema>;
+import type { applyAssignmentProposalBodySchema } from '../dtos/assign.dto';
 
 export type ApplyAssignmentProposalBody = z.infer<
   typeof applyAssignmentProposalBodySchema
 >;
 
 export type ReviewedPairBody = ApplyAssignmentProposalBody['additions'][number];
-
-export type MoveAssignmentBody = z.infer<typeof moveAssignmentBodySchema>;
-
-export type ReassignAssignmentBody = z.infer<
-  typeof reassignAssignmentBodySchema
->;
 
 export interface ResolveOwnedAssignmentInput {
   request: FastifyRequest;

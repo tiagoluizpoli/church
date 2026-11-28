@@ -153,9 +153,7 @@ export class ActiveChurchController implements FastifyController {
         const session = await requireSession({ request, reply });
         if (!session) return;
 
-        const body = request.body as z.infer<
-          typeof selectActiveChurchBodySchema
-        >;
+        const body = request.body;
         const resolution = await this.selectionManager.selectActiveChurch({
           userId: UserId.from(session.userId),
           churchId: ChurchId.from(body.churchId),

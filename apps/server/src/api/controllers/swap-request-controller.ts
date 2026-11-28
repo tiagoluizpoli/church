@@ -69,7 +69,7 @@ export class SwapRequestController implements FastifyController {
       },
       async (request, reply) => {
         const { assignmentId } = request.params as AssignmentRouteParams;
-        const body = request.body as z.infer<typeof raiseSwapRequestBodySchema>;
+        const body = request.body;
         try {
           const raised = await this.swapRequestManager.raise({
             churchId: ChurchId.from(request.churchId),

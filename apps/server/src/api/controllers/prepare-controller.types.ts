@@ -1,18 +1,11 @@
 import type { AppConfig } from '@church/app-config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { z } from 'zod';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
 import type { IAvailabilityCheckManager } from '../../domain/contracts/application/availability-check-manager';
 import type { IPrepareManager } from '../../domain/contracts/application/prepare-manager';
 import type { IScheduleReadModel } from '../../domain/contracts/application/schedule-read-model';
-import type {
-  askScheduleBodySchema,
-  remindScheduleBodySchema,
-  SavePreparationBody,
-  scheduleListQuerystringSchema,
-  setAvailabilityDeadlineBodySchema,
-} from '../dtos/participation.dto';
+import type { SavePreparationBody } from '../dtos/participation.dto';
 
 export interface CycleParticipationRouteParams {
   cycleId: string;
@@ -21,18 +14,6 @@ export interface CycleParticipationRouteParams {
 export interface ScheduleSummaryRouteParams {
   ministryId: string;
 }
-
-export interface CycleMinistryQuery {
-  ministryId: string;
-}
-
-export type AskScheduleBody = z.infer<typeof askScheduleBodySchema>;
-
-export type RemindScheduleBody = z.infer<typeof remindScheduleBodySchema>;
-
-export type SetAvailabilityDeadlineBody = z.infer<
-  typeof setAvailabilityDeadlineBodySchema
->;
 
 export interface ParticipationEventTimeBlockRouteParams {
   participationId: string;
@@ -64,9 +45,6 @@ export interface PrepareControllerDependencies {
 export interface ListLimitQuery {
   limit: number;
 }
-
-export type ScheduleListQuery = z.infer<typeof scheduleListQuerystringSchema> &
-  ListLimitQuery;
 
 export interface ToPreparationSplitInput {
   shiftSplit: NonNullable<SavePreparationBody['shiftSplit']>;

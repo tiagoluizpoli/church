@@ -6,8 +6,6 @@ export const roleNameBodySchema = z.object({
   name: z.string().trim().min(1).max(255),
 });
 
-export type RoleNameBody = z.infer<typeof roleNameBodySchema>;
-
 export const roleResponseSchema = z.object({
   id: z.string(),
   name: z.string(),

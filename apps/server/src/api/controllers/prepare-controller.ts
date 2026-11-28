@@ -36,7 +36,6 @@ import {
   remindOnCooldownResponseSchema,
   remindScheduleBodySchema,
   remindScheduleResponseSchema,
-  type SavePreparationBody,
   savePreparationBodySchema,
   scheduleInsightsResponseSchema,
   scheduleListQuerystringSchema,
@@ -50,18 +49,12 @@ import {
 import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
 import type {
-  AskScheduleBody,
-  CycleMinistryQuery,
   CycleParticipationRouteParams,
   DenyAuthorityDecisionInput,
   DenyParticipationScopeInput,
-  ListLimitQuery,
   ParticipationEventTimeBlockRouteParams,
   PrepareControllerDependencies,
-  RemindScheduleBody,
-  ScheduleListQuery,
   ScheduleSummaryRouteParams,
-  SetAvailabilityDeadlineBody,
   ToPreparationSplitInput,
 } from './prepare-controller.types';
 
@@ -145,8 +138,7 @@ export class PrepareController implements FastifyController {
           return;
         }
 
-        const { cursor, limit, ministryId, ...filters } =
-          request.query as ScheduleListQuery;
+        const { cursor, limit, ministryId, ...filters } = request.query;
         const page = await this.scheduleReadModel.listSchedules({
           churchId,
           ministryIds: isChurchAdmin
@@ -225,9 +217,7 @@ export class PrepareController implements FastifyController {
           refuse({ reply, request, code: 'FORBIDDEN' });
           return;
         }
-        const { ministryId, cycleId } = request.params as z.infer<
-          typeof scheduleRouteParamsSchema
-        >;
+        const { ministryId, cycleId } = request.params;
         const schedule = await this.scheduleReadModel.getSchedule({
           churchId,
           ministryIds: isChurchAdmin
@@ -267,9 +257,7 @@ export class PrepareController implements FastifyController {
           timeFrom,
           timeTo,
           needsAttention,
-        } = request.query as z.infer<
-          typeof cycleParticipationQuerystringSchema
-        >;
+        } = request.query;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
@@ -319,7 +307,7 @@ export class PrepareController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleParticipationRouteParams;
-        const { ministryId } = request.query as CycleMinistryQuery;
+        const { ministryId } = request.query;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
@@ -420,8 +408,7 @@ export class PrepareController implements FastifyController {
         });
         if (denied) return;
 
-        const { serves, shiftSplit, headcounts } =
-          request.body as SavePreparationBody;
+        const { serves, shiftSplit, headcounts } = request.body;
         const view = await this.prepareManager.savePreparation({
           churchId: ChurchId.from(request.churchId),
           participationId: MinistryParticipationId.from(participationId),
@@ -465,7 +452,7 @@ export class PrepareController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleParticipationRouteParams;
-        const { ministryId, answerBy } = request.body as AskScheduleBody;
+        const { ministryId, answerBy } = request.body;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
@@ -512,8 +499,7 @@ export class PrepareController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleParticipationRouteParams;
-        const { ministryId, answerBy } =
-          request.body as SetAvailabilityDeadlineBody;
+        const { ministryId, answerBy } = request.body;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
@@ -559,7 +545,7 @@ export class PrepareController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleParticipationRouteParams;
-        const { ministryId } = request.body as RemindScheduleBody;
+        const { ministryId } = request.body;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),
@@ -606,9 +592,7 @@ export class PrepareController implements FastifyController {
       },
       async (request, reply) => {
         const { cycleId } = request.params as CycleParticipationRouteParams;
-        const { ministryId, status, q, cursor, limit } =
-          request.query as z.infer<typeof answersQuerystringSchema> &
-            Partial<ListLimitQuery>;
+        const { ministryId, status, q, cursor, limit } = request.query;
 
         const decision = await this.authorityGuard.decideManageMinistry({
           ...requestCaller({ request }),

@@ -9,7 +9,6 @@ import { createActiveChurchPreValidation } from '../auth/active-church-pre-valid
 import type { FastifyController } from '../contracts/fastify-controller';
 import { archiveBlockedResponseSchema } from '../dtos/archive-blocker.dto';
 import {
-  type SectorNameBody,
   sectorListResponseSchema,
   sectorMapper,
   sectorNameBodySchema,
@@ -118,7 +117,7 @@ export class SectorController implements FastifyController {
           reply,
         });
         if (!ministryId) return;
-        const { name } = request.body as SectorNameBody;
+        const { name } = request.body;
         const sector = await this.sectorManager.create({
           churchId: ChurchId.from(request.churchId),
           ministryId,
@@ -154,7 +153,7 @@ export class SectorController implements FastifyController {
         });
         if (!ministryId) return;
         const { sectorId } = request.params as SectorRouteParams;
-        const { name } = request.body as SectorNameBody;
+        const { name } = request.body;
         const sector = await this.sectorManager.rename({
           churchId: ChurchId.from(request.churchId),
           ministryId,

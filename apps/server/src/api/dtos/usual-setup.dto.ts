@@ -69,9 +69,6 @@ type UsualSetupBlockListResponse = z.infer<
 export const setDefaultDirectionBodySchema = z.object({
   defaultDirection: z.enum(['all_in', 'all_out']),
 });
-export type SetDefaultDirectionBody = z.infer<
-  typeof setDefaultDirectionBodySchema
->;
 
 function toShiftSplit(
   shiftSplit: UsualSetupShiftSplitBody,

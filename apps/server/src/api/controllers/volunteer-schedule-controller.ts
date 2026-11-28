@@ -1,4 +1,3 @@
-import type { z } from 'zod';
 import { ChurchId, VolunteerId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IVolunteerManager } from '../../domain/contracts/application/volunteer-manager';
@@ -56,9 +55,7 @@ export class VolunteerScheduleController implements FastifyController {
           // Non-null: this controller's preValidation requires a Volunteer profile.
           volunteerId: VolunteerId.from(request.volunteerId as string),
           churchId: ChurchId.from(request.churchId),
-          filters: request.query as z.infer<
-            typeof volunteerScheduleQuerystringSchema
-          >,
+          filters: request.query,
         });
         return reply.send(schedule);
       },

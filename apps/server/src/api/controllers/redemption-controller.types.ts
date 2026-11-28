@@ -4,20 +4,9 @@ import type { z } from 'zod';
 import type { UserId } from '../../domain/branded-ids';
 import type { IRedemptionManager } from '../../domain/contracts/application/redemption-manager';
 import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
-import type {
-  acceptExistingMemberBodySchema,
-  confirmTransferBodySchema,
-  redeemNewUserBodySchema,
-  redemptionParamsSchema,
-} from '../dtos/redemption.dto';
+import type { redemptionParamsSchema } from '../dtos/redemption.dto';
 
 export type RedemptionParams = z.infer<typeof redemptionParamsSchema>;
-
-export type RedeemNewUserBody = z.infer<typeof redeemNewUserBodySchema>;
-
-export type AcceptExistingMemberBody = z.infer<
-  typeof acceptExistingMemberBodySchema
->;
 
 export interface AuthenticatedRedeemer {
   userId: ReturnType<typeof UserId.from>;
@@ -45,8 +34,6 @@ export interface RedemptionControllerDependencies {
   volunteerTransferManager: IVolunteerTransferManager;
   config: AppConfig;
 }
-
-export type ConfirmTransferBody = z.infer<typeof confirmTransferBodySchema>;
 
 export interface ControllerRateLimitInput {
   key: string;

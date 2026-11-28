@@ -31,10 +31,6 @@ export const createPlanningEventBodySchema = z.object({
   eventTimeBlocks: z.array(withOnePlace(planningEventTimeBlockFieldsSchema)),
 });
 
-export type CreatePlanningEventBody = z.infer<
-  typeof createPlanningEventBodySchema
->;
-
 /**
  * The complete desired Draft Event: a block with `id` is retained and updated
  * in place, one without is created and an omitted persisted block is deleted.
@@ -50,10 +46,6 @@ export const updatePlanningEventBodySchema = createPlanningEventBodySchema
       ),
     ),
   });
-
-export type UpdatePlanningEventBody = z.infer<
-  typeof updatePlanningEventBodySchema
->;
 
 /** A Sent Event's details correction: title, optional location and the public fields of blocks. */
 export const updatePlanningEventDetailsBodySchema = z.object({
@@ -71,10 +63,6 @@ export const updatePlanningEventDetailsBodySchema = z.object({
     )
     .optional(),
 });
-
-export type UpdatePlanningEventDetailsBody = z.infer<
-  typeof updatePlanningEventDetailsBodySchema
->;
 
 /** An Event with its EventTimeBlocks, as Cycle detail, create and edit return it. */
 export const eventGraphResponseSchema = z.object({
@@ -97,8 +85,6 @@ export const eventGraphMapper = {
 export const movePlanningEventBodySchema = z.object({
   start: z.string().datetime(),
 });
-
-export type MovePlanningEventBody = z.infer<typeof movePlanningEventBodySchema>;
 
 const instantBoundsResponseSchema = z.object({
   start: instantSchema,
@@ -248,13 +234,7 @@ export const cancelPlanningEventBodySchema = z.object({
   hidden: z.boolean().optional(),
 });
 
-export type CancelPlanningEventBody = z.infer<
-  typeof cancelPlanningEventBodySchema
->;
-
 export const setPlanningHiddenBodySchema = z.object({ hidden: z.boolean() });
-
-export type SetPlanningHiddenBody = z.infer<typeof setPlanningHiddenBodySchema>;
 
 /** What a cancellation affects: preview and confirm both return it. */
 export const cancellationImpactResponseSchema = z.object({

@@ -98,9 +98,7 @@ export class NotificationController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { cursor, limit } = request.query as z.infer<
-          typeof memberNotificationsQuerystringSchema
-        >;
+        const { cursor, limit } = request.query;
         const page = await this.notificationManager.list({
           userId: UserId.from(request.userId),
           churchId: ChurchId.from(request.churchId),
@@ -133,10 +131,7 @@ export class NotificationController implements FastifyController {
           await this.notificationManager.markRead({
             userId: UserId.from(request.userId),
             churchId: ChurchId.from(request.churchId),
-            notificationId: NotificationId.from(
-              (request.params as z.infer<typeof memberNotificationParamsSchema>)
-                .notificationId,
-            ),
+            notificationId: NotificationId.from(request.params.notificationId),
           });
         } catch (error) {
           if (error instanceof NotFoundError) {

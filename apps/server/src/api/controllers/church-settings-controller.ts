@@ -25,22 +25,16 @@ import {
   churchSettingsFieldError,
   churchSettingsResponseSchema,
   churchSettingsValidationErrorResponseSchema,
-  type RestoreChurchLogoBody,
   restoreChurchLogoBodySchema,
   slugAvailabilityQuerySchema,
   slugAvailabilityResponseSchema,
   toChurchSettingsFieldErrors,
-  type UpdateChurchSettingsBody,
   updateChurchSettingsBodySchema,
   uploadChurchLogoBodySchema,
 } from '../dtos/church-settings.dto';
 import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
-import type {
-  AddressUsageParams,
-  ChurchSettingsControllerDependencies,
-  SlugAvailabilityQuery,
-} from './church-settings-controller.types';
+import type { ChurchSettingsControllerDependencies } from './church-settings-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -134,7 +128,7 @@ export class ChurchSettingsController implements FastifyController {
       async (request, reply) => {
         const status = await this.churchSettingsManager.getSlugAvailability({
           churchId: ChurchId.from(request.churchId),
-          slug: (request.query as SlugAvailabilityQuery).slug,
+          slug: request.query.slug,
         });
         return reply.send({ status });
       },
@@ -163,7 +157,7 @@ export class ChurchSettingsController implements FastifyController {
         try {
           const usage = await this.churchSettingsManager.getAddressUsage({
             churchId: ChurchId.from(request.churchId),
-            addressId: (request.params as AddressUsageParams).addressId,
+            addressId: request.params.addressId,
           });
           return reply.send(usage);
         } catch (error) {
@@ -212,7 +206,7 @@ export class ChurchSettingsController implements FastifyController {
           const settings =
             await this.churchSettingsManager.updateChurchSettings({
               churchId: ChurchId.from(request.churchId),
-              changes: request.body as UpdateChurchSettingsBody,
+              changes: request.body,
             });
           return reply.send(settings);
         } catch (error) {
@@ -334,7 +328,7 @@ export class ChurchSettingsController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { key } = request.body as RestoreChurchLogoBody;
+        const { key } = request.body;
         const settings = await this.churchSettingsManager.restoreLogo({
           churchId: ChurchId.from(request.churchId),
           key,

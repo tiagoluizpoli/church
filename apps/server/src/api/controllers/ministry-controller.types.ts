@@ -6,11 +6,6 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IMinistryInvitationManager } from '../../domain/contracts/application/ministry-invitation-manager';
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 
-/** The page size the route's own schema defaults and bounds by config. */
-export interface MinistryPageLimitQuery {
-  limit: number;
-}
-
 export interface MinistryRouteParams {
   ministryId: string;
 }

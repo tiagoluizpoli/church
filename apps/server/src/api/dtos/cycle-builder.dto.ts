@@ -73,7 +73,6 @@ export type CycleBuilderResponse = z.infer<typeof cycleBuilderResponseSchema>;
 export const publishCycleBodySchema = z.object({
   confirmBelowFull: z.boolean().optional(),
 });
-export type PublishCycleBody = z.infer<typeof publishCycleBodySchema>;
 
 export const publishCycleParticipationOutcomeSchema = z.object({
   participationId: z.string(),

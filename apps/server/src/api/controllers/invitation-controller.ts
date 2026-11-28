@@ -26,11 +26,7 @@ import {
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
-import type {
-  ChurchInvitationParams,
-  InvitationControllerDependencies,
-  ListLimitQuery,
-} from './invitation-controller.types';
+import type { InvitationControllerDependencies } from './invitation-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -109,10 +105,7 @@ export class InvitationController implements FastifyController {
                 MinistryId.from(m.ministryId),
               ),
             };
-        const { cursor, limit, ...filters } = request.query as z.infer<
-          typeof invitationListQuerystringSchema
-        > &
-          ListLimitQuery;
+        const { cursor, limit, ...filters } = request.query;
         const page = await this.invitationListManager.list({
           ...caller,
           scope,
@@ -151,9 +144,7 @@ export class InvitationController implements FastifyController {
         if (!canManageChurch) {
           return refuse({ reply, request, code: 'FORBIDDEN' });
         }
-        const { email } = request.body as z.infer<
-          typeof mintAdminInvitationBodySchema
-        >;
+        const { email } = request.body;
         const invitation = await this.ministryInvitationManager.mintAdmin({
           churchId,
           inviterId,
@@ -193,7 +184,7 @@ export class InvitationController implements FastifyController {
         if (!canManageChurch) {
           return refuse({ reply, request, code: 'FORBIDDEN' });
         }
-        const { invitationId } = request.params as ChurchInvitationParams;
+        const { invitationId } = request.params;
         const resent = await this.ministryInvitationManager.resendChurch({
           churchId,
           churchInvitationId: invitationId,
@@ -230,7 +221,7 @@ export class InvitationController implements FastifyController {
         if (!canManageChurch) {
           return refuse({ reply, request, code: 'FORBIDDEN' });
         }
-        const { invitationId } = request.params as ChurchInvitationParams;
+        const { invitationId } = request.params;
         const revoked = await this.ministryInvitationManager.revokeChurch({
           churchId,
           churchInvitationId: invitationId,

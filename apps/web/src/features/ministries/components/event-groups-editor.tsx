@@ -4,6 +4,17 @@ import { Link } from '@tanstack/react-router';
 import { ArrowDownIcon, ArrowUpIcon, Trash2Icon, XIcon } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import type {
+  CatchAllCardProps,
+  DraftGroup,
+  EventGroupsEditorProps,
+  EventGroupsFormProps,
+  GroupCardProps,
+  GroupChange,
+  GroupMove,
+  Mode,
+  TemplateAddition,
+} from './event-groups-editor.types';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,43 +34,8 @@ import {
   eventGroupsQueryKey,
   useEventGroups,
 } from '@/features/ministries/ministry-queries';
-import type {
-  GetEventGroups200,
-  GetEventGroups200TemplatesItem,
-} from '@/infrastructure/api/churchAPI.schemas';
 import { useCallerCapabilitiesScope } from '@/shared/components/caller-capabilities-scope';
 import { adminApi } from '@/utils/api-instances';
-
-type Template = GetEventGroups200TemplatesItem;
-type Mode = 'single' | 'split';
-
-/** A group being edited; `key` stays put while the leader renames or moves it. */
-interface DraftGroup {
-  key: number;
-  name: string;
-  templateIds: string[];
-}
-
-interface GroupChange {
-  key: number;
-  change: (group: DraftGroup) => DraftGroup;
-}
-
-interface TemplateAddition {
-  key: number;
-  templateId: string;
-}
-
-interface GroupMove {
-  index: number;
-  by: number;
-}
-
-interface EventGroupsEditorProps {
-  ministryId: string;
-  /** The Schedule the leader came from, to link back and reopen the export. */
-  cycleId?: string;
-}
 
 /**
  * The Ministry's "Grupos de eventos" tab (#1247): one plain list, or named
@@ -101,11 +77,6 @@ export function EventGroupsEditor({
       <EventGroupsForm ministryId={ministryId} saved={query.data} />
     </div>
   );
-}
-
-interface EventGroupsFormProps {
-  ministryId: string;
-  saved: GetEventGroups200;
 }
 
 function EventGroupsForm({ ministryId, saved }: EventGroupsFormProps) {
@@ -307,21 +278,6 @@ function EventGroupsForm({ ministryId, saved }: EventGroupsFormProps) {
   );
 }
 
-interface GroupCardProps {
-  group: DraftGroup;
-  first: boolean;
-  last: boolean;
-  groups: DraftGroup[];
-  templates: Template[];
-  templateById: Map<string, Template>;
-  onRename: (name: string) => void;
-  onAddTemplate: (templateId: string) => void;
-  onRemoveTemplate: (templateId: string) => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onDelete: () => void;
-}
-
 function GroupCard({
   group,
   first,
@@ -450,11 +406,6 @@ function GroupCard({
       </Select>
     </fieldset>
   );
-}
-
-interface CatchAllCardProps {
-  name: string;
-  onRename: (name: string) => void;
 }
 
 /** Every Event no group holds; always last, renamable, never deleted. */

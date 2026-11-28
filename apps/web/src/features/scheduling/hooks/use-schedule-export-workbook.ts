@@ -1,7 +1,7 @@
 import { getLocale } from '@church/i18n/runtime';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import type { ExportPage } from '@/features/scheduling/components/prepare/schedule-export-preview';
+import type { ExportPage } from '@/features/scheduling/components/prepare/schedule-export-preview.types';
 import {
   scheduleExportSheets,
   writeScheduleWorkbook,

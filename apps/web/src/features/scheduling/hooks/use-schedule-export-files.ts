@@ -2,12 +2,14 @@ import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
-  type ExportPage,
   FILE_PARAMS,
   previewQueryOptions,
   readExportPages,
-  type ScheduleExportSettings,
 } from '@/features/scheduling/components/prepare/schedule-export-preview';
+import type {
+  ExportPage,
+  ScheduleExportSettings,
+} from '@/features/scheduling/components/prepare/schedule-export-preview.types';
 import type { GetScheduleExportFileFormat } from '@/infrastructure/api/churchAPI.schemas';
 import { exportApi } from '@/utils/api-instances';
 

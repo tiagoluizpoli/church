@@ -1239,7 +1239,7 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       'apps/server/src/infrastructure/repositories/drizzle-event-group.repository',
       'apps/server/src/infrastructure/repositories/drizzle-schedule-export.repository',
       'apps/server/src/infrastructure/typst/',
-      'apps/web/src/features/ministries/components/event-groups-editor.tsx',
+      'apps/web/src/features/ministries/components/event-groups-editor',
       'apps/web/src/features/scheduling/components/prepare/schedule-export',
       'apps/web/src/features/scheduling/hooks/use-schedule-export-files.ts',
       'apps/web/src/features/scheduling/hooks/use-schedule-export-workbook.ts',

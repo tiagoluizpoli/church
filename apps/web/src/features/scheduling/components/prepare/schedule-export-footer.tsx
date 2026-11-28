@@ -3,7 +3,7 @@ import { m } from '@church/i18n/messages';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import type { ExportPage } from '@/features/scheduling/components/prepare/schedule-export-preview';
+import type { ExportPage } from '@/features/scheduling/components/prepare/schedule-export-preview.types';
 import {
   type DownloadFormat,
   EXPORT_FILE_TYPE,

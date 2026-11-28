@@ -1,5 +1,10 @@
 import type { Locale } from '@church/time';
-import type { GetScheduleExportData200 } from '@/infrastructure/api/churchAPI.schemas';
+import type {
+  GetScheduleExportData200,
+  GetScheduleExportData200PartsItem,
+  GetScheduleExportData200PartsItemGroupsItemEventsItem,
+  GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItemShiftsItem,
+} from '@/infrastructure/api/churchAPI.schemas';
 
 /** A workbook column, in the order #1108 fixes. */
 export type WorkbookColumn =
@@ -43,5 +48,72 @@ export interface WorkbookSheetsInput {
 }
 
 export interface WorkbookSheetsOutput {
+  sheets: WorkbookSheet[];
+}
+
+export type ExportPart = GetScheduleExportData200PartsItem;
+
+export type ExportEvent = GetScheduleExportData200PartsItemGroupsItemEventsItem;
+
+export type ExportShift =
+  GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItemShiftsItem;
+
+/** write-excel-file's browser file content. */
+export type WorkbookContent = File | Blob | ArrayBuffer;
+
+export interface ColumnLabelInput {
+  column: WorkbookColumn;
+}
+
+export interface DayInput {
+  day: string;
+  locale: Locale;
+}
+
+export interface ShiftTimeInput {
+  shift: ExportShift;
+  locale: Locale;
+}
+
+export interface EventTitleInput {
+  title: string;
+  label: string | null;
+}
+
+export interface CancelledRowInput {
+  title: string;
+  /** "Não haverá culto" or "Cancelado", where the volunteer would be. */
+  volunteer: string;
+}
+
+export interface EventRowsInput {
+  event: ExportEvent;
+  locale: Locale;
+}
+
+export interface SingleLineInput {
+  part: ExportPart;
+  locale: Locale;
+}
+
+export interface SheetNamesInput {
+  names: string[];
+}
+
+export interface CellTextInput {
+  row: WorkbookRow;
+  column: WorkbookColumn;
+}
+
+export interface SheetLayoutInput {
+  sheet: WorkbookSheet;
+}
+
+export interface DataRowInput {
+  row: WorkbookRow;
+  columns: WorkbookColumn[];
+}
+
+export interface FiltersInput {
   sheets: WorkbookSheet[];
 }

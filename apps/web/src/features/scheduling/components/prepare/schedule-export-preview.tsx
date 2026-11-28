@@ -6,76 +6,29 @@ import {
 } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { useEffect, useState } from 'react';
+import type {
+  ExportFormat,
+  ExportPage,
+  PreviewPageProps,
+  ReadExportPagesInput,
+  ScheduleExportPreviewProps,
+  ScheduleExportSettings,
+} from './schedule-export-preview.types';
 import { Spinner } from '@/components/ui/spinner';
-import type { GetScheduleExportDataSplit } from '@/infrastructure/api/churchAPI.schemas';
 import { exportApi } from '@/utils/api-instances';
 
 /** The preview waits this long after the last settings change. */
 const PREVIEW_DEBOUNCE_MS = 300;
-
-interface PreviewRange {
-  from: string;
-  to: string;
-}
 
 /** The file each Formato downloads: card images are PNG files of the cards layout. */
 export const FILE_PARAMS = {
   cards: { format: 'png', layout: 'cards' },
   pdf: { format: 'pdf' },
   png: { format: 'png' },
-} as const;
-
-/** Formato: the card images, the PDF table or the table image. */
-export type ExportFormat = keyof typeof FILE_PARAMS;
-
-/** What one export is: the preview, the files and their summary follow it. */
-export interface ScheduleExportSettings {
-  ministryId: string;
-  cycleId: string;
-  format: ExportFormat;
-  /** Null: the whole Cycle. */
-  range: PreviewRange | null;
-  /** Separar; left out for one part. */
-  split?: GetScheduleExportDataSplit;
-}
-
-interface ScheduleExportPreviewProps {
-  /** Settled settings: see `useSettledExportSettings`. */
-  settings: ScheduleExportSettings;
-  /** Each part's name, in order, to label a split's table images. */
-  partNames: (string | null)[];
-}
-
-/** One page or image of the export; `part` is set on a split's images. */
-export interface ExportPage {
-  blob: Blob;
-  /** 1-based. */
-  part?: number;
-  /** 1-based, inside its part. */
-  number: number;
-}
-
-interface PreviewPageProps {
-  page: Blob;
-  label: string;
-}
+} as const satisfies Record<ExportFormat, object>;
 
 export function isNotFound(error: unknown): boolean {
   return isAxiosError(error) && error.response?.status === 404;
-}
-
-/** Which page to read: 1-based, inside the 1-based part of a split's images. */
-export interface ExportPageRequest {
-  page: number;
-  part?: number;
-}
-
-type ReadPage = (request: ExportPageRequest) => Promise<Blob>;
-
-interface ReadExportPagesInput {
-  /** A split's images: read part by part. */
-  byPart: boolean;
-  read: ReadPage;
 }
 
 /**

@@ -7,7 +7,6 @@ import {
   calendarDaysBetween,
   formatCalendarDay,
   formatWeekdayShort,
-  type Locale,
   parseCalendarDay,
 } from '@church/time';
 import writeExcelFile, {
@@ -25,25 +24,26 @@ import {
   sanitizeTextContent,
 } from 'write-excel-file/utility';
 import type {
+  CancelledRowInput,
+  CellTextInput,
+  ColumnLabelInput,
+  DataRowInput,
+  DayInput,
+  EventRowsInput,
+  EventTitleInput,
+  FiltersInput,
+  SheetLayoutInput,
+  SheetNamesInput,
+  ShiftTimeInput,
+  SingleLineInput,
   WorkbookColumn,
+  WorkbookContent,
   WorkbookRow,
   WorkbookSheet,
   WorkbookSheetsInput,
   WorkbookSheetsOutput,
 } from './schedule-export-workbook.types';
 import { exportPartName } from '@/features/scheduling/utils/export/schedule-export-part-name';
-import type {
-  GetScheduleExportData200PartsItem,
-  GetScheduleExportData200PartsItemGroupsItemEventsItem,
-  GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItemShiftsItem,
-} from '@/infrastructure/api/churchAPI.schemas';
-
-type ExportPart = GetScheduleExportData200PartsItem;
-type ExportEvent = GetScheduleExportData200PartsItemGroupsItemEventsItem;
-type ExportShift =
-  GetScheduleExportData200PartsItemGroupsItemEventsItemTimeBlocksItemShiftsItem;
-/** write-excel-file's browser file content. */
-type WorkbookContent = File | Blob | ArrayBuffer;
 
 /** Characters Excel refuses in a sheet name, and its length limit. */
 const BANNED_SHEET_CHARACTERS = /[[\]:*?/\\]/g;
@@ -71,10 +71,6 @@ const ALL_COLUMNS: WorkbookColumn[] = [
   'volunteer',
 ];
 
-interface ColumnLabelInput {
-  column: WorkbookColumn;
-}
-
 /** A column header in the UI language. */
 export function workbookColumnLabel({ column }: ColumnLabelInput): string {
   switch (column) {
@@ -95,11 +91,6 @@ export function workbookColumnLabel({ column }: ColumnLabelInput): string {
   }
 }
 
-interface DayInput {
-  day: string;
-  locale: Locale;
-}
-
 /** `dom` / `Sun`: the short weekday, as the grid's day labels write it. */
 function weekday({ day, locale }: DayInput): string {
   const short = formatWeekdayShort({
@@ -107,11 +98,6 @@ function weekday({ day, locale }: DayInput): string {
     locale,
   }).replaceAll('.', '');
   return locale === 'pt-BR' ? short.toLowerCase() : short;
-}
-
-interface ShiftTimeInput {
-  shift: ExportShift;
-  locale: Locale;
 }
 
 /** `Turno 1 · sáb · 08h00–12h00`: the Shift's label and day when it has them. */
@@ -127,27 +113,11 @@ function shiftTime({ shift, locale }: ShiftTimeInput): string {
     .join(' · ');
 }
 
-interface EventTitleInput {
-  title: string;
-  label: string | null;
-}
-
 /** The title, plus the block label unless it is empty or repeats it. */
 function eventTitle({ title, label }: EventTitleInput): string {
   return label && label.toLowerCase() !== title.toLowerCase()
     ? `${title} · ${label}`
     : title;
-}
-
-interface CancelledRowInput {
-  title: string;
-  /** "Não haverá culto" or "Cancelado", where the volunteer would be. */
-  volunteer: string;
-}
-
-interface EventRowsInput {
-  event: ExportEvent;
-  locale: Locale;
 }
 
 /** The Event's rows in the data's own order: never sorted here. */
@@ -201,11 +171,6 @@ function eventRows({ event, locale }: EventRowsInput): WorkbookRow[] {
   });
 }
 
-interface SingleLineInput {
-  part: ExportPart;
-  locale: Locale;
-}
-
 /** "Todos servem como Professor em Maternal", when the part has one of them. */
 function singleLine({ part, locale }: SingleLineInput): string | null {
   const { singleRole: role, singleSector: sector } = part;
@@ -215,10 +180,6 @@ function singleLine({ part, locale }: SingleLineInput): string | null {
   if (role) return m.export_single_role({ role }, { locale });
   if (sector) return m.export_single_sector({ sector }, { locale });
   return null;
-}
-
-interface SheetNamesInput {
-  names: string[];
 }
 
 /**
@@ -286,11 +247,6 @@ export function scheduleExportSheets({
   return { sheets };
 }
 
-interface CellTextInput {
-  row: WorkbookRow;
-  column: WorkbookColumn;
-}
-
 /** A cell as the sheet shows it; dates read dd/mm/aaaa. */
 export function workbookCellText({ row, column }: CellTextInput): string {
   switch (column) {
@@ -309,10 +265,6 @@ export function workbookCellText({ row, column }: CellTextInput): string {
     case 'volunteer':
       return row.volunteer;
   }
-}
-
-interface SheetLayoutInput {
-  sheet: WorkbookSheet;
 }
 
 /** The 1-based row of the column header: header lines, a blank row, then it. */
@@ -338,11 +290,6 @@ function columnWidths({ sheet }: SheetLayoutInput) {
       ...sheet.rows.map((row) => workbookCellText({ row, column }).length + 2),
     ),
   }));
-}
-
-interface DataRowInput {
-  row: WorkbookRow;
-  columns: WorkbookColumn[];
 }
 
 function dataRow({ row, columns }: DataRowInput): Row {
@@ -394,10 +341,6 @@ function sheetData({ sheet }: SheetLayoutInput): Row[] {
     })),
     ...sheet.rows.map((row) => dataRow({ row, columns: sheet.columns })),
   ];
-}
-
-interface FiltersInput {
-  sheets: WorkbookSheet[];
 }
 
 /**

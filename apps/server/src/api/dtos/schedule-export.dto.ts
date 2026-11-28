@@ -57,6 +57,12 @@ export const scheduleExportDataSchema = z.object({
   parts: z.array(partSchema),
 });
 
+/** The file's bytes; a Buffer skips serialization. */
+export const scheduleExportFileSchema = z
+  .string()
+  .meta({ format: 'binary' })
+  .describe('The PDF file');
+
 export const scheduleExportFileQuerySchema = z.object({
   format: z.enum(['pdf']),
 });

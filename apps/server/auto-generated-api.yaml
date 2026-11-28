@@ -15687,6 +15687,328 @@ paths:
                   - error
                   - message
                 additionalProperties: false
+  /api/v1/export/ministries/{ministryId}/cycles/{cycleId}/data:
+    get:
+      operationId: getScheduleExportData
+      summary: A Ministry's Schedule for one Cycle as export data
+      tags:
+        - export
+      description: The whole Cycle as one ordered tree of facts (parts → Events → time
+        blocks → Shifts → Sectors → people), Church-local days and HH:mm times,
+        with the draft, unsent-changes, single Sector/Role and duplicate-name
+        facts. Only Events and blocks the Ministry serves; hidden cancelled
+        scopes are left out. Never ready-made text. For the Ministry's leaders
+        and ChurchAdmins; 404 when the Ministry has no Schedule in the Cycle.
+      parameters:
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ministry:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                    required:
+                      - name
+                    additionalProperties: false
+                  cycle:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      startDate:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                      endDate:
+                        type: string
+                        format: date
+                        pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                    required:
+                      - name
+                      - startDate
+                      - endDate
+                    additionalProperties: false
+                  isDraft:
+                    type: boolean
+                  hasUnsentChanges:
+                    type: boolean
+                  singleSector:
+                    nullable: true
+                    type: string
+                  singleRole:
+                    nullable: true
+                    type: string
+                  duplicateNames:
+                    type: array
+                    items:
+                      type: array
+                      items:
+                        type: string
+                  parts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          nullable: true
+                          type: string
+                        singleSector:
+                          nullable: true
+                          type: string
+                        singleRole:
+                          nullable: true
+                          type: string
+                        events:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              startDay:
+                                type: string
+                                format: date
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                              endDay:
+                                type: string
+                                format: date
+                                pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                              title:
+                                type: string
+                              cancelled:
+                                type: boolean
+                              timeBlocks:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    label:
+                                      nullable: true
+                                      type: string
+                                    cancelled:
+                                      type: boolean
+                                    shifts:
+                                      type: array
+                                      items:
+                                        type: object
+                                        properties:
+                                          label:
+                                            nullable: true
+                                            type: string
+                                          day:
+                                            nullable: true
+                                            type: string
+                                            format: date
+                                            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+                                          startTime:
+                                            type: string
+                                          endTime:
+                                            type: string
+                                          sectors:
+                                            type: array
+                                            items:
+                                              type: object
+                                              properties:
+                                                name:
+                                                  type: string
+                                                paletteIndex:
+                                                  type: integer
+                                                  minimum: -9007199254740991
+                                                  maximum: 9007199254740991
+                                                people:
+                                                  type: array
+                                                  items:
+                                                    type: object
+                                                    properties:
+                                                      name:
+                                                        nullable: true
+                                                        type: string
+                                                      role:
+                                                        type: string
+                                                    required:
+                                                      - name
+                                                      - role
+                                                    additionalProperties: false
+                                              required:
+                                                - name
+                                                - paletteIndex
+                                                - people
+                                              additionalProperties: false
+                                        required:
+                                          - label
+                                          - day
+                                          - startTime
+                                          - endTime
+                                          - sectors
+                                        additionalProperties: false
+                                  required:
+                                    - label
+                                    - cancelled
+                                    - shifts
+                                  additionalProperties: false
+                            required:
+                              - startDay
+                              - endDay
+                              - title
+                              - cancelled
+                              - timeBlocks
+                            additionalProperties: false
+                      required:
+                        - name
+                        - singleSector
+                        - singleRole
+                        - events
+                      additionalProperties: false
+                required:
+                  - ministry
+                  - cycle
+                  - isDraft
+                  - hasUnsentChanges
+                  - singleSector
+                  - singleRole
+                  - duplicateNames
+                  - parts
+                additionalProperties: false
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+  /api/v1/export/ministries/{ministryId}/cycles/{cycleId}/file:
+    get:
+      operationId: getScheduleExportFile
+      summary: Download a Ministry's Schedule for one Cycle
+      tags:
+        - export
+      description: The whole Cycle as an A4 landscape text PDF table, fixed text in
+        the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same
+        access and 404 as the data.
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - pdf
+          in: query
+          name: format
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: ministryId
+          required: true
+        - schema:
+            type: string
+          in: path
+          name: cycleId
+          required: true
+      responses:
+        "200":
+          description: The PDF file
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: The PDF file
+        "401":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "403":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
+        "404":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - error
+                  - message
+                additionalProperties: false
   /api/v1/caller-capabilities:
     get:
       operationId: getCallerCapabilities

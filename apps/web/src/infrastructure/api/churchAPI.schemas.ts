@@ -7177,6 +7177,128 @@ export type GetParticipationCompletion404 = {
   message: string;
 };
 
+export type GetScheduleExportData200Ministry = {
+  name: string;
+};
+
+export type GetScheduleExportData200Cycle = {
+  name: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  startDate: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  endDate: string;
+};
+
+export type GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItemSectorsItemPeopleItem = {
+  /** @nullable */
+  name: string | null;
+  role: string;
+};
+
+export type GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItemSectorsItem = {
+  name: string;
+  /**
+     * @minimum -9007199254740991
+     * @maximum 9007199254740991
+     */
+  paletteIndex: number;
+  people: GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItemSectorsItemPeopleItem[];
+};
+
+export type GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItem = {
+  /** @nullable */
+  label: string | null;
+  /**
+     * @nullable
+     * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+     */
+  day: string | null;
+  startTime: string;
+  endTime: string;
+  sectors: GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItemSectorsItem[];
+};
+
+export type GetScheduleExportData200PartsItemEventsItemTimeBlocksItem = {
+  /** @nullable */
+  label: string | null;
+  cancelled: boolean;
+  shifts: GetScheduleExportData200PartsItemEventsItemTimeBlocksItemShiftsItem[];
+};
+
+export type GetScheduleExportData200PartsItemEventsItem = {
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  startDay: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  endDay: string;
+  title: string;
+  cancelled: boolean;
+  timeBlocks: GetScheduleExportData200PartsItemEventsItemTimeBlocksItem[];
+};
+
+export type GetScheduleExportData200PartsItem = {
+  /** @nullable */
+  name: string | null;
+  /** @nullable */
+  singleSector: string | null;
+  /** @nullable */
+  singleRole: string | null;
+  events: GetScheduleExportData200PartsItemEventsItem[];
+};
+
+export type GetScheduleExportData200 = {
+  ministry: GetScheduleExportData200Ministry;
+  cycle: GetScheduleExportData200Cycle;
+  isDraft: boolean;
+  hasUnsentChanges: boolean;
+  /** @nullable */
+  singleSector: string | null;
+  /** @nullable */
+  singleRole: string | null;
+  duplicateNames: string[][];
+  parts: GetScheduleExportData200PartsItem[];
+};
+
+export type GetScheduleExportData401 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleExportData403 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleExportData404 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleExportFileParams = {
+  format: GetScheduleExportFileFormat;
+};
+
+export type GetScheduleExportFileFormat = typeof GetScheduleExportFileFormat[keyof typeof GetScheduleExportFileFormat];
+
+
+export const GetScheduleExportFileFormat = {
+  pdf: 'pdf',
+} as const;
+
+export type GetScheduleExportFile401 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleExportFile403 = {
+  error: string;
+  message: string;
+};
+
+export type GetScheduleExportFile404 = {
+  error: string;
+  message: string;
+};
+
 export type GetCallerCapabilities200LedMinistriesItem = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$ */
   ministryId: string;

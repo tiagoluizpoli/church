@@ -14,6 +14,7 @@ import {
   type ScheduleExportFileQuery,
   scheduleExportDataSchema,
   scheduleExportFileQuerySchema,
+  scheduleExportFileSchema,
 } from '../dtos/schedule-export.dto';
 import {
   attachmentDisposition,
@@ -106,7 +107,7 @@ export class ScheduleExportController implements FastifyController {
             'The whole Cycle as an A4 landscape text PDF table, fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same access and 404 as the data.',
           params: paramsSchema,
           querystring: scheduleExportFileQuerySchema,
-          response: errors,
+          response: { 200: scheduleExportFileSchema, ...errors },
         },
       },
       async (request, reply) => {

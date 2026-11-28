@@ -46,6 +46,7 @@ import { PrepareEventTimeBlockList } from '@/features/scheduling/components/prep
 import { PrepareFilters } from '@/features/scheduling/components/prepare/prepare-filters';
 import { prepareParticipationQuery } from '@/features/scheduling/components/prepare/prepare-participation-query';
 import { ScheduleAsk } from '@/features/scheduling/components/prepare/schedule-ask';
+import { ScheduleExport } from '@/features/scheduling/components/prepare/schedule-export';
 import { SchedulePublish } from '@/features/scheduling/components/prepare/schedule-publish';
 import { scheduleStageLabel } from '@/features/scheduling/components/prepare/schedule-rows';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
@@ -304,6 +305,7 @@ function PrepareWorkspaceRoute() {
           >
             {m.prepare_open_builder()}
           </Link>
+          <ScheduleExport ministryId={ministryId} cycleId={cycleId} />
         </div>
       ) : null,
     [

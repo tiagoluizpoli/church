@@ -25,6 +25,7 @@ export default defineConfig({
           'setup',
           'church-settings',
           'public-church-profile',
+          'export',
         ],
       },
     },

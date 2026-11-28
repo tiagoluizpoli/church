@@ -17,8 +17,7 @@ import type {
   ListAvailabilityChecks200,
   ListAvailabilityChecksParams,
   RaiseSwapRequest201,
-  RaiseSwapRequestBody,
-  WithdrawSwapRequest204
+  RaiseSwapRequestBody
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -140,7 +139,7 @@ const raiseSwapRequest = (
 const withdrawSwapRequest = (
     assignmentId: string,
  ) => {
-      return apiClient<WithdrawSwapRequest204>(
+      return apiClient<null>(
       {url: `/api/v1/volunteer/assignments/${assignmentId}/swap-requests/current`, method: 'DELETE'
     },
       );

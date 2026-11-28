@@ -27,6 +27,7 @@ import {
 import { contactGroupOrderSchema } from '../../domain/contact-group';
 import { socialLinksSchema } from '../../domain/social-link';
 import type { ErrorMessage } from '../utils/error-table.types';
+import { idSchema } from './id.dto';
 
 const churchContactResponseSchema = z.object({
   kind: z.enum(CHURCH_CONTACT_KINDS),
@@ -132,7 +133,7 @@ export const updateChurchSettingsBodySchema = z.object({
 });
 
 export const churchAddressUsageParamsSchema = z.object({
-  addressId: z.uuid(),
+  addressId: idSchema,
 });
 
 export const churchAddressUsageResponseSchema = z.object({

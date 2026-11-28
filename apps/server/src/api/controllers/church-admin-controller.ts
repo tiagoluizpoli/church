@@ -55,6 +55,7 @@ import {
   eventTimeBlockResponseSchema,
   updateEventTimeBlockBodySchema,
 } from '../dtos/event-time-block.dto';
+import { idSchema } from '../dtos/id.dto';
 import { ministryMapper, ministryResponseSchema } from '../dtos/ministry.dto';
 import {
   cancellationImpactResponseSchema,
@@ -109,20 +110,20 @@ function editInput({ body }: EditInputInput) {
 }
 
 const cycleEventParamsSchema = z.object({
-  cycleId: z.guid(),
-  eventId: z.guid(),
+  cycleId: idSchema,
+  eventId: idSchema,
 });
-const templateParamsSchema = z.object({ templateId: z.guid() });
+const templateParamsSchema = z.object({ templateId: idSchema });
 const templatePrecedenceParamsSchema = z.object({
-  templateId: z.guid(),
-  otherTemplateId: z.guid(),
+  templateId: idSchema,
+  otherTemplateId: idSchema,
 });
 const cycleEventTimeBlockParamsSchema = z.object({
-  cycleId: z.guid(),
-  eventId: z.guid(),
-  eventTimeBlockId: z.guid(),
+  cycleId: idSchema,
+  eventId: idSchema,
+  eventTimeBlockId: idSchema,
 });
-const ministryParamsSchema = z.object({ ministryId: z.guid() });
+const ministryParamsSchema = z.object({ ministryId: idSchema });
 
 function precedenceAnswers(precedences: PrecedenceBody) {
   return precedences?.map((precedence) => ({

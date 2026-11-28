@@ -15,6 +15,7 @@ import {
   assignmentMapper,
   assignmentResponseSchema,
 } from './assignment.dto';
+import { idSchema } from './id.dto';
 import {
   memberNotificationMapper,
   memberNotificationResponseSchema,
@@ -98,7 +99,7 @@ export type AvailabilityCheckDetailResponse = z.infer<
 >;
 
 export const answerAvailabilityCheckBodySchema = z.object({
-  shiftIds: z.array(z.uuid()),
+  shiftIds: z.array(idSchema),
   wholeDayDates: z.array(calendarDaySchema).optional(),
 });
 
@@ -173,7 +174,7 @@ export const volunteerScheduleQuerystringSchema = z.object({
     .string()
     .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
     .optional(),
-  ministryId: z.string().uuid().optional(),
+  ministryId: idSchema.optional(),
 });
 
 const volunteerScheduleAssignmentSchema = z.object({
@@ -437,3 +438,5 @@ export const volunteerMapper = {
   availabilityCheckDetailToResponse,
   assignmentToResponse,
 };
+
+export const availabilityCheckParamsSchema = z.object({ checkId: idSchema });

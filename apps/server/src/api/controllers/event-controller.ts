@@ -19,6 +19,7 @@ import {
   listEventsQuerySchema,
   scheduleBuilderDataResponseSchema,
 } from '../dtos/event.dto';
+import { idSchema } from '../dtos/id.dto';
 import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
 import type {
@@ -71,8 +72,8 @@ export class EventController implements FastifyController {
           description:
             'Get the EventTimeBlocks, Shifts, and eligible Volunteers needed to build a schedule for an Event.',
           querystring: z.object({
-            eventId: z.string(),
-            ministryId: z.string().optional(),
+            eventId: idSchema,
+            ministryId: idSchema.optional(),
           }),
           response: {
             200: scheduleBuilderDataResponseSchema,

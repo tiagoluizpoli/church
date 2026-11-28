@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Role } from '../../domain/entities/role';
+import { idSchema, ministryParamsSchema } from './id.dto';
 
 /** The single trim point for Role names; uniqueness is the database's. */
 export const roleNameBodySchema = z.object({
@@ -28,3 +29,7 @@ export const roleMapper = {
     return { roles: roles.map((role) => roleMapper.toResponse(role)) };
   },
 };
+
+export const ministryRoleParamsSchema = ministryParamsSchema.extend({
+  roleId: idSchema,
+});

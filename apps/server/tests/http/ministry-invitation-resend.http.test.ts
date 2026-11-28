@@ -395,13 +395,15 @@ describe('POST /ministries/:ministryId/invitations/:invitationId/resend — auth
       foreign,
       foreignUnderOwn,
       missing,
-      malformed,
     ];
     expect(responses.map((res) => res.statusCode)).toEqual(
       Array(responses.length).fill(404),
     );
     expect(new Set(responses.map((res) => res.body)).size).toBe(1);
     expect(unmanaged.json().error).toBe('MINISTRY_NOT_FOUND');
+    // A malformed id fails validation (#1221).
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json().error).toBe('VALIDATION_ERROR');
     expect(await snapshot()).toEqual(before);
   });
 

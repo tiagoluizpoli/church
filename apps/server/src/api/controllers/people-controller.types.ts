@@ -8,11 +8,6 @@ import type { IChurchAccessManager } from '../../domain/contracts/application/ch
 import type { IMinistryMembershipManager } from '../../domain/contracts/application/ministry-membership-manager';
 import type { IPeopleListManager } from '../../domain/contracts/application/people-list-manager';
 
-/** The page size the route's own schema bounds by the configured maximum. */
-export interface ListLimitQuery {
-  limit?: number;
-}
-
 export interface ResolveScopeInput {
   churchId: ChurchId;
   userId: UserId;

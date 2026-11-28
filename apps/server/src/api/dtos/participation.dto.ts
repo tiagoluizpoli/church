@@ -36,6 +36,7 @@ import {
   eventTimeBlockMapper,
   eventTimeBlockResponseSchema,
 } from './event-time-block.dto';
+import { idSchema } from './id.dto';
 
 export const participationResponseSchema = z.object({
   id: z.string(),
@@ -136,7 +137,7 @@ export const shiftHasResponsesResponseSchema = z.object({
 });
 
 export const cycleParticipationQuerystringSchema = z.object({
-  ministryId: z.string(),
+  ministryId: idSchema,
   day: calendarDaySchema.optional(),
   q: z.string().trim().min(1).max(100).optional(),
   timeMode: z.enum(TIME_WINDOW_MODE_OPTIONS).default('starts'),
@@ -351,13 +352,18 @@ export const scheduleInsightsResponseSchema = z.object({
 });
 
 export const scheduleRouteParamsSchema = z.object({
-  ministryId: z.uuid(),
-  cycleId: z.uuid(),
+  ministryId: idSchema,
+  cycleId: idSchema,
+});
+
+export const preparationRouteParamsSchema = z.object({
+  participationId: idSchema,
+  eventTimeBlockId: idSchema,
 });
 
 export const scheduleListQuerystringSchema = z.object({
   period: z.enum(SCHEDULE_LIST_PERIOD_OPTIONS).default('current'),
-  ministryId: z.string().uuid().optional(),
+  ministryId: idSchema.optional(),
   stage: z.enum(SCHEDULE_STAGE_OPTIONS).optional(),
   search: z.string().trim().min(1).max(100).optional(),
   attention: z.stringbool().optional(),
@@ -371,7 +377,7 @@ export const scheduleListQuerystringSchema = z.object({
 export type ScheduleListResponse = z.infer<typeof scheduleListResponseSchema>;
 
 export const answersQuerystringSchema = z.object({
-  ministryId: z.string(),
+  ministryId: idSchema,
   status: z.enum(ANSWER_STATUS_OPTIONS).optional(),
   q: z.string().trim().min(1).max(100).optional(),
   cursor: z

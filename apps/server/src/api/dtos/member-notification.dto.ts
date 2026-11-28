@@ -14,74 +14,75 @@ import {
   swapRequestAnsweredNotificationDataSchema,
   swapRequestNotificationDataSchema,
 } from '../../domain/notification-kinds';
+import { idSchema } from './id.dto';
 
 /** One member Notification: typed kind/data and Instants, never rendered text. */
 export const memberNotificationResponseSchema = z.discriminatedUnion('kind', [
   z.object({
-    id: z.uuid(),
+    id: idSchema,
     kind: z.literal('ministry_invitation'),
     data: ministryInvitationNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),
   z.object({
-    id: z.uuid(),
+    id: idSchema,
     kind: z.literal('availability_opened'),
     data: availabilityNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),
   z.object({
-    id: z.uuid(),
+    id: idSchema,
     kind: z.literal('availability_reminder'),
     data: availabilityNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),
   z.object({
-    id: z.uuid(),
+    id: idSchema,
     kind: z.literal('schedule_published'),
     data: schedulePublishedNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),
   z.object({
-    id: z.uuid(),
+    id: idSchema,
     kind: z.literal('schedule_updated'),
     data: scheduleUpdatedNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),
   z.object({
-    id: z.uuid(),
+    id: idSchema,
     kind: z.literal('cycle_ready_to_prepare'),
     data: cycleReadyToPrepareNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),
   z.object({
-    id: z.uuid(),
+    id: idSchema,
     kind: z.literal('event_changed'),
     data: eventChangedNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),
   z.object({
-    id: z.uuid(),
+    id: idSchema,
     kind: z.literal('event_cancelled'),
     data: eventCancelledNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),
   z.object({
-    id: z.uuid(),
+    id: idSchema,
     kind: z.literal('swap_request'),
     data: swapRequestNotificationDataSchema,
     createdAt: instantSchema,
     readAt: instantSchema.optional(),
   }),
   z.object({
-    id: z.uuid(),
+    id: idSchema,
     kind: z.literal('swap_request_answered'),
     data: swapRequestAnsweredNotificationDataSchema,
     createdAt: instantSchema,
@@ -109,7 +110,7 @@ export const memberNotificationsQuerystringSchema = z.object({
 });
 
 export const memberNotificationParamsSchema = z.object({
-  notificationId: z.uuid(),
+  notificationId: idSchema,
 });
 
 export const markedResponseSchema = z.object({ marked: z.literal(true) });

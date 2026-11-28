@@ -393,7 +393,6 @@ describe('GET /ministries/:ministryId/sectors', () => {
       fixture.archivedMinistryId,
       fixture.foreignMinistryId,
       randomUUID(),
-      'nope',
     ]) {
       const res = await list(id);
       expect(res.statusCode).toBe(404);
@@ -402,6 +401,13 @@ describe('GET /ministries/:ministryId/sectors', () => {
         message: m.error_not_found({}, PT_BR),
       });
     }
+    // A malformed id fails validation (#1221).
+    const malformed = await list('nope');
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      message: m.common_validation_error({}, PT_BR),
+    });
   });
 });
 
@@ -527,12 +533,18 @@ describe('PATCH /ministries/:ministryId/sectors/:sectorId', () => {
       fixture.kidsRoomId,
       fixture.foreignSectorId,
       randomUUID(),
-      'nope',
     ]) {
       expect(
         (await rename(fixture.worshipId, sectorId, { name: 'New' })).statusCode,
       ).toBe(404);
     }
+    // A malformed id fails validation (#1221).
+    const malformed = await rename(fixture.worshipId, 'nope', { name: 'New' });
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      message: m.common_validation_error({}, PT_BR),
+    });
     expect((await storedSector(fixture.kidsRoomId))?.name).toBe('Kids Room');
     expect((await storedSector(fixture.archivedSectorId))?.name).toBe(
       'Old Door',

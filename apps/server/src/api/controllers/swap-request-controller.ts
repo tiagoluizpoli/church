@@ -7,15 +7,13 @@ import { AssignmentAccessDeniedError } from '../../domain/errors/assignment-acce
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import { assignmentParamsSchema } from '../dtos/id.dto';
 import {
   raiseSwapRequestBodySchema,
   swapRequestResponseSchema,
 } from '../dtos/swap-request.dto';
 import { refuse } from '../utils/refuse';
-import type {
-  AssignmentRouteParams,
-  SwapRequestControllerDependencies,
-} from './swap-request-controller.types';
+import type { SwapRequestControllerDependencies } from './swap-request-controller.types';
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -55,6 +53,7 @@ export class SwapRequestController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'raiseSwapRequest',
+          params: assignmentParamsSchema,
           summary: 'Raise a swap request on one of the caller’s Assignments',
           description:
             'Ask the leader to change one of the current Volunteer’s own published, not-started Assignments. The Assignment is not changed. Anyone else’s, or an unknown one, is 404.',
@@ -68,7 +67,7 @@ export class SwapRequestController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as AssignmentRouteParams;
+        const { assignmentId } = request.params;
         const body = request.body;
         try {
           const raised = await this.swapRequestManager.raise({
@@ -96,6 +95,7 @@ export class SwapRequestController implements FastifyController {
         schema: {
           tags: ['volunteer'],
           operationId: 'withdrawSwapRequest',
+          params: assignmentParamsSchema,
           summary:
             'Withdraw the open swap request on one of the caller’s Assignments',
           description:
@@ -108,7 +108,7 @@ export class SwapRequestController implements FastifyController {
         },
       },
       async (request, reply) => {
-        const { assignmentId } = request.params as AssignmentRouteParams;
+        const { assignmentId } = request.params;
         try {
           await this.swapRequestManager.withdraw({
             churchId: ChurchId.from(request.churchId),

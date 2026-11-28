@@ -10,6 +10,7 @@ import {
   type Ministry,
 } from '../../domain/entities/ministry';
 import { decodeMinistryListCursor } from '../../domain/ministry-list-cursor';
+import { idSchema, ministryParamsSchema } from './id.dto';
 
 /** The single trim point for Ministry names; uniqueness is the database's. */
 export const ministryNameBodySchema = z.object({
@@ -51,8 +52,7 @@ export const ministryPageQuerystringSchema = z.object({
     .string()
     .refine(
       (cursor) =>
-        z.string().uuid().safeParse(decodeMinistryListCursor({ cursor })?.id)
-          .success,
+        idSchema.safeParse(decodeMinistryListCursor({ cursor })?.id).success,
       { message: 'Invalid cursor' },
     )
     .optional(),
@@ -119,3 +119,7 @@ export const ministryMapper = {
     };
   },
 };
+
+export const ministryInvitationParamsSchema = ministryParamsSchema.extend({
+  invitationId: idSchema,
+});

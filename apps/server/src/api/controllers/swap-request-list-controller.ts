@@ -8,6 +8,7 @@ import type { ISwapRequestManager } from '../../domain/contracts/application/swa
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import { idSchema } from '../dtos/id.dto';
 import {
   keepSwapRequestBodySchema,
   leaderSwapRequestsQuerySchema,
@@ -64,7 +65,7 @@ export class SwapRequestListController implements FastifyController {
           summary: 'List a Ministry’s open Swap requests per Schedule',
           description:
             'Open requests, and expired ones until their Shift ends, grouped by Schedule (Cycle) with the open count per Schedule. Includes the Volunteer’s note, so only the Ministry’s leaders and ChurchAdmins may read it; anyone else gets 404.',
-          params: z.object({ ministryId: z.uuid() }),
+          params: z.object({ ministryId: idSchema }),
           querystring: leaderSwapRequestsQuerySchema,
           response: {
             200: leaderSwapRequestsResponseSchema,
@@ -105,7 +106,7 @@ export class SwapRequestListController implements FastifyController {
             'Keep the Volunteer on the Assignment and answer the request',
           description:
             'Close an open, not-started Swap request as kept, with an optional reply, and tell the Volunteer once. The Assignment is not changed. Only the Ministry’s leaders and ChurchAdmins may; anyone else, or an unknown request, gets 404. 409 when the request is already closed or its Shift has started.',
-          params: z.object({ ministryId: z.uuid(), swapRequestId: z.uuid() }),
+          params: z.object({ ministryId: idSchema, swapRequestId: idSchema }),
           body: keepSwapRequestBodySchema,
           response: {
             204: z.null(),

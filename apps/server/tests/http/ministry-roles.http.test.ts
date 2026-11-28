@@ -360,12 +360,18 @@ describe('GET /ministries/:ministryId/roles', () => {
       fixture.archivedMinistryId,
       fixture.foreignMinistryId,
       randomUUID(),
-      'nope',
     ]) {
       const res = await list(id);
       expect(res.statusCode).toBe(404);
       expect(res.json()).toEqual(notFoundBody());
     }
+    // A malformed id fails validation (#1221).
+    const malformed = await list('nope');
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      message: m.common_validation_error({}, PT_BR),
+    });
   });
 
   it.each([
@@ -514,12 +520,20 @@ describe('PATCH /ministries/:ministryId/roles/:roleId', () => {
       fixture.teacherId,
       fixture.foreignRoleId,
       randomUUID(),
-      'nope',
     ]) {
       const res = await rename(fixture.worshipId, id, { name: 'Renamed' });
       expect(res.statusCode).toBe(404);
       expect(res.json()).toEqual(notFoundBody());
     }
+    // A malformed id fails validation (#1221).
+    const malformed = await rename(fixture.worshipId, 'nope', {
+      name: 'Renamed',
+    });
+    expect(malformed.statusCode).toBe(422);
+    expect(malformed.json()).toMatchObject({
+      error: 'VALIDATION_ERROR',
+      message: m.common_validation_error({}, PT_BR),
+    });
   });
 });
 

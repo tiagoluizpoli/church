@@ -11,6 +11,7 @@ import type {
   UsualSetupEntryInput,
   UsualSetupShiftSplit,
 } from '../../domain/entities/usual-setup';
+import { idSchema, ministryParamsSchema } from './id.dto';
 
 const usualSetupHeadcountSchema = z.object({
   shiftIndex: z.number().int().min(0),
@@ -141,3 +142,7 @@ export const usualSetupMapper = {
     return { blocks: views.map(usualSetupMapper.toBlockResponse) };
   },
 };
+
+export const usualSetupBlockParamsSchema = ministryParamsSchema.extend({
+  sourceTemplateTimeBlockId: idSchema,
+});

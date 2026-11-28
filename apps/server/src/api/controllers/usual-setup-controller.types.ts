@@ -4,17 +4,11 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { IUsualSetupManager } from '../../domain/contracts/application/usual-setup-manager';
 
-export interface UsualSetupRouteParams {
-  ministryId: string;
-}
-
-export interface UsualSetupBlockRouteParams extends UsualSetupRouteParams {
-  sourceTemplateTimeBlockId: string;
-}
-
 export interface ResolveManagedMinistryInput {
   request: FastifyRequest;
   reply: FastifyReply;
+  /** The validated `:ministryId` path param. */
+  ministryId: string;
 }
 
 export interface UsualSetupControllerDependencies {

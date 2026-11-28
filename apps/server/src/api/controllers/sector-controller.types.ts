@@ -4,17 +4,11 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { IMinistryManager } from '../../domain/contracts/application/ministry-manager';
 import type { ISectorManager } from '../../domain/contracts/application/sector-manager';
 
-export interface SectorsRouteParams {
-  ministryId: string;
-}
-
-export interface SectorRouteParams extends SectorsRouteParams {
-  sectorId: string;
-}
-
 export interface ResolveManagedMinistryInput {
   request: FastifyRequest;
   reply: FastifyReply;
+  /** The validated `:ministryId` path param. */
+  ministryId: string;
 }
 
 export interface SectorControllerDependencies {

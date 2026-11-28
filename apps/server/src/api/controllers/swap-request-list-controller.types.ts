@@ -9,7 +9,3 @@ export interface SwapRequestListControllerDependencies {
   activeChurchResolver: IActiveChurchResolver;
   authorityGuard: IAuthorityGuard;
 }
-
-export interface MinistryRouteParams {
-  ministryId: string;
-}

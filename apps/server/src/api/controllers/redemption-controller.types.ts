@@ -1,12 +1,8 @@
 import type { AppConfig } from '@church/app-config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { z } from 'zod';
 import type { UserId } from '../../domain/branded-ids';
 import type { IRedemptionManager } from '../../domain/contracts/application/redemption-manager';
 import type { IVolunteerTransferManager } from '../../domain/contracts/application/volunteer-transfer-manager';
-import type { redemptionParamsSchema } from '../dtos/redemption.dto';
-
-export type RedemptionParams = z.infer<typeof redemptionParamsSchema>;
 
 export interface AuthenticatedRedeemer {
   userId: ReturnType<typeof UserId.from>;

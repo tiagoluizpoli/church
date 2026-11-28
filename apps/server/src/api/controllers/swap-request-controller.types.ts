@@ -5,7 +5,3 @@ export interface SwapRequestControllerDependencies {
   swapRequestManager: ISwapRequestManager;
   activeChurchResolver: IActiveChurchResolver;
 }
-
-export interface AssignmentRouteParams {
-  assignmentId: string;
-}

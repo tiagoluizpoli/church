@@ -1,4 +1,3 @@
-import type { FastifyRequest } from 'fastify';
 import type {
   ActiveChurchResolution,
   IActiveChurchResolver,
@@ -8,11 +7,6 @@ import type { SessionGateway } from '../../domain/contracts/infrastructure';
 
 export interface BuildStatusResponseInput {
   resolution: ActiveChurchResolution;
-}
-
-export interface RequireSessionInput {
-  sessionGateway: SessionGateway;
-  request: FastifyRequest;
 }
 
 /**

@@ -1,9 +1,9 @@
-import { headersFromRequest } from '../utils/headers';
 import { refuse } from '../utils/refuse';
 import type {
   ActiveChurchPreValidation,
   CreateActiveChurchPreValidationInput,
 } from './active-church-pre-validation.types';
+import { requireSession } from './require-session';
 import { resolveActiveChurchAndPersist } from './resolve-active-church-and-persist';
 
 /**
@@ -21,12 +21,7 @@ export function createActiveChurchPreValidation(
 
   // named-parameters-ignore: Fastify preValidation hook signature (request, reply)
   return async (request, reply) => {
-    const headers = headersFromRequest(request);
-    const session = await sessionGateway.lookup({ headers });
-    if (!session) {
-      return refuse({ reply, request, code: 'UNAUTHORIZED' });
-    }
-
+    const session = await requireSession({ sessionGateway, request });
     const { userId, activeOrganizationId } = session;
     const resolution = await resolveActiveChurchAndPersist({
       resolver,

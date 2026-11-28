@@ -2,11 +2,9 @@ import { z } from 'zod';
 import { ChurchId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IActiveChurchSelectionManager } from '../../domain/contracts/application/active-church-selection-manager';
-import type {
-  CallerSession,
-  SessionGateway,
-} from '../../domain/contracts/infrastructure';
+import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
+import { requireSession } from '../auth/require-session';
 import { resolveActiveChurchAndPersist } from '../auth/resolve-active-church-and-persist';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
@@ -26,29 +24,12 @@ import { RefusalError } from '../utils/refusal-error';
 import type {
   ActiveChurchControllerDependencies,
   BuildStatusResponseInput,
-  RequireSessionInput,
 } from './active-church-controller.types';
 
 // The request id doubles as the reference code a Person reads out to support.
 const internalErrorResponseSchema = errorResponseSchema.extend({
   requestId: z.string(),
 });
-
-/**
- * Every route here needs a session but none may assume an Active Church
- * exists yet, so this replaces the three verbatim `getSession` + 401 blocks
- * that would otherwise open each handler.
- */
-async function requireSession({
-  sessionGateway,
-  request,
-}: RequireSessionInput): Promise<CallerSession> {
-  const session = await sessionGateway.lookup({
-    headers: headersFromRequest(request),
-  });
-  if (!session) throw new RefusalError({ code: 'UNAUTHORIZED' });
-  return session;
-}
 
 export class ActiveChurchController implements FastifyController {
   readonly prefix = '/active-church';

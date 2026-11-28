@@ -8,6 +8,7 @@ import type { IVolunteerTransferManager } from '../../domain/contracts/applicati
 import type { SessionGateway } from '../../domain/contracts/infrastructure';
 import { VerificationCodeError } from '../../domain/errors/verification-code-error';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
+import { requireSession } from '../auth/require-session';
 import type { FastifyController } from '../contracts/fastify-controller';
 import {
   acceptExistingMemberBodySchema,
@@ -35,7 +36,6 @@ import {
 } from '../dtos/redemption.dto';
 import { serviceUnavailableResponseSchema } from '../dtos/service-unavailable.dto';
 import { debugEndpointsEnabled } from '../utils/debug-endpoints';
-import { headersFromRequest } from '../utils/headers';
 import { isRateLimited } from '../utils/rate-limit';
 import { RefusalError } from '../utils/refusal-error';
 import type {
@@ -519,12 +519,12 @@ export class RedemptionController implements FastifyController {
   private async requireRedeemer({
     request,
   }: RequireRedeemerInput): Promise<AuthenticatedRedeemer> {
-    const headers = headersFromRequest(request);
-    const session = await this.sessionGateway.lookup({ headers });
+    const session = await requireSession({
+      sessionGateway: this.sessionGateway,
+      request,
+    });
     const sessionCookie = request.headers.cookie;
-    if (!session || !sessionCookie) {
-      throw new RefusalError({ code: 'UNAUTHORIZED' });
-    }
+    if (!sessionCookie) throw new RefusalError({ code: 'UNAUTHORIZED' });
     return { userId: session.userId, sessionCookie };
   }
 }

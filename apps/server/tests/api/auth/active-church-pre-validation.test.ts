@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { RefusalError } from '@/api/utils/refusal-error';
 import { testSessionGateway } from '@/tests/test-support/session-gateway';
 
 vi.mock('@/main/di/server-auth', () => ({
@@ -63,9 +64,11 @@ describe('createActiveChurchPreValidation', () => {
     const request = createRequest();
     const reply = createReply();
 
-    await hook(request as never, reply as never);
-
-    expect(reply.status).toHaveBeenCalledWith(401);
+    // The global error handler answers the refusal with the 401 body.
+    await expect(hook(request as never, reply as never)).rejects.toEqual(
+      new RefusalError({ code: 'UNAUTHORIZED' }),
+    );
+    expect(reply.status).not.toHaveBeenCalled();
     expect(resolver.resolve).not.toHaveBeenCalled();
   });
 

@@ -108,7 +108,7 @@
     "@biomejs/biome": "^2.2.0",
     "@church/config": "workspace:*",
     "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^20.5.0",
+    "@commitlint/config-conventional": "^21.0.0",
     "@playwright/test": "^1.61.1",
     "@sentry/cli": "^3.8.2",
     "@types/bun": "catalog:",

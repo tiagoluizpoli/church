@@ -244,6 +244,10 @@ const PLANNING_ADMIN_SPEC_PATHS = [
   ...CYCLE_EDGE_SPEC_PATHS,
 ];
 
+// #1253: a leader exports a Schedule from Prepare; the dialog reads the
+// Ministry's Event groups for its default split.
+const SCHEDULE_EXPORT_SPEC_PATHS = ['tests/scheduling/schedule-export.spec.ts'];
+
 const PREPARE_SPEC_PATHS = [
   'tests/scheduling/planning-role-guard-matrix.spec.ts',
   'tests/scheduling/smoke.spec.ts',
@@ -1212,6 +1216,35 @@ export const JOURNEY_MAP: JourneyMapping[] = [
       ...NOTIFICATION_BELL_SPEC_PATHS,
       ...ADMIN_CANCEL_SPEC_PATHS,
     ],
+  }),
+  // #1253: the Schedule export and the Event groups it is split by. The
+  // Typst templates are not production paths here; the server suites own them.
+  ...mapEach({
+    paths: [
+      'apps/server/src/api/controllers/event-group-controller',
+      'apps/server/src/api/controllers/schedule-export-controller',
+      'apps/server/src/api/dtos/event-group.dto.ts',
+      'apps/server/src/api/dtos/schedule-export.dto.ts',
+      'apps/server/src/api/utils/schedule-export-render',
+      'apps/server/src/application/db-event-group-manager.ts',
+      'apps/server/src/application/db-schedule-export-reader.ts',
+      'apps/server/src/domain/contracts/application/event-group-manager.ts',
+      'apps/server/src/domain/contracts/application/schedule-export-reader.ts',
+      'apps/server/src/domain/contracts/infrastructure/event-group.repository.ts',
+      'apps/server/src/domain/contracts/infrastructure/schedule-export.repository.ts',
+      'apps/server/src/domain/contracts/infrastructure/typst-renderer.ts',
+      'apps/server/src/domain/errors/schedule-export.ts',
+      'apps/server/src/domain/errors/typst-render.ts',
+      'apps/server/src/infrastructure/repositories/drizzle-event-group.repository',
+      'apps/server/src/infrastructure/repositories/drizzle-schedule-export.repository',
+      'apps/server/src/infrastructure/typst/',
+      'apps/web/src/features/ministries/components/event-groups-editor.tsx',
+      'apps/web/src/features/scheduling/components/prepare/schedule-export',
+      'apps/web/src/features/scheduling/hooks/use-schedule-export-files.ts',
+      'apps/web/src/infrastructure/api/export.ts',
+      'apps/web/src/routes/app/_active-church/ministries/$ministryId/event-groups.tsx',
+    ],
+    specPaths: SCHEDULE_EXPORT_SPEC_PATHS,
   }),
   // #327 — journey recipes build the graph a spec starts from, through the
   // shared seed builders, blueprints and the provisioning scripts they call:

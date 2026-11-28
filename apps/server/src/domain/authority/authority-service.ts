@@ -7,6 +7,7 @@ import type {
   AuthorityRequest,
   ChurchResource,
   InvitationResource,
+  IsChurchAdminInput,
   MinistryMembershipFact,
   MinistryMembershipResource,
   MinistryResource,
@@ -53,6 +54,11 @@ interface EvaluateOwnedParticipationInput {
   actor: AuthorityActor;
   ownerVolunteerId: VolunteerId;
   hasMatchingMembership: boolean;
+}
+
+/** Church Membership `admin` is the Church Access Level that manages church-wide. */
+function isChurchAdmin(input: IsChurchAdminInput): boolean {
+  return input.accessLevel === 'admin';
 }
 
 function allow(): AuthorityDecision {
@@ -198,6 +204,13 @@ function authorizeMinistryMembershipResource(
 
 export const AuthorityService = {
   /**
+   * Answers "is this caller a Church admin?" from their Church Access Level
+   * alone, for a caller whose Church Membership is already known to be in the
+   * Church being asked about.
+   */
+  isChurchAdmin,
+
+  /**
    * Answers one application authorization question, dispatching internally
    * by `resource.type`. Missing, stale, cross-Church, or conflicting scope
    * data all deny before any resource-specific rule runs.
@@ -215,7 +228,7 @@ export const AuthorityService = {
       return deny({ reason: 'CROSS_CHURCH_RESOURCE' });
     }
 
-    const isAdmin = actor.churchMembership.accessLevel === 'admin';
+    const isAdmin = isChurchAdmin(actor.churchMembership);
 
     let decision: AuthorityDecision;
     switch (resource.type) {

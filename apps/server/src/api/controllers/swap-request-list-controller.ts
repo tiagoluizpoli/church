@@ -8,6 +8,7 @@ import type { ISwapRequestManager } from '../../domain/contracts/application/swa
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import { errorResponseSchema } from '../dtos/error-response.dto';
 import { idSchema } from '../dtos/id.dto';
 import {
   keepSwapRequestBodySchema,
@@ -17,11 +18,6 @@ import {
 import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
 import type { SwapRequestListControllerDependencies } from './swap-request-list-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 /** The leader-facing Swap request read (Spec 28 consumes it). */
 export class SwapRequestListController implements FastifyController {

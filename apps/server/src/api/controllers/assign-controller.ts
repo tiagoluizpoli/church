@@ -46,6 +46,7 @@ import {
   publishCycleMapper,
   publishCycleResponseSchema,
 } from '../dtos/cycle-builder.dto';
+import { errorResponseSchema } from '../dtos/error-response.dto';
 import { assignmentParamsSchema, idSchema } from '../dtos/id.dto';
 import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
@@ -64,11 +65,6 @@ const shiftParamsSchema = z.object({ shiftId: idSchema });
 const participationParamsSchema = z.object({ participationId: idSchema });
 
 const cycleMinistryQuerySchema = z.object({ ministryId: idSchema });
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 const toReviewedAddition = ({
   shiftRequirementId,

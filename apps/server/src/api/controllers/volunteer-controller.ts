@@ -19,6 +19,7 @@ import { IsolationBreachError } from '../../domain/errors/isolation-breach-error
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import { errorResponseSchema } from '../dtos/error-response.dto';
 import {
   assignmentParamsSchema,
   idSchema,
@@ -44,11 +45,6 @@ import type {
 
 const ministryScheduleQuerySchema = z.object({
   cycleId: idSchema,
-});
-
-const notFoundResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
 });
 
 export class VolunteerController implements FastifyController {
@@ -116,7 +112,7 @@ export class VolunteerController implements FastifyController {
             "Get one of the current Volunteer's own published Assignments with its Shift roster. Anyone else's, or one no longer on the schedule, is 404.",
           response: {
             200: assignmentDetailResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
           },
         },
       },
@@ -151,7 +147,7 @@ export class VolunteerController implements FastifyController {
             "Get the current Volunteer's published schedule within one Ministry.",
           response: {
             200: ministryScheduleResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
           },
         },
       },
@@ -220,7 +216,7 @@ export class VolunteerController implements FastifyController {
             'Get the detail of a single AvailabilityCheck belonging to the current Volunteer.',
           response: {
             200: availabilityCheckDetailResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
           },
         },
       },
@@ -256,7 +252,7 @@ export class VolunteerController implements FastifyController {
           body: answerAvailabilityCheckBodySchema,
           response: {
             200: availabilityCheckDetailResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
             409: answerConflictResponseSchema,
           },
         },

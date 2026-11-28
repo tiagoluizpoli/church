@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { MinistryId, TemplateTimeBlockId } from '../../domain/branded-ids';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
 import type { IAuthorityGuard } from '../../domain/contracts/application/authority-guard';
@@ -8,6 +7,10 @@ import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import { denyMinistryManagement } from '../auth/ministry-management-access';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import { ministryParamsSchema } from '../dtos/id.dto';
 import {
   usualSetupBlockListResponseSchema,
@@ -20,11 +23,6 @@ import type {
   ResolveManagedMinistryInput,
   UsualSetupControllerDependencies,
 } from './usual-setup-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 /** A Ministry's Usual setup, for ChurchAdmins and the Ministry's own leaders. */
 export class UsualSetupController implements FastifyController {
@@ -71,8 +69,7 @@ export class UsualSetupController implements FastifyController {
             "Every current TemplateTimeBlock, by template name and block order, with the managed Ministry's saved UsualSetup entry when it has one.",
           response: {
             200: usualSetupBlockListResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -105,8 +102,7 @@ export class UsualSetupController implements FastifyController {
           body: usualSetupEntryBodySchema,
           response: {
             200: usualSetupBlockResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },

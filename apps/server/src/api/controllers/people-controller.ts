@@ -10,6 +10,10 @@ import type { PeopleListScope } from '../../domain/entities/people-list-item';
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import { pageLimitSchema } from '../dtos/page-limit.dto';
 import {
   changeMinistryAccessBodySchema,
@@ -32,11 +36,6 @@ import type {
   ResolveScopeInput,
   SendMembershipOutcomeInput,
 } from './people-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 /** Maps the shared refusals and sends the applied change without its `kind`. */
 function sendMembershipOutcome({
@@ -124,8 +123,7 @@ export class PeopleController implements FastifyController {
           body: churchAccessChangeBodySchema,
           response: {
             200: churchAccessChangeResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
@@ -172,8 +170,7 @@ export class PeopleController implements FastifyController {
           body: setMinistryRolesBodySchema,
           response: {
             200: ministryMembershipChangeResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: z.union([
               upcomingAssignmentsResponseSchema,
@@ -215,8 +212,7 @@ export class PeopleController implements FastifyController {
           body: changeMinistryAccessBodySchema,
           response: {
             200: ministryMembershipChangeResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: z.union([
               upcomingAssignmentsResponseSchema,
@@ -259,8 +255,7 @@ export class PeopleController implements FastifyController {
           params: ministryMembershipParamsSchema,
           response: {
             200: endMinistryMembershipResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: z.union([
               upcomingAssignmentsResponseSchema,
@@ -299,8 +294,7 @@ export class PeopleController implements FastifyController {
           params: personParamsSchema,
           response: {
             200: personDetailResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },
@@ -339,8 +333,7 @@ export class PeopleController implements FastifyController {
           }),
           response: {
             200: peopleListResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
           },
         },

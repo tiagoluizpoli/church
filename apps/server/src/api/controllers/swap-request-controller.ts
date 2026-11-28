@@ -7,6 +7,7 @@ import { AssignmentAccessDeniedError } from '../../domain/errors/assignment-acce
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import { errorResponseSchema } from '../dtos/error-response.dto';
 import { assignmentParamsSchema } from '../dtos/id.dto';
 import {
   raiseSwapRequestBodySchema,
@@ -14,11 +15,6 @@ import {
 } from '../dtos/swap-request.dto';
 import { refuse } from '../utils/refuse';
 import type { SwapRequestControllerDependencies } from './swap-request-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 export class SwapRequestController implements FastifyController {
   readonly prefix = '/volunteer';

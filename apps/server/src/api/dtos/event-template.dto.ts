@@ -1,6 +1,7 @@
 import { fromDate, instantSchema, timeOfDaySchema } from '@church/time';
 import { z } from 'zod';
 import type { EventTemplate } from '../../domain/entities/event-template';
+import { errorResponseSchema } from './error-response.dto';
 import { idSchema } from './id.dto';
 import { timeBlockPlaceFields, withOnePlace } from './time-block-place.dto';
 
@@ -102,9 +103,7 @@ export const createEventTemplateBodySchema = z.object({
 });
 
 /** A 409 `UNANSWERED_TEMPLATE_COLLISIONS`: each colliding template still to answer, by name. */
-export const templateCollisionsResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+export const templateCollisionsResponseSchema = errorResponseSchema.extend({
   collisions: z
     .array(z.object({ templateId: z.string(), name: z.string() }))
     .optional(),

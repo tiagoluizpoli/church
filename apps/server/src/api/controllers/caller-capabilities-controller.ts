@@ -4,14 +4,10 @@ import type { IAuthorityGuard } from '../../domain/contracts/application/authori
 import type { FastifyTypedInstance } from '../../main/fastify/types';
 import { createActiveChurchPreValidation } from '../auth/active-church-pre-validation';
 import type { FastifyController } from '../contracts/fastify-controller';
+import { authErrorResponses } from '../dtos/error-response.dto';
 import { idSchema } from '../dtos/id.dto';
 import { requestCaller } from '../utils/request-caller';
 import type { CallerCapabilitiesControllerDependencies } from './caller-capabilities-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 const callerCapabilitiesResponseSchema = z.object({
   churchId: idSchema,
@@ -55,8 +51,7 @@ export class CallerCapabilitiesController implements FastifyController {
             'Return the current caller capacities in the Active Church. This is navigation data, not an authorization grant.',
           response: {
             200: callerCapabilitiesResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
           },
         },
       },

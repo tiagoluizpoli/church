@@ -8,6 +8,7 @@ import type {
 } from '../../domain/entities/cycle';
 import type { EventWithEventTimeBlocks } from '../../domain/entities/event';
 import { isEventTimeBlockHidden } from '../../domain/event-time-block-cancellation';
+import { errorResponseSchema } from './error-response.dto';
 import { eventMapper, eventResponseSchema } from './event.dto';
 import {
   eventTimeBlockMapper,
@@ -40,9 +41,7 @@ const conflictingCyclesSchema = z.array(
 );
 
 /** A 409 `OVERLAPPING_CYCLE`: the localized envelope plus each colliding Cycle. */
-export const overlappingCycleResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+export const overlappingCycleResponseSchema = errorResponseSchema.extend({
   conflictingCycles: conflictingCyclesSchema,
 });
 
@@ -51,9 +50,7 @@ export const overlappingCycleResponseSchema = z.object({
  * `EVENT_OUTSIDE_CYCLE` with every excluded Event, or a bare
  * `ILLEGAL_STATE_TRANSITION` envelope.
  */
-export const updateCycleConflictResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+export const updateCycleConflictResponseSchema = errorResponseSchema.extend({
   conflictingCycles: conflictingCyclesSchema.optional(),
   outsideEvents: z
     .array(
@@ -78,9 +75,7 @@ export const cycleSendSummaryResponseSchema = z.object({
  * `ILLEGAL_STATE_TRANSITION`, or `INVALID_CYCLE_EVENTS` naming every Event
  * of this Cycle to repair.
  */
-export const sendCycleConflictResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
+export const sendCycleConflictResponseSchema = errorResponseSchema.extend({
   invalidEvents: z
     .array(
       z.object({

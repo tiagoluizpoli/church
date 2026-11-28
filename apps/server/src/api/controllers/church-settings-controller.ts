@@ -1,7 +1,6 @@
 import { NotFoundError } from '@church/core';
 import { m } from '@church/i18n/messages';
 import multipart from '@fastify/multipart';
-import { z } from 'zod';
 import { ChurchAddressesRefused } from '../../domain/church-address';
 import { LOGO_MAX_BYTES } from '../../domain/church-logo';
 import type { IActiveChurchResolver } from '../../domain/contracts/application/active-church-resolver';
@@ -31,14 +30,13 @@ import {
   updateChurchSettingsBodySchema,
   uploadChurchLogoBodySchema,
 } from '../dtos/church-settings.dto';
+import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
 import { refuse } from '../utils/refuse';
 import { requestCaller } from '../utils/request-caller';
 import type { ChurchSettingsControllerDependencies } from './church-settings-controller.types';
-
-const errorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
 
 /** The Active Church's Church Settings, ChurchAdmin only. */
 export class ChurchSettingsController implements FastifyController {
@@ -92,8 +90,7 @@ export class ChurchSettingsController implements FastifyController {
             'The Church Settings of the Active Church (name, slug, website, accent colour, addresses) and the public origin the `…/slug` address is shown under. Empty optional fields are null. ChurchAdmin only.',
           response: {
             200: churchSettingsResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             409: errorResponseSchema,
           },
         },
@@ -118,8 +115,7 @@ export class ChurchSettingsController implements FastifyController {
           querystring: slugAvailabilityQuerySchema,
           response: {
             200: slugAvailabilityResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             409: errorResponseSchema,
           },
         },
@@ -145,8 +141,7 @@ export class ChurchSettingsController implements FastifyController {
           params: churchAddressUsageParamsSchema,
           response: {
             200: churchAddressUsageResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             404: errorResponseSchema,
             409: errorResponseSchema,
           },
@@ -181,8 +176,7 @@ export class ChurchSettingsController implements FastifyController {
           body: updateChurchSettingsBodySchema,
           response: {
             200: churchSettingsResponseSchema,
-            401: errorResponseSchema,
-            403: errorResponseSchema,
+            ...authErrorResponses,
             409: errorResponseSchema,
             422: churchSettingsValidationErrorResponseSchema,
           },
@@ -250,8 +244,7 @@ export class ChurchSettingsController implements FastifyController {
     );
     const logoResponses = {
       200: churchSettingsResponseSchema,
-      401: errorResponseSchema,
-      403: errorResponseSchema,
+      ...authErrorResponses,
       409: errorResponseSchema,
     };
 

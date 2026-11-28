@@ -34,6 +34,10 @@ import {
   updateCycleConflictResponseSchema,
 } from '../dtos/cycle.dto';
 import {
+  authErrorResponses,
+  errorResponseSchema,
+} from '../dtos/error-response.dto';
+import {
   applyTemplatesBodySchema,
   changeTemplatePrecedenceBodySchema,
   createEventTemplateBodySchema,
@@ -130,11 +134,6 @@ function precedenceAnswers(precedences: PrecedenceBody) {
   }));
 }
 
-const notFoundResponseSchema = z.object({
-  error: z.string(),
-  message: z.string(),
-});
-
 export class ChurchAdminController implements FastifyController {
   readonly prefix = '/admin';
 
@@ -194,9 +193,8 @@ export class ChurchAdminController implements FastifyController {
             'Five independently derived setup facts of the Active Church: an active Ministry; one active Ministry holding both an active Sector and an active Role; an issued leader-level Ministry Invitation (pending or accepted); an event template; and a Cycle ever sent, which an expired unsent draft never is. Nothing is persisted.',
           response: {
             200: setupProgressResponseSchema,
-            401: notFoundResponseSchema,
-            403: notFoundResponseSchema,
-            409: notFoundResponseSchema,
+            ...authErrorResponses,
+            409: errorResponseSchema,
           },
         },
       },
@@ -880,7 +878,7 @@ export class ChurchAdminController implements FastifyController {
           body: setPlanningHiddenBodySchema,
           response: {
             204: z.null(),
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -912,7 +910,7 @@ export class ChurchAdminController implements FastifyController {
           body: setPlanningHiddenBodySchema,
           response: {
             204: z.null(),
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1022,7 +1020,7 @@ export class ChurchAdminController implements FastifyController {
           body: editPlanningEventBodySchema,
           response: {
             200: eventEditPreviewResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1059,7 +1057,7 @@ export class ChurchAdminController implements FastifyController {
           body: editPlanningEventBodySchema,
           response: {
             200: eventMoveResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1097,7 +1095,7 @@ export class ChurchAdminController implements FastifyController {
           body: createEventTimeBlockBodySchema,
           response: {
             201: eventTimeBlockResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1138,7 +1136,7 @@ export class ChurchAdminController implements FastifyController {
           body: movePlanningEventBodySchema,
           response: {
             200: eventMovePreviewResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1180,7 +1178,7 @@ export class ChurchAdminController implements FastifyController {
           body: movePlanningEventBodySchema,
           response: {
             200: eventMoveResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1222,7 +1220,7 @@ export class ChurchAdminController implements FastifyController {
             'Preview cancelling one future EventTimeBlock of a scheduled Event in a Sent Cycle, writing and sending nothing. Same impact shape as the Event preview, limited to that block. Refuses as the Event preview does; a block that has started is ADMIN_CANCELLATION_WINDOW_CLOSED, a cancelled block is ILLEGAL_STATE_TRANSITION, an unknown or foreign block is 404.',
           response: {
             200: cancellationImpactResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1261,7 +1259,7 @@ export class ChurchAdminController implements FastifyController {
           body: cancelPlanningEventBodySchema,
           response: {
             200: cancellationImpactResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1304,7 +1302,7 @@ export class ChurchAdminController implements FastifyController {
           body: updateEventTimeBlockBodySchema,
           response: {
             200: eventTimeBlockResponseSchema,
-            404: notFoundResponseSchema,
+            404: errorResponseSchema,
             422: validationErrorResponseSchema,
           },
         },
@@ -1342,7 +1340,7 @@ export class ChurchAdminController implements FastifyController {
           operationId: 'deletePlanningEventTimeBlock',
           summary: 'Delete a EventTimeBlock',
           description: 'Delete a EventTimeBlock from an Event.',
-          response: { 204: z.null(), 404: notFoundResponseSchema },
+          response: { 204: z.null(), 404: errorResponseSchema },
         },
       },
       async (request, reply) => {

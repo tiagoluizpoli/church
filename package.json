@@ -112,17 +112,17 @@
     "@playwright/test": "^1.61.1",
     "@sentry/cli": "^3.8.2",
     "@types/bun": "catalog:",
-    "@types/three": "^0.184.0",
+    "@types/three": "^0.187.0",
     "commitizen": "^4.3.1",
     "cz-conventional-changelog": "^3.3.0",
     "fflate": "^0.8.2",
     "lefthook": "^2.1.4",
-    "orval": "~8.30.0",
+    "orval": "~8.49.0",
     "turbo": "^2.11.13",
     "typescript": "^5",
     "varlock": "^1.21.0"
   },
-  "packageManager": "bun@1.4.3",
+  "packageManager": "bun@1.4.5",
   "overrides": {
     "sharp": "^0.35.5"
   }

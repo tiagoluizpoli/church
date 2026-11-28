@@ -10,7 +10,6 @@ import type {
   ApplyAssignmentProposalParams,
   CreateParticipationAssignment201,
   CreateParticipationAssignmentBody,
-  DeleteParticipationAssignment204,
   GetAssignmentProposal200,
   GetAssignmentProposalParams,
   GetCycleAuditLog200,
@@ -159,7 +158,7 @@ const createParticipationAssignment = (
 const deleteParticipationAssignment = (
     assignmentId: string,
  ) => {
-      return apiClient<DeleteParticipationAssignment204>(
+      return apiClient<null>(
       {url: `/api/v1/assign/assignments/${assignmentId}`, method: 'DELETE'
     },
       );

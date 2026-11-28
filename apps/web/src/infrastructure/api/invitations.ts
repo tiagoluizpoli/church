@@ -10,8 +10,7 @@ import type {
   MintAdminInvitation200,
   MintAdminInvitation201,
   MintAdminInvitationBody,
-  ResendChurchInvitation200,
-  RevokeChurchInvitation204
+  ResendChurchInvitation200
 } from './churchAPI.schemas';
 
 import { apiClient } from '../../utils/api-client';
@@ -66,7 +65,7 @@ const resendChurchInvitation = (
 const revokeChurchInvitation = (
     invitationId: string,
  ) => {
-      return apiClient<RevokeChurchInvitation204>(
+      return apiClient<null>(
       {url: `/api/v1/invitations/church/${invitationId}/revoke`, method: 'POST'
     },
       );

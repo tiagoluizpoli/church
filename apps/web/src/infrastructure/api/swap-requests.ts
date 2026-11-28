@@ -5,7 +5,6 @@
  * OpenAPI spec version: 1.0.0
  */
 import type {
-  KeepSwapRequest204,
   KeepSwapRequestBody,
   ListMinistrySwapRequests200,
   ListMinistrySwapRequestsParams
@@ -40,7 +39,7 @@ const keepSwapRequest = (
     swapRequestId: string,
     keepSwapRequestBody: KeepSwapRequestBody,
  ) => {
-      return apiClient<KeepSwapRequest204>(
+      return apiClient<null>(
       {url: `/api/v1/ministries/${ministryId}/swap-requests/${swapRequestId}/keep`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: keepSwapRequestBody

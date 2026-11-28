@@ -170,21 +170,17 @@ export type CreateCycle409 = {
 };
 
 export type ListCyclesParams = {
-state?: ListCyclesState;
-period?: ListCyclesPeriod;
-/**
- * @minLength 1
- * @maxLength 100
- */
-search?: string;
-/**
- * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
- */
-from?: string;
-/**
- * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
- */
-to?: string;
+  state?: ListCyclesState;
+  period?: ListCyclesPeriod;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  search?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  from?: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  to?: string;
 };
 
 export type ListCyclesState = typeof ListCyclesState[keyof typeof ListCyclesState];
@@ -535,15 +531,6 @@ export type GetCycleSendSummary409 = {
   message: string;
   invalidEvents?: GetCycleSendSummary409InvalidEventsItem[];
 };
-
-/**
- * @nullable
- */
-export type SendCycle204 = typeof SendCycle204[keyof typeof SendCycle204] | null;
-
-
-export const SendCycle204 = {
-} as const;
 
 export type SendCycle409InvalidEventsItem = {
   id: string;
@@ -1404,15 +1391,6 @@ export type UpdatePlanningEvent422 = {
   issues?: unknown[];
 };
 
-/**
- * @nullable
- */
-export type DeletePlanningEvent204 = typeof DeletePlanningEvent204[keyof typeof DeletePlanningEvent204] | null;
-
-
-export const DeletePlanningEvent204 = {
-} as const;
-
 export type UpdatePlanningEventDetailsBodyEventTimeBlocksItem = {
   /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
   id: string;
@@ -1708,15 +1686,6 @@ export type SetPlanningEventHiddenBody = {
   hidden: boolean;
 };
 
-/**
- * @nullable
- */
-export type SetPlanningEventHidden204 = typeof SetPlanningEventHidden204[keyof typeof SetPlanningEventHidden204] | null;
-
-
-export const SetPlanningEventHidden204 = {
-} as const;
-
 export type SetPlanningEventHidden404 = {
   error: string;
   message: string;
@@ -1762,15 +1731,6 @@ export type SetPlanningEventHidden422 = {
 export type SetPlanningEventTimeBlockHiddenBody = {
   hidden: boolean;
 };
-
-/**
- * @nullable
- */
-export type SetPlanningEventTimeBlockHidden204 = typeof SetPlanningEventTimeBlockHidden204[keyof typeof SetPlanningEventTimeBlockHidden204] | null;
-
-
-export const SetPlanningEventTimeBlockHidden204 = {
-} as const;
 
 export type SetPlanningEventTimeBlockHidden404 = {
   error: string;
@@ -2960,15 +2920,6 @@ export type UpdatePlanningEventTimeBlock422 = {
   issues?: unknown[];
 };
 
-/**
- * @nullable
- */
-export type DeletePlanningEventTimeBlock204 = typeof DeletePlanningEventTimeBlock204[keyof typeof DeletePlanningEventTimeBlock204] | null;
-
-
-export const DeletePlanningEventTimeBlock204 = {
-} as const;
-
 export type DeletePlanningEventTimeBlock404 = {
   error: string;
   message: string;
@@ -3626,10 +3577,8 @@ export type UpdateChurchSettings422 = {
 };
 
 export type GetChurchSlugAvailabilityParams = {
-/**
- * @maxLength 200
- */
-slug: string;
+  /** @maxLength 200 */
+  slug: string;
 };
 
 /**
@@ -4284,14 +4233,10 @@ export type RestoreChurchLogo422 = {
 };
 
 export type GetScheduleBuilderDataParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-eventId: string;
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId?: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  eventId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId?: string;
 };
 
 export type GetScheduleBuilderData200EventsItemEventStatus = typeof GetScheduleBuilderData200EventsItemEventStatus[keyof typeof GetScheduleBuilderData200EventsItemEventStatus];
@@ -4451,11 +4396,9 @@ export type GetScheduleBuilderData404 = {
 };
 
 export type ListEventsParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId: string;
-status?: ListEventsStatus;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId: string;
+  status?: ListEventsStatus;
 };
 
 export type ListEventsStatus = typeof ListEventsStatus[keyof typeof ListEventsStatus];
@@ -4605,18 +4548,18 @@ export type CreateMinistry409 = {
 };
 
 export type ListMinistryDirectoryParams = {
-/**
- * @minLength 1
- * @maxLength 255
- */
-search?: string;
-status?: ListMinistryDirectoryStatus;
-cursor?: string;
-/**
- * @minimum 1
- * @maximum 50
- */
-limit?: number;
+  /**
+   * @minLength 1
+   * @maxLength 255
+   */
+  search?: string;
+  status?: ListMinistryDirectoryStatus;
+  cursor?: string;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  limit?: number;
 };
 
 export type ListMinistryDirectoryStatus = typeof ListMinistryDirectoryStatus[keyof typeof ListMinistryDirectoryStatus];
@@ -4775,15 +4718,6 @@ export type RenameMinistry409 = {
   error: string;
   message: string;
 };
-
-/**
- * @nullable
- */
-export type ArchiveMinistry204 = typeof ArchiveMinistry204[keyof typeof ArchiveMinistry204] | null;
-
-
-export const ArchiveMinistry204 = {
-} as const;
 
 export type ArchiveMinistry401 = {
   error: string;
@@ -5014,15 +4948,6 @@ export type ResendMinistryInvitation429 = {
   message: string;
 };
 
-/**
- * @nullable
- */
-export type RevokeMinistryInvitation204 = typeof RevokeMinistryInvitation204[keyof typeof RevokeMinistryInvitation204] | null;
-
-
-export const RevokeMinistryInvitation204 = {
-} as const;
-
 export type RevokeMinistryInvitation401 = {
   error: string;
   message: string;
@@ -5132,15 +5057,6 @@ export type RenameMinistryRole409 = {
   error: string;
   message: string;
 };
-
-/**
- * @nullable
- */
-export type ArchiveMinistryRole204 = typeof ArchiveMinistryRole204[keyof typeof ArchiveMinistryRole204] | null;
-
-
-export const ArchiveMinistryRole204 = {
-} as const;
 
 export type ArchiveMinistryRole401 = {
   error: string;
@@ -5273,15 +5189,6 @@ export type RenameSector409 = {
   error: string;
   message: string;
 };
-
-/**
- * @nullable
- */
-export type ArchiveSector204 = typeof ArchiveSector204[keyof typeof ArchiveSector204] | null;
-
-
-export const ArchiveSector204 = {
-} as const;
 
 export type ArchiveSector401 = {
   error: string;
@@ -5521,24 +5428,22 @@ export type SaveUsualSetupBlock404 = {
 };
 
 export type ListSchedulesParams = {
-period?: ListSchedulesPeriod;
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId?: string;
-stage?: ListSchedulesStage;
-/**
- * @minLength 1
- * @maxLength 100
- */
-search?: string;
-attention?: string;
-cursor?: string;
-/**
- * @minimum 1
- * @maximum 50
- */
-limit?: number;
+  period?: ListSchedulesPeriod;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId?: string;
+  stage?: ListSchedulesStage;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  search?: string;
+  attention?: string;
+  cursor?: string;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  limit?: number;
 };
 
 export type ListSchedulesPeriod = typeof ListSchedulesPeriod[keyof typeof ListSchedulesPeriod];
@@ -5802,29 +5707,21 @@ export type GetSchedule404 = {
 };
 
 export type GetCycleParticipationParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId: string;
-/**
- * @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
- */
-day?: string;
-/**
- * @minLength 1
- * @maxLength 100
- */
-q?: string;
-timeMode?: GetCycleParticipationTimeMode;
-/**
- * @pattern ^\d{2}:\d{2}(:\d{2})?$
- */
-timeFrom?: string;
-/**
- * @pattern ^\d{2}:\d{2}(:\d{2})?$
- */
-timeTo?: string;
-needsAttention?: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId: string;
+  /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
+  day?: string;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  q?: string;
+  timeMode?: GetCycleParticipationTimeMode;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  timeFrom?: string;
+  /** @pattern ^\d{2}:\d{2}(:\d{2})?$ */
+  timeTo?: string;
+  needsAttention?: string;
 };
 
 export type GetCycleParticipationTimeMode = typeof GetCycleParticipationTimeMode[keyof typeof GetCycleParticipationTimeMode];
@@ -6019,10 +5916,8 @@ export type GetCycleParticipation404 = {
 };
 
 export type GetAskPreviewParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId: string;
 };
 
 export type GetAskPreview200FlaggedBlocksItem = {
@@ -6504,22 +6399,20 @@ export type RemindSchedule409 = {
 };
 
 export type GetCycleAvailabilityStatusParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId: string;
-status?: GetCycleAvailabilityStatusStatus;
-/**
- * @minLength 1
- * @maxLength 100
- */
-q?: string;
-cursor?: string;
-/**
- * @minimum 1
- * @maximum 200
- */
-limit?: number;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId: string;
+  status?: GetCycleAvailabilityStatusStatus;
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  q?: string;
+  cursor?: string;
+  /**
+   * @minimum 1
+   * @maximum 200
+   */
+  limit?: number;
 };
 
 export type GetCycleAvailabilityStatusStatus = typeof GetCycleAvailabilityStatusStatus[keyof typeof GetCycleAvailabilityStatusStatus];
@@ -6597,10 +6490,8 @@ export type GetCycleAvailabilityStatus404 = {
 };
 
 export type GetCycleBuilderDataParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId: string;
 };
 
 export type GetCycleBuilderData200Cycle = {
@@ -6828,10 +6719,8 @@ export type GetCycleBuilderData404 = {
 };
 
 export type GetCycleAuditLogParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId: string;
 };
 
 export type GetCycleAuditLog200ItemsItemAction = typeof GetCycleAuditLog200ItemsItemAction[keyof typeof GetCycleAuditLog200ItemsItemAction];
@@ -6871,10 +6760,8 @@ export type GetCycleAuditLog404 = {
 };
 
 export type GetAssignmentProposalParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId: string;
 };
 
 export type GetAssignmentProposal200AdditionsItemReasonDecidedBy = typeof GetAssignmentProposal200AdditionsItemReasonDecidedBy[keyof typeof GetAssignmentProposal200AdditionsItemReasonDecidedBy];
@@ -6944,10 +6831,8 @@ export type GetAssignmentProposal409 = {
 };
 
 export type ApplyAssignmentProposalParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId: string;
 };
 
 export type ApplyAssignmentProposalBodyAdditionsItem = {
@@ -7005,10 +6890,8 @@ export type ApplyAssignmentProposal422 = {
 };
 
 export type PublishCycleParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId: string;
 };
 
 export type PublishCycleBody = {
@@ -7056,10 +6939,8 @@ export type PublishCycle409 = {
 };
 
 export type SendScheduleUpdatesParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId: string;
 };
 
 export type SendScheduleUpdates200 = {
@@ -7197,15 +7078,6 @@ export type CreateParticipationAssignment404 = {
   message: string;
 };
 
-/**
- * @nullable
- */
-export type DeleteParticipationAssignment204 = typeof DeleteParticipationAssignment204[keyof typeof DeleteParticipationAssignment204] | null;
-
-
-export const DeleteParticipationAssignment204 = {
-} as const;
-
 export type DeleteParticipationAssignment403 = {
   error: string;
   message: string;
@@ -7336,12 +7208,12 @@ export type GetCallerCapabilities403 = {
 };
 
 export type GetNotificationsParams = {
-cursor?: string;
-/**
- * @minimum 1
- * @maximum 50
- */
-limit?: number;
+  cursor?: string;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  limit?: number;
 };
 
 export type GetNotifications200ItemsItem = {
@@ -7801,23 +7673,21 @@ export type MarkAllNotificationsRead422 = {
 };
 
 export type ListInvitationsParams = {
-status?: ListInvitationsStatus;
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId?: string;
-invitedAs?: ListInvitationsInvitedAs;
-/**
- * @minLength 1
- * @maxLength 254
- */
-email?: string;
-cursor?: string;
-/**
- * @minimum 1
- * @maximum 50
- */
-limit?: number;
+  status?: ListInvitationsStatus;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId?: string;
+  invitedAs?: ListInvitationsInvitedAs;
+  /**
+   * @minLength 1
+   * @maxLength 254
+   */
+  email?: string;
+  cursor?: string;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  limit?: number;
 };
 
 export type ListInvitationsStatus = typeof ListInvitationsStatus[keyof typeof ListInvitationsStatus];
@@ -8175,15 +8045,6 @@ export type ResendChurchInvitation429 = {
   message: string;
 };
 
-/**
- * @nullable
- */
-export type RevokeChurchInvitation204 = typeof RevokeChurchInvitation204[keyof typeof RevokeChurchInvitation204] | null;
-
-
-export const RevokeChurchInvitation204 = {
-} as const;
-
 export type RevokeChurchInvitation401 = {
   error: string;
   message: string;
@@ -8530,23 +8391,21 @@ export type GetPerson404 = {
 };
 
 export type ListPeopleParams = {
-/**
- * @minLength 1
- * @maxLength 254
- */
-search?: string;
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId?: string;
-access?: ListPeopleAccess;
-withoutMinistry?: string;
-cursor?: string;
-/**
- * @minimum 1
- * @maximum 50
- */
-limit?: number;
+  /**
+   * @minLength 1
+   * @maxLength 254
+   */
+  search?: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId?: string;
+  access?: ListPeopleAccess;
+  withoutMinistry?: string;
+  cursor?: string;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  limit?: number;
 };
 
 export type ListPeopleAccess = typeof ListPeopleAccess[keyof typeof ListPeopleAccess];
@@ -9248,7 +9107,7 @@ export type GetPublicChurchProfile429 = {
 };
 
 export type ListPublicChurchEventsParams = {
-cursor?: string;
+  cursor?: string;
 };
 
 export type ListPublicChurchEvents200ItemsItemBlocksItemMovePathItem = {
@@ -9849,10 +9708,8 @@ export type GetAssignmentDetail404 = {
 };
 
 export type GetMinistryScheduleParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-cycleId: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  cycleId: string;
 };
 
 export type GetMinistrySchedule200EventsItemRowsItem = {
@@ -9895,7 +9752,7 @@ export type GetMinistrySchedule404 = {
 };
 
 export type ListAvailabilityChecksParams = {
-state?: ListAvailabilityChecksState;
+  state?: ListAvailabilityChecksState;
 };
 
 export type ListAvailabilityChecksState = typeof ListAvailabilityChecksState[keyof typeof ListAvailabilityChecksState];
@@ -10118,19 +9975,15 @@ export type AnswerAvailabilityCheck409 = {
 };
 
 export type GetPublishedVolunteerScheduleParams = {
-/**
- * @minLength 1
- * @maxLength 200
- */
-search?: string;
-/**
- * @pattern ^\d{4}-(0[1-9]|1[0-2])$
- */
-month?: string;
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-ministryId?: string;
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  search?: string;
+  /** @pattern ^\d{4}-(0[1-9]|1[0-2])$ */
+  month?: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  ministryId?: string;
 };
 
 export type GetPublishedVolunteerSchedule200AssignmentsItemStatus = typeof GetPublishedVolunteerSchedule200AssignmentsItemStatus[keyof typeof GetPublishedVolunteerSchedule200AssignmentsItemStatus];
@@ -10271,15 +10124,6 @@ export type RaiseSwapRequest409 = {
   message: string;
 };
 
-/**
- * @nullable
- */
-export type WithdrawSwapRequest204 = typeof WithdrawSwapRequest204[keyof typeof WithdrawSwapRequest204] | null;
-
-
-export const WithdrawSwapRequest204 = {
-} as const;
-
 export type WithdrawSwapRequest404 = {
   error: string;
   message: string;
@@ -10291,10 +10135,8 @@ export type WithdrawSwapRequest409 = {
 };
 
 export type ListMinistrySwapRequestsParams = {
-/**
- * @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$
- */
-cycleId?: string;
+  /** @pattern ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$ */
+  cycleId?: string;
 };
 
 export type ListMinistrySwapRequests200SchedulesItemRequestsItemStatus = typeof ListMinistrySwapRequests200SchedulesItemRequestsItemStatus[keyof typeof ListMinistrySwapRequests200SchedulesItemRequestsItemStatus];
@@ -10344,15 +10186,6 @@ export type ListMinistrySwapRequests404 = {
 export type KeepSwapRequestBody = {
   reply?: string;
 };
-
-/**
- * @nullable
- */
-export type KeepSwapRequest204 = typeof KeepSwapRequest204[keyof typeof KeepSwapRequest204] | null;
-
-
-export const KeepSwapRequest204 = {
-} as const;
 
 export type KeepSwapRequest404 = {
   error: string;

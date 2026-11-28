@@ -1,10 +1,15 @@
 import { exportFileName } from '@church/domain-rules/export-file-name';
+import {
+  exportDayRange,
+  exportPartName,
+  exportTimeParts,
+} from '@church/domain-rules/schedule-export-wording';
 import { m } from '@church/i18n/messages';
 import {
   type CalendarDay,
-  formatCalendarDay,
   formatDayLabel,
   formatDaySpanShort,
+  parseCalendarDay,
 } from '@church/time';
 import type {
   AttachmentDispositionInput,
@@ -25,15 +30,20 @@ export function scheduleExportPartName({
   part,
   locale,
 }: ScheduleExportPartNameInput): string | null {
-  if (part.kind === 'all') return null;
-  if (part.week) {
-    const span = formatDaySpanShort({ ...part.week, locale });
-    return m.export_part_week({ span }, { locale });
-  }
-  if (part.kind === 'catchAll' && part.name === null) {
-    return m.export_catch_all_default({}, { locale });
-  }
-  return part.name;
+  return exportPartName({
+    part,
+    wording: {
+      week: ({ from, to }) => {
+        const span = formatDaySpanShort({
+          from: parseCalendarDay({ value: from }),
+          to: parseCalendarDay({ value: to }),
+          locale,
+        });
+        return m.export_part_week({ span }, { locale });
+      },
+      catchAll: () => m.export_catch_all_default({}, { locale }),
+    },
+  });
 }
 
 function partText({
@@ -60,7 +70,7 @@ function exportText({
 }: ScheduleExportTextInput): ScheduleExportText {
   return {
     kicker: m.export_schedule_kicker({}, { locale }),
-    range: `${formatCalendarDay({ day: data.range.from })} – ${formatCalendarDay({ day: data.range.to })}`,
+    range: exportDayRange(data.range),
     parts: data.parts.map((part) => partText({ part, locale })),
     draft: m.export_draft({}, { locale }),
     noService: m.export_no_service({}, { locale }),
@@ -93,8 +103,7 @@ export function scheduleExportRenderPayload({
     for (const shift of event.timeBlocks.flatMap((block) => block.shifts)) {
       if (shift.day) dayList.push(shift.day);
       for (const time of [shift.startTime, shift.endTime]) {
-        const [hours = '', minutes = ''] = time.split(':');
-        times[time] = m.export_time({ hours, minutes }, { locale });
+        times[time] = m.export_time(exportTimeParts({ time }), { locale });
       }
     }
   }

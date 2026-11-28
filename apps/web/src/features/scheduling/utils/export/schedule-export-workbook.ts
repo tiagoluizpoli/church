@@ -1,3 +1,7 @@
+import {
+  exportDayRange,
+  exportTimeParts,
+} from '@church/domain-rules/schedule-export-wording';
 import { m } from '@church/i18n/messages';
 import {
   calendarDaysBetween,
@@ -27,7 +31,7 @@ import type {
   WorkbookSheetsInput,
   WorkbookSheetsOutput,
 } from './schedule-export-workbook.types';
-import { exportPartName } from '@/features/scheduling/components/prepare/schedule-export-part-name';
+import { exportPartName } from '@/features/scheduling/utils/export/schedule-export-part-name';
 import type {
   GetScheduleExportData200PartsItem,
   GetScheduleExportData200PartsItemGroupsItemEventsItem,
@@ -112,10 +116,8 @@ interface ShiftTimeInput {
 
 /** `Turno 1 · sáb · 08h00–12h00`: the Shift's label and day when it has them. */
 function shiftTime({ shift, locale }: ShiftTimeInput): string {
-  const time = (value: string) => {
-    const [hours = '', minutes = ''] = value.split(':');
-    return m.export_time({ hours, minutes }, { locale });
-  };
+  const time = (value: string) =>
+    m.export_time(exportTimeParts({ time: value }), { locale });
   return [
     shift.label,
     shift.day ? weekday({ day: shift.day, locale }) : null,
@@ -262,7 +264,7 @@ export function scheduleExportSheets({
     { ministry: data.ministry.name, cycle: data.cycle.name },
     { locale },
   );
-  const range = `${formatCalendarDay({ day: parseCalendarDay({ value: data.range.from }) })} – ${formatCalendarDay({ day: parseCalendarDay({ value: data.range.to }) })}`;
+  const range = exportDayRange(data.range);
   const sheets = data.parts.map((part, index): WorkbookSheet => {
     const line = [
       ...(data.isDraft ? [m.export_draft({}, { locale })] : []),

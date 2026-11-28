@@ -1,3 +1,4 @@
+import { exportDayRange } from '@church/domain-rules/schedule-export-wording';
 import { m } from '@church/i18n/messages';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
@@ -6,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ListScheduleExportCycles200CyclesItem } from '@/infrastructure/api/churchAPI.schemas';
-import { formatCalendarDateOnly } from '@/shared/utils/church-time';
 import { exportApi } from '@/utils/api-instances';
 
 export type ExportCycle = Pick<
@@ -39,18 +39,8 @@ interface CycleSpanInput {
   cycle: ExportCycle;
 }
 
-interface DaySpanInput {
-  from: string;
-  to: string;
-}
-
-/** Two CalendarDays as "01/01/2027 – 31/01/2027". */
-export function daySpan({ from, to }: DaySpanInput): string {
-  return `${formatCalendarDateOnly({ value: from })} – ${formatCalendarDateOnly({ value: to })}`;
-}
-
 export function cycleSpan({ cycle }: CycleSpanInput): string {
-  return daySpan({ from: cycle.startDate, to: cycle.endDate });
+  return exportDayRange({ from: cycle.startDate, to: cycle.endDate });
 }
 
 interface ScheduleExportCyclePickerProps {

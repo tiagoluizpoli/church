@@ -18,6 +18,10 @@
     "./export-file-name": {
       "types": "./src/export-file-name.ts",
       "default": "./src/export-file-name.ts"
+    },
+    "./schedule-export-wording": {
+      "types": "./src/schedule-export-wording.ts",
+      "default": "./src/schedule-export-wording.ts"
     }
   },
   "scripts": {

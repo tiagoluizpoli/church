@@ -1,3 +1,4 @@
+import { exportDayRange } from '@church/domain-rules/schedule-export-wording';
 import { m } from '@church/i18n/messages';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -11,13 +12,11 @@ import { useEventGroups } from '@/features/ministries/ministry-queries';
 import { useMinistryRoles } from '@/features/ministries/role-queries';
 import {
   cycleSpan,
-  daySpan,
   type ExportCycle,
   ScheduleExportCyclePicker,
 } from '@/features/scheduling/components/prepare/schedule-export-cycle-picker';
 import { ScheduleExportFooter } from '@/features/scheduling/components/prepare/schedule-export-footer';
 import { ScheduleExportGroups } from '@/features/scheduling/components/prepare/schedule-export-groups';
-import { exportPartName } from '@/features/scheduling/components/prepare/schedule-export-part-name';
 import {
   type ExportFormat,
   FILE_PARAMS,
@@ -28,6 +27,7 @@ import { ScheduleExportWorkbookPreview } from '@/features/scheduling/components/
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { useScheduleExportFiles } from '@/features/scheduling/hooks/use-schedule-export-files';
 import { useScheduleExportWorkbook } from '@/features/scheduling/hooks/use-schedule-export-workbook';
+import { exportPartName } from '@/features/scheduling/utils/export/schedule-export-part-name';
 import { useOnlineState } from '@/features/volunteers/hooks/use-online-state';
 import type { GetScheduleExportDataSplit } from '@/infrastructure/api/churchAPI.schemas';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
@@ -189,7 +189,7 @@ export function ScheduleExport({
             isFetching={exportFiles.isFetching}
             error={exportFiles.error}
             formatLabel={formatOption?.label() ?? ''}
-            span={range ? daySpan(range) : span}
+            span={range ? exportDayRange(range) : span}
             onDone={() => setOpen(false)}
           />
         }

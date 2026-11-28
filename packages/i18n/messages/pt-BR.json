@@ -2343,5 +2343,8 @@
   "export_format_label": "Formato",
   "export_format_pdf": "PDF para imprimir",
   "export_download": "Baixar",
-  "export_download_failed": "Não foi possível baixar a escala. Tente novamente."
+  "export_download_failed": "Não foi possível baixar a escala. Tente novamente.",
+  "export_draft_notice": "Esta escala nunca foi publicada, então o arquivo sai marcado como Rascunho e mostra as vagas.",
+  "export_unsent_changes": "Há mudanças ainda não enviadas aos voluntários",
+  "export_duplicate_names_title": "Dois voluntários com o mesmo nome"
 }

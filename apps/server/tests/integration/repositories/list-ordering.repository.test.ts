@@ -1139,6 +1139,18 @@ describe('repository list ordering', () => {
       ).toEqual(requirementIds);
     });
 
+    it('listCycleEvents returns each block’s requirements by sector, role, then id', async () => {
+      const { churchId, cycleId } = await seedBlockRequirements();
+      const repo = new DrizzlePlanningEventRepository({ db });
+      const [cycleEvent] = await repo.listCycleEvents({
+        churchId,
+        cycleId: CycleId.from(cycleId),
+      });
+      expect(
+        cycleEvent?.eventTimeBlocks[0]?.requirements.map((r) => r.id),
+      ).toEqual(requirementIds);
+    });
+
     it('characterization: each read returns every row it returned before #1231', async () => {
       const blockRequirements = await seedBlockRequirements();
       const eventTimeBlocks = new DrizzleEventTimeBlockRepository({ db });

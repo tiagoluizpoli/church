@@ -258,7 +258,13 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
               .from(shiftRequirement)
               .innerJoin(shift, eq(shift.id, shiftRequirement.shiftId))
               .innerJoin(sector, eq(sector.id, shiftRequirement.sectorId))
-              .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id));
+              .innerJoin(role, eq(role.id, shiftRequirement.roleId))
+              .where(eq(shift.eventTimeBlockId, eventTimeBlockRow.id))
+              .orderBy(
+                asc(sql`lower(${sector.name})`),
+                asc(sql`lower(${role.name})`),
+                asc(shiftRequirement.id),
+              );
 
             return mapEventTimeBlock({
               row: eventTimeBlockRow,

@@ -59,6 +59,12 @@ const CONSTITUTION_VERSION_STEP = {
   label: 'constitution-version',
 };
 
+const LIST_ORDER_STEP = {
+  args: ['run', 'validate:list-order'],
+  command: 'bun',
+  label: 'list-order',
+};
+
 describe('buildValidationSteps', () => {
   it('skips the test-placement guard for an E2E-only run', () => {
     const { checkLane } = buildValidationSteps({
@@ -87,6 +93,7 @@ describe('buildValidationSteps', () => {
       DATE_TIME_SEAM_STEP,
       BUN_VERSION_STEP,
       CONSTITUTION_VERSION_STEP,
+      LIST_ORDER_STEP,
     ]);
     expect(steps.checkedLabels).toContain('test-placement');
     expect(steps.checkedLabels).toContain('i18n-parity');
@@ -97,6 +104,7 @@ describe('buildValidationSteps', () => {
     expect(steps.checkedLabels).toContain('date-time-seam');
     expect(steps.checkedLabels).toContain('bun-version');
     expect(steps.checkedLabels).toContain('constitution-version');
+    expect(steps.checkedLabels).toContain('list-order');
     expect(steps.integrationLane).toEqual([]);
     expect(steps.unitLane).toEqual([]);
     expect(steps.e2eSteps).toEqual([]);
@@ -140,6 +148,7 @@ describe('buildValidationSteps', () => {
       DATE_TIME_SEAM_STEP,
       BUN_VERSION_STEP,
       CONSTITUTION_VERSION_STEP,
+      LIST_ORDER_STEP,
       {
         args: [
           'turbo',

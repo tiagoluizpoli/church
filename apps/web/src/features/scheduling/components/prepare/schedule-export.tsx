@@ -16,10 +16,14 @@ import {
   type ExportCycle,
   ScheduleExportCyclePicker,
 } from '@/features/scheduling/components/prepare/schedule-export-cycle-picker';
-import { ScheduleExportPreview } from '@/features/scheduling/components/prepare/schedule-export-preview';
+import {
+  type ExportFormat,
+  FILE_PARAMS,
+  readPages,
+  ScheduleExportPreview,
+} from '@/features/scheduling/components/prepare/schedule-export-preview';
 import { useSchedule } from '@/features/scheduling/hooks/use-schedule';
 import { useOnlineState } from '@/features/volunteers/hooks/use-online-state';
-import type { GetScheduleExportFileFormat } from '@/infrastructure/api/churchAPI.schemas';
 import { requestErrorMessage } from '@/shared/utils/request-error-message';
 import { exportApi } from '@/utils/api-instances';
 
@@ -29,13 +33,14 @@ interface ScheduleExportProps {
 }
 
 const FORMATS = [
+  { format: 'cards', label: m.export_format_cards },
   { format: 'pdf', label: m.export_format_pdf },
   { format: 'png', label: m.export_format_table_image },
 ] as const;
 
 interface DownloadRequest {
   cycle: ExportCycle;
-  format: GetScheduleExportFileFormat;
+  format: ExportFormat;
 }
 
 interface SaveFileInput {
@@ -83,7 +88,7 @@ export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
   const [cycle, setCycle] = useState<ExportCycle | null>(null);
   // Null: the whole Cycle.
   const [range, setRange] = useState<ExportRange | null>(null);
-  const [format, setFormat] = useState<GetScheduleExportFileFormat>('pdf');
+  const [format, setFormat] = useState<ExportFormat>('cards');
   const online = useOnlineState();
   const { data } = useSchedule({ ministryId, cycleId });
   const selectedId = cycle?.id ?? cycleId;
@@ -98,32 +103,54 @@ export function ScheduleExport({ ministryId, cycleId }: ScheduleExportProps) {
   const isDraft = exported?.isDraft ?? false;
   const download = useMutation({
     mutationFn: async (chosen: DownloadRequest) => {
+      const params = { ...FILE_PARAMS[chosen.format], ...range };
       try {
-        return await exportApi.getScheduleExportFile(
-          ministryId,
-          chosen.cycle.id,
-          {
-            format: chosen.format,
-            ...range,
-          },
-        );
+        if (chosen.format !== 'cards') {
+          return [
+            await exportApi.getScheduleExportFile(
+              ministryId,
+              chosen.cycle.id,
+              params,
+            ),
+          ];
+        }
+        return await readPages({
+          read: (page) =>
+            exportApi.getScheduleExportFile(ministryId, chosen.cycle.id, {
+              ...params,
+              page,
+            }),
+        });
       } catch (error) {
         throw new Error(
           (await refusalMessage(error)) ?? m.export_download_failed(),
         );
       }
     },
-    onSuccess: (file, chosen) => {
+    onSuccess: (files, chosen) => {
       if (!data) return;
       const name = m.export_file_name({
         ministry: data.ministry.name,
         cycle: chosen.cycle.name,
       });
-      const suffixes = isDraft ? [m.export_draft()] : [];
-      saveFile({
-        file,
-        name: `${exportFileName({ name, suffixes })}.${chosen.format}`,
-      });
+      const draft = isDraft ? [m.export_draft()] : [];
+      const extension = FILE_PARAMS[chosen.format].format;
+      for (const [index, file] of files.entries()) {
+        const part =
+          files.length > 1
+            ? [
+                m.export_image_part({
+                  part: String(index + 1),
+                  parts: String(files.length),
+                }),
+              ]
+            : [];
+        const suffixes = [...draft, ...part];
+        saveFile({
+          file,
+          name: `${exportFileName({ name, suffixes })}.${extension}`,
+        });
+      }
       setOpen(false);
     },
     onError: (error) => toast.error(error.message),

@@ -49,7 +49,7 @@ const getScheduleExportData = (
       );
     }
   /**
- * The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`) or as the whole grid in one PNG, never cut by size (`png`), fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>". Same access, range and errors as the data.
+ * The Cycle or its `from`/`to` days as an A4 landscape text PDF table (`pdf`, whatever the layout), the whole grid in one PNG never cut by size (`png`), or with `layout=cards` card image `page`: 1080 px wide, cut at most 1600 px tall only between cards, a taller card being an image of its own. Fixed text in the locale-cookie language, named "Escala - <Ministry> - <Cycle>", plus " - parte N de M" when the cards make several images. 404 past the last image; otherwise the same access, range and errors as the data.
  * @summary Download a Ministry's Schedule for one Cycle
  */
 const getScheduleExportFile = (
@@ -65,7 +65,7 @@ const getScheduleExportFile = (
       );
     }
   /**
- * Page `page` of the file `format` names, for the Cycle or its `from`/`to` days, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, or the one page of the table image. Fixed text in the locale-cookie language. 404 past the last page; otherwise the same access, range and errors as the data.
+ * Page `page` of the file `format` and `layout` name, for the Cycle or its `from`/`to` days, rendered as SVG from the same template and payload as the file: an A4 page of the PDF, the one page of the table image, or card image `page`. Fixed text in the locale-cookie language. 404 past the last page; otherwise the same access, range and errors as the data.
  * @summary One SVG page of a Ministry's Schedule export
  */
 const getScheduleExportPreview = (

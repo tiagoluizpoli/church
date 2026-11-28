@@ -7338,6 +7338,12 @@ export type GetScheduleExportFileParams = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   to?: string;
   format: GetScheduleExportFileFormat;
+  layout?: GetScheduleExportFileLayout;
+  /**
+   * @minimum 1
+   * @maximum 9007199254740991
+   */
+  page?: number;
 };
 
 export type GetScheduleExportFileFormat = typeof GetScheduleExportFileFormat[keyof typeof GetScheduleExportFileFormat];
@@ -7346,6 +7352,14 @@ export type GetScheduleExportFileFormat = typeof GetScheduleExportFileFormat[key
 export const GetScheduleExportFileFormat = {
   pdf: 'pdf',
   png: 'png',
+} as const;
+
+export type GetScheduleExportFileLayout = typeof GetScheduleExportFileLayout[keyof typeof GetScheduleExportFileLayout];
+
+
+export const GetScheduleExportFileLayout = {
+  grid: 'grid',
+  cards: 'cards',
 } as const;
 
 export type GetScheduleExportFile400 = {
@@ -7379,6 +7393,7 @@ export type GetScheduleExportPreviewParams = {
   /** @pattern ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$ */
   to?: string;
   format: GetScheduleExportPreviewFormat;
+  layout?: GetScheduleExportPreviewLayout;
   /**
    * @minimum 1
    * @maximum 9007199254740991
@@ -7392,6 +7407,14 @@ export type GetScheduleExportPreviewFormat = typeof GetScheduleExportPreviewForm
 export const GetScheduleExportPreviewFormat = {
   pdf: 'pdf',
   png: 'png',
+} as const;
+
+export type GetScheduleExportPreviewLayout = typeof GetScheduleExportPreviewLayout[keyof typeof GetScheduleExportPreviewLayout];
+
+
+export const GetScheduleExportPreviewLayout = {
+  grid: 'grid',
+  cards: 'cards',
 } as const;
 
 export type GetScheduleExportPreview400 = {

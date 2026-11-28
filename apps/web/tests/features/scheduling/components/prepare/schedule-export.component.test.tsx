@@ -58,24 +58,49 @@ async function clickDownload(dialog: HTMLElement) {
 }
 
 const pdf = new Blob(['%PDF'], { type: 'application/pdf' });
+const cardImage = new Blob(['PNG'], { type: 'image/png' });
 const downloads: string[] = [];
 const svg = new Blob(['<svg/>'], { type: 'image/svg+xml' });
 const notFound = new AxiosError('Not Found', '404', undefined, undefined, {
   status: 404,
 } as never);
 
-/** The server's preview: two A4 pages for the PDF, one page for the image. */
-function previewPages({ pdfPages = 2 } = {}) {
+interface FileParams {
+  format: string;
+  layout?: string;
+  page?: number;
+}
+
+/** Pages a file has: two A4 pages, `cards` card images, one table image. */
+function pageCount({ format, layout }: FileParams, cards: number) {
+  if (layout === 'cards') return cards;
+  return format === 'pdf' ? 2 : 1;
+}
+
+/** The server's preview and files, 404 past the last page or image. */
+function servePages({ cards = 2 } = {}) {
   state.getScheduleExportPreview.mockImplementation(
-    (
-      _ministryId: string,
-      _cycleId: string,
-      params: { format: string; page: number },
-    ) =>
-      params.page <= (params.format === 'pdf' ? pdfPages : 1)
+    (_ministryId: string, _cycleId: string, params: FileParams) =>
+      (params.page ?? 1) <= pageCount(params, cards)
         ? Promise.resolve(svg)
         : Promise.reject(notFound),
   );
+  state.getScheduleExportFile.mockImplementation(
+    (_ministryId: string, _cycleId: string, params: FileParams) => {
+      if (params.layout !== 'cards') return Promise.resolve(pdf);
+      return (params.page ?? 1) <= cards
+        ? Promise.resolve(cardImage)
+        : Promise.reject(notFound);
+    },
+  );
+}
+
+function fileCalls() {
+  return state.getScheduleExportFile.mock.calls.map(([, , params]) => params);
+}
+
+function chooseFormat(dialog: HTMLElement, name: string) {
+  fireEvent.click(within(dialog).getByRole('radio', { name }));
 }
 
 function previewCalls() {
@@ -99,9 +124,8 @@ beforeEach(() => {
     stage: 'published',
     cycle: { ...SCHEDULE.cycle, name: 'Março: 2027' },
   };
-  state.getScheduleExportFile.mockResolvedValue(pdf);
   state.getScheduleExportData.mockResolvedValue(EXPORT_DATA);
-  previewPages();
+  servePages();
   setOnline(true);
   URL.createObjectURL = vi.fn(() => 'blob:export');
   URL.revokeObjectURL = vi.fn();
@@ -127,7 +151,7 @@ it('opens on the Schedule Cycle and downloads the whole Cycle as a PDF', async (
       m.export_whole_cycle({ span: '01/01/2027 – 31/01/2027' }),
     ),
   ).toBeVisible();
-  expect(within(dialog).getByText(m.export_format_pdf())).toBeVisible();
+  chooseFormat(dialog, m.export_format_pdf());
 
   await clickDownload(dialog);
 
@@ -168,6 +192,43 @@ it('keeps the dialog open and says so when the download fails', async () => {
   expect(
     screen.getByRole('dialog', { name: m.export_dialog_title() }),
   ).toBeVisible();
+});
+
+it('opens on Imagem em cartões and downloads every card image, numbered', async () => {
+  servePages({ cards: 2 });
+  const dialog = await openDialog();
+
+  expect(
+    within(dialog).getByRole('radio', { name: m.export_format_cards() }),
+  ).toBeChecked();
+  await clickDownload(dialog);
+
+  const name = m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' });
+  await waitFor(() =>
+    expect(downloads).toEqual([
+      `${name} - ${m.export_image_part({ part: '1', parts: '2' })}.png`,
+      `${name} - ${m.export_image_part({ part: '2', parts: '2' })}.png`,
+    ]),
+  );
+  expect(fileCalls()).toEqual([
+    { format: 'png', layout: 'cards', page: 1 },
+    { format: 'png', layout: 'cards', page: 2 },
+    { format: 'png', layout: 'cards', page: 3 },
+  ]);
+  expect(URL.createObjectURL).toHaveBeenCalledWith(cardImage);
+});
+
+it('names a single card image without a part number', async () => {
+  servePages({ cards: 1 });
+  const dialog = await openDialog();
+
+  await clickDownload(dialog);
+
+  await waitFor(() =>
+    expect(downloads).toEqual([
+      `${m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' })}.png`,
+    ]),
+  );
 });
 
 async function openDialog() {
@@ -215,9 +276,11 @@ it('says a never-published Schedule downloads as a Rascunho', async () => {
   expect(within(dialog).queryByText(m.export_unsent_changes())).toBeNull();
   await clickDownload(dialog);
 
+  const name = m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' });
   await waitFor(() =>
     expect(downloads).toEqual([
-      `${m.export_file_name({ ministry: 'Worship', cycle: 'Março 2027' })} - ${m.export_draft()}.pdf`,
+      `${name} - ${m.export_draft()} - ${m.export_image_part({ part: '1', parts: '2' })}.png`,
+      `${name} - ${m.export_draft()} - ${m.export_image_part({ part: '2', parts: '2' })}.png`,
     ]),
   );
 });
@@ -274,9 +337,9 @@ it('previews every page of the file with a link to each at full size', async () 
     expect(link).toHaveAttribute('target', '_blank');
   }
   expect(previewCalls()).toEqual([
-    { format: 'pdf', page: 1 },
-    { format: 'pdf', page: 2 },
-    { format: 'pdf', page: 3 },
+    { format: 'png', layout: 'cards', page: 1 },
+    { format: 'png', layout: 'cards', page: 2 },
+    { format: 'png', layout: 'cards', page: 3 },
   ]);
 });
 
@@ -386,7 +449,8 @@ it('previews only the chosen dates', async () => {
 
   await waitFor(() =>
     expect(previewCalls()).toContainEqual({
-      format: 'pdf',
+      format: 'png',
+      layout: 'cards',
       page: 1,
       from: '2027-01-01',
       to: '2027-01-31',

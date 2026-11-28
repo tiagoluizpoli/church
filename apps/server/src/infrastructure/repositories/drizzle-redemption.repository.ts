@@ -139,6 +139,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
     }
 
     const invitationGrant: PersistedInvitationGrant = invitationRow;
+    // list-order: a set of role ids, checked and granted; order unused
     const invitationRoles = await db
       .select({ roleId: ministryInvitationRole.roleId })
       .from(ministryInvitationRole)
@@ -299,6 +300,7 @@ export class DrizzleRedemptionRepository implements RedemptionRepository {
       )
       .returning({ id: churchInvitation.id });
     if (!declined) {
+      // list-order: one church invitation by primary key
       const [existing] = await db
         .select({ status: churchInvitation.status })
         .from(churchInvitation)

@@ -151,6 +151,7 @@ export class DrizzleMinistryRepository implements MinistryRepository {
         ),
     );
     // Header totals for the whole scope; the filters and cursor never apply.
+    // list-order: aggregate header totals: one row
     const [counts] = await client
       .select({
         total: count(),

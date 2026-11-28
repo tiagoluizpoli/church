@@ -79,6 +79,7 @@ export class DrizzleEventTimeBlockRepository
       throw new NotFoundError(`EventTimeBlock not found: ${eventTimeBlockId}`);
     }
     const db = getClient({ db: this.db, tx });
+    // list-order: one block by primary key
     const [row] = await db
       .select()
       .from(eventTimeBlock)
@@ -131,6 +132,7 @@ export class DrizzleEventTimeBlockRepository
       })
       .returning();
     if (!row) throw new Error('EventTimeBlock insert failed');
+    // list-order: one shift inserted per participation; order unused
     const participations = await db
       .select()
       .from(ministryParticipation)

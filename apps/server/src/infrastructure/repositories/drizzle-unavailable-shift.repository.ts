@@ -39,6 +39,7 @@ export class DrizzleUnavailableShiftRepository
     conditions,
     tx,
   }: RowsInput): Promise<UnavailableShift[]> {
+    // list-order: callers match marks by volunteer and shift (Sets and groups)
     const rows = await getClient({ db: this.db, tx })
       .select({
         unavailableShift,
@@ -76,6 +77,7 @@ export class DrizzleUnavailableShiftRepository
   }: ListUnavailableShiftsByVolunteerForEventInput): Promise<
     UnavailableShift[]
   > {
+    // list-order: marks are matched by shift; no caller relies on order
     const rows = await getClient({ db: this.db, tx })
       .select({
         unavailableShift,

@@ -404,6 +404,7 @@ export class DrizzleMinistryInvitationRepository
     now,
   }: FindPublicRedemptionPreviewInput): Promise<PublicRedemptionPreview | null> {
     if (!isValidUuid(churchInvitationId)) return null;
+    // list-order: one church invitation by primary key
     const [found] = await this.db
       .select({
         churchId: churchInvitation.organizationId,
@@ -579,7 +580,8 @@ export class DrizzleMinistryInvitationRepository
     const standaloneMinistryInvitationId =
       'ministryInvitation' in input ? input.ministryInvitation.id : '';
     const [parent] = churchInvitationId
-      ? await db
+      ? // list-order: one church invitation by primary key
+        await db
           .select({
             status: churchInvitation.status,
             role: churchInvitation.role,
@@ -665,6 +667,7 @@ export class DrizzleMinistryInvitationRepository
     tx,
   }: FindChurchInvitationContextInput): Promise<ChurchInvitationContext | null> {
     if (!isValidUuid(churchInvitationId)) return null;
+    // list-order: one church invitation by primary key
     const [row] = await getClient({ db: this.db, tx })
       .select({
         churchId: churchInvitation.organizationId,
@@ -1017,6 +1020,7 @@ export class DrizzleMinistryInvitationRepository
   }
 
   private async hydrate({ row, tx }: HydrateMinistryInvitationInput) {
+    // list-order: a set of role ids; no reader relies on their order
     const roleRows = await getClient({ db: this.db, tx })
       .select({ roleId: ministryInvitationRole.roleId })
       .from(ministryInvitationRole)

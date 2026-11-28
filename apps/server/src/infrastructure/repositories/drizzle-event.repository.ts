@@ -63,6 +63,7 @@ export class DrizzleEventRepository implements EventRepository {
       throw new NotFoundError(`Event not found: ${eventId}`);
     }
     const db = getClient({ db: this.db, tx });
+    // list-order: one event by primary key
     const [row] = await db
       .select()
       .from(event)

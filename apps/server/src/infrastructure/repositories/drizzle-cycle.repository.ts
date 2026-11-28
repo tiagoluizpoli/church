@@ -151,6 +151,7 @@ export class DrizzleCycleRepository implements CycleRepository {
     input: CountCyclesByStateInput,
   ): Promise<CycleStateCounts> {
     const db = getClient({ db: this.db, tx: input.tx });
+    // list-order: grouped counts read into a per-state record
     const rows = await db
       .select({ state: cycle.state, total: count() })
       .from(cycle)
@@ -181,6 +182,7 @@ export class DrizzleCycleRepository implements CycleRepository {
       return {};
     }
     const db = getClient({ db: this.db, tx: input.tx });
+    // list-order: grouped counts read into a per-cycle record
     const rows = await db
       .select({ cycleId: event.cycleId, total: count() })
       .from(event)
@@ -201,6 +203,7 @@ export class DrizzleCycleRepository implements CycleRepository {
     }
 
     const db = getClient({ db: this.db, tx: input.tx });
+    // list-order: one cycle by primary key
     const [row] = await db
       .select()
       .from(cycle)

@@ -78,6 +78,7 @@ export class DrizzleNotificationRepository implements NotificationRepository {
       .returning();
     const row =
       inserted ??
+      // list-order: one notification per source outbox message (unique)
       (
         await client
           .select()
@@ -164,6 +165,7 @@ export class DrizzleNotificationRepository implements NotificationRepository {
       eventTimeBlockId ? [eventTimeBlockId] : [],
     );
     const [events, blocks] = await Promise.all([
+      // list-order: hidden event ids, checked by membership; order unused
       client
         .select({ id: event.id })
         .from(event)
@@ -174,6 +176,7 @@ export class DrizzleNotificationRepository implements NotificationRepository {
             inArray(event.id, eventIds),
           ),
         ),
+      // list-order: hidden block ids, checked by membership; order unused
       client
         .select({ id: eventTimeBlock.id })
         .from(eventTimeBlock)

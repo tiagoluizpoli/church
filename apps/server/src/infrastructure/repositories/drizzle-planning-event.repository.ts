@@ -188,6 +188,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
     }
 
     const db = getClient({ db: this.db, tx: input.tx });
+    // list-order: one event by primary key
     const [row] = await db
       .select()
       .from(event)
@@ -728,6 +729,7 @@ export class DrizzlePlanningEventRepository implements PlanningEventRepository {
         withChurchIsolation({ table: eventTimeBlock, churchId }),
         eq(eventTimeBlock.id, eventTimeBlockId),
       );
+      // list-order: one block by primary key
       const [stored] = await client
         .select({
           start: eventTimeBlock.startTime,

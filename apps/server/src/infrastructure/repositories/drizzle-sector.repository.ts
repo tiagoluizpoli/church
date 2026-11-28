@@ -89,6 +89,7 @@ export class DrizzleSectorRepository implements SectorRepository {
     ministryIds,
   }: CountActiveSectorsByMinistryInput): Promise<Map<MinistryId, number>> {
     if (ministryIds.length === 0) return new Map();
+    // list-order: grouped counts read into a Map by ministry
     const rows = await this.db
       .select({ ministryId: sector.ministryId, total: count() })
       .from(sector)
@@ -109,6 +110,7 @@ export class DrizzleSectorRepository implements SectorRepository {
     if (!isValidUuid(input.sectorId)) {
       throw new NotFoundError(`Sector not found: ${input.sectorId}`);
     }
+    // list-order: one sector by primary key
     const [row] = await getClient({ db: this.db, tx: input.tx })
       .select()
       .from(sector)
@@ -130,6 +132,7 @@ export class DrizzleSectorRepository implements SectorRepository {
   }: LockActiveSectorsInput): Promise<Set<SectorId>> {
     const ids = sectorIds.filter((id) => isValidUuid(id));
     if (ids.length === 0) return new Set();
+    // list-order: locks sectors and reads them into a Set
     const rows = await getClient({ db: this.db, tx })
       .select({ id: sector.id })
       .from(sector)
@@ -191,6 +194,7 @@ export class DrizzleSectorRepository implements SectorRepository {
     }
     // FOR UPDATE conflicts with the FOR SHARE of `lockActive` and the FK
     // KEY SHARE of a requirement insert, so concurrent new use serializes here.
+    // list-order: locks one sector by primary key
     const [row] = await getClient({ db: this.db, tx })
       .select()
       .from(sector)

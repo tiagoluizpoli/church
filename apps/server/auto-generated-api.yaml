@@ -10122,6 +10122,7 @@ paths:
                   error:
                     type: string
                     enum:
+                      - ACTIVE_CHURCH_SELECTION_REQUIRED
                       - PENDING_MINISTRY_INVITATION_EXISTS
                       - INVITEE_ALREADY_MINISTRY_MEMBER
                   message:
@@ -17766,6 +17767,7 @@ paths:
                   error:
                     type: string
                     enum:
+                      - ACTIVE_CHURCH_SELECTION_REQUIRED
                       - INVITEE_ALREADY_CHURCH_MEMBER
                       - PENDING_CHURCH_INVITATION_EXISTS
                   message:
@@ -23026,6 +23028,7 @@ paths:
                   error:
                     type: string
                     enum:
+                      - ACTIVE_CHURCH_SELECTION_REQUIRED
                       - SHIFT_PUBLISHED
                       - ILLEGAL_STATE_TRANSITION
                       - CROSS_MINISTRY_SCOPE

@@ -20,6 +20,8 @@ export const adminInvitationResponseSchema = z.object({
 
 export const mintAdminInvitationConflictSchema = z.object({
   error: z.enum([
+    // The Active Church hook's refusal, sent before the handler runs.
+    'ACTIVE_CHURCH_SELECTION_REQUIRED',
     'INVITEE_ALREADY_CHURCH_MEMBER',
     'PENDING_CHURCH_INVITATION_EXISTS',
   ]),

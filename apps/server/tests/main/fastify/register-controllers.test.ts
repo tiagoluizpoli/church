@@ -13,6 +13,9 @@ type OpenApiOperation = {
   responses?: Record<string, unknown>;
 };
 
+type OperationQuery = { operationId: string };
+type ErrorCodesQuery = OperationQuery & { status: string };
+
 let app: FastifyTypedInstance;
 
 beforeAll(async () => {
@@ -32,19 +35,35 @@ beforeAll(async () => {
 
 afterAll(async () => app.close());
 
-function declaredStatuses({ operationId }: { operationId: string }): string[] {
+function operation({ operationId }: OperationQuery): OpenApiOperation {
   const paths = app.swagger().paths as Record<
     string,
     Record<string, OpenApiOperation>
   >;
   for (const item of Object.values(paths)) {
-    for (const operation of Object.values(item)) {
-      if (operation.operationId === operationId) {
-        return Object.keys(operation.responses ?? {}).sort();
-      }
+    for (const candidate of Object.values(item)) {
+      if (candidate.operationId === operationId) return candidate;
     }
   }
   throw new Error(`No operation ${operationId}`);
+}
+
+function declaredErrorCodes({
+  operationId,
+  status,
+}: ErrorCodesQuery): string[] | undefined {
+  const response = operation({ operationId }).responses?.[status] as {
+    content: {
+      'application/json': {
+        schema: { properties: { error: { enum?: string[] } } };
+      };
+    };
+  };
+  return response.content['application/json'].schema.properties.error.enum;
+}
+
+function declaredStatuses({ operationId }: OperationQuery): string[] {
+  return Object.keys(operation({ operationId }).responses ?? {}).sort();
 }
 
 const ID = '11111111-1111-4111-8111-111111111111';
@@ -133,5 +152,19 @@ describe('declared response statuses (#1226)', () => {
     'deleteEventTemplate',
   ])('%s declares its 204 like every other delete', (operationId) => {
     expect(declaredStatuses({ operationId })).toEqual(['204']);
+  });
+});
+
+describe('declared 409 error codes', () => {
+  // The Active Church hook answers 409 ACTIVE_CHURCH_SELECTION_REQUIRED before
+  // any handler runs; a 409 schema that refuses that code turns it into a 500.
+  it.each([
+    'answerAvailabilityCheck',
+    'mintAdminInvitation',
+    'mintMinistryInvitation',
+  ])('%s admits the hook’s selection-required refusal', (operationId) => {
+    expect(declaredErrorCodes({ operationId, status: '409' })).toContain(
+      'ACTIVE_CHURCH_SELECTION_REQUIRED',
+    );
   });
 });
